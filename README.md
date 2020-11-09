@@ -49,8 +49,6 @@ device controller(s) on top of it.
 
 ## Install
 
-TODO: where to download the installer archive from?
-
 Supported host operating systems:
 
 * Debian;
@@ -72,7 +70,10 @@ MacOS prerequisites:
 
 Installation steps:
 
-1. Download the GDM installer archive: TODO.
+1. Download the GDM installer archive:
+   ```
+   curl -O https://github.com/google/gazoo-device/releases/latest/download/gdm-install.sh
+   ```
 
 2. Run `sh gdm-install.sh`.
 
