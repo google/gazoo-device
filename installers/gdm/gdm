@@ -1,0 +1,64 @@
+#!/bin/bash
+# This script is the launcher script for gdm. Its purpose is as follows:
+# * Detect when the gazoo-device Python module is not installed and provide
+#   instruction on how to install it.
+# * Allow for easily upgrading (or as needed downgrading) the gazoo-device
+#   Python module in the shared virtual environment.
+# * Pass all other arguments to the Python gdm command line tool in the shared
+#   virtual environment when the environment is not activated.
+LAUNCHER_VERSION=0.01
+TMP_DIR="/tmp"
+
+if [ "$(uname)" == "Darwin" ]; then
+    GDM_BASE=${HOME}/gdm
+else
+    GDM_BASE="/usr/local/gazoo/gdm"
+fi
+
+VE_BASE=${VIRTUAL_ENV:=${GDM_BASE}/virtual_env}
+VE_BIN=$VE_BASE/bin
+VE_GDM=$VE_BIN/gdm
+VE_PIP=$VE_BIN/pip
+
+
+make_ve_if_not_exist()
+{
+    if [ ! -d $VE_BASE ]; then
+        echo "Creating GDM virtual environment at: $VE_BASE"
+        virtualenv -p python3 $VE_BASE
+    fi
+    chmod 777 $VE_BASE/bin
+}
+
+install_or_update_gdm()
+{
+    local gdm_version="$1"
+    make_ve_if_not_exist
+
+    if [ -n "$gdm_version" ]; then
+        $VE_PIP install --no-input -U gazoo-device==$gdm_version
+    else
+        $VE_PIP install --no-input -U gazoo-device
+    fi
+}
+
+case $1 in
+-v)
+    echo "Gazoo Device Manager launcher $LAUNCHER_VERSION"
+    if [ -x $VE_GDM ]; then
+        $VE_GDM "$@"
+    fi
+    ;;
+update-gdm|update_gdm)
+    install_or_update_gdm "$2"
+    ;;
+*)
+    if [ -x $VE_GDM ]; then
+        $VE_GDM "$@"
+    else
+        echo "GDM is not yet installed at $VE_BASE:" 1>&2
+        echo "Use 'gdm update-gdm' or 'gdm update-gdm [version]' to install it" 1>&2
+        exit 1
+    fi
+    ;;
+esac

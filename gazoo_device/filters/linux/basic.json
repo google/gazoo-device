@@ -1,0 +1,23 @@
+{
+    "description": "Linux device basic events",
+    "version": {"major": 1, "minor": 0},
+    "filters": [
+        {
+            "name": "bootup",
+            "description": "Detect any reboot of the device",
+            "regex_match": "Booting Linux on physical CPU",
+            "examples": [
+                "<2020-10-13 04:42:20.111208> GDM-1: Booting Linux on physical CPU 0x0"
+            ]
+        },
+        {
+          "name": "reboot_trigger",
+          "description": "Detect GDM reboot triggers of the device",
+          "regex_match": "GDM triggered reboot",
+          "examples": [
+            "<2018-05-22 13:21:19.501817> Note: GDM triggered reboot"
+          ]
+        }
+    ]
+}
+

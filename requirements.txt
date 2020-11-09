@@ -1,0 +1,12 @@
+fire>=0.2.1
+intelhex>=2.2.1
+psutil>=5.0.1
+pylibftdi>=0.15.0,<0.16.0
+pylink-square>=0.3.0
+pyserial>=3.3
+pytz>=2014.4
+pyudev==0.21.0
+requests>=2.4.0
+xmodem>=0.4.5
+portpicker>=1.3.1
+websocket-client>=0.56.0

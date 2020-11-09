@@ -1,0 +1,15 @@
+{
+  "known_logline" : [],
+  "custom_filters" : [],
+  "device_type_filter" : ["powerswitch"],
+  "shell_cmd": "",
+  "expect": [""],
+  "do_not_run_tests": ["AuxiliaryDeviceCommonTestSuite.test_1008_reboot",
+                       "AuxiliaryDeviceCommonTestSuite.test_1011_send_and_expect",
+                       "AuxiliaryDeviceCommonTestSuite.test_1012_shell",
+                       "AuxiliaryDeviceCommonTestSuite.test_1016_do_and_expect_some_func_is_called",
+                       "AuxiliaryDeviceCommonTestSuite.test_1115_test_expect_with_bogus_logline",
+                       "AuxiliaryDeviceCommonTestSuite.test_1117_get_event_related_methods_return_appropriate_results"],
+  "slow_tests": [],
+  "volatile_tests": []
+}

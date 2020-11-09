@@ -1,0 +1,4 @@
+makeself-*/
+makeself-*.run
+gdm-install.sh
+gdm-cleanup.sh

@@ -1,0 +1,5 @@
+TestBeds:
+  - Name: Testbed-One-Exampledevice-01
+    Controllers:
+      GazooDevice:
+        - 'exampledevice-1234'  # Must match the device name in output of "gdm devices"

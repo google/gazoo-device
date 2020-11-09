@@ -1,0 +1,10 @@
+{
+  "known_logline" : [],
+  "custom_filters" : [],
+  "device_type_filter" : ["unifi_switch"],
+  "shell_cmd": "info",
+  "expect": ["Version:\\s+(\\S+)"],
+  "do_not_run_tests": [],
+  "slow_tests": [],
+  "volatile_tests": []
+}
