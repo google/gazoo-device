@@ -60,6 +60,7 @@ setuptools.setup(
     version=get_version(),
     description='Gazoo Device Manager',
     long_description=readme(),
+    long_description_content_type="text/markdown",
     python_requires='>=3',
 
     # project's homepage
