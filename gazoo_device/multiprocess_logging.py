@@ -143,7 +143,7 @@ class LoggingThread(object):
                 self._queue.put_nowait(_Sentinel.TERMINATE)
             self._thread.join(timeout=TERMINATE_TIMEOUT)
 
-            if self._thread.isAlive():
+            if self._thread.is_alive():
                 raise RuntimeError('Failed to stop LoggingThread in {}s'.format(TERMINATE_TIMEOUT))
 
         self._thread = None

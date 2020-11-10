@@ -17,6 +17,7 @@ from __future__ import absolute_import
 import os
 import re
 import shutil
+import stat
 import subprocess
 
 from gazoo_device import config
@@ -555,6 +556,8 @@ def _obtain_key(key_type):
     remote_filename = config.KEYS[key_type]["remote_filename"]
     shutil.copyfile(src=os.path.join(PACKAGE_KEY_DIR, remote_filename),
                     dst=local_path)
+    if not local_path.endswith(".pub"):  # Private SSH key
+        os.chmod(local_path, stat.S_IRUSR)
     # The keys included with GDM are not secret, so it's okay to
     # include them in the repo for the GDM prototype.
     # TODO: package keys somewhere else (like GCS?).
