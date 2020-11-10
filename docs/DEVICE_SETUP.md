@@ -102,6 +102,8 @@ has issues with detection of serial devices.
      ```
    * Replace `myhomewifi` with the SSID of your Wi-Fi network and set
      the password accordingly.
+   * Note that you'll need to reboot the RPi (`reboot`) after the first
+     login to make it connect to Wi-Fi.
 3. Boot up the Raspberry Pi from the SD card.
 4. Change the default password for the "ubuntu" user.
 5. Install GDM on RPi:
