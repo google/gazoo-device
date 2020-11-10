@@ -55,7 +55,9 @@ Supported host operating systems:
 * Ubuntu;
 * MacOS.
 
-Note: Raspberry Pi 4 on 64-bit Ubuntu 20.04 LTS is also supported as a host.
+Note: Raspberry Pi 4 on 64-bit Ubuntu 20.04 LTS is also supported as a
+host (see the relevant
+[device setup section](DEVICE_SETUP.md#raspberry-pi-as-a-host)).
 
 MacOS prerequisites:
 
@@ -163,7 +165,7 @@ You're not expected to modify them directly. Instead, use `set-prop` and
 
 ## Logs
 
-GDM logs by default to `/gazoo/gdm/log/`.
+GDM logs by default to `/gazoo/gdm/log/`. On Macs, logs are collected in `~/gdm/log/`.
 
 ## Detecting devices
 
@@ -174,10 +176,8 @@ typically require a special setup before being usable with GDM. This can
 include a special cable connection configuration, renaming serial
 cables, updating device firmware to a specific version, setting up the
 device on a static IP address, or setting up passwordless SSH access to
-the device.
-
-TODO: include setup instructions for the auxiliary devices shipping with
-GDM.
+the device. Refer to [docs/DEVICE_SETUP.md](docs/DEVICE_SETUP.md) for
+instructions.
 
 Device detection populates device configs:
 * persistent properties are stored in  `/gazoo/gdm/conf/devices.json`;
