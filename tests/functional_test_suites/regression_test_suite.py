@@ -58,7 +58,6 @@ import functools
 import inspect
 import json
 import os
-import shutil
 import collections
 import sys
 import coverage
@@ -376,11 +375,9 @@ def _run_tests(supported_test_suites, tests_to_run, parsed_args):
     suite_runner.run_suite(supported_test_suites, argv=suite_runner_args)
 
 
-def _save_coverage(destination):
+def _save_coverage():
     cov.stop()
     cov.save()
-    if os.path.exists(".coverage"):
-        shutil.move(".coverage", destination)
 
 
 def _update_user_settings_file(key, value):
@@ -408,10 +405,7 @@ def main():
     tests_to_run = _determine_tests_to_run(test_config, run_type, parsed_args.tests,
                                            supported_test_suites)
     _run_tests(supported_test_suites, tests_to_run, parsed_args)
-
-    log_path = os.environ.get("MH_GEN_FILE_DIR", os.environ.get("MOBLY_LOGPATH", "artifacts"))
-    coverage_destination = "{}/coverage.regression_test_suite.{}".format(log_path, device_type)
-    _save_coverage(destination=coverage_destination)
+    _save_coverage()
 
 
 if __name__ == "__main__":

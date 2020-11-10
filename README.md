@@ -72,7 +72,7 @@ Installation steps:
 
 1. Download the GDM installer archive:
    ```
-   curl -O https://github.com/google/gazoo-device/releases/latest/download/gdm-install.sh
+   curl -OL https://github.com/google/gazoo-device/releases/latest/download/gdm-install.sh
    ```
 
 2. Run `sh gdm-install.sh`.
