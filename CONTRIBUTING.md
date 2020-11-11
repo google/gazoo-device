@@ -74,16 +74,22 @@ TODO: provide more detailed contributor instructions. This is not
 applicable at the moment as external contributions to the repository are
 not allowed.
 
-1. Open a new issue (or use an existing one) to provide context on the bug or feature request.
-   Include a description of the proposed implementation. We'll review it and provide suggestions
-   as necessary.
-2. After your implementation idea is reviewed, proceed to writing code and tests as necessary.
-3. Your change must have unit test coverage of >= 90% and pass all unit tests.
-   Use the run_tests.sh script to run all unit tests and report on unit test coverage.
-   If your coverage is lower than 90%, add unit tests as necessary.
-4. Include proof of functional (on-device) testing. For now this can be accomplished by interacting
-   with a device from a Python interpreter. Your interaction must test the functionality you're
-   changing.
+1. Open a new issue (or use an existing one) to provide context on the
+   bug or feature request. Include a description of the proposed
+   implementation. We'll review it and provide suggestions.
+2. After your implementation idea is reviewed, proceed to writing code
+   and tests.
+3. Your change must have unit test coverage of >= 90% and pass
+   all unit tests. Use the `run_tests.sh` script to run all unit tests
+   and report on unit test diff coverage. If your coverage is lower than
+   90%, add more unit tests to cover your changes.
+   See [tests/README.md](tests/README.md) and
+   [tests/functional_tests/README.md](tests/functional_tests/README.md)
+   for more information about unit and functional (on-device) GDM
+   regression tests.
+4. Include proof of functional (on-device) testing. For now this can be
+   accomplished by interacting with a device from a Python interpreter.
+   Your interaction must test the functionality you're changing.
 
 ## Overview of GDM architecture
 

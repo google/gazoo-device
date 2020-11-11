@@ -34,6 +34,7 @@ gdm issue cambrionix-1234 - switch-power - power-off 2
 gdm issue cambrionix-1234 - switch-power - get-mode 2
 gdm issue cambrionix-1234 - switch-power - power-on 2
 gdm issue cambrionix-1234 - switch-power - get-mode 2
+gdm man cambrionix  # To see all supported functionality
 ```
 
 ## Raspberry Pi (as a supporting device)
@@ -75,6 +76,7 @@ gdm issue raspberrypi-1234 - firmware-version
 gdm issue raspberrypi-1234 - reboot
 echo "Example file" > /tmp/foo.txt
 gdm issue raspberrypi-1234 - file-transfer - send-file-to-device --src=/tmp/foo.txt --dest=/tmp
+gdm man raspberrypi  # To see all supported functionality
 ```
 
 ## Raspberry Pi (as a host)
@@ -187,6 +189,16 @@ Detect the Unifi switch:
 gdm detect --static_ips <IP of Unifi switch>
 ```
 
+### Usage
+
+```
+gdm issue unifi_switch-1234 - switch_power - power_off --port 0
+gdm issue unifi_switch-1234 - switch_power - get_mode --port 0
+gdm issue unifi_switch-1234 - switch_power - power_on --port 0
+gdm issue unifi_switch-1234 - switch_power - get_mode --port 0
+gdm man unifi_switch  # To see all supported functionality
+```
+
 ## DLI Web Power Switch
 
 Supported model: [DLI Web Power Switch Pro](https://dlidirect.com/products/new-pro-switch).
@@ -211,4 +223,5 @@ gdm issue powerswitch-3570 - switch_power - power_off --port 0
 gdm issue powerswitch-3570 - switch_power - get_mode --port 0
 gdm issue powerswitch-3570 - switch_power - power_on --port 0
 gdm issue powerswitch-3570 - switch_power - get_mode --port 0
+gdm man powerswitch  # To see all supported functionality
 ```

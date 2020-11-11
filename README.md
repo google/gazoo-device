@@ -30,22 +30,23 @@ device controller(s) on top of it.
 ## Table of contents
 
 1. [Install](#install)
-2. [Virtual Environment](#virtual-environment)
-3. [Device controllers in GDM](#device-controllers-in-gdm)
-4. [Config files](#config-files)
-5. [Logs](#logs)
-6. [Detecting devices](#detecting-devices)
-7. [Using the CLI](#using-the-cli)
+2. [Quick start](#quick-start)
+3. [Virtual environment](#virtual-environment)
+4. [Device controllers in GDM](#device-controllers-in-gdm)
+5. [Config files](#config-files)
+6. [Logs](#logs)
+7. [Detecting devices](#detecting-devices)
+8. [Using the CLI](#using-the-cli)
     1. [Exploring device capabilities without a physical device](#exploring-device-capabilities-without-a-physical-device)
     2. [Exploring device capabilities with a physical device](#exploring-device-capabilities-with-a-physical-device)
     3. [Basic CLI usage](#basic-cli-usage)
-8. [Using the gazoo_device python package](#using-the-gazoo_device-python-package)
-9. [How to use GDM with test frameworks](#how-to-use-gdm-with-test-frameworks)
+9. [Using the gazoo_device python package](#using-the-gazoo_device-python-package)
+10. [How to use GDM with test frameworks](#how-to-use-gdm-with-test-frameworks)
     1. [GDM with Mobly](#gdm-with-mobly)
     2. [GDM with Unittest](#gdm-with-unittest)
-10. [Contributor documentation](#contributor-documentation)
-11. [License](#license)
-12. [Disclaimer](#disclaimer)
+11. [Contributor documentation](#contributor-documentation)
+12. [License](#license)
+13. [Disclaimer](#disclaimer)
 
 ## Install
 
@@ -108,7 +109,32 @@ To install GDM in a virtual environment:
 /path_to_virtual_env/bin/pip install gazoo-device
 ```
 
-## Virtual Environment
+## Quick start
+
+This is the quickest way to get your hands dirty with GDM. You'll need a
+Raspberry Pi.
+
+1. [Install NDM on the host](#install).
+2. [Set up your Raspberry Pi as an auxiliary device in GDM and try out the CLI](docs/DEVICE_SETUP.md#raspberry-pi-as-a-supporting-device).
+3. Run `gdm devices` and record the name of your Raspberry Pi (like `raspberrypi-1234`).
+4. Create a Mobly testbed for your Raspberry Pi:
+   ```
+   sudo cp /opt/gazoo/testbeds/One-Exampledevice.yml /opt/gazoo/testbeds/One-Raspberrypi.yml
+   sudo vi /opt/gazoo/testbeds/One-Raspberrypi.yml  # Or use a text editor of your choice
+   # Replace "exampledevice-1234" with your device name (like "raspberrypi-1234")
+   # Update the testbed name ("Testbed-One-Exampledevice-01" -> "Testbed-One-Raspberrypi-01")
+   ```
+5. Check out the GDM repo (which includes on-device regression tests):
+   ```
+   git clone https://github.com/google/gazoo-device.git
+   ```
+6. Run the GDM regression test suite for Raspberry Pi on your device:
+   ```
+   cd gazoo-device/tests/
+   ./run_tests.sh -d functional_test_suites/ -f regression_test_suite.py -c /opt/gazoo/testbeds/One-Raspberrypi.yml
+   ```
+
+## Virtual environment
 
 GDM installs a shared virtual environment at
 `/usr/local/gazoo/gdm/virtual_env`.
