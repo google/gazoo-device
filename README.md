@@ -57,7 +57,7 @@ Supported host operating systems:
 
 Note: Raspberry Pi 4 on 64-bit Ubuntu 20.04 LTS is also supported as a
 host (see the relevant
-[device setup section](DEVICE_SETUP.md#raspberry-pi-as-a-host)).
+[device setup section](docs/DEVICE_SETUP.md#raspberry-pi-as-a-host)).
 
 MacOS prerequisites:
 
