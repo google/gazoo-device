@@ -45,7 +45,9 @@ Supported kernel images: Raspbian.
 
 ### Setup
 
-1. Flash SD card with the Raspbian kernel.
+1. Flash SD card with the Raspbian kernel. Refer to
+   https://www.raspberrypi.org/documentation/installation/installing-images/
+   for instructions.
 2. Boot the Pi from the SD card.
 3. Open the RPi configuration utility: `sudo raspi-config` (from RPi)
     1. Change the default password ("Change User Password")
@@ -89,7 +91,9 @@ has issues with detection of serial devices.
 
 ### Setup
 
-1. Flash the Ubuntu Server 20.04 LTS image onto an SD card.
+1. Flash the Ubuntu Server 20.04 LTS image onto an SD card. Refer to
+   https://www.raspberrypi.org/documentation/installation/installing-images/
+   for instructions.
 2. [Optional] Edit the network config to automatically connect the RPi
    to Wi-Fi:
    * Open "network-config" on the SD card and uncomment the following lines:
