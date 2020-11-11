@@ -28,9 +28,12 @@
 # * gdm directory at /usr/local/gazoo/gdm
 # * gdm wrapper script at /usr/local/bin/gdm
 LINUX_REMOVE_PKGS="libftdi-dev libffi-dev lrzsz python3-dev android-sdk-platform-tools"
+BREW_UNINSTALL_PACKAGES="libftdi coreutils android-platform-tools"
 GDM_PATH="/usr/local/gazoo/gdm"
+GDM_PATH_MAC="$HOME/gdm"
 GDM_WRAPPER_PATH="/usr/local/bin/gdm"
-PIP_REMOVE_PKGS="gazoo-device"
+GSUTIL_PATH="/opt/gsutil"
+GSUTIL_ALIAS_PATH="/usr/local/bin/gsutil"
 UDEV_SRC_PATH="rules.d"
 
 source ./functions.sh
@@ -44,8 +47,8 @@ cleanup_common()
 
 cleanup_gsutil()
 {
-    cleanup_directory_if_exists "$GSUTIL_PATH"
-    cleanup_file_if_exists "/usr/bin/local/gsutil"
+    [ -d "$GSUTIL_PATH" ] && sudo rm -rf $GSUTIL_PATH
+    [ -h "$GSUTIL_ALIAS_PATH" ] && sudo rm $GSUTIL_ALIAS_PATH
 }
 
 cleanup_linux()
@@ -54,29 +57,44 @@ cleanup_linux()
     echo "Cleanup for Linux"
     cleanup_common
     cleanup_udev_rules "$UDEV_SRC_PATH"
-    cleanup_pip_packages "$PIP_REMOVE_PKGS"
     cleanup_apt_packages "$LINUX_REMOVE_PKGS"
+    sudo apt -y autoremove
+}
+
+cleanup_mac()
+{
+    remove_homebrew_packages
+    cleanup_gsutil
+    [ -d "$GDM_PATH_MAC" ] && sudo rm -rf $GDM_PATH_MAC
+    [ -f "$GDM_WRAPPER_PATH" ] && sudo rm $GDM_WRAPPER_PATH
+}
+
+remove_homebrew_packages()
+{
+    echo "chown'ing /usr/local/ to the current user to uninstall Brew packages"
+    sudo chown -R $(whoami) /usr/local/bin /usr/local/etc /usr/local/sbin /usr/local/share /usr/local/share/doc
+    HOMEBREW_NO_AUTO_UPDATE=1 brew uninstall $BREW_UNINSTALL_PACKAGES
 }
 
 cleanup_unsupported()
 {
-    echo "Unsupported operating system. Please use Linux." 1>&2
+    echo "Unsupported operating system. Please use Linux or MacOS." 1>&2
     exit 1
 }
 
 # Check the lsb-release file for some variables that tell us what OS we're on.
-# gLinux rodete, Ubuntu 16LTS and 18LTS have this file.
 if [ -f /etc/lsb-release ]; then
     . /etc/lsb-release
 else
-    echo " /etc/lsb-release is not readable"
-    exit 1
+    DISTRIB_ID=$(uname)
 fi
 # DISTRIB_ID is loaded into the env by sourcing /etc/lsb-release
 case "$DISTRIB_ID" in
-    Debian ) cleanup_linux  ;;
-    Ubuntu ) cleanup_linux  ;;
-    *      ) cleanup_unsupported "/etc/lsb-release $DISTRIB_ID says you are on an unsupported OS" ;;
+    Debian ) cleanup_linux ;;
+    Ubuntu ) cleanup_linux ;;
+    Linux ) cleanup_linux ;;
+    Darwin ) cleanup_mac ;;
+    *      ) cleanup_unsupported ;;
 esac
 
 retval=$?

@@ -236,7 +236,6 @@ print_user_info_and_exit()
 
 
 # Check the lsb-release file for some variables that tell us what OS we're on.
-# Debian, Ubuntu 16LTS and 18LTS have this file.
 if [ -f /etc/lsb-release ]; then
     . /etc/lsb-release
 else
