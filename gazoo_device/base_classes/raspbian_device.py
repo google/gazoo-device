@@ -34,17 +34,18 @@ LOG_MARKER_LINE_POS = ("line_num=$({cmd}); [ -z \"($line_num)\" ] && echo 1 || e
                        " $line_num".format(cmd=LOG_MARKER_LINE_POS_OR_EMPTY))
 
 COMMANDS = {
-    "BOOTUP_COMPLETE": "sudo systemctl --wait is-system-running\n",
-    "FIRMWARE_VERSION": "cat /etc/os-release\n",
+    "BOOTUP_COMPLETE": "sudo systemctl --wait is-system-running",
+    "FIRMWARE_VERSION": "cat /etc/os-release",
     "INJECT_LOG_MARKER": "sudo bash -c 'echo \"{marker}\" >> {file_path}'".format(
         marker=MARKER, file_path=LOGGING_FILE_PATH),
-    "KERNEL_VERSION": "uname -r\n",
+    "KERNEL_VERSION": "uname -r",
     "LOGGING": "tail -F -n +$({cmd}) {file_path}".format(cmd=LOG_MARKER_LINE_POS,
                                                          file_path=LOGGING_FILE_PATH),
-    "MODEL_INFO": "cat /proc/device-tree/model\n",
-    "REBOOT": "sudo reboot\n",
-    "RESET_FAILED": "sudo systemctl reset-failed\n",
-    "SERIAL_NUMBER_INFO": "cat /proc/cpuinfo\n",
+    "MODEL_INFO": "cat /proc/device-tree/model",
+    "GDM_HELLO": "echo 'GDM-HELLO'",
+    "REBOOT": "sudo reboot",
+    "RESET_FAILED": "sudo systemctl reset-failed",
+    "SERIAL_NUMBER_INFO": "cat /proc/cpuinfo",
     "WEAVE_WBR_INSTALLED": "ls /usr/sbin/nldaemon-cli"
 }
 
@@ -58,6 +59,7 @@ REGEXES = {
 }
 
 TIMEOUTS = {
+    "GDM_HELLO": 5,
     "SHELL": 10,
     "SHUTDOWN": 60,
     "ONLINE": 120
@@ -84,6 +86,21 @@ class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
         self._commands.update(COMMANDS)
         self._regexes.update(REGEXES)
         self._timeouts.update(TIMEOUTS)
+
+    @decorators.health_check
+    def check_device_responsiveness(self):
+        """Check if the device is responsive on console.
+
+        Raises:
+            DeviceNotResponsiveError: if device is not responsive on console.
+        """
+        cmd, timeout = self.commands["GDM_HELLO"], self.timeouts["GDM_HELLO"]
+        try:
+            self.shell(cmd, timeout=timeout)
+        except errors.GazooDeviceError as err:
+            raise errors.DeviceNotResponsiveError(
+                self.name, "unable to execute command {!r} on device's shell".format(cmd),
+                timeout=timeout, details=str(err))
 
     @decorators.DynamicProperty
     def kernel_version(self):
