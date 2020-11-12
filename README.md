@@ -30,6 +30,7 @@ device controller(s) on top of it.
 ## Table of contents
 
 1. [Install](#install)
+    1. [Uninstall](#uninstall)
 2. [Quick start](#quick-start)
 3. [Virtual environment](#virtual-environment)
 4. [Device controllers in GDM](#device-controllers-in-gdm)
@@ -107,6 +108,14 @@ Other Devices   Alias           Type         Model                Available
 To install GDM in a virtual environment:
 ```
 /path_to_virtual_env/bin/pip install gazoo-device
+```
+
+### Uninstall
+
+To uninstall GDM:
+```
+curl -OL https://github.com/google/gazoo-device/releases/latest/download/gdm-cleanup.sh
+sh gdm-cleanup.sh
 ```
 
 ## Quick start
