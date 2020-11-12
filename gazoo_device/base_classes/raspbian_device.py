@@ -129,7 +129,7 @@ class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
         """Returns list of methods to execute as health checks."""
         return [self.device_is_connected,
                 self.check_create_switchboard,
-                self._ensure_device_is_online]
+                self.check_device_responsiveness]
 
     @decorators.PersistentProperty
     def ip_address(self):

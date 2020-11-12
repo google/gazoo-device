@@ -88,8 +88,16 @@ Install done (exit 0)
 
 Run a few GDM CLI command to verify GDM works:
 ```
+gdm -v
 gdm devices
 gdm
+```
+
+`gdm -v` should display versions of the GDM launcher and of the python
+package:
+```
+Gazoo Device Manager launcher 0.01
+Gazoo Device Manager 0.0.6
 ```
 
 Typical output of `gdm devices`:
@@ -104,6 +112,16 @@ Other Devices   Alias           Type         Model                Available
 ```
 
 `gdm` should display a help menu.
+
+To update GDM to the latest version:
+```
+gdm update-gdm
+```
+
+To update (or downgrade) GDM to a specific version:
+```
+gdm update-gdm <version>  # Example: gdm update-gdm 0.0.6
+```
 
 To install GDM in a virtual environment:
 ```
