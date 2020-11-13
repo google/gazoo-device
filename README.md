@@ -218,7 +218,61 @@ You're not expected to modify them directly. Instead, use `set-prop` and
 
 ## Logs
 
-GDM logs by default to `/gazoo/gdm/log/`. On Macs, logs are collected in `~/gdm/log/`.
+By default all GDM logs go to `/gazoo/gdm/log/`. On Macs, logs are
+collected in `~/gdm/log/`. Log verbosity, output directory, and standard
+output behavior can be configured via arguments to `Manager.__init__`
+(see [gazoo_device/manager.py](gazoo_device/manager.py)).
+
+GDM creates three types of log files.
+
+### The `gdm.txt` log
+
+All GDM logs go here. Device logs are **not** captured in this file.
+This log file persists across GDM invocations. It provides the best
+history, but it can be difficult to pinpoint the logs for a particular
+device interaction.
+
+### Device log files, such as `linuxexample-1eb2-20201113-123538.txt`
+
+These capture all communications between GDM and the device.
+Each log line is prefixed with `NDM-<letter_or_digit>`, such as `NDM-M`,
+`NDM-0`, or `NDM-1`.
+
+`NDM-M` are logs written by GDM. These include the commands that GDM
+wrote, the regular expressions GDM expects to find after writing a
+command and the maximum time window for the response, and the result of
+the expect (which regular expression matched, if any).
+
+`NDM-0`, `NDM-1`, and other `NDM-<digit>` logs come from device
+transports. The digit corresponds to the index of the transport (as
+defined by `get_transport_list()` methods of communication types in
+[gazoo_device/switchboard/communication_types.py](gazoo_device/switchboard/communication_types.py)). \
+For some communication types, such as SSH and ADB, logs and command
+responses come from different transports. In that case device responses
+come from `NDM-0` and device logs come from `NDM-1`. \
+For other communication types, there may only be a single transport, in
+which case both device responses and logs come from `NDM-0`.
+
+The names of device log files are logged during every CLI interaction.
+For example:
+```
+linuxexample-1eb2 logging to file /Users/artorl/gdm/log/linuxexample-1eb2-20201113-123548.txt
+```
+
+### Device log event files, such as `linuxexample-1eb2-20201113-123548-events.txt`
+
+These contain device log events. The log events to be captured are
+defined by log event filters in
+[gazoo_device/filters/](gazoo_device/filters/).
+
+A log filtering process receives all device logs in real time
+and captures lines which match any of the device log filters
+into the device log event file.
+
+The name of the log event file is constructed as
+`<name_of_log_file>-events.txt`. For example,
+`linuxexample-1eb2-20201113-123548-events.txt` is the log event file for
+the `linuxexample-1eb2-20201113-123548.txt` device log file.
 
 ## Detecting devices
 

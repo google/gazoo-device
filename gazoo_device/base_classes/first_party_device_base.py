@@ -208,27 +208,6 @@ class FirstPartyDeviceBase(abc.ABC):
         """
 
     @abc.abstractmethod
-    def upgrade(self,
-                build_number=None,
-                build_url=None,
-                build_file=None,
-                forced_upgrade=False,
-                latest_verified=False):
-        """Upgrades the device to a given build and verifies success.
-
-        Note:
-          defaults to last build validated with gazoo_device regression tests.
-          See device.build_properties['build_number']
-
-        Args:
-            build_number (int): build number with default build info.
-            build_url (str): url or gsutil to the .zip file.
-            build_file (str): local path to the file.
-            forced_upgrade (bool): Upgrade the firmware without checks.
-            latest_verified (bool): upgrade to latest verified build.
-        """
-
-    @abc.abstractmethod
     def wait_for_bootup_complete(self, timeout=None):
         """Wait until the device finishes booting up and is ready for testing.
 

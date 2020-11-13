@@ -264,7 +264,7 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
     def shell_capability(self):
         return self.lazy_init(
             shell_ssh.ShellSSH,
-            send_and_expect=self.send_and_expect,
+            send_and_expect=self.switchboard.send_and_expect,
             device_name=self.name,
             timeout=self.timeouts["SHELL"],
             tries=2)
