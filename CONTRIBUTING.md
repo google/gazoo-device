@@ -200,6 +200,10 @@ device controllers go under
 base class (or the device controller class) must inherit from
 `GazooDeviceBase`
 ([gazoo_device/base_classes/gazoo_device_base.py](gazoo_device/base_classes/gazoo_device_base.py)).
+GDM comes with a functional base class
+([gazoo_device/base_classes/ssh_device.py](gazoo_device/base_classes/ssh_device.py))
+and a somewhat contrived example of a primary device controller
+([gazoo_device/primary_devices/linux_example.py](gazoo_device/primary_devices/linux_example.py)).
 
 A device controller typically has the following:
 * a logger instance (`logger = gdm_logger.get_gdm_logger()`).

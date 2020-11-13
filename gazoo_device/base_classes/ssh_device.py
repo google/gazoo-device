@@ -205,6 +205,10 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
         ip_address = device_config["persistent"]["console_port_name"]
         return host_utils.is_pingable(ip_address)
 
+    @decorators.PersistentProperty
+    def os(self):
+        return "Linux"
+
     @decorators.LogDecorator(logger)
     def recover(self, error):
         """Attempts to recover device based on the type of error specified.
