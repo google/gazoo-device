@@ -141,7 +141,7 @@ sh gdm-cleanup.sh
 This is the quickest way to get your hands dirty with GDM. You'll need a
 Raspberry Pi.
 
-1. [Install NDM on the host](#install).
+1. [Install GDM on the host](#install).
 2. [Set up your Raspberry Pi as an auxiliary device in GDM and try out the CLI](docs/DEVICE_SETUP.md#raspberry-pi-as-a-supporting-device).
 3. Run `gdm devices` and record the name of your Raspberry Pi (like `raspberrypi-1234`).
 4. Create a Mobly testbed for your Raspberry Pi:
@@ -235,23 +235,23 @@ device interaction.
 ### Device log files, such as `linuxexample-1eb2-20201113-123538.txt`
 
 These capture all communications between GDM and the device.
-Each log line is prefixed with `NDM-<letter_or_digit>`, such as `NDM-M`,
-`NDM-0`, or `NDM-1`.
+Each log line is prefixed with `GDM-<letter_or_digit>`, such as `GDM-M`,
+`GDM-0`, or `GDM-1`.
 
-`NDM-M` are logs written by GDM. These include the commands that GDM
+`GDM-M` are logs written by GDM. These include the commands that GDM
 wrote, the regular expressions GDM expects to find after writing a
 command and the maximum time window for the response, and the result of
 the expect (which regular expression matched, if any).
 
-`NDM-0`, `NDM-1`, and other `NDM-<digit>` logs come from device
+`GDM-0`, `GDM-1`, and other `GDM-<digit>` logs come from device
 transports. The digit corresponds to the index of the transport (as
 defined by `get_transport_list()` methods of communication types in
 [gazoo_device/switchboard/communication_types.py](gazoo_device/switchboard/communication_types.py)). \
 For some communication types, such as SSH and ADB, logs and command
 responses come from different transports. In that case device responses
-come from `NDM-0` and device logs come from `NDM-1`. \
+come from `GDM-0` and device logs come from `GDM-1`. \
 For other communication types, there may only be a single transport, in
-which case both device responses and logs come from `NDM-0`.
+which case both device responses and logs come from `GDM-0`.
 
 The names of device log files are logged during every CLI interaction.
 For example:
