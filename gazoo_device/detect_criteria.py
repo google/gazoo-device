@@ -64,6 +64,11 @@ class GENERIC_QUERY(QueryEnum):
     always_true = "always_true"
 
 
+class JLINK_QUERY(QueryEnum):
+    # No GDM devices are currently using J-Link, so there are no queries.
+    pass
+
+
 class SERIAL_QUERY(QueryEnum):
     product_name = "usb info product_name"
 
@@ -192,6 +197,10 @@ GENERIC_QUERY_DICT = {
     GENERIC_QUERY.always_true: always_true_query
 }
 
+JLINK_QUERY_DICT = {
+    # JLINK_QUERY.some_query: some_function_to_call_for_that_query
+}
+
 SERIAL_QUERY_DICT = {
     SERIAL_QUERY.product_name: usb_product_name_query
 }
@@ -207,6 +216,7 @@ SSH_QUERY_DICT = {
 DETECT_DICTIONARY = {
     "AdbComms": ADB_QUERY_DICT,
     "DockerComms": DOCKER_QUERY_DICT,
+    "JlinkSerialComms": JLINK_QUERY_DICT,
     "SerialComms": SERIAL_QUERY_DICT,
     "SshComms": SSH_QUERY_DICT,
     "YepkitComms": GENERIC_QUERY_DICT
