@@ -116,7 +116,10 @@ class AuxiliaryDeviceCommonTestSuite(gdm_test_base.GDMTestBase):
         except Exception:
             traceback_message = traceback.format_exc()
             asserts.fail("Error happened during reboot: " + traceback_message)
-        self.device.device_is_connected()
+        if hasattr(self.device, "device_is_connected"):
+            self.device.device_is_connected()
+        else:
+            self.device.check_device_connected()
 
     def test_1011_send_and_expect(self):
         try:
