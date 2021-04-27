@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,20 +18,20 @@ from gazoo_device.capabilities.interfaces import capability_base
 
 
 class FastbootBase(capability_base.CapabilityBase):
-    """Abstract base class for the Fastboot capability."""
+  """Abstract base class for the Fastboot capability."""
 
-    @abc.abstractmethod
-    def enter(self):
-        """Enters fastboot (bootloader) mode for updating device firmware.
+  @abc.abstractmethod
+  def enter(self):
+    """Enters fastboot (bootloader) mode for updating device firmware.
 
-        Raises:
-            GazooDeviceError: if unable to boot device into fastboot mode.
-        """
+    Raises:
+        DeviceError: if unable to boot device into fastboot mode.
+    """
 
-    @abc.abstractmethod
-    def exit(self):
-        """Exits fastboot (bootloader) mode after updating device firmware.
+  @abc.abstractmethod
+  def exit(self):
+    """Exits fastboot (bootloader) mode after updating device firmware.
 
-        Raises:
-            GazooDeviceError if unable to reboot device out of fastboot mode
-        """
+    Raises:
+        DeviceError if unable to reboot device out of fastboot mode
+    """

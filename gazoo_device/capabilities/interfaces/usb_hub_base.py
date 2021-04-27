@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,85 +16,86 @@
 
 Abstract Base class for the usb_hub capability.
 
-The usb_hub capability is intended to be used by primary devices that require the ability to
+The usb_hub capability is intended to be used by primary devices that require
+the ability to
 get or change the USB power mode for a configured port on a USB hub.
 
 The configured USB hub must support the switch_power capability.
 """
-from __future__ import absolute_import
 import abc
 from gazoo_device.capabilities.interfaces import capability_base
 
 
 class UsbHubBase(capability_base.CapabilityBase):
-    """Abstract base class for USB hub capability."""
+  """Abstract base class for USB hub capability."""
 
-    @abc.abstractproperty
-    def name(self):
-        """The name of the usb hub.
+  @abc.abstractproperty
+  def name(self):
+    """The name of the usb hub.
 
-        Returns:
-            str: usb hub name.
+    Returns:
+        str: usb hub name.
+    """
 
-        """
+  @abc.abstractproperty
+  def device_port(self):
+    """The usb hub port number used by device.
 
-    @abc.abstractproperty
-    def device_port(self):
-        """The usb hub port number used by device.
+    Returns:
+        int: port number on usb hub.
+    """
 
-        Returns:
-            int: port number on usb hub.
+  @abc.abstractproperty
+  def supported_modes(self):
+    """Get the USB power modes supported by the USB hub."""
 
-        """
+  @abc.abstractmethod
+  def get_device_power(self):
+    """Gets usb port mode if set.
 
-    @abc.abstractproperty
-    def supported_modes(self):
-        """Get the USB power modes supported by the USB hub."""
+    Returns:
+        str: 'sync', 'charge', or 'off'
 
-    @abc.abstractmethod
-    def get_device_power(self):
-        """Gets usb port mode if set.
+    Raises:
+        DeviceError: if usb_hub and usb_port are not properly set.
+    """
 
-        Returns:
-            str: 'sync', 'charge', or 'off'
+  @abc.abstractmethod
+  def set_device_power(self, mode):
+    """Turns associated powered usb hub port, if available, power state to sync, off, charge.
 
-        Raises:
-            GazooDeviceError: if usb_hub and usb_port are not properly set.
-        """
+    Args:
+        mode (str): power mode to set USB hub port to ("sync", "off",
+          "charge")
 
-    @abc.abstractmethod
-    def set_device_power(self, mode):
-        """Turns associated powered usb hub port, if available, power state to sync, off, charge.
+    Raises:
+        DeviceError: if invalid mode provided or usb_hub management is not a
+        valid option
 
-        Args:
-            mode (str): power mode to set USB hub port to ("sync", "off", "charge")
+    Notes:
+        'sync' is data and power on, 'charge' is power only on, 'off' is both
+        off.
+    """
 
-        Raises:
-            GazooDeviceError: if invalid mode provided or usb_hub management is not a valid option
+  @abc.abstractmethod
+  def power_off(self, port=None):
+    """This command powers off the port specified or all ports if port is None.
 
-        Notes:
-            'sync' is data and power on, 'charge' is power only on, 'off' is both off.
-        """
+    Args:
+        port (int): identifies which hub port to power off
 
-    @abc.abstractmethod
-    def power_off(self, port=None):
-        """This command powers off the port specified or all ports if port is None.
+    Raises:
+         DeviceError: port number invalid.
+    """
 
-        Args:
-            port (int): identifies which hub port to power off
+  @abc.abstractmethod
+  def power_on(self, port=None, data_sync=True):
+    """This command powers on the port specified or all ports if port is None.
 
-        Raises:
-             GazooDeviceError: port number invalid.
-        """
+    Args:
+        port (int): identifying which hub port to power on
+        data_sync (bool): True if data should be enabled, false for power only
 
-    @abc.abstractmethod
-    def power_on(self, port=None, data_sync=True):
-        """This command powers on the port specified or all ports if port is None.
-
-        Args:
-            port (int): identifying which hub port to power on
-            data_sync (bool): True if data should be enabled, false for power only
-
-        Raises:
-             GazooDeviceError: port number invalid.
-        """
+    Raises:
+         DeviceError: port number invalid.
+    """

@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,38 +13,36 @@
 # limitations under the License.
 
 """Package management capability interface."""
-from __future__ import absolute_import
-
 import abc
 from gazoo_device.capabilities.interfaces import capability_base
 
 
 class PackageManagementBase(capability_base.CapabilityBase):
-    """Abstract base class defining API for package management."""
+  """Abstract base class defining API for package management."""
 
-    @abc.abstractmethod
-    def install_package(self, package_path, *args, **kwargs):
-        """Installs a package on the device.
+  @abc.abstractmethod
+  def install_package(self, package_path, *args, **kwargs):
+    """Installs a package on the device.
 
-        Args:
-            package_path (str): the path to the package on host machine.
-            *args (list): positional arguments.
-            **kwargs (dict): optional keyword arguments.
+    Args:
+        package_path (str): the path to the package on host machine.
+        *args (list): positional arguments.
+        **kwargs (dict): optional keyword arguments.
 
-        Raises:
-            ValueError: when package_path is not valid.
-            GazooDeviceError: if failed to install the package.
-        """
+    Raises:
+        ValueError: when package_path is not valid.
+        DeviceError: if failed to install the package.
+    """
 
-    @abc.abstractmethod
-    def uninstall_package(self, package_name, *args, **kwargs):
-        """Uninstalls a package on the device.
+  @abc.abstractmethod
+  def uninstall_package(self, package_name, *args, **kwargs):
+    """Uninstalls a package on the device.
 
-        Args:
-            package_name (str): the name of the package to uninstall.
-            *args (list): positional arguments.
-            **kwargs (dict): optional keyword arguments.
+    Args:
+        package_name (str): the name of the package to uninstall.
+        *args (list): positional arguments.
+        **kwargs (dict): optional keyword arguments.
 
-        Raises:
-            GazooDeviceError: if failed to uninstall the package.
-        """
+    Raises:
+        DeviceError: if failed to uninstall the package.
+    """

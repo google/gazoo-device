@@ -9,23 +9,24 @@ GDM is available as a Python package for use in tests and comes with
 its own CLI for quick device interactions. \
 GDM is the open-source architecture which enables device-agnostic
 interations. Device controllers used by GDM are contained in separate
-Python packages and can be registered with the GDM architecture\*. \
+Python packages and can be registered with the GDM architecture. \
 GDM runs on the test host and communicates with the physical devices via
 one or more device transports (such as SSH, ADB, HTTPS, UART). GDM does
 not require any additional support from the device firmware.
 
-The GDM architecture is used for on-device testing at Google Nest.
+GDM is used for on-device testing at Google Nest.
 
-**This is an "early access" version of Gazoo Device Manager for early
-prototyping. The full release of GDM will happen in February 2021.
-Backwards compatibility of the full release with this early access
-version is not guaranteed**, although it will be very close (some
-modules will be moved around).
+The code is ready for use. There's one caveat for CLI usage: using user-defined
+extension packages in the GDM CLI requires minor source code modifications to
+your virtual environment. This will be addressed soon.
 
-\* The separation of GDM architecture and device controller packages
-isn't ready yet. If you're interested in using GDM to prototype at this
-early stage, check out the repository and make a local commit with your
-device controller(s) on top of it.
+Supporting items (documentation, example controller package, functional tests,
+unit tests) haven't yet been updated since the early release in November 2020
+and are under active development. Expect most of these items to be complete by
+early June. We're releasing GDM as early as possible to help early adopters meet
+their timelines.
+
+TODO(gdm-authors): Update documentation (most of it doesn't actually need to change).
 
 ## Table of contents
 
@@ -65,7 +66,9 @@ MacOS prerequisites:
 
 1. Install Xcode Command Line Tools:
 
-   `xcode-select --install`
+   ```shell
+   xcode-select --install
+   ```
 
 2. Install Brew (MacOS package manager):
 
@@ -75,32 +78,40 @@ MacOS prerequisites:
 Installation steps:
 
 1. Download the GDM installer archive:
-   ```
+
+   ```shell
    curl -OL https://github.com/google/gazoo-device/releases/latest/download/gdm-install.sh
    ```
 
-2. Run `sh gdm-install.sh`.
+2. Run the installer:
+
+   ```shell
+   bash gdm-install.sh
+   ```
 
 You should see the following message at the end of the installation:
+
 ```
 Install done (exit 0)
 ```
 
-Run a few GDM CLI command to verify GDM works:
-```
+Run a few GDM CLI commands to verify GDM works:
+
+```shell
 gdm -v
 gdm devices
 gdm
 ```
 
-`gdm -v` should display versions of the GDM launcher and of the python
-package:
+`gdm -v` displays versions of the GDM launcher and of the python package:
+
 ```
-Gazoo Device Manager launcher 0.01
-Gazoo Device Manager 0.0.6
+Gazoo Device Manager launcher 1.0
+Gazoo Device Manager 1.0.0
 ```
 
 Typical output of `gdm devices`:
+
 ```
 Device          Alias           Type         Model                Connected
 --------------- --------------- -----------  ----------------     ------------
@@ -111,19 +122,22 @@ Other Devices   Alias           Type         Model                Available
 0 total Gazoo device(s) available.
 ```
 
-`gdm` should display a help menu.
+`gdm` displays a help menu.
 
 To update GDM to the latest version:
+
 ```
 gdm update-gdm
 ```
 
 To update (or downgrade) GDM to a specific version:
+
 ```
-gdm update-gdm <version>  # Example: gdm update-gdm 0.0.6
+gdm update-gdm <version>  # Example: gdm update-gdm 1.0.0
 ```
 
 To install GDM in a virtual environment:
+
 ```
 /path_to_virtual_env/bin/pip install gazoo-device
 ```
@@ -131,9 +145,10 @@ To install GDM in a virtual environment:
 ### Uninstall
 
 To uninstall GDM:
+
 ```
 curl -OL https://github.com/google/gazoo-device/releases/latest/download/gdm-cleanup.sh
-sh gdm-cleanup.sh
+bash gdm-cleanup.sh
 ```
 
 ## Quick start
@@ -145,37 +160,39 @@ Raspberry Pi.
 2. [Set up your Raspberry Pi as an auxiliary device in GDM and try out the CLI](docs/DEVICE_SETUP.md#raspberry-pi-as-a-supporting-device).
 3. Run `gdm devices` and record the name of your Raspberry Pi (like `raspberrypi-1234`).
 4. Create a Mobly testbed for your Raspberry Pi:
+
    ```
-   sudo cp /opt/gazoo/testbeds/One-Exampledevice.yml /opt/gazoo/testbeds/One-Raspberrypi.yml
-   sudo vi /opt/gazoo/testbeds/One-Raspberrypi.yml  # Or use a text editor of your choice
+   cp ~/gazoo/testbeds/One-Exampledevice.yml ~/gazoo/testbeds/One-Raspberrypi.yml
+   vi ~/gazoo/testbeds/One-Raspberrypi.yml  # Or use a text editor of your choice
    # Replace "exampledevice-1234" with your device name (like "raspberrypi-1234")
    # Update the testbed name ("Testbed-One-Exampledevice-01" -> "Testbed-One-Raspberrypi-01")
    ```
+
 5. Check out the GDM repo (which includes on-device regression tests):
+
    ```
    git clone https://github.com/google/gazoo-device.git
    ```
+
 6. Run the GDM regression test suite for Raspberry Pi on your device:
+
    ```
    cd gazoo-device/tests/
-   ./run_tests.sh -d functional_test_suites/ -f regression_test_suite.py -c /opt/gazoo/testbeds/One-Raspberrypi.yml
+   ./run_tests.sh -d functional_test_suites/ -f regression_test_suite.py -c ~/gazoo/testbeds/One-Raspberrypi.yml
    ```
 
 ## Virtual environment
 
-GDM installs a shared virtual environment at
-`/usr/local/gazoo/gdm/virtual_env`.
+GDM creates a virtual environment for the CLI at `~/gazoo/gdm/virtual_env`.
 
-On Linux a symlink to `/usr/local/gazoo` is created (`/gazoo`).
-
-To use GDM in the shared virtual environment do the following:
-1. `source /gazoo/gdm/virtual_env/bin/activate`
+To use GDM in this virtual environment do the following:
+1. `source ~/gazoo/gdm/virtual_env/bin/activate`
 2. Then use GDM (`gdm`) as usual.
 
 To use GDM in a different virtual environment do the following:
 1. `source /path/to_other_virtual_environment/bin/activate`
 2. Install GDM in this other virtual environment (if needed):
-   `/usr/local/bin/gdm update-gdm`
+   `~/gazoo/gdm/bin/gdm update-gdm`
 3. Then use GDM as usual.
 
 ## Device controllers in GDM
@@ -183,8 +200,14 @@ To use GDM in a different virtual environment do the following:
 To interact with devices, GDM creates one Python device controller
 object for each physical device. The lifecycle of GDM device controllers
 is as follows:
-1. a new device is connected to the host and is detected by GDM through
-   `gdm detect` (once), which makes the device known to GDM;
+
+1. a new device is connected to the host and is detected by GDM (one-time setup
+   step), which makes the device known to GDM:
+
+   ```
+   gdm detect
+   ```
+
 2. a device controller instance is created at the beginning of a test or
    a CLI device interaction;
 3. one or more device commands are issued through the device controller
@@ -192,11 +215,11 @@ is as follows:
 4. the device controller instance is closed when the test is finished or
    the CLI interaction completes;
 5. if the device is permanently disconnected from the host, it is
-   removed from the list of devices known to GDM through
+   removed from the list of devices known to GDM (also a one-time step) through
+
    ```
    gdm delete device-1234
    ```
-   (also once).
 
 Note that the term "device" is ambiguous in the context of GDM: it can
 refer to either the device controller or the physical device. Device
@@ -204,24 +227,40 @@ controllers can also be referred to as device classes.
 
 ## Config files
 
-GDM device configs are found in `/gazoo/gdm/conf` on Linux and
-`$HOME/gazoo/gdm/conf` on MacOS.
+GDM device configs are found in `~/gazoo/gdm/conf`.
 
-You're not expected to modify them directly. Instead, use `set-prop` and
+You should not modify them directly. Instead, use `set-prop` and
 `get-prop` commands:
-* `gdm set-prop device-1234 property-name property-value` to set an
-  optional device property;
-* `gdm get-prop device-1234 property-name` to retrieve the property
-  value;
-* `gdm set-prop property-name property-value` to set a GDM property;
-* `gdm get-prop property-name` to retrieve the value of a GDM property.
+
+* To set an optional device property:
+
+  ```
+  gdm set-prop device-1234 property-name property-value
+  ```
+
+* To retrieve a property value:
+
+  ```
+  gdm get-prop device-1234 property-name
+  ```
+
+* To set a GDM property (config value):
+
+  ```
+  gdm set-prop property-name property-value
+  ```
+
+* To retrieve a GDM property (config value):
+
+  ```
+  gdm get-prop property-name
+  ```
 
 ## Logs
 
-By default all GDM logs go to `/gazoo/gdm/log/`. On Macs, logs are
-collected in `~/gdm/log/`. Log verbosity, output directory, and standard
-output behavior can be configured via arguments to `Manager.__init__`
-(see [gazoo_device/manager.py](gazoo_device/manager.py)).
+By default all GDM logs go to `~/gazoo/gdm/log/`. Log verbosity, output
+directory, and standard output behavior can be configured via arguments to
+`Manager.__init__` (see [gazoo_device/manager.py](gazoo_device/manager.py)).
 
 GDM creates three types of log files.
 
@@ -287,13 +326,15 @@ the device. Refer to [docs/DEVICE_SETUP.md](docs/DEVICE_SETUP.md) for
 instructions.
 
 Device detection populates device configs:
-* persistent properties are stored in  `/gazoo/gdm/conf/devices.json`;
+
+* persistent properties are stored in  `~/gazoo/gdm/conf/devices.json`;
 * optional (settable) properties are stored in
-  `/gazoo/gdm/conf/device_options.json`.
+  `~/gazoo/gdm/conf/device_options.json`.
 
 To view all devices currently known to GDM, run `gdm devices`.
 
 Sample detection output (`cambrionix-kljo` was detected):
+
 ```
 $ gdm detect
 
@@ -347,8 +388,18 @@ of the device's serial number.
 
 Detection only detects *new* devices. It does not re-detect already
 known devices. \
-To delete a known device: `gdm delete device-1234`. \
-To redetect a device: `gdm redetect device-1234`.
+
+* To delete a known device:
+
+  ```
+  gdm delete device-1234
+  ```
+
+* To redetect a device:
+
+  ```
+  gdm redetect device-1234
+  ```
 
 ## Using the CLI
 
@@ -357,32 +408,67 @@ To redetect a device: `gdm redetect device-1234`.
 GDM comes equipped with auto-generated documentation. To access it, you
 do not need a device.
 
-To see all commands available through the Manager class, run: `gdm`. You
-can also explore Manager functionality via the dynamic Fire CLI. For
+To see all commands available through the Manager class, run:
+
+```
+gdm
+```
+
+You can also explore Manager functionality via the dynamic Fire CLI. For
 example:
+
 ```
 gdm -- --help
 gdm create_device -- --help
 ```
 
-To start exploring device documentation, run `gdm man`. It will list
-all supported devices and provide commands to run if you're interested
-in exploring capabilities of a specific device.
+To start exploring device documentation, run:
 
-To see what's supported by a device type: `gdm man device-type`.
-For example: `gdm man raspberrypi`.
+```
+gdm man
+```
 
-To explore a device method, property, or capability, issue
-`gdm man device-type attribute-name`. For example:
+It will list all supported devices and provide commands to run if you're
+interested in exploring capabilities of a specific device.
+
+To see what's supported by a device type:
+
+```
+gdm man device_type
+```
+
+For example:
+
+```
+gdm man raspberrypi
+```
+
+To explore a device method, property, or capability, issue:
+
+```
+gdm man device_type attribute_name
+```
+
+For example:
+
 ```
 gdm man raspberrypi firmware_version
 gdm man raspberrypi reboot
 gdm man raspberrypi file_transfer
 ```
 
-Note that there is a limit on the amount of nesting suppored by static
-documentation. `gdm man` takes a maximum of two arguments. For example,
-`gdm man raspberrypi file_transfer send_file_to_device` will not work.
+To explore a capability method or property, issue:
+
+```
+gdm man device_type capability_name method_or_property_name
+```
+
+For example:
+
+```
+gdm man cambrionix switch_power off
+gdm man raspberrypi file_transfer send_file_to_device
+```
 
 ### Exploring device capabilities with a physical device
 
@@ -391,6 +477,7 @@ to get help about any attribute of the device. There are no limitations
 to this documentation, and it's more detailed and more accurate, but the
 drawback is that it requires a physical device. For example, assuming a
 `raspberrypi-kljo` is attached:
+
 ```
 gdm issue raspberrypi-kljo -- --help
 gdm issue raspberrypi-kljo - reboot -- --help
@@ -402,19 +489,65 @@ Let's assume you have a `raspberrypi-kljo` connected.
 
 Here are a few commonly used CLI commands:
 
-* list all known devices: `gdm devices`;
-* detect new devices: `gdm detect` or `gdm detect --static_ips=10.20.30.40,50.60.70.80`
-  * Detection will not remove devices which are already known to GDM.
+* list all known devices:
+
+  ```
+  gdm devices
+  ```
+
+* detect new devices:
+
+  ```
+  gdm detect
+  ```
+
+  or
+
+  ```
+  gdm detect --static_ips=10.20.30.40,50.60.70.80
+  ```
+
+  Note: detection does not remove devices which are already known to GDM.
+
 * set a device property (such as an alias):
-  `gdm set-prop raspberrypi-kljo alias rpi`;
-* check GDM version: `gdm -v`;
-* run health checks on a device: `gdm health-check raspberrypi-kljo`
-  * `gdm health-check rpi` will also work if you've set the alias above;
+
+  ```
+  gdm set-prop raspberrypi-kljo alias rpi
+  ```
+
+* check GDM version:
+
+  ```
+  gdm -v
+  ```
+
+* run health checks on a device:
+
+  ```
+  gdm health-check raspberrypi-kljo
+  ```
+
+  if you set the alias above, the following will also work:
+
+  ```
+  gdm health-check rpi
+  ```
+
 * run health checks, then issue a device command or retrieve a property:
-  `gdm issue raspberrypi-kljo - reboot`;
+
+  ```
+  gdm issue raspberrypi-kljo - reboot
+  ```
+
 * issue a device command or retrieve a property *without* running health
-  checks: `gdm exec raspberrypi-kljo - reboot`;
+  checks:
+
+  ```
+  gdm exec raspberrypi-kljo - reboot
+  ```
+
 * use a device capability:
+
   ```
   gdm issue raspberrypi-kljo - file_transfer - recv_file_from_device --src="/tmp/foo" --dest="/tmp/bar"
   ```
@@ -429,13 +562,16 @@ command on the device. It's required for primary devices, but is
 optional for auxiliary devices. The only auxiliary device included with
 GDM that implements `shell()` is Raspberry Pi. If you have a Raspberry
 Pi connected, you can try it out:
-`gdm issue raspberrypi-1234 - shell "echo 'foo'"`.
+
+```
+gdm issue raspberrypi-1234 - shell "echo 'foo'"
+```
 
 ## Using the gazoo_device python package
 
 Launch Python from a virtual environment with gazoo_device installed. \
 You can use the GDM virtual environment:
-`/gazoo/gdm/virtual_env/bin/python`.
+`~/gazoo/gdm/virtual_env/bin/python`.
 
 ```
 from gazoo_device import Manager
@@ -451,7 +587,7 @@ the output of `gdm devices`.
 
 ### GDM with [Mobly](https://github.com/google/mobly)
 
-Example testbed file (`/opt/gazoo/testbeds/One-Raspberrypi.yml`):
+Example testbed file (`~/gazoo/testbeds/One-Raspberrypi.yml`):
 
 ```
 TestBeds:

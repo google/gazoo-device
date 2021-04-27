@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,52 +15,53 @@
 """Build the gazoo_device Python package."""
 import os
 import re
+from typing import List
+
 import setuptools
 
-HERE = os.path.abspath(os.path.dirname(__file__))
-README_FILE = 'README.md'
-REQUIREMENTS_FILE = 'requirements.txt'
-VERSION_FILE = '_version.py'
+_CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
+_README_FILE = 'README.md'
+_REQUIREMENTS_FILE = 'requirements.txt'
+_SOURCE_CODE_DIR_NAME = 'gazoo_device'
+_VERSION_FILE = '_version.py'
 
 
-def readme():
-    """Returns readme file as string."""
-    readme_file = os.path.join(HERE, README_FILE)
-    with open(readme_file) as open_file:
-        return open_file.read()
+def _get_readme() -> str:
+  """Returns contents of README.md."""
+  readme_file = os.path.join(_CURRENT_DIR, _README_FILE)
+  with open(readme_file) as open_file:
+    return open_file.read()
 
 
-def get_requirements():
-    """Get package requirements from requirements.txt file."""
-    requirements_file = os.path.join(HERE, REQUIREMENTS_FILE)
-    with open(requirements_file) as open_file:
-        requirements = open_file.read()
-        if requirements:
-            return requirements.splitlines()
-    raise RuntimeError('Unable to find package requirements in {}'.format(
-        requirements_file))
+def _get_requirements() -> List[str]:
+  """Returns package requirements from requirements.txt."""
+  requirements_file = os.path.join(_CURRENT_DIR, _REQUIREMENTS_FILE)
+  with open(requirements_file) as open_file:
+    requirements = open_file.read()
+    if requirements:
+      return requirements.splitlines()
+  raise RuntimeError('Unable to find package requirements in {}'.format(
+      requirements_file))
 
 
-def get_version():
-    """Get version string from version.py file."""
-    version_file = os.path.join(HERE, VERSION_FILE)
-    if not os.path.exists(version_file):  # backwards compatibility for GoB
-        version_file = os.path.join(HERE, 'gazoo_device', VERSION_FILE)
-    with open(version_file) as open_file:
-        contents = open_file.read()
-        version_match = re.search(r'^version = "(.*)"', contents, re.M)
-        if version_match:
-            return version_match.group(1)
-    raise RuntimeError('Unable to find "version = "<version>"" in {}'.format(
-        version_file))
+def _get_version() -> str:
+  """Returns version from version.py."""
+  version_file = os.path.join(
+      _CURRENT_DIR, _SOURCE_CODE_DIR_NAME, _VERSION_FILE)
+  with open(version_file) as open_file:
+    contents = open_file.read()
+    version_match = re.search(r'^version = "(.*)"', contents, re.M)
+    if version_match:
+      return version_match.group(1)
+  raise RuntimeError(f'Unable to find "version = <version>" in {version_file}')
 
 
 setuptools.setup(
     name='gazoo_device',
-    version=get_version(),
+    version=_get_version(),
     description='Gazoo Device Manager',
-    long_description=readme(),
-    long_description_content_type="text/markdown",
+    long_description=_get_readme(),
+    long_description_content_type='text/markdown',
     python_requires='>=3',
 
     # project's homepage
@@ -73,16 +74,13 @@ setuptools.setup(
 
     # define list of packages included in distribution
     packages=setuptools.find_packages(),
-    package_dir={'gazoo_device': 'gazoo_device'},
+    package_dir={'gazoo_device': _SOURCE_CODE_DIR_NAME},
     package_data={
-        'gazoo_device': ['bin/*',
-                         'filters/*/*',
-                         'device_scripts/*',
-                         'build_defaults/*',
-                         'keys/*']},
+        'gazoo_device': ['protos/*',]
+    },
 
     # runtime dependencies that are installed by pip during install
-    install_requires=get_requirements(),
+    install_requires=_get_requirements(),
     entry_points={
         'console_scripts': [
             'gdm=gazoo_device.gdm_cli:main'

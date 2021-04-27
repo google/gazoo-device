@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,12 +18,12 @@ from gazoo_device.capabilities.interfaces import capability_base
 
 
 class CommPowerBase(capability_base.CapabilityBase):
-    """Abstract Base class for the communication power capability."""
+  """Abstract Base class for the communication power capability."""
 
-    @abc.abstractmethod
-    def off(self):
-        """Turn off power to the device communication port."""
+  @abc.abstractmethod
+  def off(self):
+    """Turn off power to the device communication port."""
 
-    @abc.abstractmethod
-    def on(self):
-        """Turn on power to the device communication port."""
+  @abc.abstractmethod
+  def on(self):
+    """Turn on power to the device communication port."""

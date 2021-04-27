@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,87 +12,105 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Gazoo Device Manager Fire - CLI using Python Fire and Python API for testing Gazoo devices."""
-from __future__ import absolute_import
-from __future__ import print_function
-import fire
+"""Gazoo Device Manager CLI.
+
+The CLI is generated dynamically by Python Fire:
+https://github.com/google/python-fire.
+"""
 import sys
+from typing import Dict, Optional, Sequence
+
+import fire
+
+import gazoo_device
 from gazoo_device import errors
 from gazoo_device import fire_manager
 from gazoo_device import fire_patch
 from gazoo_device import gdm_logger
-from gazoo_device import version
 
-logger = gdm_logger.get_gdm_logger()
+logger = gdm_logger.get_logger()
 
-VERSION_FLAG = "-v"
-FLAG_MARKER = "--"
-OMIT_FLAGS = ["help"]
-
-
-def get_flags(args):
-    """Parse flags out of array of CLI args.
-
-    Args:
-        args (arr): array of arguments provided by the user.
-
-    Returns:
-        dict: dictionary of flags to pass to the CLI.
-
-    Note:
-        Flags in OMIT_FLAGS dict will not be returned.
-    """
-    flags = {}
-    for arg in args:
-        if arg.startswith(FLAG_MARKER):
-            flag_name = arg[len(FLAG_MARKER):]
-            if flag_name and flag_name not in OMIT_FLAGS:
-                flags[flag_name] = True
-        else:
-            break  # ignore flags after initial CLI call
-    return flags
+VERSION_FLAG = '-v'
+FLAG_MARKER = '--'
+OMIT_FLAGS = ['help']
+_CLI_NAME = 'gdm'
 
 
-def main(command=None):
-    """Main function for Gazoo Device (gazoo_device) package.
+def execute_command(command: Optional[str] = None,
+                    cli_name: str = _CLI_NAME) -> int:
+  """Executes the CLI command through Python Fire.
 
-    Args:
-        command (string): command to pass to Python Fire.
+  Args:
+    command: Passed to Python Fire. If None, sys.argv are used instead.
+    cli_name: Name of the CLI executable ('gdm').
 
-    Returns:
-        int: 0 if success, 2 if not.
-    """
-    retval = 0
-    if VERSION_FLAG in sys.argv or (command and VERSION_FLAG in command):
-        logger.info('Gazoo Device Manager {}'.format(version))
-        return retval
+  Returns:
+    Error code: 0 if command was successful, non-zero otherwise.
+  """
+  # Parse flags out of commands. E.g. "gdm --debug - devices" ->
+  # flags = {"debug": True}, commands = ["-", "devices"].
+  if command:
+    args = command.split()
+  else:
+    args = sys.argv[1:]
+  flags = get_flags(args)
+  commands = [arg for arg in args if arg[len(FLAG_MARKER):] not in flags.keys()]
 
-    # parse flags out of commands
-    # e.g. "gdm --debug - devices" -> flags = {"debug": True}, commands = ["-", "devices"]
-    if command:
-        args = command.split()
+  # Instantiate FireManager instance with provided flags
+  manager_inst = fire_manager.FireManager(**flags)
+
+  # Execute CLI command
+  exit_code = 0
+  try:
+    fire_patch.apply_patch()
+    fire.Fire(manager_inst, commands, name=cli_name)
+  except (ValueError, errors.DeviceError) as err:
+    logger.error((repr(err)))
+    exit_code = 1
+  except KeyboardInterrupt:
+    exit_code = 2
+  finally:
+    manager_inst.close()
+
+  return exit_code
+
+
+def get_flags(args: Sequence[str]) -> Dict[str, bool]:
+  """Parses flags out of array of CLI args.
+
+  Flags in OMIT_FLAGS dict will not be returned.
+
+  Args:
+    args: CLI arguments provided by the user.
+
+  Returns:
+    Parsed flags to pass to the CLI.
+  """
+  flags = {}
+  for arg in args:
+    if arg.startswith(FLAG_MARKER):
+      flag_name = arg[len(FLAG_MARKER):]
+      if flag_name and flag_name not in OMIT_FLAGS:
+        flags[flag_name] = True
     else:
-        args = sys.argv[1:]
-    flags = get_flags(args)
-    commands = [arg for arg in args if arg[len(FLAG_MARKER):] not in flags.keys()]
+      break  # Ignore flags after initial CLI call
+  return flags
 
-    # instantiate FireManager instance with provided flags
-    manager_inst = fire_manager.FireManager(**flags)
 
-    # execute CLI with commands
-    try:
-        fire_patch.apply_patch()
-        fire.Fire(manager_inst, commands, name='gdm')
-    except (ValueError, errors.GazooDeviceError) as err:
-        logger.error((repr(err)))
-        retval = 1
-    except KeyboardInterrupt:
-        retval = 2
-    finally:
-        manager_inst.close()
+def main(command: Optional[str] = None) -> int:
+  """Main function for Gazoo Device Manager (gazoo_device) package.
 
-    return retval
+  Args:
+    command: Passed to Python Fire. If None, sys.argv are used instead.
+
+  Returns:
+    Error code: 0 if command was successful, non-zero otherwise.
+  """
+  if VERSION_FLAG in sys.argv or (command and VERSION_FLAG in command):
+    logger.info(f'Gazoo Device Manager {gazoo_device.version}')
+    return 0
+  return execute_command(command, cli_name=_CLI_NAME)
 
 
 if __name__ == '__main__':
-    main()
+  main()

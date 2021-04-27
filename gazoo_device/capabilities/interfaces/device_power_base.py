@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,40 +18,40 @@ from gazoo_device.capabilities.interfaces import capability_base
 
 
 class DevicePowerBase(capability_base.CapabilityBase):
-    """Abstract Base class for the device power capability."""
+  """Abstract Base class for the device power capability."""
 
-    @abc.abstractproperty
-    def hub_name(self):
-        """Name of the hub the device is attached to."""
+  @abc.abstractproperty
+  def hub_name(self):
+    """Name of the hub the device is attached to."""
 
-    @abc.abstractproperty
-    def hub_type(self):
-        """Type of hub the check is attached to."""
+  @abc.abstractproperty
+  def hub_type(self):
+    """Type of hub the check is attached to."""
 
-    @abc.abstractproperty
-    def port_mode(self):
-        """port mode."""
+  @abc.abstractproperty
+  def port_mode(self):
+    """port mode."""
 
-    @abc.abstractproperty
-    def port_number(self):
-        """Port number the device is attached to."""
+  @abc.abstractproperty
+  def port_number(self):
+    """Port number the device is attached to."""
 
-    @abc.abstractmethod
-    def cycle(self, no_wait=False):
-        """Power off then power on the device.
+  @abc.abstractmethod
+  def cycle(self, no_wait=False):
+    """Power off then power on the device.
 
-        Args:
-            no_wait (bool):  Return before verifying boot up.
-        """
+    Args:
+        no_wait (bool):  Return before verifying boot up.
+    """
 
-    @abc.abstractmethod
-    def on(self, no_wait=False):
-        """Turn on power to the device.
+  @abc.abstractmethod
+  def on(self, no_wait=False):
+    """Turn on power to the device.
 
-        Args:
-            no_wait (bool):  Return before verifying boot up.
-        """
+    Args:
+        no_wait (bool):  Return before verifying boot up.
+    """
 
-    @abc.abstractmethod
-    def off(self):
-        """Turn off power to the device."""
+  @abc.abstractmethod
+  def off(self):
+    """Turn off power to the device."""

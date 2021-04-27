@@ -1,64 +1,78 @@
-#!/bin/bash
-# This script is the launcher script for gdm. Its purpose is as follows:
-# * Detect when the gazoo-device Python module is not installed and provide
-#   instruction on how to install it.
-# * Allow for easily upgrading (or as needed downgrading) the gazoo-device
-#   Python module in the shared virtual environment.
-# * Pass all other arguments to the Python gdm command line tool in the shared
-#   virtual environment when the environment is not activated.
-LAUNCHER_VERSION=0.01
-TMP_DIR="/tmp"
+#!/bin/sh
+# This is the launcher script for GDM.
+# It allows updating or downgrading GDM CLI through "gdm update-gdm <version>".
+LAUNCHER_VERSION="1.0"
 
-if [ "$(uname)" == "Darwin" ]; then
-    GDM_BASE=${HOME}/gdm
-else
-    GDM_BASE="/usr/local/gazoo/gdm"
-fi
+GDM_BASE="${HOME}/gazoo/gdm"
+GDM_VIRTUAL_ENV="$GDM_BASE/virtual_env"
+VE_GDM="$GDM_VIRTUAL_ENV/bin/gdm"
+VE_PIP="$GDM_VIRTUAL_ENV/bin/pip3"
+PIGWEED_WHEELS="button_service-0.0.1-py3-none-any.whl
+device_service-0.0.1-py3-none-any.whl
+lighting_app-0.0.1-py3-none-any.whl
+lighting_service-0.0.1-py3-none-any.whl
+pw_cli-0.0.1-py3-none-any.whl
+pw_protobuf-0.0.1-py3-none-any.whl
+pw_protobuf_compiler-0.0.1-py3-none-any.whl
+pw_protobuf_protos-0.0.1-py3-none-any.whl
+pw_rpc-0.0.1-py3-none-any.whl
+pw_status-0.0.1-py3-none-any.whl
+pw_hdlc-0.0.1-py3-none-any.whl"
 
-VE_BASE=${VIRTUAL_ENV:=${GDM_BASE}/virtual_env}
-VE_BIN=$VE_BASE/bin
-VE_GDM=$VE_BIN/gdm
-VE_PIP=$VE_BIN/pip
+
+# TODO(b/181734752) Remove this once Pigweed packages are available on PyPI.
+install_pigweed_wheels()
+{
+    for wheel in $PIGWEED_WHEELS; do
+      url="https://github.com/google/gazoo-device/releases/latest/download/$wheel"
+      local_file="/tmp/$wheel"
+      echo "Downloading and installing $url"
+      curl -L "$url" -o "$local_file"
+      $VE_PIP install "$local_file"
+      rm "$local_file"
+    done
+}
 
 
 make_ve_if_not_exist()
 {
-    if [ ! -d $VE_BASE ]; then
-        echo "Creating GDM virtual environment at: $VE_BASE"
-        virtualenv -p python3 $VE_BASE
-    fi
-    chmod 777 $VE_BASE/bin
+  if [ ! -d "$GDM_VIRTUAL_ENV" ]; then
+    echo "Creating GDM virtual environment $GDM_VIRTUAL_ENV"
+    python3 -m virtualenv "$GDM_VIRTUAL_ENV"
+  fi
 }
 
 install_or_update_gdm()
 {
-    local gdm_version="$1"
-    make_ve_if_not_exist
+  local gdm_version="$1"
+  make_ve_if_not_exist
 
-    if [ -n "$gdm_version" ]; then
-        $VE_PIP install --no-input -U gazoo-device==$gdm_version
-    else
-        $VE_PIP install --no-input -U gazoo-device
-    fi
+  if [ -n "$gdm_version" ]; then
+    "$VE_PIP" install --no-input -U "gazoo-device==$gdm_version"
+  else
+    "$VE_PIP" install --no-input -U gazoo-device
+  fi
+
+  install_pigweed_wheels
 }
 
 case $1 in
--v)
+  -v)
     echo "Gazoo Device Manager launcher $LAUNCHER_VERSION"
-    if [ -x $VE_GDM ]; then
-        $VE_GDM "$@"
+    if [ -x "$VE_GDM" ]; then
+      "$VE_GDM" "$@"
     fi
     ;;
-update-gdm|update_gdm)
+  update-gdm|update_gdm)
     install_or_update_gdm "$2"
     ;;
-*)
-    if [ -x $VE_GDM ]; then
-        $VE_GDM "$@"
+  *)
+    if [ -x "$VE_GDM" ]; then
+      "$VE_GDM" "$@"
     else
-        echo "GDM is not yet installed at $VE_BASE:" 1>&2
-        echo "Use 'gdm update-gdm' or 'gdm update-gdm [version]' to install it" 1>&2
-        exit 1
+      echo "GDM is not yet installed at $VE_BASE:" 1>&2
+      echo "Use 'gdm update-gdm' or 'gdm update-gdm [version]' to install it" 1>&2
+      exit 1
     fi
     ;;
 esac

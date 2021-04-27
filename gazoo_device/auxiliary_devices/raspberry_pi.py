@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,16 +17,19 @@ from gazoo_device import detect_criteria
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import raspbian_device
 
-logger = gdm_logger.get_gdm_logger()
+logger = gdm_logger.get_logger()
 
 
 class RaspberryPi(raspbian_device.RaspbianDevice):
-    """Base Class for RaspberryPi Devices.
+  """Base Class for RaspberryPi Devices.
 
-    Supports the following functionality:
-        --logging
-        --shell
-        --reboot
-    """
-    DETECT_MATCH_CRITERIA = {detect_criteria.SSH_QUERY.is_rpi: True}
-    DEVICE_TYPE = "raspberrypi"
+  Supports the following functionality:
+      --logging
+      --shell
+      --reboot
+  """
+  DETECT_MATCH_CRITERIA = {
+      detect_criteria.SshQuery.is_rpi: True,
+  }
+  DEVICE_TYPE = "raspberrypi"
+  _OWNER_EMAIL = "gdm-authors@google.com"

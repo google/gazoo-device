@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """adb flavor of file transfer capability."""
-from __future__ import absolute_import
 import os
 
 from gazoo_device import decorators
@@ -22,82 +21,77 @@ from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import file_transfer_base
 from gazoo_device.utility import adb_utils
 
-logger = gdm_logger.get_gdm_logger()
+logger = gdm_logger.get_logger()
 
 
 class FileTransferAdb(file_transfer_base.FileTransferBase):
-    """adb file transfer capability."""
+  """adb file transfer capability."""
 
-    def __init__(self, device_name, add_log_note_fn, communication_address):
-        """Initialize adb file transfer capability.
+  def __init__(self, device_name, add_log_note_fn, communication_address):
+    """Initialize adb file transfer capability.
 
-        Args:
-            device_name (str): name of the device using the capability.
-            add_log_note_fn (func): add output to log file.
-            communication_address (str): device serial number
-        """
-        super(FileTransferAdb, self).__init__(device_name=device_name)
-        self._add_log_note_fn = add_log_note_fn
-        self._communication_address = communication_address
+    Args:
+        device_name (str): name of the device using the capability.
+        add_log_note_fn (func): add output to log file.
+        communication_address (str): device serial number
+    """
+    super(FileTransferAdb, self).__init__(device_name=device_name)
+    self._add_log_note_fn = add_log_note_fn
+    self._communication_address = communication_address
 
-    @decorators.CapabilityLogDecorator(logger)
-    def recv_file_from_device(self, src, dest="./"):
-        """Copies srcs on device to dest on host.
+  @decorators.CapabilityLogDecorator(logger)
+  def recv_file_from_device(self, src, dest="./"):
+    """Copies srcs on device to dest on host.
 
-        Args:
-            src (str): file path on device to copy to host.
-            dest (str): destination path on host computer.
+    Args:
+        src (str): file path on device to copy to host.
+        dest (str): destination path on host computer.
 
-        Raises:
-            GazooDeviceError: if destination directory doesn't exist or copy failed.
+    Raises:
+        DeviceError: if destination directory doesn't exist or copy failed.
 
-        Note:
-            If no dest is provided, the file will be copied to the current working directory
-                on the host computer.
-        """
-        destination_dir = os.path.dirname(dest)
-        if destination_dir != "." and not os.path.exists(destination_dir):
-            raise errors.GazooDeviceError("Device {} receive from device failed. "
-                                          "Destination directory {} doesn't appear to exist.".
-                                          format(self._device_name,
-                                                 destination_dir))
+    Note:
+        If no dest is provided, the file will be copied to the current
+        working directory on the host computer.
+    """
+    destination_dir = os.path.dirname(dest)
+    if destination_dir != "." and not os.path.exists(destination_dir):
+      raise errors.DeviceError(
+          "Device {} receive from device failed. "
+          "Destination directory {} doesn't appear to exist.".format(
+              self._device_name, destination_dir))
 
-        logger.info("{} receiving from device. Source: {} Destination: {}",
-                    self._device_name, src, dest)
-        output = adb_utils.pull_from_device(self._communication_address,
-                                            src,
-                                            destination_path=dest)
-        for line in output.splitlines():
-            self._add_log_note_fn(line + "\n")
-        if not os.path.exists(dest):
-            raise errors.GazooDeviceError(
-                "Final file {} does not exist".format(dest))
+    logger.info("{} receiving from device. Source: {} Destination: {}",
+                self._device_name, src, dest)
+    output = adb_utils.pull_from_device(
+        self._communication_address, src, destination_path=dest)
+    for line in output.splitlines():
+      self._add_log_note_fn(line + "\n")
+    if not os.path.exists(dest):
+      raise errors.DeviceError("Final file {} does not exist".format(dest))
 
-    @decorators.CapabilityLogDecorator(logger)
-    def send_file_to_device(self, src, dest):
-        """Copies src from host to dest on the device.
+  @decorators.CapabilityLogDecorator(logger)
+  def send_file_to_device(self, src, dest):
+    """Copies src from host to dest on the device.
 
-        Args:
-            src (str): local file path on host computer.
-            dest (str): file path on device where the file should be copied to.
+    Args:
+        src (str): local file path on host computer.
+        dest (str): file path on device where the file should be copied to.
 
-        Raises:
-            GazooDeviceError: if source file doesn't exist or copy failed.
-        """
-        if not os.path.exists(src):
-            raise errors.GazooDeviceError("Device {} send to device failed. "
-                                          "Source file {} doesn't appear to exist.".
-                                          format(self._device_name, src))
+    Raises:
+        DeviceError: if source file doesn't exist or copy failed.
+    """
+    if not os.path.exists(src):
+      raise errors.DeviceError("Device {} send to device failed. "
+                               "Source file {} doesn't appear to exist.".format(
+                                   self._device_name, src))
 
-        logger.info("{} sending file(s) to device. Source: {} Destination: {}",
-                    self._device_name, src, dest)
-        try:
-            output = adb_utils.push_to_device(self._communication_address, src, dest)
-            for line in output.splitlines():
-                self._add_log_note_fn(line + "\n")
-        except RuntimeError as err:
-            raise errors.GazooDeviceError("Unable to copy {} to {} on device. "
-                                          "Error: {!r}".
-                                          format(src,
-                                                 dest,
-                                                 err))
+    logger.info("{} sending file(s) to device. Source: {} Destination: {}",
+                self._device_name, src, dest)
+    try:
+      output = adb_utils.push_to_device(self._communication_address, src, dest)
+      for line in output.splitlines():
+        self._add_log_note_fn(line + "\n")
+    except RuntimeError as err:
+      raise errors.DeviceError("Unable to copy {} to {} on device. "
+                               "Error: {!r}".format(src, dest, err))

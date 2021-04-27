@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -77,7 +77,8 @@ Typical commands::
 
     help   - Display all available commands
     health - Display the health of the Cambrionix device
-    l      - Live view of all active ports (also allows simple toggling of ports)
+    l      - Live view of all active ports (also allows simple toggling of
+    ports)
     mode   - Allows changing mode of a particular port (o-off, c-charge, s-sync)
     state  - Display the state of a particular port
     system - Display system information of the Cambrionix device
@@ -89,17 +90,17 @@ import select
 import time
 
 from gazoo_device import decorators
+from gazoo_device import detect_criteria
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import auxiliary_device
 from gazoo_device.capabilities import switch_power_usb_with_charge
-from gazoo_device import detect_criteria
-
+from gazoo_device.utility import deprecation_utils
 from gazoo_device.utility import usb_config
 from gazoo_device.utility import usb_utils
 import serial
 
-logger = gdm_logger.get_gdm_logger()
+logger = gdm_logger.get_logger()
 
 COMMANDS = {
     "CLEAR_ERROR_FLAGS": "cef",
@@ -118,7 +119,8 @@ REGEXES = {
 }
 
 TIMEOUTS = {
-    "OPEN": 30,  # Waits for other interactions. (reboot with watchdog=True takes ~16
+    "OPEN":
+        30,  # Waits for other interactions. (reboot with watchdog=True takes ~16
     # seconds and is likely the longest running command)
     "PING": 3,
     "REBOOT": 3,
@@ -129,485 +131,504 @@ _REBOOT_METHODS = ["watchdog", "shell"]
 
 
 class Cambrionix(auxiliary_device.AuxiliaryDevice):
-    """This class serves as a Python interface to a Cambrionix hub.
+  """This class serves as a Python interface to a Cambrionix hub.
 
-    Attributes:
-      Hub Device Base Class
+  Attributes: Hub Device Base Class
+  """
+  COMMUNICATION_TYPE = "SerialComms"
+  DETECT_MATCH_CRITERIA = {
+      detect_criteria.SerialQuery.product_name:
+          "(ft230x basic uart)|(ps15-usb3)"
+  }
+  DEVICE_TYPE = "cambrionix"
+  _instances = {}
+  _OWNER_EMAIL = "gdm-authors@google.com"
+
+  def __new__(cls, manager, device_config, log_file_name, log_directory):
+    """Returns the same object for the same serial_port_path.
+
+    Args:
+        manager(manager.Manager): Manager object for this device instance.
+        device_config(dict): dict of two dicts, 'optional' device parameters
+          and 'persistent' device parameters.
+        log_file_name(str): file name in the log directory for device logs.
+        log_directory(str): directory in which the controller will create
+          the log file.
+
+    Returns:
+        Cambrionix: Instance matching serial port path
+
+    Note:
+        Instantiate a new serial_port_path if not found.
     """
-    COMMUNICATION_TYPE = "SerialComms"
-    DETECT_MATCH_CRITERIA = {detect_criteria.SERIAL_QUERY.product_name: "ft230x basic uart"}
-    DEVICE_TYPE = "cambrionix"
-    _instances = {}
+    # slowly migrate away from using 'hub_port_name' but maintain backwards compatibility
+    if "console_port_name" not in device_config["persistent"]:
+      device_config["persistent"]["console_port_name"] = \
+          device_config["persistent"]["hub_port_name"]
 
-    def __new__(cls, manager, device_config, log_file_name, log_directory):
-        """Returns the same object for the same serial_port_path.
+    identifier = device_config["persistent"]["console_port_name"]
+    if identifier not in cls._instances:
+      obj = super(Cambrionix, cls).__new__(cls)
+      cls._instances[identifier] = obj
 
-        Args:
-            manager(gazoo_device.Manager): manager object for this instance of gazoo_device.
-            device_config(dict): dict of two dicts, 'optional' device parameters and
-                                  'persistent' device parameters.
-            log_file_name(str): file name in the log directory for device logs.
-            log_directory(str): directory in which the controller will create the log file.
+    return cls._instances[identifier]
 
-        Returns:
-          Cambrionix: Instance matching serial port path
+  def __init__(self, manager, device_config, log_file_name, log_directory):
+    """Constructor of the class Cambrionix.
 
-        Note:
-          Instantiate a new serial_port_path if not found.
-        """
-        # slowly migrate away from using 'hub_port_name' but maintain backwards compatibility
-        if 'console_port_name' not in device_config['persistent']:
-            device_config['persistent']['console_port_name'] = \
-                device_config['persistent']['hub_port_name']
+    Args:
+        manager(manager.Manager): Manager object for this device instance.
+        device_config(dict): dict of two dicts, 'optional' device parameters
+          and 'persistent' device parameters.
+        log_file_name(str): file name in the log directory for device logs.
+        log_directory(str): directory in which the controller will create
+          the log file.
 
-        identifier = device_config['persistent']['console_port_name']
-        if identifier not in cls._instances:
-            obj = super(Cambrionix, cls).__new__(cls)
-            cls._instances[identifier] = obj
+    Raises:
+        DeviceError: unknown type of cambrionix
+    """
+    super().__init__(
+        manager,
+        device_config,
+        log_file_name=log_file_name,
+        log_directory=log_directory)
+    self._commands.update(COMMANDS)
+    self._regexes.update(REGEXES)
+    self._timeouts.update(TIMEOUTS)
+    self._serial_port = None
 
-        return cls._instances[identifier]
+  def __del__(self):
+    self.close()
 
-    def __init__(self, manager, device_config, log_file_name, log_directory):
-        """Constructor of the class Cambrionix.
+  @decorators.health_check
+  def check_clear_flags(self):
+    """clear the error and reboot flags."""
+    self._command(self.commands["CLEAR_ERROR_FLAGS"])
+    self._command(self.commands["CLEAR_REBOOTED_FLAG"])
 
-        Args:
-            manager(gazoo_device.Manager): manager object for this instance of gazoo_device.
-            device_config(dict): dict of two dicts, 'optional' device parameters and
-                                  'persistent' device parameters.
-            log_file_name(str): file name in the log directory for device logs.
-            log_directory(str): directory in which the controller will create the log file.
+  @decorators.DynamicProperty
+  def firmware_version(self):
+    """Gets the firmware version of the hub.
 
-        Raises:
-          GazooDeviceError: unknown type of cambrionix
-        """
-        super().__init__(manager,
-                         device_config,
-                         log_file_name=log_file_name,
-                         log_directory=log_directory)
-        self._commands.update(COMMANDS)
-        self._regexes.update(REGEXES)
-        self._timeouts.update(TIMEOUTS)
-        self._serial_port = None
+    Returns:
+      str: The firmware version
+    """
+    return self._get_system_status()["firmware"]
 
-    def __del__(self):
-        self.close()
+  @decorators.PersistentProperty
+  def health_checks(self):
+    """Returns list of methods to execute as health checks."""
+    return [self.check_device_connected, self.check_clear_flags]
 
-    @decorators.health_check
-    def clear_flags(self):
-        """clear the error and reboot flags."""
-        self._command(self.commands["CLEAR_ERROR_FLAGS"])
-        self._command(self.commands["CLEAR_REBOOTED_FLAG"])
+  @decorators.PersistentProperty
+  def port_extension_map(self):
+    """Map of usb port extensions to port numbers."""
+    return usb_config.CAMBRIONIX_PORT_MAP[self.model]
 
-    @decorators.DynamicProperty
-    def firmware_version(self):
-        """Gets the firmware version of the hub.
+  @decorators.PersistentProperty
+  def total_ports(self):
+    """Number of usb ports for this device."""
+    return len(self.port_extension_map.keys())
 
-        Returns:
-          str: The firmware version
-        """
-        return self._get_system_status()['firmware']
+  @decorators.LogDecorator(logger, level=decorators.DEBUG)
+  def close(self):
+    """Closes the serial port connection."""
+    if self._serial_port is not None and self._serial_port.is_open:
+      self._serial_port.close()
 
-    @decorators.PersistentProperty
-    def health_checks(self):
-        """Returns list of methods to execute as health checks."""
-        return [self.device_is_connected,
-                self.clear_flags]
+    super(Cambrionix, self).close()
 
-    @decorators.PersistentProperty
-    def port_extension_map(self):
-        """Map of usb port extensions to port numbers."""
-        return usb_config.CAMBRIONIX_PORT_MAP[self.model]
+  @decorators.LogDecorator(logger)
+  def get_detection_info(self):
+    """Gets the persistent and optional attributes of a Cambrionix.
 
-    @decorators.PersistentProperty
-    def total_ports(self):
-        """Number of usb ports for this device."""
-        return len(self.port_extension_map.keys())
+    Returns:
+      tuple: (Dict of persistent attributes, dict of optional attributes)
 
-    @decorators.LogDecorator(logger, level=decorators.DEBUG)
-    def close(self):
-        """Closes the serial port connection."""
-        if self._serial_port is not None and self._serial_port.is_open:
-            self._serial_port.close()
+    Raises:
+      DeviceError: if device model is not supported.
 
-        super(Cambrionix, self).close()
+    Notes:
+      persistent: model,
+                  hub_port_name,
+                  console_port_name,
+                  total_ports,
+                  ftdi_serial_number,
+                  serial_number
 
-    @decorators.LogDecorator(logger)
-    def get_detection_info(self):
-        """Gets the persistent and optional attributes of a Cambrionix.
-
-        Returns:
-          tuple: (Dict of persistent attributes, dict of optional attributes)
-
-        Raises:
-            GazooDeviceError: if device model is not supported.
-
-        Notes:
-          persistent: model,
-                      hub_port_name,
-                      console_port_name,
-                      total_ports,
-                      ftdi_serial_number,
-                      serial_number
-
-          optional:   empty dict
-        """
-        persistent_dict = self.props['persistent_identifiers']
-        persistent_dict['model'] = self._get_system_hardware()
-        if persistent_dict['model'] not in usb_config.CAMBRIONIX_PORT_MAP:
-            raise errors.GazooDeviceError("Model {} not supported. Supported models: {}".
-                                          format(persistent_dict['model'],
-                                                 ",".join(usb_config.CAMBRIONIX_PORT_MAP.keys())))
-        persistent_dict['hub_port_name'] = self.communication_address
-        persistent_dict['console_port_name'] = self.communication_address
-        persistent_dict['total_ports'] = self.total_ports
-        persistent_dict['ftdi_serial_number'] = usb_utils.get_serial_number_from_path(
+      optional:   empty dict
+    """
+    persistent_dict = self.props["persistent_identifiers"]
+    persistent_dict["model"] = self._get_system_hardware()
+    if persistent_dict["model"] not in usb_config.CAMBRIONIX_PORT_MAP:
+      raise errors.DeviceError(
+          "Model {} not supported. Supported models: {}".format(
+              persistent_dict["model"],
+              ",".join(usb_config.CAMBRIONIX_PORT_MAP.keys())))
+    persistent_dict["hub_port_name"] = self.communication_address
+    persistent_dict["console_port_name"] = self.communication_address
+    persistent_dict["total_ports"] = self.total_ports
+    persistent_dict[
+        "ftdi_serial_number"] = usb_utils.get_serial_number_from_path(
             self.communication_address)
 
-        # Cambrionix does not have a separate serial number from the one shown
-        # in the /dev/serial/by-id/... name.
-        persistent_dict['serial_number'] = self.props[
-            'persistent_identifiers']['ftdi_serial_number']
+    # Cambrionix does not have a separate serial number from the one shown
+    # in the /dev/serial/by-id/... name.
+    persistent_dict["serial_number"] = self.props["persistent_identifiers"][
+        "ftdi_serial_number"]
 
-        self.props['options'] = {}
+    self.props["options"] = {}
 
-        return persistent_dict, self.props['options']
+    return persistent_dict, self.props["options"]
 
-    @classmethod
-    def is_connected(cls, device_config):
-        """Returns true if a Cambrionix is connected to the computer, False otherwise.
+  @classmethod
+  def is_connected(cls, device_config):
+    """Returns true if a Cambrionix is connected to the computer, False otherwise.
 
-        Args:
-          device_config (dict): contains "persistent" dict
+    Args:
+      device_config (dict): contains "persistent" dict
 
-        Returns:
-          bool: Cambrionix is connected
+    Returns:
+      bool: Cambrionix is connected
 
-        Notes:
-          To return True, the cambrionix_config needs to have "console_port_name" in its
-          "persistent" dict and that path needs to exist on the computer.
-        """
-        if "console_port_name" in device_config["persistent"]:
-            address = device_config["persistent"]["console_port_name"]
-        else:
-            address = device_config["persistent"]["hub_port_name"]
-        return os.path.exists(address)
+    Notes:
+      To return True, the cambrionix_config needs to have
+      "console_port_name" in its
+      "persistent" dict and that path needs to exist on the computer.
+    """
+    if "console_port_name" in device_config["persistent"]:
+      address = device_config["persistent"]["console_port_name"]
+    else:
+      address = device_config["persistent"]["hub_port_name"]
+    return os.path.exists(address)
 
-    @decorators.LogDecorator(logger)
-    def reboot(self, no_wait=False, method="shell"):
-        """Reboots the system.
+  @decorators.LogDecorator(logger)
+  def reboot(self, no_wait=False, method="shell"):
+    """Reboots the system.
 
-        Args:
-          no_wait (bool): Return before boot up is complete. Default: False.
-          method (str): Method to invoke reboot. 'shell' | 'watchdog'
+    Args:
+      no_wait (bool): Return before boot up is complete. Default: False.
+      method (str): Method to invoke reboot. 'shell' | 'watchdog'
 
-        Raises:
-          ValueError: if method name not recognized.
+    Raises:
+      ValueError: if method name not recognized.
 
-        Note:
-          (Terminal Command Reference v1.5 page 15).
-        """
-        if method.lower() not in _REBOOT_METHODS:
-            raise ValueError(
-                f"Method {method!r} not recognized. Supported methods: {_REBOOT_METHODS}")
-        if method == 'watchdog':
-            self._command(self.commands["REBOOT_WATCHDOG"],
-                          close_delay=self.timeouts["REBOOT_WATCHDOG"])
-        else:
-            self._command(self.commands["REBOOT"], close_delay=self.timeouts["REBOOT"])
+    Note:
+      (Terminal Command Reference v1.5 page 15).
+    """
+    if method.lower() not in _REBOOT_METHODS:
+      raise ValueError(
+          f"Method {method!r} not recognized. Supported methods: {_REBOOT_METHODS}"
+      )
+    if method == "watchdog":
+      self._command(
+          self.commands["REBOOT_WATCHDOG"],
+          close_delay=self.timeouts["REBOOT_WATCHDOG"])
+    else:
+      self._command(
+          self.commands["REBOOT"], close_delay=self.timeouts["REBOOT"])
 
-    @decorators.LogDecorator(logger)
-    def recover(self, error):
-        """Attempts to recover device based on the type of error specified.
+  @decorators.LogDecorator(logger)
+  def recover(self, error):
+    """Attempts to recover device based on the type of error specified.
 
-        Note: The check_device_ready method can raise a number of separate exceptions which
-        are passed to this method as exception objects. The recovery method is chosen based on
-        the type of the error. A list of errors and recovery steps follow (not all recovery
-        steps have been implemented yet):
+    Note: The check_device_ready method can raise a number of separate
+    exceptions which are passed to this method as exception objects. The
+    recovery method is chosen based on the type of the error. A list of errors
+    and recovery steps follow (not all recovery steps have been implemented
+    yet):
 
-            DeviceNotResponsiveError:
-                * Recovery: reboot device.
+    DeviceNotResponsiveError:
+        * Recovery: reboot device.
 
-        Args:
-            error (CheckDeviceReadyError): A subclass of CheckDeviceReadyError that will be
-                used to identify a possible recovery solution to use.
+    Args:
+        error (CheckDeviceReadyError): A subclass of CheckDeviceReadyError
+        that will be used to identify a possible recovery solution to use.
 
-        Raises:
-            GazooDeviceError: If device recovery fails while attempting to perform recovery
-                steps.
-            CheckDeviceReadyError: If there are no recovery steps available for the error
-                argument, it will be re-raised directly.
-        """
+    Raises:
+        DeviceError: If device recovery fails while attempting to perform
+        recovery steps.
+        CheckDeviceReadyError: If there are no recovery steps available for
+        the error argument, it will be re-raised directly.
+    """
 
-        if isinstance(error, errors.DeviceNotResponsiveError):
-            self.reboot()
-        else:
-            raise error
+    if isinstance(error, errors.DeviceNotResponsiveError):
+      self.reboot()
+    else:
+      raise error
 
-    def shell(self,
-              command,
-              command_name="shell",
-              timeout=None,
-              port=0,
-              include_return_code=False):
-        """Sends command and returns response.
+  def shell(self,
+            command,
+            command_name="shell",
+            timeout=None,
+            port=0,
+            include_return_code=False):
+    """Sends command and returns response.
 
-        Args:
-            command (str): Command to send to the device.
-            command_name (str): Optional identifier to use in logs for this command.
-            timeout (float): Seconds to wait for pattern after command sent.
-            port (int): not used.
-            include_return_code (bool): flag indicating return code should be returned
+    Args:
+        command (str): Command to send to the device.
+        command_name (str): Optional identifier to use in logs for this
+          command.
+        timeout (float): Seconds to wait for pattern after command sent.
+        port (int): not used.
+        include_return_code (bool): flag indicating return code should be
+          returned
 
-        Returns:
-            str or tuple: response or (response, return_code) if include_return_code is True.
-                          return_code 0 - success, return_code -1 - error.
-        """
-        timeout = timeout or self.timeouts["SHELL"]
-        response = ""
-        if include_return_code:
-            return_code = 0
-            try:
-                response = self._command(command)
-                response = self._list_to_str(response)
-            except errors.GazooDeviceError:
-                return_code = -1
-            return response, return_code
+    Returns:
+        str or tuple: response or (response, return_code) if
+        include_return_code is True.
+            return_code 0 - success
+            return_code -1 - error
+    """
+    timeout = timeout or self.timeouts["SHELL"]
+    response = ""
+    if include_return_code:
+      return_code = 0
+      try:
         response = self._command(command)
-        return self._list_to_str(response)
+        response = self._list_to_str(response)
+      except errors.DeviceError:
+        return_code = -1
+      return response, return_code
+    response = self._command(command)
+    return self._list_to_str(response)
 
-    def shell_with_regex(self,
-                         command,
-                         regex,
-                         regex_group=1,
-                         command_name="shell",
-                         raise_error=False,
-                         tries=1,
-                         port=0):
-        """Sends a command, searches for a regex in the response, and returns a match group.
+  def shell_with_regex(self,
+                       command,
+                       regex,
+                       regex_group=1,
+                       command_name="shell",
+                       raise_error=False,
+                       tries=1,
+                       port=0):
+    """Sends a command, searches for a regex in the response, and returns a match group.
 
-        Args:
-            command (str): command to issue.
-            regex (str): regular expression with one or more capturing groups.
-            regex_group (int): number of regex group to return.
-            command_name (str): command name to appear in log messages.
-            raise_error (bool): whether or not to raise error if unable to find a match.
-            tries (int): how many times to try executing the command before failing.
-            port (int): which port to send the shell command to.
+    Args:
+        command (str): command to issue.
+        regex (str): regular expression with one or more capturing groups.
+        regex_group (int): number of regex group to return.
+        command_name (str): command name to appear in log messages.
+        raise_error (bool): whether or not to raise error if unable to find a
+          match.
+        tries (int): how many times to try executing the command before failing.
+        port (int): which port to send the shell command to.
 
-        Returns:
-            str: value of the capturing group with index 'regex_group' in the match.
+    Returns:
+        str: value of the capturing group with index 'regex_group' in the match.
 
-        Raises:
-            GazooDeviceError: if command execution fails OR
-                             couldn't find the requested group in any of the responses.
-        """
-        return self.command_with_regex(command,
-                                       regex,
-                                       self.shell,
-                                       regex_group=regex_group,
-                                       raise_error=raise_error,
-                                       tries=tries,
-                                       command_name=command_name,
-                                       port=port)
+    Raises:
+        DeviceError: if command execution fails OR couldn't find the requested
+        group in any of the responses.
+    """
+    return self.command_with_regex(
+        command,
+        regex,
+        self.shell,
+        regex_group=regex_group,
+        raise_error=raise_error,
+        tries=tries,
+        command_name=command_name,
+        port=port)
 
-    @decorators.CapabilityDecorator(switch_power_usb_with_charge.SwitchPowerUsbWithCharge)
-    def switch_power(self):
-        """Returns a switch_power object to send commands.
+  @decorators.CapabilityDecorator(
+      switch_power_usb_with_charge.SwitchPowerUsbWithCharge)
+  def switch_power(self):
+    """Returns a switch_power object to send commands.
 
-        Returns:
-            object: switch_power_usb_with_charge
-        """
-        return self.lazy_init(
-            switch_power_usb_with_charge.SwitchPowerUsbWithCharge,
-            shell_fn=self.shell,
-            regex_shell_fn=self.shell_with_regex,
-            command_dict=self.commands,
-            regex_dict=self.regexes,
-            device_name=self.name,
-            serial_number=self.serial_number,
-            total_ports=self.total_ports)
+    Returns:
+        object: switch_power_usb_with_charge
+    """
+    return self.lazy_init(
+        switch_power_usb_with_charge.SwitchPowerUsbWithCharge,
+        shell_fn=self.shell,
+        regex_shell_fn=self.shell_with_regex,
+        command_dict=self.commands,
+        regex_dict=self.regexes,
+        device_name=self.name,
+        serial_number=self.serial_number,
+        total_ports=self.total_ports)
 
-    @decorators.PersistentProperty
-    def valid_modes(self):
-        return ['off', 'sync', 'charge']
+  @decorators.PersistentProperty
+  def valid_modes(self):
+    return ["off", "sync", "charge"]
 
-    def _command(self, command, close_delay=0.0):
-        """Opens the control serial port and sends a command.
+  def _command(self, command, close_delay=0.0):
+    """Opens the control serial port and sends a command.
 
-        Args:
-          command (str): Command to send to device
-          close_delay (float): Seconds to delay between command and closing control port
+    Args:
+      command (str): Command to send to device
+      close_delay (float): Seconds to delay between command and closing
+        control port
 
-        Returns:
-          list: All strings in the response (except the trailing >> prompt)
+    Returns:
+      list: All strings in the response (except the trailing >> prompt)
 
-        Raises:
-          GazooDeviceError: Error in response to command.
+    Raises:
+      DeviceError: Error in response to command.
 
-        Note:
-          Returns response. Delays closing the port afterwards if close_delay > 0.
+    Note:
+      Returns response. Delays closing the port afterwards if close_delay >
+      0.
 
-          With some commands (e.g. reboot), it is necessary to wait before closing
-          the control serial port to prevent other GDM instances from accessing the
-          control serial port.
-        """
+      With some commands (e.g. reboot), it is necessary to wait before
+      closing the control serial port to prevent other GDM instances from
+      accessing the control serial port.
+    """
+    self._open()
+    try:
+      self.__write_command(self._serial_port, command)
+      if command.startswith("reboot"):
+        return
 
-        self._open()
-        try:
-            self.__write_command(self._serial_port, command)
-            if command.startswith('reboot'):
-                return
+      response = self.__get_response(self._serial_port)
+      if response[0].startswith("*E"):
+        raise errors.DeviceError("Device {} command failed. "
+                                 "Unable to write command: {} "
+                                 "to serial port: {}  Err: {!r}".format(
+                                     self.name, command, self._serial_port,
+                                     response[0]))
+    finally:
+      if close_delay > 0.0:
+        time.sleep(close_delay)
+      self.close()
 
-            response = self.__get_response(self._serial_port)
-            if response[0].startswith('*E'):
-                raise errors.GazooDeviceError("Device {} command failed. "
-                                              "Unable to write command: {} "
-                                              "to serial port: {}  Err: {!r}".
-                                              format(self.name,
-                                                     command,
-                                                     self._serial_port,
-                                                     response[0]))
-        finally:
-            if close_delay > 0.0:
-                time.sleep(close_delay)
-            self.close()
+    # Discard the last line which is the prompt
+    return response[:-1]
 
-        # Discard the last line which is the prompt
-        return response[:-1]
+  def _get_system_status(self):
+    """Gets hardware and firmware information.
 
-    def _get_system_status(self):
-        """Gets hardware and firmware information.
+    Returns:
+      dict: Information regarding the system
 
-        Returns:
-          dict: Information regarding the system
+    Note:
+      (Terminal Command Reference v1.5 page 6)
+      Example output from PP8S device:
+      >> system
+      cambrionix PP8S 8 Port USB Charge+Sync
+      Hardware: PP8S
+      Firmware: 1.68
+      Compiled: Feb 14 2017 17:30:26
+      Group: -
+      Panel ID: Absent
+    """
+    sysinfo_strings = self._command(self.commands["SYSTEM_STATUS"])
+    sysinfo_dict = {"name": sysinfo_strings[0]}
+    for line in sysinfo_strings:
+      if ":" in line:
+        key, value = line.split(":", 1)
+        sysinfo_dict[key.lower()] = value.strip()
 
-        Note:
-          (Terminal Command Reference v1.5 page 6)
-          Example output from PP8S device:
-          >> system
-          cambrionix PP8S 8 Port USB Charge+Sync
-          Hardware: PP8S
-          Firmware: 1.68
-          Compiled: Feb 14 2017 17:30:26
-          Group: -
-          Panel ID: Absent
-        """
+    return sysinfo_dict
 
-        sysinfo_strings = self._command(self.commands["SYSTEM_STATUS"])
-        sysinfo_dict = {'name': sysinfo_strings[0]}
-        for line in sysinfo_strings:
-            if ":" in line:
-                key, value = line.split(':', 1)
-                sysinfo_dict[key.lower()] = value.strip()
+  def _get_system_hardware(self):
+    """Gets the hardware description of the hub.
 
-        return sysinfo_dict
+    Returns:
+      str: Hardware description
+    """
+    return self._get_system_status()["hardware"]
 
-    def _get_system_hardware(self):
-        """Gets the hardware description of the hub.
+  def _list_to_str(self, lst):
+    if isinstance(lst, list):
+      lst = " ".join(map(str, lst))
+    return lst
 
-        Returns:
-          str: Hardware description
-        """
+  def _open(self):
+    start_time = time.time()
+    error = ""
+    while time.time() - start_time < self.timeouts["OPEN"]:
+      try:
+        if self._serial_port is None:
+          self._serial_port = serial.Serial(
+              port=self.communication_address,
+              baudrate=115200,
+              timeout=0.1,
+              exclusive=True)
+          # Prevent inheritance of file descriptors to exec'd child processes [NEP-1852]
+          file_descriptor = self._serial_port.fd
+          flags = fcntl.fcntl(file_descriptor, fcntl.F_GETFD)
+          fcntl.fcntl(file_descriptor, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
+          return
+        if not self._serial_port.is_open:
+          self._serial_port.open()
+        return
+      except Exception as err:
+        error = err
+    raise errors.DeviceError("Device {} open failed. "
+                             "Unable to open control serial port in {} seconds"
+                             "Error: {}".format(self.name,
+                                                self.timeouts["OPEN"], error))
 
-        return self._get_system_status()['hardware']
+  @staticmethod
+  def __write_command(serial_port, command):
+    """Internal helper for writing to the hub.
 
-    def _list_to_str(self, lst):
-        if isinstance(lst, list):
-            lst = ' '.join(map(str, lst))
-        return lst
+    Args:
+      serial_port (str): Cambrionix serial port.
+      command (str): command to send to device.
 
-    def _open(self):
-        start_time = time.time()
-        error = ""
-        while time.time() - start_time < self.timeouts["OPEN"]:
-            try:
-                if self._serial_port is None:
-                    self._serial_port = serial.Serial(port=self.communication_address,
-                                                      baudrate=115200,
-                                                      timeout=0.1,
-                                                      exclusive=True)
-                    # Prevent inheritance of file descriptors to exec'd child processes [NEP-1852]
-                    file_descriptor = self._serial_port.fd
-                    flags = fcntl.fcntl(file_descriptor, fcntl.F_GETFD)
-                    fcntl.fcntl(file_descriptor, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
-                    return
-                if not self._serial_port.is_open:
-                    self._serial_port.open()
-                return
-            except Exception as err:
-                error = err
-        raise errors.GazooDeviceError("Device {} open failed. "
-                                      "Unable to open control serial port in {} seconds"
-                                      "Error: {}".
-                                      format(self.name,
-                                             self.timeouts["OPEN"],
-                                             error))
+    Raises:
+      DeviceError: no response from device.
+    """
+    line_ending = "\r\n"
+    ctrl_c_cmd = "\x03" + line_ending
 
-    @staticmethod
-    def __write_command(serial_port, command):
-        """Internal helper for writing to the hub.
+    # Clear any existing text by sending a CTRL-C
+    # command and waiting for a prompt
+    serial_port.write(ctrl_c_cmd.encode("utf-8"))
+    Cambrionix.__get_response(serial_port)
 
-        Args:
-          serial_port (str): Cambrionix serial port.
-          command (str): command to send to device.
+    if not command.endswith(line_ending):
+      command += line_ending
 
-        Raises:
-          GazooDeviceError: no response from device.
-        """
+    for char in command:
+      serial_port.write(char.encode("utf-8"))
+      if command.startswith("reboot") and char == "\r":
+        break
 
-        line_ending = '\r\n'
-        ctrl_c_cmd = '\x03' + line_ending
+      while True:
+        ready = select.select([serial_port], [], [], 25)[0]
+        if ready:
+          if serial_port.read(1).decode("utf-8") == char:
+            break
+        else:
+          raise errors.DeviceError("Device cambrionix write command failed. "
+                                   "Read timeout on serial port: {} "
+                                   "while writing command: {}".format(
+                                       serial_port, command))
 
-        # Clear any existing text by sending a CTRL-C
-        # command and waiting for a prompt
-        serial_port.write(ctrl_c_cmd.encode('utf-8'))
-        Cambrionix.__get_response(serial_port)
+  @staticmethod
+  def __get_response(serial_port):
+    """Internal helper returning the response from the hub as a list of lines.
 
-        if not command.endswith(line_ending):
-            command += line_ending
+    Args:
+      serial_port (str): Cambrionix serial port.
 
-        for char in command:
-            serial_port.write(char.encode('utf-8'))
-            if command.startswith("reboot") and char == '\r':
-                break
+    Returns:
+      str: response.
 
-            while True:
-                ready = select.select([serial_port], [], [], 25)[0]
-                if ready:
-                    if serial_port.read(1).decode('utf-8') == char:
-                        break
-                else:
-                    raise errors.GazooDeviceError("Device cambrionix write command failed. "
-                                                  "Read timeout on serial port: {} "
-                                                  "while writing command: {}".
-                                                  format(serial_port,
-                                                         command))
+    Raises:
+      DeviceError: Device not responding.
 
-    @staticmethod
-    def __get_response(serial_port):
-        """Internal helper returning the response from the hub as a list of lines.
+    Note:
+      The command prompt is always this string: ">> ".
+    """
+    read_data = ""
+    while not read_data.endswith("\n>> "):
+      ready = select.select([serial_port], [], [], 25)[0]
+      if ready:
+        read_data += serial_port.read(serial_port.inWaiting()).decode(
+            "utf-8", "replace")
+      else:
+        raise errors.DeviceError(
+            "Device cambrionix get response failed. "
+            "Read timeout on serial port: {}".format(serial_port))
 
-        Args:
-          serial_port (str): Cambrionix serial port.
+    return read_data.splitlines()
 
-        Returns:
-          str: response.
 
-        Raises:
-          GazooDeviceError: Device not responding.
-
-        Note:
-          The command prompt is always this string: ">> ".
-        """
-
-        read_data = ''
-        while not read_data.endswith('\n>> '):
-            ready = select.select([serial_port], [], [], 25)[0]
-            if ready:
-                read_data += serial_port.read(serial_port.inWaiting()).decode('utf-8', 'replace')
-            else:
-                raise errors.GazooDeviceError("Device cambrionix get response failed. "
-                                              "Read timeout on serial port: {}".
-                                              format(serial_port))
-
-        return read_data.splitlines()
+deprecation_utils.add_deprecated_attributes(
+    Cambrionix, [("set_mode", "switch_power.set_mode", True),
+                 ("power_on", "switch_power.power_on", True),
+                 ("power_off", "switch_power.power_off", True)])
