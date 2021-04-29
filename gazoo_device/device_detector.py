@@ -324,7 +324,10 @@ class DeviceDetector(object):
         detect_log = os.path.join(self.log_directory,
                                   self._get_detect_log_file(connection))
         matching_classes = detect_criteria.determine_device_class(
-            connection, key, detect_log)
+            connection,
+            key,
+            detect_log,
+            self.manager_weakref().create_switchboard)
         if len(matching_classes) > 1:
           device_types = [
               device_class.DEVICE_TYPE for device_class in matching_classes

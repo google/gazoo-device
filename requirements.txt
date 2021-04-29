@@ -1,7 +1,6 @@
 dataclasses>=0.6
 fire>=0.2.1
 immutabledict>=1.2.0
-importlib_resources>=1.5.0
 intelhex>=2.2.1
 psutil>=5.0.1
 pylibftdi>=0.19.0

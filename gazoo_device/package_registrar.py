@@ -52,7 +52,7 @@ _EXTENSION_DICT_DEFAULTS = immutabledict.immutabledict({
     "capability_flavors": [],
     "keys": [],
 })
-_EXPECTED_QUERY_ARGS = ("address", "detect_logger")
+_EXPECTED_QUERY_ARGS = ("address", "detect_logger", "create_switchboard_func")
 _MISMATCHING_SIGNATURE_TEMPLATE = (
     "Method {!r}, child signature {}, inherited signature(s) {}.")
 _DetectQueryType = Callable[

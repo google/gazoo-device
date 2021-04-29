@@ -13,26 +13,68 @@
 # limitations under the License.
 
 """Utility module for interaction with PwRPC (Pigweed RPC)."""
+import os
+from typing import Callable
+from gazoo_device import errors
 from gazoo_device import gdm_logger
+from gazoo_device.switchboard.transports import pigweed_rpc_transport
 
+# TODO(b/185956488): Remove conditional imports of Pigweed
+try:
+  # pylint: disable=g-import-not-at-top
+  from button_service import button_service_pb2
+  from device_service import device_service_pb2
+  from lighting_service import lighting_service_pb2
+  _PWRPC_PROTOS = (button_service_pb2, device_service_pb2, lighting_service_pb2)
+except ImportError:
+  _PWRPC_PROTOS = None
 
-PROTO_PACKAGE = "gazoo_device.protos"
 NON_PIGWEED_TYPE = "nonpigweed"
 PIGWEED_LIGHTING_TYPE = "lighting"
-PWRPC_LIGHTING_PROTO = "pigweed_lighting.proto"
-
 logger = gdm_logger.get_logger()
 
 
-# pylint: disable=unused-argument
-def application_type(address: str) -> str:
+# TODO(b/185298972): Add more endpoints for device type checking.
+# Element format in _PIGWEED_APP_ENDPOINTS container:
+# tuple of 3 elements: (method_args, method_kwargs, application_type)
+# where method_args, method_kwargs are the input arguments
+# to the PigweedRPCTransport.rpc,
+# application_type is the Pigweed device type in string.
+_PIGWEED_APP_ENDPOINTS = (
+    (("Lighting", "Get"), {}, PIGWEED_LIGHTING_TYPE),
+)
+
+
+def get_application_type(
+    address: str,
+    log_path: str,
+    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> str:
   """Returns Pigweed application type of the device.
 
   Args:
     address: Device serial address.
+    log_path: Device log path.
+    create_switchboard_func: Method to create the switchboard.
 
   Returns:
     Pigweed application type.
   """
-  # TODO(b/183467331) Add device application type detection logic.
-  return PIGWEED_LIGHTING_TYPE
+  if _PWRPC_PROTOS is None:
+    logger.warning(
+        "Pigweed python packages are not available in this environment.")
+    return NON_PIGWEED_TYPE
+
+  switchboard = create_switchboard_func(communication_address=address,
+                                        communication_type="PigweedSerialComms",
+                                        device_name=os.path.basename(log_path),
+                                        log_path=log_path,
+                                        protobufs=_PWRPC_PROTOS)
+  for method_args, method_kwargs, app_type in _PIGWEED_APP_ENDPOINTS:
+    try:
+      switchboard.call(method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+                       method_args=method_args,
+                       method_kwargs=method_kwargs)
+      return app_type
+    except errors.DeviceError:
+      logger.info(f"Device {address} is not a Pigweed {app_type} device.")
+  return NON_PIGWEED_TYPE

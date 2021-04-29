@@ -19,7 +19,7 @@ import functools
 import logging
 import re
 import subprocess
-from typing import Iterable, List, Union
+from typing import Any, Callable, Dict, Iterable, List, Union
 
 from gazoo_device import config
 from gazoo_device import extensions
@@ -93,9 +93,12 @@ class PigweedQuery(QueryEnum):
   manufacturer_name = "usb info manufacturer_name"
 
 
-def _docker_product_name_query(address: str,
-                               detect_logger: logging.Logger) -> str:
+def _docker_product_name_query(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> str:
   """Gets product name from docker device."""
+  del create_switchboard_func  # Unused by _docker_product_name_query
   try:
     name = subprocess.check_output(
         _DOCKER_COMMANDS["PRODUCT_NAME"].format(address).split())
@@ -107,15 +110,22 @@ def _docker_product_name_query(address: str,
   return name
 
 
-def _always_true_query(address: str, detect_logger: logging.Logger) -> True:
+def _always_true_query(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> True:
   """Used when there is just one type of device for a communication type."""
-  del address  # Unused: query always returns True
+  del address, create_switchboard_func  # Unused: query always returns True
   detect_logger.info("_always_true_query response: True")
   return True
 
 
-def _is_dli_query(address: str, detect_logger: logging.Logger) -> bool:
+def _is_dli_query(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> bool:
   """Determines if address belongs to dli power switch."""
+  del create_switchboard_func  # Unused by _is_dli_query
   try:
     response = http_utils.send_http_get(
         _SSH_COMMANDS["DLI_PRODUCT_NAME"].format(address=address),
@@ -131,8 +141,12 @@ def _is_dli_query(address: str, detect_logger: logging.Logger) -> bool:
   return "Power Switch" in name
 
 
-def _is_rpi_query(address: str, detect_logger: logging.Logger) -> bool:
+def _is_rpi_query(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> bool:
   """Determines if address belongs to raspberry pi."""
+  del create_switchboard_func  # Unused by _is_rpi_query
   try:
     name = host_utils.ssh_command(
         address,
@@ -146,8 +160,12 @@ def _is_rpi_query(address: str, detect_logger: logging.Logger) -> bool:
   return "Raspberry Pi" in name
 
 
-def _is_unifi_query(address: str, detect_logger: logging.Logger) -> bool:
+def _is_unifi_query(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> bool:
   """Determines if address belongs to unifi poe switch."""
+  del create_switchboard_func  # Unused by _is_unifi_query
   try:
     mca_info = host_utils.ssh_command(
         address,
@@ -165,52 +183,66 @@ def _is_unifi_query(address: str, detect_logger: logging.Logger) -> bool:
   return False
 
 
-def _pty_process_name_query(address: str, detect_logger: logging.Logger) -> str:
+def _pty_process_name_query(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> str:
   """Returns product name from pty process comms address directory.
 
   Args:
     address: The communication address.
     detect_logger: The logger of device interactions.
+    create_switchboard_func: Method to create the switchboard.
   """
+  del create_switchboard_func  # Unused by _pty_process_name_query
   detect_logger.info("pty_process_name_query response: {}".format(address))
   return address
 
 
-def _usb_product_name_query(address: str, detect_logger: logging.Logger) -> str:
+def _usb_product_name_query(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> str:
   """Gets product name from usb_info."""
+  del create_switchboard_func  # Unused by _usb_product_name_query
   product_name = usb_utils.get_product_name_from_path(address).lower()
   detect_logger.info(
       "_usb_product_name_query response: {}".format(product_name))
   return product_name
 
 
-def _manufacturer_name_query(address: str,
-                             detect_logger: logging.Logger) -> str:
+def _manufacturer_name_query(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> str:
   """Gets manufacturer name from usb_info."""
+  del create_switchboard_func  # Unused by _manufacturer_name_query
   manufacturer = usb_utils.get_device_info(address).manufacturer.lower()
   detect_logger.info(
       "_manufacturer_name_query response: {}".format(manufacturer))
   return manufacturer
 
 
-def _pigweed_application_query(address: str,
-                               detect_logger: logging.Logger) -> str:
+def _pigweed_application_query(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> str:
   """Gets Pigweed application type of the device.
 
   Args:
     address: The communication address.
     detect_logger: The logger of device interactions.
+    create_switchboard_func: Method to create the switchboard.
 
   Returns:
     Pigweed application type.
   """
-  try:
-    app_type = pwrpc_utils.application_type(address)
-    detect_logger.info(f"_pigweed_application_query response {app_type}")
-    return app_type
-  except RuntimeError as err:
-    detect_logger.info(f"_pigweed_application_query failure: {err!r}")
-    return pwrpc_utils.NON_PIGWEED_TYPE
+  log_path = detect_logger.handlers[0].baseFilename
+  app_type = pwrpc_utils.get_application_type(address,
+                                              log_path,
+                                              create_switchboard_func)
+  detect_logger.info(f"_pigweed_application_query response {app_type}")
+  return app_type
 
 
 GENERIC_QUERY_DICT = immutabledict.immutabledict({
@@ -256,8 +288,12 @@ DETECT_CRITERIA = immutabledict.immutabledict({
 })
 
 
-def determine_device_class(address: str, communication_type: str,
-                           log_file_path: str) -> List[_DeviceClassType]:
+def determine_device_class(
+    address: str,
+    communication_type: str,
+    log_file_path: str,
+    create_switchboard_func: Callable[..., "SwitchboardDefault"]
+) -> List[_DeviceClassType]:
   """Returns the device class(es) that matches the address' responses.
 
   Compares the device_classes DETECT_MATCH_CRITERIA to the device responses.
@@ -266,6 +302,7 @@ def determine_device_class(address: str, communication_type: str,
     address: communication_address.
     communication_type: category of communication.
     log_file_path: local path to write log messages to.
+    create_switchboard_func: Method to create the switchboard.
 
   Returns:
     list: classes where the device responses match the detect criteria.
@@ -274,7 +311,8 @@ def determine_device_class(address: str, communication_type: str,
   try:
     device_classes = get_communication_type_classes(communication_type)
     return find_matching_device_class(address, communication_type,
-                                      detect_logger, device_classes)
+                                      detect_logger, create_switchboard_func,
+                                      device_classes)
   finally:
     file_handler = detect_logger.handlers[0]
     file_handler.close()
@@ -282,7 +320,10 @@ def determine_device_class(address: str, communication_type: str,
 
 
 def find_matching_device_class(
-    address: str, communication_type: str, detect_logger: logging.Logger,
+    address: str,
+    communication_type: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., "SwitchboardDefault"],
     device_classes: Iterable[_DeviceClassType]) -> List[_DeviceClassType]:
   """Returns all classes where the device responses match the detect criteria.
 
@@ -290,6 +331,7 @@ def find_matching_device_class(
     address: communication_address.
     communication_type: category of communication.
     detect_logger: logs device interactions.
+    create_switchboard_func: Method to create the switchboard.
     device_classes: device classes whose match criteria must be compared to.
 
   Returns:
@@ -297,7 +339,7 @@ def find_matching_device_class(
   """
   matching_classes = []
   responses = _get_detect_query_response(address, communication_type,
-                                         detect_logger)
+                                         detect_logger, create_switchboard_func)
   for device_class in device_classes:
     if _matches_criteria(responses, device_class.DETECT_MATCH_CRITERIA):
       matching_classes.append(device_class)
@@ -327,23 +369,31 @@ def get_communication_type_classes(
   return matching_classes
 
 
-def _get_detect_query_response(address, communication_type, detect_logger):
+def _get_detect_query_response(
+    address: str,
+    communication_type: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., "SwitchboardDefault"]
+) -> Dict[str, Any]:
   """Gathers device responses for all queries of that communication type.
 
   Args:
-    address (str): communication_address
-    communication_type (str): category of communication.
-    detect_logger (Logger): logs device interactions.
+    address: communication_address
+    communication_type: category of communication.
+    detect_logger: logs device interactions.
+    create_switchboard_func: Method to create the switchboard.
 
   Returns:
-    dict: device responses keyed by query enum member.
+    Device responses keyed by query enum member.
   """
   query_responses = {}
   detect_queries = extensions.detect_criteria[communication_type]
   for query_name, query in detect_queries.items():
     try:
       query_responses[query_name] = query(
-          address=address, detect_logger=detect_logger)
+          address=address,
+          detect_logger=detect_logger,
+          create_switchboard_func=create_switchboard_func)
     except Exception as err:
       detect_logger.debug(
           f"failed getting detect query response for {address}: {err!r}")

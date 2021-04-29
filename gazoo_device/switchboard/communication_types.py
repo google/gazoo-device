@@ -426,7 +426,7 @@ class PigweedSerialComms(CommunicationType):
   def __init__(self,
                comms_address: str,
                protobufs: Dict[str, pathlib.Path],
-               baudrate: int):
+               baudrate: int = serial_transport.DEFAULT_BAUDRATE):
     super().__init__(
         comms_address=comms_address,
         protobufs=protobufs,
