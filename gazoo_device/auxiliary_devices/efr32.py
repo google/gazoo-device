@@ -15,6 +15,7 @@
 """EFR32 dev board device class."""
 from gazoo_device import detect_criteria
 from gazoo_device.base_classes import silabs_efr32_device
+from gazoo_device.utility import pwrpc_utils
 
 
 class EFR32(silabs_efr32_device.SilabsEFR32Device):
@@ -27,7 +28,8 @@ class EFR32(silabs_efr32_device.SilabsEFR32Device):
   DETECT_MATCH_CRITERIA = {
       detect_criteria.PigweedQuery.product_name: "j-link",
       detect_criteria.PigweedQuery.manufacturer_name: "silicon_labs",
-      detect_criteria.PigweedQuery.app_type: "nonpigweed"
+      detect_criteria.PigweedQuery.app_type:
+          pwrpc_utils.PigweedAppType.NON_PIGWEED.value,
   }
   DEVICE_TYPE = "efr32"
   _OWNER_EMAIL = "gdm-authors@google.com"

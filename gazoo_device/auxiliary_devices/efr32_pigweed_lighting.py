@@ -17,6 +17,7 @@ from gazoo_device import decorators
 from gazoo_device import detect_criteria
 from gazoo_device.base_classes import silabs_efr32_device
 from gazoo_device.capabilities import pwrpc_light_default
+from gazoo_device.utility import pwrpc_utils
 
 # TODO(b/185956488): Remove conditional imports of Pigweed
 try:
@@ -40,7 +41,8 @@ class EFR32PigweedLighting(silabs_efr32_device.SilabsEFR32Device):
   DETECT_MATCH_CRITERIA = {
       detect_criteria.PigweedQuery.product_name: "j-link",
       detect_criteria.PigweedQuery.manufacturer_name: "silicon_labs",
-      detect_criteria.PigweedQuery.app_type: "lighting",
+      detect_criteria.PigweedQuery.app_type:
+          pwrpc_utils.PigweedAppType.LIGHTING.value,
   }
   DEVICE_TYPE = "efr32pigweedlighting"
   _OWNER_EMAIL = "gdm-authors@google.com"

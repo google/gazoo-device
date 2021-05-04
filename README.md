@@ -16,15 +16,11 @@ not require any additional support from the device firmware.
 
 GDM is used for on-device testing at Google Nest.
 
-The code is ready for use. There's one caveat for CLI usage: using user-defined
-extension packages in the GDM CLI requires minor source code modifications to
-your virtual environment. This will be addressed soon.
-
-Supporting items (documentation, example controller package, functional tests,
-unit tests) haven't yet been updated since the early release in November 2020
-and are under active development. Expect most of these items to be complete by
-early June. We're releasing GDM as early as possible to help early adopters meet
-their timelines.
+The code is ready for use.  Supporting items (documentation, example controller
+package, functional tests, unit tests) haven't yet been updated since the early
+release in November 2020 and are under active development. Expect most of these
+items to be complete by early June. We're releasing GDM as early as possible to
+help early adopters meet their timelines.
 
 TODO(gdm-authors): Update documentation (most of it doesn't actually need to change).
 

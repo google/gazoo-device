@@ -24,16 +24,18 @@ import fire
 
 import gazoo_device
 from gazoo_device import errors
+from gazoo_device import extensions
 from gazoo_device import fire_manager
 from gazoo_device import fire_patch
 from gazoo_device import gdm_logger
+from gazoo_device import package_registrar
 
 logger = gdm_logger.get_logger()
 
-VERSION_FLAG = '-v'
-FLAG_MARKER = '--'
-OMIT_FLAGS = ['help']
-_CLI_NAME = 'gdm'
+VERSION_FLAG = "-v"
+FLAG_MARKER = "--"
+OMIT_FLAGS = ["help"]
+_CLI_NAME = "gdm"
 
 
 def execute_command(command: Optional[str] = None,
@@ -42,7 +44,7 @@ def execute_command(command: Optional[str] = None,
 
   Args:
     command: Passed to Python Fire. If None, sys.argv are used instead.
-    cli_name: Name of the CLI executable ('gdm').
+    cli_name: Name of the CLI executable ("gdm").
 
   Returns:
     Error code: 0 if command was successful, non-zero otherwise.
@@ -53,7 +55,7 @@ def execute_command(command: Optional[str] = None,
     args = command.split()
   else:
     args = sys.argv[1:]
-  flags = get_flags(args)
+  flags = _get_flags(args)
   commands = [arg for arg in args if arg[len(FLAG_MARKER):] not in flags.keys()]
 
   # Instantiate FireManager instance with provided flags
@@ -75,7 +77,7 @@ def execute_command(command: Optional[str] = None,
   return exit_code
 
 
-def get_flags(args: Sequence[str]) -> Dict[str, bool]:
+def _get_flags(args: Sequence[str]) -> Dict[str, bool]:
   """Parses flags out of array of CLI args.
 
   Flags in OMIT_FLAGS dict will not be returned.
@@ -106,11 +108,16 @@ def main(command: Optional[str] = None) -> int:
   Returns:
     Error code: 0 if command was successful, non-zero otherwise.
   """
+  package_registrar.import_and_register_cli_extension_packages()
+
   if VERSION_FLAG in sys.argv or (command and VERSION_FLAG in command):
-    logger.info(f'Gazoo Device Manager {gazoo_device.version}')
+    logger.info(f"Gazoo Device Manager {gazoo_device.version}")
+    package_versions = extensions.get_registered_package_info()
+    logger.info(f"Registered extension packages: {package_versions}")
     return 0
-  return execute_command(command, cli_name=_CLI_NAME)
+
+  return execute_command(command)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   main()

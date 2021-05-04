@@ -18,15 +18,20 @@ Registered extensions are stored in gazoo_device.extensions.
 """
 import collections
 import copy
+import importlib
 import inspect
+import json
 import logging
+import os.path
 import types
 from typing import Any, Callable, Iterable, List, Mapping, Tuple, Type, Union
 
+from gazoo_device import config
 from gazoo_device import data_types
 from gazoo_device import detect_criteria
 from gazoo_device import errors
 from gazoo_device import extensions
+from gazoo_device import gdm_logger
 from gazoo_device.base_classes import auxiliary_device
 from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.capabilities.interfaces import capability_base
@@ -59,6 +64,7 @@ _DetectQueryType = Callable[
     [str, logging.Logger, Callable[..., switchboard_base.SwitchboardBase]],
     Union[str, bool]
 ]
+_VIRTUAL_ENV_PIP_PATH = os.path.join(config.VIRTUAL_ENV_DIRECTORY, "bin", "pip")
 
 _AuxiliaryDeviceBase = auxiliary_device.AuxiliaryDevice
 _PrimaryDeviceBase = gazoo_device_base.GazooDeviceBase
@@ -68,6 +74,8 @@ _CommunicationTypeBase = communication_types.CommunicationType
 _CapabilityBase = capability_base.CapabilityBase
 _DeviceClassType = Union[_AuxiliaryDeviceBase, _PrimaryDeviceBase,
                          _VirtualDeviceBase]
+
+logger = gdm_logger.get_logger()
 
 
 def register(package: types.ModuleType) -> None:
@@ -148,6 +156,65 @@ def register(package: types.ModuleType) -> None:
     # leaving them in an inconsistent state.
     _restore_extensions(extensions_backup)
     raise
+
+
+def import_and_register(package_name: str,
+                        include_cli_instructions: bool = False) -> bool:
+  """Attempts to import and register the extension package.
+
+  Args:
+    package_name: Name of the package to import. For example, "foo_controller"
+      or "my_package.bar_devices".
+    include_cli_instructions: Whether to include CLI-specific instructions to
+      resolve the error.
+
+  Returns:
+    True if operation succeeded, False otherwise.
+  """
+  try:
+    package = importlib.import_module(package_name)
+  except ImportError:
+    logger.warning(
+        f"Import of GDM extension package {package_name!r} failed. "
+        "GDM will not be able to use the package. Error:",
+        exc_info=True)
+    if include_cli_instructions:
+      logger.warning(
+          "\nInstall the package in the GDM CLI virtual environment via "
+          f"`{_VIRTUAL_ENV_PIP_PATH} install <package>` or unregister the "
+          f"package from GDM CLI via `gdm unregister {package_name}`\n")
+    return False
+  try:
+    register(package)
+  except errors.PackageRegistrationError:
+    logger.warning(
+        f"Registration of GDM extension package {package_name!r} failed. "
+        "GDM will not be able to use the package. Error:",
+        exc_info=True)
+    if include_cli_instructions:
+      logger.warning(
+          "\nUpdate the package and install the new version in the GDM CLI "
+          "virtual environment via "
+          f"`{_VIRTUAL_ENV_PIP_PATH} install <package>` or unregister the "
+          f"package from GDM CLI via `gdm unregister {package_name}`\n")
+    return False
+  return True
+
+
+def get_cli_extension_packages() -> List[str]:
+  """Returns names of extension packages registered with the CLI."""
+  if os.path.exists(config.DEFAULT_GDM_CONFIG_FILE):
+    with open(config.DEFAULT_GDM_CONFIG_FILE) as gdm_config_file:
+      gdm_config = json.load(gdm_config_file)
+    return gdm_config.get("cli_extension_packages", [])
+  return []
+
+
+def import_and_register_cli_extension_packages() -> None:
+  """Attempts to import and register all packages registered with the CLI."""
+  cli_extension_packages = get_cli_extension_packages()
+  for package_name in cli_extension_packages:
+    import_and_register(package_name, include_cli_instructions=True)
 
 
 def _validate_extension_package(package: types.ModuleType,

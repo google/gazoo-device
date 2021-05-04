@@ -35,6 +35,7 @@ from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device import manager
+from gazoo_device import package_registrar
 from gazoo_device import testbed
 from gazoo_device.utility import parallel_utils
 from gazoo_device.utility import usb_utils
@@ -516,6 +517,45 @@ class FireManager(manager.Manager):
       for key in keys:
         logger.info("\t{:15} {:15}".format(key,
                                            str(getattr(usb_info_dict, key))))
+
+  def register(self, package_name: str) -> None:
+    """Registers the given package with GDM CLI.
+
+    Args:
+      package_name: Name of the package to register. For example,
+        "foo_controller" or "my_package.bar_devices".
+
+    Note that this only registers the package for CLI usage. Tests and Python
+    interpreter users must use package_registrar.register() instead.
+    """
+    registered_cli_packages = self.config.get("cli_extension_packages", [])
+    if package_name not in registered_cli_packages:
+      if package_registrar.import_and_register(package_name,
+                                               include_cli_instructions=True):
+        self._set_config_prop("cli_extension_packages",
+                              registered_cli_packages + [package_name])
+        logger.info(f"Registered package {package_name!r} with GDM CLI.")
+    else:
+      logger.info(
+          f"Package {package_name!r} is already registered with GDM CLI.")
+
+  def unregister(self, package_name: str) -> None:
+    """Removes the given package from GDM CLI.
+
+    Args:
+      package_name: Name of the package to unregister. For example,
+        "foo_controller" or "my_package.bar_devices".
+
+    Note that this only removes the package from the CLI.
+    """
+    registered_cli_packages = self.config.get("cli_extension_packages", [])
+    if package_name in registered_cli_packages:
+      updated_packages = registered_cli_packages.copy()
+      updated_packages.remove(package_name)
+      self._set_config_prop("cli_extension_packages", updated_packages)
+      logger.info(f"Removed package {package_name!r} from GDM CLI.")
+    else:
+      logger.info(f"Package {package_name!r} is not registered with GDM CLI.")
 
   def update_gdm(self):
     """Update GDM in this virtual environment.

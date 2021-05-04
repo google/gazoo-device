@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Utility module for interaction with PwRPC (Pigweed RPC)."""
+import enum
 import os
 from typing import Callable
 from gazoo_device import errors
@@ -29,8 +30,12 @@ try:
 except ImportError:
   _PWRPC_PROTOS = None
 
-NON_PIGWEED_TYPE = "nonpigweed"
-PIGWEED_LIGHTING_TYPE = "lighting"
+
+class PigweedAppType(enum.Enum):
+  NON_PIGWEED = "nonpigweed"
+  LIGHTING = "lighting"
+
+
 logger = gdm_logger.get_logger()
 
 
@@ -41,7 +46,7 @@ logger = gdm_logger.get_logger()
 # to the PigweedRPCTransport.rpc,
 # application_type is the Pigweed device type in string.
 _PIGWEED_APP_ENDPOINTS = (
-    (("Lighting", "Get"), {}, PIGWEED_LIGHTING_TYPE),
+    (("Lighting", "Get"), {}, PigweedAppType.LIGHTING),
 )
 
 
@@ -62,7 +67,7 @@ def get_application_type(
   if _PWRPC_PROTOS is None:
     logger.warning(
         "Pigweed python packages are not available in this environment.")
-    return NON_PIGWEED_TYPE
+    return PigweedAppType.NON_PIGWEED.value
 
   switchboard = create_switchboard_func(communication_address=address,
                                         communication_type="PigweedSerialComms",
@@ -74,7 +79,7 @@ def get_application_type(
       switchboard.call(method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
                        method_args=method_args,
                        method_kwargs=method_kwargs)
-      return app_type
+      return app_type.value
     except errors.DeviceError:
       logger.info(f"Device {address} is not a Pigweed {app_type} device.")
-  return NON_PIGWEED_TYPE
+  return PigweedAppType.NON_PIGWEED.value

@@ -17,6 +17,7 @@ from gazoo_device import decorators
 from gazoo_device import detect_criteria
 from gazoo_device.base_classes import nrf_connect_sdk_device
 from gazoo_device.capabilities import pwrpc_light_default
+from gazoo_device.utility import pwrpc_utils
 
 # TODO(b/185956488): Remove conditional imports of Pigweed
 try:
@@ -40,7 +41,8 @@ class NRFPigweedLighting(nrf_connect_sdk_device.NRFConnectSDKDevice):
   DETECT_MATCH_CRITERIA = {
       detect_criteria.PigweedQuery.product_name: "j-link",
       detect_criteria.PigweedQuery.manufacturer_name: "segger",
-      detect_criteria.PigweedQuery.app_type: "lighting",
+      detect_criteria.PigweedQuery.app_type:
+          pwrpc_utils.PigweedAppType.LIGHTING.value,
   }
   DEVICE_TYPE = "nrfpigweedlighting"
   _OWNER_EMAIL = "gdm-authors@google.com"

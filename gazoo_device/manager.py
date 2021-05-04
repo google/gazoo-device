@@ -35,6 +35,7 @@ import signal
 import subprocess
 import textwrap
 import time
+from typing import Dict, Optional, Union
 
 from gazoo_device import config
 from gazoo_device import custom_types
@@ -1293,19 +1294,20 @@ class Manager():
     aliases.update(self.other_aliases if category in ["all", "other"] else {})
     return aliases
 
-  def _get_config_prop(self, prop=None):
-    """Gets an prop's value for GDM configuration.
+  def _get_config_prop(
+      self, prop: Optional[str] = None
+  ) -> Union[custom_types.PropertyValue, Dict[str, custom_types.PropertyValue]]:
+    """Returns the value of an GDM config property.
 
     Args:
-      prop (str): Public prop of the device available in gdm.json.
+      prop: Manager property available in gdm.json.
 
     Returns:
-      str: Corresponding property to caller.
+      GDM config property value.
 
     Raises:
-      DeviceError: Unable to find prop.
+      DeviceError: Property is not present in the config file.
     """
-
     if prop:
       if prop not in self.config:
         raise errors.DeviceError(
@@ -1680,7 +1682,8 @@ class Manager():
         "device_file_name": config.DEFAULT_DEVICE_FILE,
         "device_options_file_name": config.DEFAULT_OPTIONS_FILE,
         "testbeds_file_name": config.DEFAULT_TESTBEDS_FILE,
-        "log_directory": config.DEFAULT_LOG_DIRECTORY
+        "log_directory": config.DEFAULT_LOG_DIRECTORY,
+        "cli_extension_packages": [],
     }
     self._create_dict_if_doesnt_exist(config_info,
                                       config.DEFAULT_GDM_CONFIG_FILE)
@@ -1932,14 +1935,16 @@ class Manager():
     if new_alias is not None:
       self.aliases[new_alias.lower()] = name
 
-  def _set_config_prop(self, prop, value):
-    """Sets a property's value for device or GDM configuration depends on identifier.
+  def _set_config_prop(self,
+                       prop: str,
+                       value: custom_types.PropertyValue) -> None:
+    """Sets an GDM config property.
 
     Args:
-      prop (str): Public prop available in gdm.json.
-      value (str): Input value for specific property.
+      prop: Manager property available in gdm.json.
+      value: Property value.
     """
-    self._type_check("value", value, allowed_types=(str, type(None), int))
+    self._type_check("value", value, allowed_types=(str, type(None), int, list))
     self._type_check("prop", prop)
     self.config[prop] = value
     # save property to json file
