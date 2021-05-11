@@ -110,6 +110,10 @@ class AuxiliaryDeviceBase(abc.ABC):
     """Returns dictionary of persistent properties."""
 
   @abc.abstractmethod
+  def get_property_names(self):
+    """Returns a list of all property names."""
+
+  @abc.abstractmethod
   def is_connected(cls, device_config):  # pylint: disable=no-self-argument
     """Determines if the device is connected (reachable).
 
