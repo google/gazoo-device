@@ -75,9 +75,8 @@ def get_specific_serial_addresses(match_criteria):
       if instance not in accessible_instances
   ]
   if inaccessible_addresses:
-    logger.info(
-        "Warning: no read/write permission for these serial address(es): {}"
-        .format(inaccessible_addresses))
+    logger.warning("No read/write permission for these serial address(es): {}"
+                   .format(inaccessible_addresses))
   return [
       instance.address
       for instance in accessible_instances
@@ -466,7 +465,6 @@ def detect_connections(static_ips):
 
       # Verify ssh keys exist if ssh connections are detected
       if comms_name == "SshComms" and comms_addresses:
-        warnings = []
         missing_keys = []
         ssh_keys = [key_info for key_info in extensions.keys
                     if key_info.type == data_types.KeyType.SSH]
@@ -474,18 +472,18 @@ def detect_connections(static_ips):
           try:
             host_utils.verify_key(ssh_key)
           except ValueError as err:  # Failed to set permissions on the key
-            warnings.append(str(err))
+            logger.warning(repr(err))
           except (errors.DownloadKeyError, FileNotFoundError, RuntimeError):
             missing_keys.append(ssh_key)
-        if warnings:
-          logger.warning("\t\tWARNING: " + "\n\t\t".join(warnings))
         if missing_keys:
-          logger.info(f"WARNING: Found {len(missing_keys)} missing SSH keys: "
-                      f"{missing_keys}. "
-                      "Detection of SSH devices may not work correctly. "
-                      "Please run 'gdm download-keys'.")
+          logger.warning(
+              "Found {} missing SSH keys:\n{}\n"
+              "Detection of SSH devices may not work correctly. "
+              "Run 'gdm download-keys'.".format(
+                  len(missing_keys),
+                  "\n".join(str(key) for key in missing_keys)))
     except Exception as err:  # pylint: disable=broad-except
-      logger.info(
+      logger.warning(
           "Unable to detect {} communication addresses. Err: {!r}".format(
               comms_name, err))
   return connections_dict

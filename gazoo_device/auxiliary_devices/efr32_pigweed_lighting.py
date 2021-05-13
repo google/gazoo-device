@@ -16,6 +16,7 @@
 from gazoo_device import decorators
 from gazoo_device import detect_criteria
 from gazoo_device.base_classes import silabs_efr32_device
+from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.capabilities import pwrpc_light_default
 from gazoo_device.utility import pwrpc_utils
 
@@ -54,10 +55,13 @@ class EFR32PigweedLighting(silabs_efr32_device.SilabsEFR32Device):
   @decorators.DynamicProperty
   def firmware_version(self):
     """Firmware version of the device."""
-    # TODO(b/185298972)
-    # Add firmware version endpoint once the pull request is merged:
-    # https://github.com/project-chip/connectedhomeip/pull/5866
-    return "0"
+    return self.pw_rpc_common.software_version
+
+  @decorators.CapabilityDecorator(pwrpc_common_default.PwRPCCommonDefault)
+  def pw_rpc_common(self):
+    return self.lazy_init(pwrpc_common_default.PwRPCCommonDefault,
+                          device_name=self.name,
+                          switchboard_call=self.switchboard.call)
 
   @decorators.CapabilityDecorator(pwrpc_light_default.PwRPCLightDefault)
   def pw_rpc_light(self):

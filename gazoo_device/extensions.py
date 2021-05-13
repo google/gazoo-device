@@ -20,7 +20,8 @@ Extension modules consist of:
 - capability interfaces and capability flavors (implementations);
 - communication types;
 - detection criteria for each communication type;
-- metadata (extension package name and version).
+- metadata (extension package name and version);
+- keys (such as SSH keys).
 
 These values are intended for internal GDM usage only.
 """

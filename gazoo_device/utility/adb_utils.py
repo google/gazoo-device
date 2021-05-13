@@ -238,9 +238,9 @@ def get_sideload_devices(adb_path=None):
   try:
     output = _adb_command("devices", adb_path=adb_path)
   except RuntimeError as err:
-    logger.info("WARNING: {}".format(err))
+    logger.warning(repr(err))
     return []
-  device_lines = [x for x in output.splitlines() if u"\tsideload" in x]
+  device_lines = [x for x in output.splitlines() if "\tsideload" in x]
   return [x.split()[0] for x in device_lines]
 
 
@@ -264,9 +264,9 @@ def get_adb_devices(adb_path=None):
   try:
     output = _adb_command("devices", adb_path=adb_path)
   except RuntimeError as err:
-    logger.info("WARNING: {}".format(err))
+    logger.warning(repr(err))
     return []
-  device_lines = [x for x in output.splitlines() if u"\tdevice" in x]
+  device_lines = [x for x in output.splitlines() if "\tdevice" in x]
   return [x.split()[0] for x in device_lines]
 
 
@@ -288,7 +288,7 @@ def get_adb_path(adb_path=None):
   if is_valid_path(adb_path):
     return adb_path
   try:
-    with open(config.DEFAULT_GDM_CONFIG_FILE, "r") as config_file:
+    with open(config.DEFAULT_GDM_CONFIG_FILE) as config_file:
       gdm_config = json.load(config_file)
     adb_path = gdm_config[config.ADB_BIN_PATH_CONFIG]
   except (IOError, KeyError, ValueError):
@@ -297,11 +297,11 @@ def get_adb_path(adb_path=None):
   if is_valid_path(adb_path):
     return adb_path
   elif adb_path:
-    logger.info("WARNING: adb path {} stored in {} does not exist.".format(
-        adb_path, config.DEFAULT_GDM_CONFIG_FILE))
+    logger.warning("adb path {!r} stored in {} does not exist."
+                   .format(adb_path, config.DEFAULT_GDM_CONFIG_FILE))
 
-  if host_utils.has_command(u"adb"):
-    return host_utils.get_command_path(u"adb")
+  if host_utils.has_command("adb"):
+    return host_utils.get_command_path("adb")
   raise RuntimeError("No valid adb path found using 'which adb'")
 
 
@@ -344,7 +344,7 @@ def get_fastboot_devices(fastboot_path=None):
   try:
     fastboot_path = get_fastboot_path(fastboot_path)
   except RuntimeError as err:
-    logger.info("WARNING: {}".format(err))
+    logger.warning(repr(err))
     return []
 
   try:
@@ -371,8 +371,8 @@ def get_fastboot_path(fastboot_path=None):
   """
   if is_valid_path(fastboot_path):
     return fastboot_path
-  if host_utils.has_command(u"fastboot"):
-    return host_utils.get_command_path(u"fastboot")
+  if host_utils.has_command("fastboot"):
+    return host_utils.get_command_path("fastboot")
   raise RuntimeError("No valid fastboot path found using 'which fastboot'")
 
 

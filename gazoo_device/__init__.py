@@ -63,12 +63,13 @@ import sys
 
 from gazoo_device import _version
 from gazoo_device import gazoo_device_controllers
-from gazoo_device import manager
 from gazoo_device import gdm_logger
+from gazoo_device import manager
 from gazoo_device import package_registrar
 from gazoo_device.utility import common_utils
 
 Manager = manager.Manager
+register = package_registrar.register
 version = _version.version
 __version__ = _version.version
 

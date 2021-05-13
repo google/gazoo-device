@@ -15,7 +15,7 @@
 """Utility module for interaction with PwRPC (Pigweed RPC)."""
 import enum
 import os
-from typing import Callable
+from typing import Any, Callable
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.switchboard.transports import pigweed_rpc_transport

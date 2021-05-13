@@ -172,12 +172,14 @@ def get_all_connected_arp_ips():
      Does not return ip_addresses listed as 'incomplete'.
   """
   try:
-    output = subprocess.check_output([u"/usr/sbin/arp", u"-e"],
+    output = subprocess.check_output(["/usr/sbin/arp", "-e"],
                                      stderr=subprocess.STDOUT)
     addresses = re.findall(ARP_CONNECTED_IPS, output.decode("utf-8", "replace"),
                            re.MULTILINE)
     return addresses
-  except subprocess.CalledProcessError:
+  except subprocess.CalledProcessError as err:
+    logger.warning("Retrieval of connected IPs from the ARP table failed. "
+                   f"Error: {err!r}. Output: {err.output!r}")
     return []
 
 
@@ -207,21 +209,20 @@ def get_all_ssh_ips(static_ips: Optional[List[str]] = None) -> List[str]:
 
 def get_all_yepkit_serials():
   """Returns all Yepkit serials."""
-  try:
-    if not has_command("ykushcmd"):
-      logger.debug(
-          "Ykushcmd is not installed on machine. Cannot get yepkit serials.")
-      return []
-
-    results = subprocess.check_output(["ykushcmd", "-l"],
-                                      stderr=subprocess.STDOUT)
-    results = results.decode("utf-8", "replace")
-    logger.debug("get_all_yepkit_serials returned: {!r}".format(results))
-  except subprocess.CalledProcessError as err:
-    logger.debug(
-        "Checking get_all_yepkit_serial returned err: {!r}".format(err))
+  if not has_command("ykushcmd"):
+    logger.warning("'ykushcmd' is not installed. Cannot get Yepkit serials.")
     return []
 
+  try:
+    results = subprocess.check_output(["ykushcmd", "-l"],
+                                      stderr=subprocess.STDOUT)
+  except subprocess.CalledProcessError as err:
+    logger.warning("Retrieval of Yepkit serials failed. "
+                   f"Error: {err!r}. Output: {err.output!r}")
+    return []
+
+  results = results.decode("utf-8", "replace")
+  logger.debug("get_all_yepkit_serials returned: {!r}".format(results))
   # If no YKUSH boards are found then the YK21624 line will be this instead:
   #    No YKUSH boards found.
   if "No YKUSH boards found" in results:
@@ -229,7 +230,6 @@ def get_all_yepkit_serials():
 
   # Typical ykushcmd -l output looks like this:
   #    Attached YKUSH Boards:\n\nYK21624\n\nYK21623
-
   # Removes blank lines and header
   results = [line for line in results.splitlines() if line]
   return results[1:]
@@ -237,13 +237,16 @@ def get_all_yepkit_serials():
 
 def get_all_vdl_docker_connections():
   """Returns all VDL docker ids."""
+  if not has_command("docker"):
+    logger.warning("'docker' is not installed. Cannot get Docker devices.")
+    return []
+
+  cmd = ["docker", "ps", "--filter", "name=VDL", "--format", "{{.ID}}"]
   try:
-    cmd = ["docker", "ps", "--filter", "name=VDL", "--format", "{{.ID}}"]
-    results = subprocess.check_output(cmd)
+    results = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
   except subprocess.CalledProcessError as err:
-    logger.debug(
-        "Checking get_all_vdl_docker_connections returned err: {!r}".format(
-            err))
+    logger.warning("Retrieval of VDL docker containers failed. "
+                   f"Error: {err!r}. Output: {err.output!r}")
     return []
   return results.decode().splitlines()
 

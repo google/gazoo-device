@@ -78,7 +78,6 @@ TIMEOUTS = {"GDM_HELLO": 5, "SHELL": 10, "SHUTDOWN": 60, "ONLINE": 120}
 
 class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
   """Base Class for Raspbian Devices."""
-
   COMMUNICATION_TYPE = "SshComms"
   _COMMUNICATION_KWARGS = {
       "log_cmd": COMMANDS["LOGGING"],

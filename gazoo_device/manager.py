@@ -1314,9 +1314,7 @@ class Manager():
             "Unable to find prop {} in manager config".format(prop))
       return self.config[prop]
     else:  # return dict of all props
-      # a dict with "persistent", "options", and "dynamic" sections (to
-      # match what a device returns).
-      return {"persistent": {}, "settable": self.config, "dynamic": {}}
+      return {"settable": self.config.copy()}
 
   def _get_device_configuration(self, name, category):
     """Returns the configuration for the device.
@@ -1624,8 +1622,7 @@ class Manager():
 
     self._add_correct_path_to_config("log_directory", log_directory,
                                      config.DEFAULT_LOG_DIRECTORY)
-    self._add_correct_value_to_config(config.ADB_BIN_PATH_CONFIG, adb_path,
-                                      "adb")
+    self._add_correct_value_to_config(config.ADB_BIN_PATH_CONFIG, adb_path, "")
 
     self._load_devices()
     self._load_other_devices()

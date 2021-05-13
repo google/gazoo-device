@@ -82,9 +82,9 @@ class Yepkit(auxiliary_device.AuxiliaryDevice):
   COMMUNICATION_TYPE = "YepkitComms"
   DETECT_MATCH_CRITERIA = {detect_criteria.GenericQuery.always_true: True}
   DEVICE_TYPE = "yepkit"
-  _instances = {}
   _MODEL = MODEL
   _OWNER_EMAIL = "gdm-authors@google.com"
+  _instances = {}
 
   def __new__(cls,
               manager,

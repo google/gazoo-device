@@ -90,11 +90,10 @@ def get_log_filename(log_directory, device_name, name_prefix=""):
 
 class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
   """Base class for all primary and virtual device classes."""
-  _has_button_support = False
   # Absolute paths to event filter files (filters/<device_type>/filter.json)
-  _default_filters = []
-  _CONNECTION_TIMEOUT = 3
   _COMMUNICATION_KWARGS = {}
+  _CONNECTION_TIMEOUT = 3
+  _DEFAULT_FILTERS = []
   _OWNER_EMAIL = ""  # override in child classes
 
   def __init__(self,
@@ -135,10 +134,10 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     self._timeouts = TIMEOUTS.copy()
     self.device_type = self.DEVICE_TYPE
 
-    if not self._default_filters:
+    if not self._DEFAULT_FILTERS:
       logger.warning(f"Device type {self.device_type!r} has no default event "
                      "filters defined.")
-    self.filter_paths = self._default_filters.copy()
+    self.filter_paths = self._DEFAULT_FILTERS.copy()
     self.filter_paths += device_config.get("filters") or []
 
     # Initialize log files

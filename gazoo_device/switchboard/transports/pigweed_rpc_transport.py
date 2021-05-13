@@ -17,13 +17,13 @@ import fcntl
 import threading
 import time
 import types
-from typing import Any, Callable, Dict, Iterable, List, Union
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.switchboard.transports import transport_base
 import serial
 
-# TODO(b/185956488): Remove conditional imports of Pigweed
+# TODO(b/181734752): Remove conditional imports of Pigweed
 try:
   # pylint: disable=g-import-not-at-top
   import pw_rpc
@@ -233,7 +233,7 @@ class PigweedRPCTransport(transport_base.TransportBase):
   def rpc(self,
           service_name: str,
           event_name: str,
-          **kwargs: Dict[str, Any]) -> bool:
+          **kwargs: Dict[str, Any]) -> Tuple[bool, bytes]:
     """RPC call to the specific endpoint with given service and event name.
 
     Args:
@@ -247,6 +247,5 @@ class PigweedRPCTransport(transport_base.TransportBase):
     client_channel = self._hdlc_client.rpcs().chip.rpc
     service = getattr(client_channel, service_name)
     event = getattr(service, event_name)
-    ack, state = event(**kwargs)
-    payload = state.on if event_name == "Get" else None
-    return ack.ok(), payload
+    ack, payload = event(**kwargs)
+    return ack.ok(), payload.SerializeToString()

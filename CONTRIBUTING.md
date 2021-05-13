@@ -228,9 +228,9 @@ A device controller typically has the following:
   `_COMMUNICATION_KWARGS = {"ssh_key_type": None, "username": "root"}`.
   Refer to `__init__` methods of communication type classes to see the
   supported arguments and their purpose.
-* A `_default_filters` class constant, which is a list of strings
+* A `_DEFAULT_FILTERS` class constant, which is a list of strings
   specifying the relative paths to log event filters for the device
-  (`_default_filters = ["linux/basic.json", "linux/crashes.json"]`).
+  (`_DEFAULT_FILTERS = ["linux/basic.json", "linux/crashes.json"]`).
 * One or more log event filters (under
   [gazoo_device/filters/](gazoo_device/filters/)). See the
   included event filters to understand the expected JSON format.
@@ -314,7 +314,7 @@ A device controller typically has the following:
   dynamic, and settable (formerly known as optional). Use the
   appropriate decorator to define each property type
   (`@decorators.PersistentProperty`, `@decorators.DynamicProperty`, or
-  `@decorators.SettableProperty`). The decorators can be found in
+  `@decorators.OptionalProperty`). The decorators can be found in
   [gazoo_device/decorators.py](gazoo_device/decorators.py).
   * Persistent properties are constant for a physical device. A good
     example is the device's serial number. These properties are

@@ -173,8 +173,12 @@ class FireManager(manager.Manager):
       logger.info(format_line.format(prop, str(value)))
     else:
       props_dicts = self.get_device_prop(device_name, prop)
-      property_types = ["persistent", "optional", "dynamic"]
-      for property_type in property_types:
+      device_property_types = ["persistent", "optional", "dynamic"]
+      manager_property_types = ["settable"]
+      for property_type in device_property_types + manager_property_types:
+        if property_type not in props_dicts:
+          continue
+
         title = "{} Properties:".format(property_type.capitalize())
         logger.info("")
         logger.info(title)

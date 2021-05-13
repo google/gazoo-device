@@ -141,8 +141,8 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
           "(ft230x basic uart)|(ps15-usb3)"
   }
   DEVICE_TYPE = "cambrionix"
-  _instances = {}
   _OWNER_EMAIL = "gdm-authors@google.com"
+  _instances = {}
 
   def __new__(cls, manager, device_config, log_file_name, log_directory):
     """Returns the same object for the same serial_port_path.

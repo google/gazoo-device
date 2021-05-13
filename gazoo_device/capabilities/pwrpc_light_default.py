@@ -19,7 +19,11 @@ from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import pwrpc_light_base
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
-
+try:
+  # pylint: disable=g-import-not-at-top
+  from lighting_service import lighting_service_pb2
+except ImportError:
+  lighting_service_pb2 = None
 
 logger = gdm_logger.get_logger()
 
@@ -77,14 +81,15 @@ class PwRPCLightDefault(pwrpc_light_base.PwRPCLightBase):
       DeviceError: When the device does not transition to the appropriate
       state or if it remains off.
     """
-    light_toggle_ack, state = self._switchboard_call(
+    light_toggle_ack, state_in_bytes = self._switchboard_call(
         method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
         method_args=("Lighting", "Get"),
         method_kwargs={})
     if not light_toggle_ack:
       raise errors.DeviceError("Device {} getting light state failed.".format(
           self._device_name))
-    return state
+    state = lighting_service_pb2.LightingState.FromString(state_in_bytes)
+    return state.on
 
   def _on_off(self, on: bool, no_wait: bool = False) -> None:
     """Turn on/off the light of the device.

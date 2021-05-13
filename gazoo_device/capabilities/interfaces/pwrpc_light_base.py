@@ -44,7 +44,8 @@ class PwRPCLightBase(capability_base.CapabilityBase):
       state or if it remains on.
     """
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def state(self) -> bool:
     """The light state of the device.
 
