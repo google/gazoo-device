@@ -35,5 +35,14 @@ class PwRPCCommonBase(capability_base.CapabilityBase):
   def software_version(self) -> str:
     """The software version of the device."""
 
-  # TODO(b/185298972): Add Reboot, Factory Reset and OTA endpoints.
+  @abc.abstractmethod
+  def reboot(self) -> None:
+    """Reboots the device."""
 
+  @abc.abstractmethod
+  def factory_reset(self) -> None:
+    """Factory resets the device."""
+
+  @abc.abstractmethod
+  def ota(self) -> None:
+    """Triggers OTA to the device."""

@@ -40,6 +40,7 @@ from gazoo_device.capabilities import file_transfer_adb
 from gazoo_device.capabilities import file_transfer_docker
 from gazoo_device.capabilities import file_transfer_echo
 from gazoo_device.capabilities import file_transfer_scp
+from gazoo_device.capabilities import flash_build_jlink
 from gazoo_device.capabilities import package_management_android
 from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.capabilities import pwrpc_light_default
@@ -147,6 +148,7 @@ def export_extensions() -> Dict[str, Any]:
           file_transfer_docker.FileTransferDocker,
           file_transfer_echo.FileTransferEcho,
           file_transfer_scp.FileTransferScp,
+          flash_build_jlink.FlashBuildJLink,
           package_management_android.PackageManagementAndroid,
           pwrpc_common_default.PwRPCCommonDefault,
           pwrpc_light_default.PwRPCLightDefault,

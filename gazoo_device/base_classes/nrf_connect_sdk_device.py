@@ -20,11 +20,13 @@ from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import auxiliary_device
+from gazoo_device.capabilities import flash_build_jlink
 from gazoo_device.switchboard import switchboard
 from gazoo_device.utility import usb_utils
 
 logger = gdm_logger.get_logger()
 BAUDRATE = 115200
+_NRF_JLINK_NAME = "NRF52840_XXAA"
 
 
 class NRFConnectSDKDevice(auxiliary_device.AuxiliaryDevice):
@@ -99,3 +101,10 @@ class NRFConnectSDKDevice(auxiliary_device.AuxiliaryDevice):
           "event_parser": None})
       setattr(self, name, self.manager_weakref().create_switchboard(**kwargs))
     return getattr(self, name)
+
+  @decorators.CapabilityDecorator(flash_build_jlink.FlashBuildJLink)
+  def flash_build(self):
+    return self.lazy_init(flash_build_jlink.FlashBuildJLink,
+                          device_name=self.name,
+                          serial_number=self.serial_number,
+                          platform_name=_NRF_JLINK_NAME)

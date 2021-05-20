@@ -15,6 +15,7 @@
 """Device class for EFR32 Pigweed Lighting device."""
 from gazoo_device import decorators
 from gazoo_device import detect_criteria
+from gazoo_device import gdm_logger
 from gazoo_device.base_classes import silabs_efr32_device
 from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.capabilities import pwrpc_light_default
@@ -30,6 +31,10 @@ except ImportError:
   button_service_pb2 = None
   device_service_pb2 = None
   lighting_service_pb2 = None
+
+logger = gdm_logger.get_logger()
+_REGEXES = {"BOOT_UP": r"<efr32 > chip-efr32-lighting-example starting",}
+_BOOTUP_TIMEOUT = 10  # seconds
 
 
 class EFR32PigweedLighting(silabs_efr32_device.SilabsEFR32Device):
@@ -52,20 +57,56 @@ class EFR32PigweedLighting(silabs_efr32_device.SilabsEFR32Device):
                                          device_service_pb2),
                            "baudrate": silabs_efr32_device.BAUDRATE}
 
+  def __init__(self,
+               manager,
+               device_config,
+               log_file_name=None,
+               log_directory=None):
+    super().__init__(
+        manager,
+        device_config,
+        log_file_name=log_file_name,
+        log_directory=log_directory)
+    self._regexes.update(_REGEXES)
+
   @decorators.DynamicProperty
   def firmware_version(self):
     """Firmware version of the device."""
     return self.pw_rpc_common.software_version
 
+  @decorators.LogDecorator(logger)
+  def reboot(self, no_wait: bool = False):
+    """Reboots the device.
+
+    Args:
+      no_wait: Return before reboot completes.
+    """
+    self.pw_rpc_common.reboot(bootup_logline_regex=self._regexes["BOOT_UP"],
+                              bootup_timeout=_BOOTUP_TIMEOUT,
+                              no_wait=no_wait)
+
+  @decorators.LogDecorator(logger)
+  def factory_reset(self, no_wait: bool = False):
+    """Factory resets the device.
+
+    Args:
+      no_wait: Return before factory_reset completes.
+    """
+    self.pw_rpc_common.factory_reset(
+        bootup_logline_regex=self._regexes["BOOT_UP"],
+        bootup_timeout=_BOOTUP_TIMEOUT,
+        no_wait=no_wait)
+
   @decorators.CapabilityDecorator(pwrpc_common_default.PwRPCCommonDefault)
   def pw_rpc_common(self):
+    """PwRPCCommonDefault capability to send RPC command."""
     return self.lazy_init(pwrpc_common_default.PwRPCCommonDefault,
                           device_name=self.name,
                           switchboard_call=self.switchboard.call)
 
   @decorators.CapabilityDecorator(pwrpc_light_default.PwRPCLightDefault)
   def pw_rpc_light(self):
-    """PwRPCLight instance to send RPC commands."""
+    """PwRPCLight capability to send RPC commands."""
     return self.lazy_init(pwrpc_light_default.PwRPCLightDefault,
                           device_name=self.name,
                           switchboard_call=self.switchboard.call)
