@@ -36,7 +36,7 @@ PING_CUSTOM_TIMEOUT = "ping -c 1 -W {} {}"  # Ping with custom timeout.
 SSHABLE_COMMAND = "nc -z -w 2 {} 22"  # Connect to ssh port for up to 2 seconds.
 
 SSH_ARGS = "{options} {user}@{ip_address} {command}"
-SCP_COMMAND = "scp {ssh_opt} {src} {dest}"
+SCP_COMMAND = "scp -r {ssh_opt} {src} {dest}"
 SSH_TIMEOUT = 3
 SSH_CONFIG = (
     "-oPasswordAuthentication=no -oStrictHostKeyChecking=no -oBatchMode=yes "

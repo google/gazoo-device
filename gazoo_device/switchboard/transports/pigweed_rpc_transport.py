@@ -14,6 +14,7 @@
 
 """Pigweed RPC transport class."""
 import fcntl
+import queue
 import threading
 import time
 import types
@@ -75,10 +76,11 @@ class PwHdlcRpcClient:
                                              self.protos.modules())
     self.frame_handlers = {
         _DEFAULT_ADDRESS: self._handle_rpc_packet,
-        _STDOUT_ADDRESS: lambda frame: rpc.write_to_file(frame.data)}
+        _STDOUT_ADDRESS: self._push_to_log_queue}
     self.read = read
     self._stop_event = threading.Event()
     self._worker = None
+    self.log_queue = queue.Queue()
 
   def is_alive(self) -> bool:
     """Return true if the worker thread has started."""
@@ -111,7 +113,7 @@ class PwHdlcRpcClient:
       return next(iter(self.client.channels())).rpcs
     return self.client.channel(channel_id).rpcs
 
-  def _handle_rpc_packet(self, frame: "Frame"):
+  def _handle_rpc_packet(self, frame: Any):
     """Handler for processing HDLC frame."""
     if not self.client.process_packet(frame.data):
       logger.error("Packet not handled by RPC client: %s", frame.data)
@@ -135,9 +137,17 @@ class PwHdlcRpcClient:
         # TODO(b/184718613): Refactor to non-blocking IO.
         time.sleep(0.01)
 
+  def _push_to_log_queue(self, frame: Any):
+    """Push the HDLC log in frame into the log queue.
+
+    Args:
+      frame: HDLC frame packet.
+    """
+    self.log_queue.put(frame.data + b"\n")
+
   def _handle_frame(self,
-                    frame: "Frame",
-                    frame_handlers: Dict[int, Callable[["Frame"], None]]):
+                    frame: Any,
+                    frame_handlers: Dict[int, Callable[[Any], None]]):
     """Private method for processing HDLC frame.
 
     Args:
@@ -203,18 +213,22 @@ class PigweedRPCTransport(transport_base.TransportBase):
     flags = fcntl.fcntl(fd, fcntl.F_GETFD)
     fcntl.fcntl(fd, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
 
-  def _read(self, size: int, timeout: float) -> str:
-    """Returns bytes read up to max_bytes within timeout in seconds specified.
+  def _read(self, size: int, timeout: float) -> bytes:
+    """Returns Pigweed log from the HDLC channel 1.
 
     Args:
-      size: maximum number of bytes to read within timeout seconds.
-      timeout: maximum seconds to wait to read bytes.
+      size: Not used.
+      timeout: Maximum seconds to wait to read bytes.
 
     Returns:
       bytes read from transport or None if no bytes were read
     """
-    # TODO(b/182709921): Add PwRPC transport _read logic.
-    return None
+    # Retrieving logs from queue doesn't support size configuration.
+    del size
+    try:
+      return self._hdlc_client.log_queue.get(timeout=timeout)
+    except queue.Empty:
+      return b""
 
   def _write(self, data: str, timeout: float = None) -> int:
     """Dummy method for Pigweed RPC.

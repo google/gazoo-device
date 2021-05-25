@@ -24,7 +24,7 @@ logger = gdm_logger.get_logger()
 
 
 class FileTransferScp(file_transfer_base.FileTransferBase):
-  """scp-based file transfer capability (for devices communicating over SSH)."""
+  """scp-based file or folder transfer capability."""
 
   def __init__(self,
                ip_address_or_fn,
@@ -32,7 +32,7 @@ class FileTransferScp(file_transfer_base.FileTransferBase):
                add_log_note_fn,
                user="root",
                key_info=None):
-    """Initialize scp file transfer capability.
+    """Initialize scp file or folder transfer capability.
 
     Args:
         ip_address_or_fn (str or callable): IP address of the device, or a
@@ -54,7 +54,7 @@ class FileTransferScp(file_transfer_base.FileTransferBase):
     """Copies srcs on device to dest on host.
 
     Args:
-        src (str): file path on device to copy to host.
+        src (str): file or folder path on device to copy to host.
         dest (str): destination path on host computer.
 
     Raises:
@@ -97,7 +97,7 @@ class FileTransferScp(file_transfer_base.FileTransferBase):
     """Copies src from host to dest on the device.
 
     Args:
-        src (str): local file path on host computer.
+        src (str): local file or folder path on host computer.
         dest (str): file path on device where the file should be copied to.
 
     Raises:
