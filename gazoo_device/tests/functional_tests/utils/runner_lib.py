@@ -22,11 +22,12 @@ the given device will be run. This is determined by checking whether each
 available test suite is applicable to the device under test.
 """
 import logging
-from typing import Any, Callable, List, Type
+from typing import Callable, List, Type
 import unittest
 
 from absl import flags
 from gazoo_device import manager
+from gazoo_device.tests.functional_tests.utils import gdm_test_base
 
 FLAGS = flags.FLAGS
 flags.DEFINE_list(
@@ -37,8 +38,7 @@ flags.DEFINE_list(
     name="tests", default=None,
     help="Names of individual tests to run.")
 
-# TODO(gdm-authors): Replace "Any" with "gdm_test_base" once it's open-source.
-SuiteCollectionType = List[Type[Any]]
+SuiteCollectionType = List[Type[gdm_test_base.GDMTestBase]]
 
 
 def identify_tests_to_run(
@@ -92,7 +92,8 @@ def identify_tests_to_run(
       for test_suite in test_suites:
         available_tests = test_loader.getTestCaseNames(test_suite)
         if requested_test in available_tests:
-          tests_to_run.addTest(test_suite(requested_test))
+          tests_to_run.addTest(
+              test_suite(requested_test))  # pytype: disable=not-instantiable
 
     # pytype doesn't recognize that tests_to_run are TestCases, not TestSuites.
     # pytype: disable=attribute-error

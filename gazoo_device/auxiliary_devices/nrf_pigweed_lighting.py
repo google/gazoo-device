@@ -35,6 +35,7 @@ except ImportError:
 logger = gdm_logger.get_logger()
 _REGEXES = {"BOOT_UP": r"<inf> app: Starting CHIP task",}
 _BOOTUP_TIMEOUT = 10  # seconds
+_RPC_TIMEOUT = 10  # seconds
 
 
 class NRFPigweedLighting(nrf_connect_sdk_device.NRFConnectSDKDevice):
@@ -81,9 +82,10 @@ class NRFPigweedLighting(nrf_connect_sdk_device.NRFConnectSDKDevice):
     Args:
       no_wait: Return before reboot completes.
     """
-    self.pw_rpc_common.reboot(bootup_logline_regex=self._regexes["BOOT_UP"],
-                              bootup_timeout=_BOOTUP_TIMEOUT,
-                              no_wait=no_wait)
+    self.pw_rpc_common.reboot(no_wait=no_wait,
+                              rpc_timeout_s=_RPC_TIMEOUT,
+                              bootup_logline_regex=self.regexes["BOOT_UP"],
+                              bootup_timeout=_BOOTUP_TIMEOUT)
 
   @decorators.LogDecorator(logger)
   def factory_reset(self, no_wait: bool = False):
@@ -93,16 +95,19 @@ class NRFPigweedLighting(nrf_connect_sdk_device.NRFConnectSDKDevice):
       no_wait: Return before reboot completes.
     """
     self.pw_rpc_common.factory_reset(
-        bootup_logline_regex=self._regexes["BOOT_UP"],
-        bootup_timeout=_BOOTUP_TIMEOUT,
-        no_wait=no_wait)
+        no_wait=no_wait,
+        rpc_timeout_s=_RPC_TIMEOUT,
+        bootup_logline_regex=self.regexes["BOOT_UP"],
+        bootup_timeout=_BOOTUP_TIMEOUT)
 
   @decorators.CapabilityDecorator(pwrpc_common_default.PwRPCCommonDefault)
   def pw_rpc_common(self):
     """PwRPCCommonDefault capability to send RPC command."""
-    return self.lazy_init(pwrpc_common_default.PwRPCCommonDefault,
-                          device_name=self.name,
-                          switchboard_call=self.switchboard.call)
+    return self.lazy_init(
+        pwrpc_common_default.PwRPCCommonDefault,
+        device_name=self.name,
+        switchboard_call=self.switchboard.call,
+        switchboard_call_expect=self.switchboard.call_and_expect)
 
   @decorators.CapabilityDecorator(pwrpc_light_default.PwRPCLightDefault)
   def pw_rpc_light(self):

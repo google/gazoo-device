@@ -22,7 +22,7 @@ release in November 2020 and are under active development. Expect most of these
 items to be complete by early June. We're releasing GDM as early as possible to
 help early adopters meet their timelines.
 
-TODO(gdm-authors): Update documentation (most of it doesn't actually need to change).
+TODO(artorl): Update documentation (most of it doesn't actually need to change).
 
 ## Table of contents
 
@@ -234,22 +234,22 @@ You should not modify them directly. Instead, use `set-prop` and
   gdm set-prop device-1234 property-name property-value
   ```
 
-* To retrieve a property value:
+* To retrieve a device property:
 
   ```
   gdm get-prop device-1234 property-name
   ```
 
-* To set a GDM property (config value):
+* To set a Manager property:
 
   ```
-  gdm set-prop property-name property-value
+  gdm set-prop manager property-name property-value
   ```
 
-* To retrieve a GDM property (config value):
+* To retrieve a Manager property:
 
   ```
-  gdm get-prop property-name
+  gdm get-prop manager property-name
   ```
 
 ## Logs

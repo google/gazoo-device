@@ -27,10 +27,24 @@ from gazoo_device.utility import host_utils
 
 logger = gdm_logger.get_logger()
 
+# Use a log marker to prevent reading preexisting persistent logs.
+_LOG_MARKER = "--- GDM Log Marker ---"
+_LOGGING_FILE_PATH = "/var/log/syslog"
+_LOG_MARKER_LINE_POS_OR_EMPTY = (
+    'grep -n -e "{marker}" {file_path} --text | tail -n 1 | cut -d '
+    '":" -f 1').format(
+        marker=_LOG_MARKER, file_path=_LOGGING_FILE_PATH)
+_LOG_MARKER_LINE_POS = (
+    "line_num=$({cmd}); [ -z \"($line_num)\" ] && echo 1 || echo"
+    " $line_num".format(cmd=_LOG_MARKER_LINE_POS_OR_EMPTY))
+
 INFO_PREFIX = "INFO_"
 COMMANDS = {
     "BOOT_UP_COMPLETE": "echo 'gdm hello'",
-    "LOGGING": "tail -F -n /var/log/messages",
+    "INJECT_LOG_MARKER": "sudo sh -c 'echo \"{marker}\" >> {file_path}'".format(
+        marker=_LOG_MARKER, file_path=_LOGGING_FILE_PATH),
+    "LOGGING": "tail -F -n +$({cmd}) {file_path}".format(
+        cmd=_LOG_MARKER_LINE_POS, file_path=_LOGGING_FILE_PATH),
     "GDM_HELLO": "echo 'gdm hello'",
 }
 REGEXES = {}
@@ -183,10 +197,7 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
       CheckDeviceReadyError: If there are no recovery steps available for
         the error argument, it will be re-raised directly.
     """
-    if isinstance(error, errors.DeviceNotResponsiveError):
-      logger.info("{} device not responding. Rebooting device.", self.name)
-      self.reboot()
-    elif isinstance(error, errors.DeviceNotBootupCompleteError):
+    if isinstance(error, errors.DeviceNotBootupCompleteError):
       logger.info("{} not fully booted up. Waiting for complete bootup.",
                   self.name)
       self.wait_for_bootup_complete()
@@ -288,6 +299,13 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
           persistent_dict[key] = value.splitlines()[-1]
         elif key == "build_date":
           persistent_dict[key] = self._convert_build_date(value)
+
+  def _inject_log_marker(self):
+    """Adds a log marker to /var/log/syslog to prevent reading preexisting logs.
+
+    Device logs are read starting with the last log marker (if present).
+    """
+    self.shell(self.commands["INJECT_LOG_MARKER"])
 
   def _set_optional_props(self):
     """Sets the optional properties for the device during detection."""

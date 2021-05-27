@@ -73,7 +73,7 @@ setuptools.setup(
     license='Apache 2.0',
 
     # define list of packages included in distribution
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(exclude=['gazoo_device.tests*']),
     package_dir={'gazoo_device': _SOURCE_CODE_DIR_NAME},
     package_data={
         'gazoo_device': ['protos/*',]

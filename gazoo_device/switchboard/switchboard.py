@@ -351,6 +351,68 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
         f"{self._device_name} switchboard.call of method {method.__qualname__} "
         f"in transport {port} failed. {response}")
 
+  def call_and_expect(self,
+                      method: types.MethodType,
+                      pattern_list: List[str],
+                      timeout: float = 30.0,
+                      searchwindowsize: int = config.SEARCHWINDOWSIZE,
+                      expect_type: str = line_identifier.LINE_TYPE_ALL,
+                      mode: str = MODE_TYPE_ANY,
+                      method_args: Tuple[Any] = (),
+                      method_kwargs: Optional[Dict[str, Any]] = None,
+                      port: int = 0,
+                      raise_for_timeout: bool = False):
+    """Calls a transport method and expects on the patterns provided.
+
+    Args:
+        method: The transport method to execute.
+        pattern_list: List of regex expressions to look for in the lines.
+        timeout: Seconds to look for the patterns.
+        searchwindowsize: Number of the last bytes to look at.
+        expect_type: 'log', 'response', or 'all'.
+        mode: Type of expect to run ("any", "all" or "sequential").
+        method_args: Positional arguments for the call.
+        method_kwargs: Keyword arguments for the call.
+        port: Number of the transport to call the method in.
+        raise_for_timeout: Raise an exception if the expect times out.
+
+    Raises:
+        DeviceError: if port specified or other expect arguments are
+                     invalid, or timed out.
+
+    Returns:
+        tuple: (ExpectResponse, object)
+        ExpectResponse: Object with values for the following attributes:
+           .index (int): the index of the expected pattern (None if
+           timeout).
+           .timedout (bool): indicating whether it timed out.
+           .time_elapsed (int): number of seconds between start and finish.
+           .match (str): re.group of pattern match.
+           .before (str): all the characters looked at before the match.
+           .after (str):  all the characters after the first matching
+           character.
+           .remaining (list): remaining patterns not matched
+           .match_list (list): re.search pattern MatchObjects
+        object: Returned value of the transport method.
+    """
+    expect_ret, func_ret = self.do_and_expect(
+        self.call, [method], {
+            "method_args": method_args,
+            "method_kwargs": method_kwargs,
+            "port": port
+            },
+        pattern_list,
+        timeout=timeout,
+        searchwindowsize=searchwindowsize,
+        expect_type=expect_type,
+        mode=mode,
+        include_func_response=True)
+    if expect_ret and expect_ret.timedout and raise_for_timeout:
+      raise errors.DeviceError(
+          "Device {} call_and_expect timed out for method {} in {}s".format(
+              self._device_name, method.__name__, timeout))
+    return expect_ret, func_ret
+
   @decorators.CapabilityLogDecorator(logger)
   def click(self, button, duration=0.5, port=0):
     """Press and release the button for the duration and port specified.
@@ -514,7 +576,8 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
                     searchwindowsize=config.SEARCHWINDOWSIZE,
                     expect_type=line_identifier.LINE_TYPE_LOG,
                     mode=MODE_TYPE_ANY,
-                    raise_for_timeout=False):
+                    raise_for_timeout=False,
+                    include_func_response=False):
     """Executes function with given args, blocks until expect matches or timeout occurs.
 
     Args:
@@ -530,8 +593,12 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
         expect_type (str): 'log', 'response', or 'all'
         mode (str): type of expect to run ("any", "all" or "sequential")
         raise_for_timeout (bool): Raise an exception if the expect times out
+        include_func_response (bool): If True, also return func's return value.
 
     Returns:
+        ExpectResponse or tuple: ExpectResponse or (ExpectResponse, object) if
+        include_func_response is True.
+
         ExpectResponse: Object with values for the following attributes:
            .index (int): the index of the expected pattern (None if
            timeout).
@@ -543,6 +610,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
            character.
            .remaining (list): remaining patterns not matched
            .match_list (list): re.search pattern MatchObjects
+        object: Returned value of the transport method.
 
     Raises:
         DeviceError: If func is not callable
@@ -563,14 +631,18 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
 
     try:
       self._enable_raw_data_queue()
-      func(*func_args, **func_kwargs)
-      return self._expect(
+      func_ret = func(*func_args, **func_kwargs)
+      expect_ret = self._expect(
           compiled_list,
           timeout,
           searchwindowsize,
           expect_type,
           mode,
           raise_for_timeout=raise_for_timeout)
+      if include_func_response:
+        return expect_ret, func_ret
+      else:
+        return expect_ret
     finally:
       self._disable_raw_data_queue()
 

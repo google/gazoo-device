@@ -1,0 +1,48 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package gazootest;
+
+message TestbedConfig {
+  // Collection of devices included within the testbed.
+  repeated Device devices = 1;
+  // Collection of “groups” to which this testbed belongs. These can be used
+  // for scheduling purposes and should suggest some sort of special
+  // configuration.
+  repeated string groups = 2;
+  // Additional dimensions to be used for task allocation.
+  map<string, string> extra_dimensions = 3;
+  // Testbed info that is useful for testing, but that shouldn’t be exposed
+  // as dimensions.
+  map<string, string> testing_properties = 4;
+  // REQUIRED. E-mail address of testbed owner. Can be a user or group.
+  string owner = 5;
+}
+
+message Device {
+  // Name of the device, as expected by GDM.
+  string name = 1;
+  // The “type” of the device. Used to generalize the device for scheduling
+  // purposes.
+  string device_type = 2;
+  // Tags can be used to quickly identify specific devices in a testbed.
+  repeated string tags = 3;
+  // Additional dimensions to be used for task allocation.
+  map<string, string> device_extra_dimensions = 4;
+  // Device info that is useful for testing, but that shouldn’t be exposed
+  // as dimensions.
+  map<string, string> device_testing_properties = 5;
+}

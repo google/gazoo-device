@@ -54,9 +54,10 @@ def export_extensions() -> Dict[str, Any]:
       },
       "capability_interfaces": [],
       "capability_flavors": [],
-      # TODO(gdm-authors): Uncomment the key below if your device needs a password to
-      # connect via SSH. Follow instructions in download_key() above to set a
-      # key up.
+      # TODO(user): Uncomment the key below if your device needs a password to
+      # connect via SSH and you want to use a controller-specific key. To set a
+      # key up, run "gdm download-keys" after registering this device
+      # controller and follow the instructions.
       "keys": [
           # example_linux_device.SSH_KEY_INFO,
       ],

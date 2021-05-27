@@ -24,7 +24,7 @@ Assumptions for this device controller to work:
 - The SSH username is "root". If not, change the value of _SSH_USERNAME.
 
 The few modifications you may need to perform to make this example controller
-work with your device are marked with # TODO(gdm-authors) comments.
+work with your device are marked with # TODO(user) comments.
 """
 import os.path
 from typing import Dict, NoReturn, Tuple
@@ -51,7 +51,7 @@ _COMMANDS = immutabledict.immutabledict({
 })
 _REGEXES = immutabledict.immutabledict({})
 _TIMEOUTS = immutabledict.immutabledict({})
-# TODO(gdm-authors): You may need to change the value of _SSH_USERNAME for your device.
+# TODO(user): You may need to change the value of _SSH_USERNAME for your device.
 _SSH_USERNAME = "root"
 
 _CONTROLLER_PACKAGE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -84,8 +84,8 @@ class ExampleLinuxDevice(ssh_device.SshDevice):
   _COMMUNICATION_KWARGS = {
       **ssh_device.SshDevice._COMMUNICATION_KWARGS,
       "username": _SSH_USERNAME,
-      # TODO(gdm-authors): Uncomment the key below if your device needs a password to
-      # connect via SSH.
+      # TODO(user): Uncomment the key below if your device needs a password to
+      # connect via SSH and you want to use a controller-specific key.
       # "key_info": SSH_KEY_INFO,
   }
   _DEFAULT_FILTERS = [
@@ -190,6 +190,9 @@ class ExampleLinuxDevice(ssh_device.SshDevice):
       raise errors.DeviceError(
           "{} reboot failed. Unsupported reboot method {!r} requested."
           .format(self.name, method))
+
+    self._inject_log_marker()
+    self.switchboard.add_log_note("GDM triggered reboot")
     # Devices typically go offline before responding to the command.
     # Use switchboard.send() directly instead of shell() to avoid waiting for a
     # response.
