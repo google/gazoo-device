@@ -30,6 +30,8 @@ import immutabledict
 from gazoo_device.tests import functional_tests
 from gazoo_device.tests.functional_tests.utils import gazootest
 
+DeviceType = custom_types.Device
+
 _TEST_CONFIG_TEMPLATE = "{device_type}_test_config.json"
 _TIMEOUTS = immutabledict.immutabledict({
     "CREATION_FAILURE": 10,
@@ -73,8 +75,7 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
 
   @classmethod
   @abc.abstractmethod
-  def is_applicable_to(cls, device_type: str,
-                       device_class: Type[custom_types.Device],
+  def is_applicable_to(cls, device_type: str, device_class: Type[DeviceType],
                        device_name: str) -> bool:
     """Determines if this test suite is applicable to the given device type.
 
@@ -236,7 +237,7 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
       self.fail("{} failed to reconnect in {}s".format(self.device.name,
                                                        _TIMEOUTS["RECONNECT"]))
 
-  def _create_device(self, device_name: str) -> custom_types.Device:
+  def _create_device(self, device_name: str) -> DeviceType:
     """Creates a device instance and ensures basic communication works.
 
     Args:
@@ -287,3 +288,7 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
         filtered_tests = list(all_tests)
         break
     return filtered_tests
+
+
+def main(*args, **kwargs):
+  return gazootest.main(*args, **kwargs)

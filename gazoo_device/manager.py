@@ -107,6 +107,10 @@ class Manager():
       self.gdm_log_handler.setFormatter(gdm_log_formatter)
       gdm_logger.add_handler(self.gdm_log_handler)
 
+    self.device_file_name = None
+    self.device_options_file_name = None
+    self.testbeds_file_name = None
+    self.log_directory = None
     self._load_configuration(device_file_name, device_options_file_name,
                              testbeds_file_name, gdm_config_file_name,
                              log_directory, adb_path)

@@ -19,13 +19,25 @@ See README.md for more information.
 """
 import unittest
 
+from gazoo_device.tests.functional_tests import auxiliary_device_common_test_suite
+from gazoo_device.tests.functional_tests import auxiliary_device_switchboard_test_suite
+from gazoo_device.tests.functional_tests import file_transfer_test_suite
+from gazoo_device.tests.functional_tests import pw_rpc_light_test_suite
+from gazoo_device.tests.functional_tests import shell_ssh_test_suite
+from gazoo_device.tests.functional_tests import switch_power_test_suite
 from gazoo_device.tests.functional_tests.utils import gazootest
 from gazoo_device.tests.functional_tests.utils import runner_lib
 
 SuiteCollectionType = runner_lib.SuiteCollectionType
 
-# TODO(artorl): Open-source test suites.
+# TODO(artorl): Open-source the remainder of functional test suites.
 TEST_SUITES = (
+    auxiliary_device_common_test_suite.AuxiliaryDeviceCommonTestSuite,
+    auxiliary_device_switchboard_test_suite.AuxiliaryDeviceSwitchboardTestSuite,
+    file_transfer_test_suite.FileTransferTestSuite,
+    pw_rpc_light_test_suite.PwRPCLightTestSuite,
+    shell_ssh_test_suite.ShellSshTestSuite,
+    switch_power_test_suite.SwitchPowerTestSuite,
 )
 
 
@@ -46,9 +58,20 @@ def load_tests(loader: unittest.TestLoader,
 
 def _reorder_test_suites(
     test_suites: SuiteCollectionType) -> SuiteCollectionType:
-  """Reorders test suites to ensure factory reset test runs before others."""
-  # TODO(artorl): Add logic here once more test suites are open-sourced.
+  """Reorders test suites to ensure factory reset run first."""
+  test_suites.sort(key=_get_suite_index)
   return test_suites
+
+
+def _get_suite_index(suite: runner_lib.SuiteType) -> int:
+  """Returns the key used for test suite sorting."""
+  aux_common_test_suite = (
+      auxiliary_device_common_test_suite.AuxiliaryDeviceCommonTestSuite)
+  if suite == aux_common_test_suite:
+    # CommonTestSuite runs first as it does a factory reset of the device.
+    return 0
+  else:
+    return 1  # Other test suites run in any order.
 
 
 if __name__ == "__main__":

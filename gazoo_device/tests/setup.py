@@ -38,8 +38,12 @@ setuptools.setup(
     package_dir={
         "gazoo_device.tests": "",
     },
+    package_data={
+        "gazoo_device.tests": ["functional_tests/configs/*.json"],
+    },
     install_requires=[
         "absl-py>=0.12.0",
         "protobuf>=3.17.0",
+        "retry>=0.9.2",
     ]
 )

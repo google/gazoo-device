@@ -38,7 +38,8 @@ flags.DEFINE_list(
     name="tests", default=None,
     help="Names of individual tests to run.")
 
-SuiteCollectionType = List[Type[gdm_test_base.GDMTestBase]]
+SuiteType = Type[gdm_test_base.GDMTestBase]
+SuiteCollectionType = List[SuiteType]
 
 
 def identify_tests_to_run(

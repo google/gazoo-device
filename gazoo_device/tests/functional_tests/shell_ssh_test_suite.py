@@ -1,0 +1,38 @@
+"""Test suite for devices using the shell_ssh capability."""
+from typing import Tuple, Type
+from gazoo_device.tests.functional_tests.utils import gdm_test_base
+
+_SUCCESS_RETURN_CODE = 0
+
+
+class ShellSshTestSuite(gdm_test_base.GDMTestBase):
+  """Functional tests for the shell_ssh capability."""
+
+  @classmethod
+  def is_applicable_to(cls, device_type: str,
+                       device_class: Type[gdm_test_base.DeviceType],
+                       device_name: str) -> bool:
+    """Determine if this test suite can run on the given device."""
+    return device_class.has_capabilities(["shell_ssh"])
+
+  @classmethod
+  def requires_pairing(cls) -> bool:
+    """Returns True if the device must be paired to run this test suite."""
+    return False
+
+  @classmethod
+  def required_test_config_variables(cls) -> Tuple[str, ...]:
+    """Returns keys required to be present in the functional test config."""
+    return ("shell_cmd",)
+
+  def test_shell_with_return_code(self):
+    """Tests shell() command execution with return code."""
+    response, code = self.device.shell_capability.shell(
+        self.test_config["shell_cmd"], include_return_code=True)
+    self.assertTrue(response)
+    self.assertIsInstance(response, str)
+    self.assertEqual(code, _SUCCESS_RETURN_CODE)
+
+
+if __name__ == "__main__":
+  gdm_test_base.main()

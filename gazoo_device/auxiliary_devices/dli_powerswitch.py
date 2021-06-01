@@ -148,16 +148,6 @@ class DliPowerSwitch(auxiliary_device.AuxiliaryDevice):
         device_config["persistent"]["console_port_name"])
 
   @decorators.LogDecorator(logger)
-  def reboot(self):
-    """Issues a soft reboot command.
-
-    Raises:
-        NotImplementedError: not supported.
-    """
-    raise NotImplementedError("{}: reboot is not supported by {}.".format(
-        self.name, self.DEVICE_TYPE))
-
-  @decorators.LogDecorator(logger)
   def recover(self, error):
     """Attempts to recover device based on the type of error specified."""
     pass
