@@ -56,7 +56,7 @@ Supported host operating systems:
 
 Note: Raspberry Pi 4 on 64-bit Ubuntu 20.04 LTS is also supported as a
 host (see the relevant
-[device setup section](docs/DEVICE_SETUP.md#raspberry-pi-as-a-host)).
+[device setup section](docs/Raspberry_Pi_as_host.md)).
 
 MacOS prerequisites:
 
@@ -152,30 +152,31 @@ bash gdm-cleanup.sh
 This is the quickest way to get your hands dirty with GDM. You'll need a
 Raspberry Pi.
 
-1. [Install GDM on the host](#install).
-2. [Set up your Raspberry Pi as an auxiliary device in GDM and try out the CLI](docs/DEVICE_SETUP.md#raspberry-pi-as-a-supporting-device).
-3. Run `gdm devices` and record the name of your Raspberry Pi (like `raspberrypi-1234`).
-4. Create a Mobly testbed for your Raspberry Pi:
+1.  [Install GDM on the host](#install).
+2.  [Set up your Raspberry Pi as an auxiliary device in GDM and try out the CLI](docs/device_setup/Raspberry_Pi_as_supporting_device.md).
+3.  Run `gdm devices` and record the name of your Raspberry Pi (like
+    `raspberrypi-1234`).
+4.  Create a Mobly testbed for your Raspberry Pi:
 
-   ```
-   cp ~/gazoo/testbeds/One-Exampledevice.yml ~/gazoo/testbeds/One-Raspberrypi.yml
-   vi ~/gazoo/testbeds/One-Raspberrypi.yml  # Or use a text editor of your choice
-   # Replace "exampledevice-1234" with your device name (like "raspberrypi-1234")
-   # Update the testbed name ("Testbed-One-Exampledevice-01" -> "Testbed-One-Raspberrypi-01")
-   ```
+    ```
+    cp ~/gazoo/testbeds/One-Exampledevice.yml ~/gazoo/testbeds/One-Raspberrypi.yml
+    vi ~/gazoo/testbeds/One-Raspberrypi.yml  # Or use a text editor of your choice
+    # Replace "exampledevice-1234" with your device name (like "raspberrypi-1234")
+    # Update the testbed name ("Testbed-One-Exampledevice-01" -> "Testbed-One-Raspberrypi-01")
+    ```
 
-5. Check out the GDM repo (which includes on-device regression tests):
+5.  Check out the GDM repo (which includes on-device regression tests):
 
-   ```
-   git clone https://github.com/google/gazoo-device.git
-   ```
+    ```
+    git clone https://github.com/google/gazoo-device.git
+    ```
 
-6. Run the GDM regression test suite for Raspberry Pi on your device:
+6.  Run the GDM regression test suite for Raspberry Pi on your device:
 
-   ```
-   cd gazoo-device/tests/
-   ./run_tests.sh -d functional_test_suites/ -f regression_test_suite.py -c ~/gazoo/testbeds/One-Raspberrypi.yml
-   ```
+    ```
+    cd gazoo-device/tests/
+    ./run_tests.sh -d functional_test_suites/ -f regression_test_suite.py -c ~/gazoo/testbeds/One-Raspberrypi.yml
+    ```
 
 ## Virtual environment
 
@@ -318,8 +319,7 @@ typically require a special setup before being usable with GDM. This can
 include a special cable connection configuration, renaming serial
 cables, updating device firmware to a specific version, setting up the
 device on a static IP address, or setting up passwordless SSH access to
-the device. Refer to [docs/DEVICE_SETUP.md](docs/DEVICE_SETUP.md) for
-instructions.
+the device. Refer to [docs/device_setup/](docs/device_setup/) for instructions.
 
 Device detection populates device configs:
 

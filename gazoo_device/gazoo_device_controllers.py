@@ -43,6 +43,7 @@ from gazoo_device.capabilities import file_transfer_scp
 from gazoo_device.capabilities import flash_build_jlink
 from gazoo_device.capabilities import package_management_android
 from gazoo_device.capabilities import pwrpc_common_default
+from gazoo_device.capabilities import pwrpc_echo_default
 from gazoo_device.capabilities import pwrpc_light_default
 from gazoo_device.capabilities import shell_ssh
 from gazoo_device.capabilities import switch_power_dli_powerswitch
@@ -59,6 +60,7 @@ from gazoo_device.capabilities.interfaces import file_transfer_base
 from gazoo_device.capabilities.interfaces import flash_build_base
 from gazoo_device.capabilities.interfaces import package_management_base
 from gazoo_device.capabilities.interfaces import pwrpc_common_base
+from gazoo_device.capabilities.interfaces import pwrpc_echo_base
 from gazoo_device.capabilities.interfaces import pwrpc_light_base
 from gazoo_device.capabilities.interfaces import shell_base
 from gazoo_device.capabilities.interfaces import switch_power_base
@@ -132,6 +134,7 @@ def export_extensions() -> Dict[str, Any]:
           flash_build_base.FlashBuildBase,
           package_management_base.PackageManagementBase,
           pwrpc_common_base.PwRPCCommonBase,
+          pwrpc_echo_base.PwRPCEchoBase,
           pwrpc_light_base.PwRPCLightBase,
           shell_base.ShellBase,
           switchboard_base.SwitchboardBase,
@@ -151,6 +154,7 @@ def export_extensions() -> Dict[str, Any]:
           flash_build_jlink.FlashBuildJLink,
           package_management_android.PackageManagementAndroid,
           pwrpc_common_default.PwRPCCommonDefault,
+          pwrpc_echo_default.PwRPCEchoDefault,
           pwrpc_light_default.PwRPCLightDefault,
           shell_ssh.ShellSSH,
           switch_power_dli_powerswitch.SwitchPowerDliPowerswitch,

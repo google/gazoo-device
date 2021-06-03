@@ -12,5 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Gazoo Device Manager version."""
-version = "1.9.0"
+"""Interface for an PwRPC (Pigweed RPC) echo capability."""
+import abc
+from gazoo_device.capabilities.interfaces import capability_base
+
+
+class PwRPCEchoBase(capability_base.CapabilityBase):
+  """Pigweed RPC echo capability."""
+
+  @abc.abstractmethod
+  def echo(self, msg: str) -> str:
+    """Sends a message to the echo endpoint and returns the response back."""

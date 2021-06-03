@@ -25,13 +25,14 @@ environment.
 6. [Try using the example controller](#try-using-the-example-controller)
    1. [View controller documentation](#view-controller-documentation)
    2. [CLI controller usage](#cli-controller-usage)
-   3. [Python API controller usage](#python-api-controller-usage)
+   3. [Examine device logs and events](#examine-device-logs-and-events)
+   4. [Python API controller usage](#python-api-controller-usage)
 7. [Conclusion & cleanup](#conclusion-cleanup)
 
 ## Prerequisite: install GDM
 
 If you haven't installed GDM yet, follow
-[the installation steps](../../README.md#install).
+[the installation steps](https://github.com/google/gazoo-device#install).
 
 ## Connect a device to your host
 
@@ -502,7 +503,98 @@ Dynamic Properties:
   switchboard.number_transports  2
 ```
 
-TODO(artorl): Add an example of device log events.
+### Examine device logs and events
+
+GDM device logs contain all commands sent by GDM and their respective device
+responses. GDM streams device logs (such as `/var/log/syslog`) to aid with
+firmware debugging. Additionally, primary devices are able to filter event logs
+to search for specific events (such as reboots, crashes, or state changes).
+
+Let's issue a GDM command from the CLI and examine the resulting device logs. \
+Issue a reboot through GDM:
+
+```shell
+gdm issue linuxexample-1234 - reboot
+```
+
+Your output will look like this:
+
+```
+$ gdm issue linuxexample-1234 - reboot
+Creating linuxexample-1234
+linuxexample-1234 starting GazooDeviceBase.check_device_ready
+linuxexample-1234 waiting up to 3s for device to be connected.
+linuxexample-1234 health check 1/3 succeeded: Check device connected.
+linuxexample-1234 logging to file /Users/artorl/gazoo/gdm/log/linuxexample-1234-20210524-170927.txt
+linuxexample-1234 health check 2/3 succeeded: Check create switchboard.
+linuxexample-1234 health check 3/3 succeeded: Check device responsiveness.
+linuxexample-1234 GazooDeviceBase.check_device_ready successful. It took 2s.
+linuxexample-1234 starting ExampleLinuxDevice.reboot
+linuxexample-1234 offline in 3s.
+linuxexample-1234 starting SwitchboardDefault.close_all_transports
+linuxexample-1234 SwitchboardDefault.close_all_transports successful. It took 0s.
+linuxexample-1234 online in 30s
+linuxexample-1234 starting SwitchboardDefault.open_all_transports
+linuxexample-1234 SwitchboardDefault.open_all_transports successful. It took 0s.
+linuxexample-1234 starting SshDevice.wait_for_bootup_complete
+linuxexample-1234 SshDevice.wait_for_bootup_complete successful. It took 5s.
+linuxexample-1234 booted up successfully in 46s.
+linuxexample-1234 starting SshDevice._after_boot_hook
+linuxexample-1234 SshDevice._after_boot_hook successful. It took 0s.
+linuxexample-1234 ExampleLinuxDevice.reboot successful. It took 54s.
+linuxexample-1234 closing switchboard processes
+```
+
+Note the following log line:
+
+> linuxexample-1234 logging to file /Users/artorl/gazoo/gdm/log/linuxexample-1234-20210524-170927.txt.
+
+This is the device log file for the current CLI interaction. Try examining the
+file in a text editor. Your device logs might look like this (an excerpt):
+
+```
+<2021-05-24 17:10:18.301901> GDM-M: Note: expecting any patterns from ['(.*)Return Code: (\\d+)\\n'] using response lines and 2000 search window in 60s
+<2021-05-24 17:10:18.302765> GDM-M: Note: wrote command "echo 'gdm hello';echo Return Code: $?\n" to port 0
+<2021-05-24 17:10:23.670547> GDM-1: --- GDM Log Marker ---
+<2021-05-24 17:10:23.680706> GDM-1: May 25 00:09:29 ubuntu systemd[1]: Stopped Daily apt download activities.
+<2021-05-24 17:10:23.681578> GDM-1: May 25 00:09:29 ubuntu systemd[1]: e2scrub_all.timer: Succeeded.
+<2021-05-24 17:10:23.681660> GDM-0: gdm hello
+<2021-05-24 17:10:23.682677> GDM-0: Return Code: 0
+<2021-05-24 17:10:23.682709> GDM-1: May 25 00:09:29 ubuntu systemd[1]: Stopped Periodic ext4 Online Metadata Check for All Filesystems.
+<2021-05-24 17:10:23.683684> GDM-1: May 25 00:09:29 ubuntu systemd[1]: fstrim.timer: Succeeded.
+<2021-05-24 17:10:23.716220> GDM-M: Note: found pattern '(.*)Return Code: (\\d+)\\n' at index 0
+<2021-05-24 17:10:23.716393> GDM-M: Note: mode any expect completed with '' remaining patterns in 5.4131388664245605s
+```
+
+- `GDM-M` logs are the commands GDM wrote to the device. They also contain
+  information about GDM's expectations for the response (regular expression,
+  timeout) and whether a response was found.
+- `GDM-0` logs are device responses.
+- `GDM-1` are general device logs (in this case from `/var/log/syslog`).
+
+The digit in `GDM-0` or `GDM-1` denotes the transport number from which the line
+was received. Typically responses are received from transport 0 and logs from
+transport 1. If only one transport is used (for example: communication over
+UART), commands and responses are interleaved in a single transport and have to
+be discerned through other means such as regular expressions.
+
+For primary devices, GDM creates a log event file for each device log file. The
+log event file has a `-events.txt` suffix. For example, the event file in this
+case is
+`/Users/artorl/gazoo/gdm/log/linuxexample-1234-20210524-170927-events.txt`.
+
+Try examining the log event file. It should look like this:
+
+```json
+{"basic.reboot_trigger": [], "log_filename": "linuxexample-1234-20210524-170927.txt", "raw_log_line": "Note: GDM triggered reboot", "system_timestamp": "2021-05-24 17:09:29.455241", "matched_timestamp": "2021-05-24 17:09:29.458663"}
+{"basic.bootup": [], "log_filename": "linuxexample-1234-20210524-170927.txt", "raw_log_line": "May 25 00:09:35 ubuntu kernel: [    0.000000] Booting Linux on physical CPU 0x0000000000 [0x410fd083]", "system_timestamp": "2021-05-24 17:10:23.730872", "matched_timestamp": "2021-05-24 17:10:23.733292"}
+```
+
+As you can see, GDM captured two events: one for triggering a reboot
+(`"basic.reboot_trigger"`) and a corresponding device boot event (`"basic.bootup"`).
+Each primary device defines a set of log event filters. Log event filters used
+by this example controller can be found in
+[log_event_filters/](log_event_filters).
 
 ### Python API controller usage
 
@@ -548,6 +640,9 @@ try:
                    "i_did_not_exist_before")
   new_optional_prop_2 = manager.get_device_prop(
       "linuxexample-1234", "new_optional_prop_2")  # "i_did_not_exist_before"
+
+  # Reboot to generate reboot trigger and bootup log events.
+  device.reboot()
 
 finally:
   # Close the device instance to release all resources (such as serial ports).

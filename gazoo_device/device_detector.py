@@ -27,7 +27,8 @@ from gazoo_device.base_classes import auxiliary_device_base
 from gazoo_device.switchboard import communication_types
 from gazoo_device.utility import pty_process_utils
 
-WIKI_URL = "https://github.com/google/gazoo-device/blob/master/docs/DEVICE_SETUP.md"  # pylint: disable=line-too-long
+WIKI_URL = (
+    "https://github.com/google/gazoo-device/blob/master/docs/device_setup")
 logger = gdm_logger.get_logger()
 
 

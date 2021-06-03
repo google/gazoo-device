@@ -35,7 +35,8 @@ GDM_LAUNCHER="$GAZOO_BIN_DIR/gdm"
 
 CONFIG_SRC_PATH="conf"
 UDEV_SRC_PATH="rules.d"
-EXAMPLE_TESTBED="One-Exampledevice.yml"
+EXAMPLE_TESTBED_GAZOOTEST="device-1234.textproto"
+EXAMPLE_TESTBED_MOBLY="One-Exampledevice.yml"
 
 source ./functions.sh
 
@@ -105,14 +106,16 @@ install_unsupported()
 
 
 create_default_configs()
-# Creates default GDM config files and an example testbed file.
+# Creates default GDM config files and example testbed files.
 {
   echo "Creating default GDM config files in $GDM_DIR/conf"
   for file in $CONFIG_SRC_PATH/*.json; do
       copy_file_if_not_exist "$file" "$GDM_DIR/$file" 644
   done
-  copy_file_if_not_exist "$CONFIG_SRC_PATH/$EXAMPLE_TESTBED" \
-                         "$GAZOO_TESTBEDS_DIR/$EXAMPLE_TESTBED" 644
+  copy_file_if_not_exist "$CONFIG_SRC_PATH/$EXAMPLE_TESTBED_MOBLY" \
+                         "$GAZOO_TESTBEDS_DIR/$EXAMPLE_TESTBED_MOBLY" 644
+  copy_file_if_not_exist "$CONFIG_SRC_PATH/$EXAMPLE_TESTBED_GAZOOTEST" \
+                         "$GAZOO_TESTBEDS_DIR/$EXAMPLE_TESTBED_GAZOOTEST" 644
 }
 
 

@@ -432,44 +432,93 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
     return hasattr(self, self._get_private_capability_name(capability_class))
 
   @decorators.LogDecorator(logger, decorators.DEBUG)
-  def make_device_ready(self, setting="on"):
-    """Check device readiness and attempt recovery if allowed.
+  def make_device_ready(self, setting: str = "on") -> None:
+    """Checks device readiness and attempts recovery if allowed.
+
+    If setting is 'off': does nothing.
+    If setting is 'check_only': only checks readiness (recovery is skipped).
+    If setting is 'on': checks readiness and attempts recovery
+    self._RECOVERY_ATTEMPTS times.
+    If setting is 'flash_build': same as 'on', but will attempt reflashing the
+    device if it's supported and if all other recovery methods fail.
 
     Args:
-        setting(str): 'on' | 'off' | 'check_only'.
+      setting: 'on', 'off', 'check_only', or 'flash_build'.
 
     Raises:
-        DeviceError: if device communication fails.
-
-    Note:
-        If setting is 'check_only', will skip recovery.
-        If setting is 'off', will skip check_device_ready and recover.
+      CheckDeviceReadyError: Re-raises the device readiness check error if
+        unable to recover from it.
+      DeviceError: If the recovery process raises an error.
     """
     if setting == "off":
       return
 
-    # check if the device is ready
-    try:
-      self.check_device_ready()
-    except errors.DeviceError as err:
-      if setting == "check_only":
-        logger.info("{} skipping device recovery", self.name)
-        raise
-
-      # attempt to recover the device
-      logger.info("{} failed check_device_ready with {}".format(
-          self.name, repr(err)))
-      self.recover(err)
-
-      # check if the device is ready after recovery
-      logger.info("{} re-checking device readiness after recovery attempt",
-                  self.name)
+    recoverable_error = None
+    unrecoverable_error = None
+    for attempt in range(self._RECOVERY_ATTEMPTS):
+      logger.info(f"{self.name} checking device readiness: attempt "
+                  f"{attempt + 1} of {self._RECOVERY_ATTEMPTS}")
       try:
         self.check_device_ready()
+      except errors.CheckDeviceReadyError as err:
+        if setting == "check_only":
+          logger.info(f"{self.name} make_device_ready setting is {setting!r}. "
+                      "Skipping device recovery")
+          raise
+        # pylint: disable=unidiomatic-typecheck
+        if type(recoverable_error) == type(err):
+          logger.info(
+              f"{self.name} readiness check raised the same error type "
+              f"{type(err).__name__!r} after a recovery attempt. "
+              "Assuming that the device is unable to recover. "
+              f"Previous error: {recoverable_error!r}. New error: {err!r}")
+          unrecoverable_error = err
+          break
+        recoverable_error = err
+      else:
+        if attempt != 0:
+          logger.info(f"{self.name} successfully recovered to a ready state "
+                      f"after {attempt + 1} recovery attempts")
+        return
+
+      logger.info(f"{self.name} attempting recovery: attempt {attempt + 1} "
+                  f"of {self._RECOVERY_ATTEMPTS}")
+      try:
+        self.recover(recoverable_error)
       except errors.DeviceError as err:
-        logger.info("{} failed check_device_ready with {}".format(
-            self.name, repr(err)))
-        raise
+        logger.info(
+            f"{self.name} recovery attempt {attempt + 1} raised an error. "
+            f"Assuming that the device is unable to recover. Error: {err!r}")
+        unrecoverable_error = err
+        break
+    else:
+      logger.info(f"{self.name} ran out of recovery attempts. "
+                  "Executing a final device readiness check.")
+      try:
+        self.check_device_ready()
+      except errors.CheckDeviceReadyError as err:
+        unrecoverable_error = err
+      else:
+        logger.info(f"{self.name} successfully recovered to a ready state "
+                    f"after {self._RECOVERY_ATTEMPTS} recovery attempts")
+        return
+
+    # If execution gets here, either recovery failed due to an error during
+    # recover() or due to seeing the same CheckDeviceReadyError after a
+    # successful recover() call, or recovery ran out of attempts.
+    if setting != "flash_build" or not self.has_capabilities(["flash_build"]):
+      if setting == "flash_build":
+        logger.warning(f"{self.name} make_device_ready setting is {setting!r}, "
+                       "but device does not support 'flash_build' capability")
+      logger.info(f"{self.name} was not able to recover from "
+                  f"{unrecoverable_error!r}")
+      raise unrecoverable_error
+
+    logger.info(f"{self.name} re-flashing device with the default build")
+    self.flash_build.upgrade(forced_upgrade=True)
+    logger.info(f"{self.name} checking device readiness after reflashing")
+    self.check_device_ready()
+    logger.info(f"{self.name} successfully recovered to a ready state")
 
   @decorators.PersistentProperty
   def owner(self) -> str:

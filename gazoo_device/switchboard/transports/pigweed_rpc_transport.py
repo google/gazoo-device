@@ -201,17 +201,17 @@ class PigweedRPCTransport(transport_base.TransportBase):
 
   def _close(self) -> None:
     """Closes the PwRPC transport."""
+    self._hdlc_client.close()
     fcntl.flock(self._serial.fileno(), fcntl.LOCK_UN)
     self._serial.close()
-    self._hdlc_client.close()
 
   def _open(self) -> None:
     """Opens the PwRPC transport."""
     self._serial.open()
-    self._hdlc_client.start()
     fd = self._serial.fileno()
     flags = fcntl.fcntl(fd, fcntl.F_GETFD)
     fcntl.fcntl(fd, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
+    self._hdlc_client.start()
 
   def _read(self, size: int, timeout: float) -> bytes:
     """Returns Pigweed log from the HDLC channel 1.
@@ -248,7 +248,7 @@ class PigweedRPCTransport(transport_base.TransportBase):
           service_name: str,
           event_name: str,
           **kwargs: Dict[str, Any]) -> Tuple[bool, bytes]:
-    """RPC call to the specific endpoint with given service and event name.
+    """RPC call to the Matter endpoint with given service and event name.
 
     Args:
       service_name: PwRPC service name.
@@ -256,10 +256,29 @@ class PigweedRPCTransport(transport_base.TransportBase):
       **kwargs: Arguments for the event method.
 
     Returns:
-      True if pwrpc succeeded, false otherwise.
+      (RPC ack value, RPC encoded payload in bytes)
     """
     client_channel = self._hdlc_client.rpcs().chip.rpc
     service = getattr(client_channel, service_name)
     event = getattr(service, event_name)
     ack, payload = event(**kwargs)
     return ack.ok(), payload.SerializeToString()
+
+  def echo_rpc(self, msg: str) -> Tuple[bool, str]:
+    """Calls the Echo RPC endpoint.
+
+    Sends a message to the echo endpoint and returns the response back. Uses a
+    different namespace (pw.rpc) than the rest of Matter endpoints (chip.rpc).
+    Only used by the Pigweed Echo example app:
+    https://github.com/project-chip/connectedhomeip/tree/master/examples/pigweed-app/esp32#chip-esp32-pigweed-example-application
+
+    Args:
+      msg: Echo message to send.
+
+    Returns:
+      (RPC ack value, Echo message)
+    """
+    client_channel = self._hdlc_client.rpcs().pw.rpc
+    echo_service = client_channel.EchoService
+    ack, payload = echo_service.Echo(msg=msg)
+    return ack.ok(), payload.msg

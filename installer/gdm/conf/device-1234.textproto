@@ -1,0 +1,6 @@
+# proto-message: TestbedConfig
+devices {
+  name: "device-1234"  # Must match the device name in output of "gdm devices"
+  device_type: "device"  # Same as seen in the device name
+}
+owner: "your@email.com"

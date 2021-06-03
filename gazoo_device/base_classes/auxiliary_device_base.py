@@ -28,6 +28,8 @@ class AuxiliaryDeviceBase(abc.ABC):
   DEVICE_TYPE = None  # Override
   _COMMUNICATION_KWARGS = {}
   _OWNER_EMAIL = ""  # override in child classes
+  # Maximum number of attempts for recovery from health check failures.
+  _RECOVERY_ATTEMPTS = 1
 
   @abc.abstractproperty
   def alias(self):
@@ -130,14 +132,23 @@ class AuxiliaryDeviceBase(abc.ABC):
     """
 
   @abc.abstractmethod
-  def make_device_ready(self, setting):
-    """Validates and puts device in a testable state or raises an error.
+  def make_device_ready(self, setting: str = "on") -> None:
+    """Checks device readiness and attempts recovery if allowed.
+
+    If setting is 'off': does nothing.
+    If setting is 'check_only': only checks readiness (recovery is skipped).
+    If setting is 'on': checks readiness and attempts recovery
+    self._RECOVERY_ATTEMPTS times.
+    If setting is 'flash_build': same as 'on', but will attempt reflashing the
+    device if it's supported and if all other recovery methods fail.
 
     Args:
-        setting (str): off | on | check_only
+      setting: 'on', 'off', 'check_only', or 'flash_build'.
 
-    Notes: If setting is off, will skip check_device_ready and recover.
-        If check_only, will skip recovery.
+    Raises:
+      CheckDeviceReadyError: Re-raises the device readiness check error if
+        unable to recover from it.
+      DeviceError: If the recovery process raises an error.
     """
 
   @abc.abstractmethod

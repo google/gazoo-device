@@ -1,7 +1,7 @@
 #!/bin/sh
 # This is the launcher script for GDM.
 # It allows updating or downgrading GDM CLI through "gdm update-gdm <version>".
-LAUNCHER_VERSION="1.0"
+LAUNCHER_VERSION="1.1"
 
 GDM_BASE="${HOME}/gazoo/gdm"
 GDM_VIRTUAL_ENV="$GDM_BASE/virtual_env"

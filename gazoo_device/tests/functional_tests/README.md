@@ -73,17 +73,39 @@ If a list of test suites to run is not specified, all applicable test suites for
 the given device will be run. Similarly, if individual tests to run are not
 specified, all tests in the applicable (or selected) test suites will be run.
 
-As a prerequisite, set up a virtual environment and install *gazoo-device* and
-*gazoo-device.tests* in it:
+### Prerequisites
 
-```shell
-cd gazoo_device/tests/
-python3 -m virtualenv test_env
-source test_env/bin/activate
-pip install -e ../../ ./
-```
+1. [Install GDM on the host](https://github.com/google/gazoo-device#install)
+   (if you haven't already).
+2. [Set up a local device and detect it with GDM](https://github.com/google/gazoo-device/blob/master/docs/device_setup).
+3. Create a testbed file for the device.
 
-Examples:
+   Find the GDM device name:
+
+   ```
+   gdm devices
+   ```
+
+   Then make a copy of the provided example testbed and replace "device-1234"
+   and "device" with your device name and type:
+
+   ```shell
+   cp ~/gazoo/testbeds/device-1234.textproto ~/gazoo/testbeds/<your-device-name>.textproto
+   # Now update the "name" and "device_type" fields in
+   # ~/gazoo/testbeds/<your-device-name>.textproto.
+   ```
+
+4. Set up a virtual environment and install *gazoo-device* and
+   *gazoo-device.tests* in it:
+
+   ```shell
+   cd gazoo_device/tests/
+   python3 -m virtualenv test_env
+   source test_env/bin/activate
+   pip install -e ../../ ./
+   ```
+
+### Run tests
 
 * Run all presubmit tests (excludes volatile & slow):
 
