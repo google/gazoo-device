@@ -63,6 +63,7 @@ class FileTransferAdb(file_transfer_base.FileTransferBase):
 
     logger.info("{} receiving from device. Source: {} Destination: {}",
                 self._device_name, src, dest)
+    self._check_adb_mode(self._communication_address)
     output = adb_utils.pull_from_device(
         self._communication_address, src, destination_path=dest)
     for line in output.splitlines():
@@ -88,6 +89,7 @@ class FileTransferAdb(file_transfer_base.FileTransferBase):
 
     logger.info("{} sending file(s) to device. Source: {} Destination: {}",
                 self._device_name, src, dest)
+    self._check_adb_mode(self._communication_address)
     try:
       output = adb_utils.push_to_device(self._communication_address, src, dest)
       for line in output.splitlines():
@@ -95,3 +97,17 @@ class FileTransferAdb(file_transfer_base.FileTransferBase):
     except RuntimeError as err:
       raise errors.DeviceError("Unable to copy {} to {} on device. "
                                "Error: {!r}".format(src, dest, err))
+
+  def _check_adb_mode(self, adb_serial):
+    """Checks that the adb serial of the device is available for use.
+
+    Args:
+        adb_serial (str): adb serial of the device.
+
+    Raises:
+        DeviceError: device is not available in adb device list.
+    """
+    if not adb_utils.is_adb_mode(adb_serial):
+      raise errors.DeviceError(
+          "{}'s adb serial {} is not in adb device list.".format(
+              self._device_name, adb_serial))

@@ -188,19 +188,17 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     ]
 
   @decorators.DynamicProperty
-  def log_file_name(self):
-    """Returns current log file name in use.
+  def log_file_name(self) -> str:
+    """Current device log file name in use.
 
     Returns:
-        str: Path to current log file name.
+      Path to current device log file name.
 
-    Note:
-        When the device has been recently created it might be possible that
-        the log file path does not yet exist but will be created very soon.
-        The caller is still expected to check if the file path returned
-        exists. The caller should refer to this property often because log
-        rotation might cause the log path to change depending on the
-        max_log_size value currently in use.
+    When the device has been recently created it might be possible that the log
+    file path does not yet exist, but will be created very soon. The caller is
+    expected to check if the file path returned exists. The caller should refer
+    to this property often because log rotation might cause the log path to
+    change depending on the max_log_size value currently in use.
     """
     current_log_filename = self._log_file_name
 

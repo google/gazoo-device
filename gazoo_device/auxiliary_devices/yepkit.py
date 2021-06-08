@@ -222,19 +222,6 @@ class Yepkit(auxiliary_device.AuxiliaryDevice):
     return device_config["persistent"][
         "console_port_name"] in host_utils.get_all_yepkit_serials()
 
-  @decorators.LogDecorator(logger)
-  def recover(self, error):
-    """Attempts to recover device based on the type of error specified.
-
-    Args:
-        error (CheckDeviceReadyError): A subclass of CheckDeviceReadyError that
-        will be used to identify a possible recovery solution to use.
-
-    Raises:
-        CheckDeviceReadyError: if no recovery options available for error.
-    """
-    raise error
-
   def shell(self,
             command,
             command_name="shell",

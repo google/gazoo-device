@@ -267,7 +267,7 @@ def get_adb_devices(adb_path=None):
     logger.warning(repr(err))
     return []
   device_lines = [x for x in output.splitlines() if "\tdevice" in x]
-  return [x.split()[0] for x in device_lines]
+  return [x.split()[0].split(":", 1)[0] for x in device_lines]
 
 
 def get_adb_path(adb_path=None):
@@ -309,13 +309,22 @@ def is_valid_path(path):
   return path and os.path.exists(path)
 
 
-def shell(adb_serial, command, adb_path=None):
+def connect(adb_serial, adb_path=None):
+  """Connects to device via ADB."""
+  resp = _adb_command(["connect", adb_serial], adb_path=None)
+  if "unable to connect" in str(resp):
+    raise errors.DeviceError(
+        f"Unable to connect to device {adb_serial!r} via ADB: {resp}")
+
+
+def shell(adb_serial, command, adb_path=None, timeout=None):
   """Issues a command to the shell of the adb_serial provided.
 
   Args:
       adb_serial (str): Device serial number
       command (str): command to send
       adb_path (str): optional alternative path to adb executable
+      timeout (int): time in seconds to wait for adb process to complete.
 
   Returns:
       str: response from adb command
@@ -324,7 +333,8 @@ def shell(adb_serial, command, adb_path=None):
       If adb_path is not provided then path returned by get_adb_path will be
       used instead.
   """
-  return _adb_command(["shell", command], adb_serial, adb_path=adb_path)
+  return _adb_command(["shell", command], adb_serial,
+                      adb_path=adb_path, timeout=timeout)
 
 
 def get_fastboot_devices(fastboot_path=None):
@@ -600,7 +610,8 @@ def verify_user_has_fastboot(device_name):
 def _adb_command(command,
                  adb_serial=None,
                  adb_path=None,
-                 include_return_code=False):
+                 include_return_code=False,
+                 timeout=None):
   """Returns the output of the adb command and optionally the return code.
 
   Args:
@@ -609,6 +620,7 @@ def _adb_command(command,
       adb_path (str): optional alternative path to adb executable
       include_return_code (bool): flag indicating return code should also be
         returned.
+      timeout (int): time in seconds to wait for adb process to complete.
 
   Raises:
       RuntimeError: if adb_path provided or obtained from get_adb_path is
@@ -635,7 +647,12 @@ def _adb_command(command,
     args.extend(command)
   proc = subprocess.Popen(
       args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-  output, _ = proc.communicate()
+
+  try:
+    output, _ = proc.communicate(timeout=timeout)
+  except subprocess.TimeoutExpired:
+    proc.terminate()
+    output, _ = proc.communicate()
   output = output.decode("utf-8", "replace")
   logger.debug("adb command {!r} to {} returned {!r}".format(
       command, adb_serial, output))

@@ -29,6 +29,7 @@ from gazoo_device import extensions
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import auxiliary_device_base
 from gazoo_device.capabilities.interfaces import capability_base
+from gazoo_device.switchboard import log_process
 from gazoo_device.utility import common_utils
 from gazoo_device.utility import deprecation_utils
 
@@ -151,13 +152,27 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
     return [self.check_device_connected]
 
   @decorators.DynamicProperty
-  def log_file_name(self):
-    """Returns current log file name in use.
+  def log_file_name(self) -> str:
+    """Current device log file name in use.
 
     Returns:
-        str: Path to current log file name.
+      Path to current device log file name.
+
+    When the device has been recently created it might be possible that the log
+    file path does not yet exist, but will be created very soon. The caller is
+    expected to check if the file path returned exists. The caller should refer
+    to this property often because log rotation might cause the log path to
+    change depending on the max_log_size value currently in use.
     """
-    return self._log_file_name
+    current_log_filename = self._log_file_name
+
+    # Check if log file has rotated to next log filename
+    next_log_filename = log_process.get_next_log_filename(current_log_filename)
+    while os.path.exists(next_log_filename):
+      current_log_filename = next_log_filename
+      next_log_filename = log_process.get_next_log_filename(
+          current_log_filename)
+    return current_log_filename
 
   @decorators.PersistentProperty
   def regexes(self):
@@ -524,6 +539,20 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
   def owner(self) -> str:
     """Email of the owner (maintainer) of this device class."""
     return self._OWNER_EMAIL
+
+  @decorators.LogDecorator(logger)
+  def recover(self, error: errors.CheckDeviceReadyError) -> None:
+    """Attempts to recover device based on the type of error specified.
+
+    Args:
+      error: A subclass of CheckDeviceReadyError that will be used to identify
+        a possible recovery solution to use.
+
+    Raises:
+      CheckDeviceReadyError: If there are no recovery steps available for
+        the error argument, it will be re-raised directly.
+    """
+    raise error
 
   @decorators.LogDecorator(logger, decorators.DEBUG)
   def reset_all_capabilities(self):

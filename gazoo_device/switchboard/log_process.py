@@ -40,6 +40,7 @@ according to the following assumptions:
 import codecs
 import datetime
 import os
+import re
 import time
 
 from gazoo_device.switchboard import data_framer
@@ -94,10 +95,11 @@ def get_next_log_filename(current_log_path):
           <name_prefix>-<device_name>-<timestamp>.00002.txt
   """
   log_path_no_ext, log_path_ext = os.path.splitext(current_log_path)
-  base_log_path, counter_str = os.path.splitext(log_path_no_ext)
-  try:
-    counter = int(counter_str[-5:])
-  except ValueError:
+  if re.search(r"\.\d{5}$", log_path_no_ext):
+    base_log_path, counter_str = log_path_no_ext.rsplit(".", 1)
+    counter = int(counter_str)
+  else:
+    base_log_path = log_path_no_ext
     counter = 0
   next_counter_str = ".{:05}".format(counter + 1)
   return base_log_path + next_counter_str + log_path_ext

@@ -147,11 +147,6 @@ class DliPowerSwitch(auxiliary_device.AuxiliaryDevice):
     return host_utils.is_pingable(
         device_config["persistent"]["console_port_name"])
 
-  @decorators.LogDecorator(logger)
-  def recover(self, error):
-    """Attempts to recover device based on the type of error specified."""
-    pass
-
   @decorators.CapabilityDecorator(switchboard.SwitchboardDefault)
   def switchboard(self):
     """Instance for communicating with the device."""

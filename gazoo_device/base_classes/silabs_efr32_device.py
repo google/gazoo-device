@@ -14,7 +14,7 @@
 
 """Base class module for Silabs EFR32 platform device."""
 import os
-from typing import Dict, Tuple, NoReturn
+from typing import Dict, Tuple
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -62,18 +62,6 @@ class SilabsEFR32Device(auxiliary_device.AuxiliaryDevice):
       Whether or not the serial port is connected.
     """
     return os.path.exists(device_config["persistent"]["console_port_name"])
-
-  @decorators.LogDecorator(logger)
-  def recover(self, error: errors.CheckDeviceReadyError) -> NoReturn:
-    """Recovery method to overwrite the abstract base class.
-
-    Args:
-      error: An error raised by check_device_ready.
-
-    Raises:
-      CheckDeviceReadyError: Currently no recovery mechanism is implemented.
-    """
-    raise error
 
   @decorators.PersistentProperty
   def os(self) -> str:

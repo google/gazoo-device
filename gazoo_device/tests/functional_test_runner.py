@@ -21,7 +21,11 @@ import unittest
 
 from gazoo_device.tests.functional_tests import auxiliary_device_common_test_suite
 from gazoo_device.tests.functional_tests import auxiliary_device_switchboard_test_suite
+from gazoo_device.tests.functional_tests import comm_power_test_suite
+from gazoo_device.tests.functional_tests import device_power_test_suite
 from gazoo_device.tests.functional_tests import file_transfer_test_suite
+from gazoo_device.tests.functional_tests import optional_properties_test_suite
+from gazoo_device.tests.functional_tests import package_management_test_suite
 from gazoo_device.tests.functional_tests import pw_rpc_light_test_suite
 from gazoo_device.tests.functional_tests import shell_ssh_test_suite
 from gazoo_device.tests.functional_tests import switch_power_test_suite
@@ -34,7 +38,11 @@ SuiteCollectionType = runner_lib.SuiteCollectionType
 TEST_SUITES = (
     auxiliary_device_common_test_suite.AuxiliaryDeviceCommonTestSuite,
     auxiliary_device_switchboard_test_suite.AuxiliaryDeviceSwitchboardTestSuite,
+    comm_power_test_suite.CommPowerTestSuite,
+    device_power_test_suite.DevicePowerTestSuite,
     file_transfer_test_suite.FileTransferTestSuite,
+    optional_properties_test_suite.OptionalPropertiesTestSuite,
+    package_management_test_suite.PackageManagementTestSuite,
     pw_rpc_light_test_suite.PwRPCLightTestSuite,
     shell_ssh_test_suite.ShellSshTestSuite,
     switch_power_test_suite.SwitchPowerTestSuite,

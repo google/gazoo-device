@@ -464,6 +464,8 @@ class FireManager(manager.Manager):
         arg for arg in (device_type, class_attr_name, capability_attr_name)
         if arg)
     args = args.replace(".", " ")
+    # Allow both dashes and underscores for names.
+    args = args.replace("-", "_")
     args_list = args.split()
     device_type, class_attr_name, capability_attr_name = (
         args_list + [None] * (3 - len(args_list)))
