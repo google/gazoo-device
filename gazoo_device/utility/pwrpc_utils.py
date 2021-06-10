@@ -15,17 +15,21 @@
 """Utility module for interaction with PwRPC (Pigweed RPC)."""
 import enum
 import os
-from typing import Any, Callable
+from typing import Callable
+
 from gazoo_device import errors
 from gazoo_device import gdm_logger
+from gazoo_device.capabilities.interfaces import switchboard_base
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
 
 # TODO(b/185956488): Remove conditional imports of Pigweed
 try:
   # pylint: disable=g-import-not-at-top
+  # pytype: disable=import-error
   from button_service import button_service_pb2
   from device_service import device_service_pb2
   from lighting_service import lighting_service_pb2
+  # pytype: enable=import-error
   _PWRPC_PROTOS = (button_service_pb2, device_service_pb2, lighting_service_pb2)
 except ImportError:
   _PWRPC_PROTOS = None
@@ -53,7 +57,8 @@ _PIGWEED_APP_ENDPOINTS = (
 def get_application_type(
     address: str,
     log_path: str,
-    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> str:
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> str:
   """Returns Pigweed application type of the device.
 
   Args:

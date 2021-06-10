@@ -195,8 +195,8 @@ def _get_vendor_product_id(device_dict):
 
 def _get_port_number(
     device_dict: _DeviceDictType,
-    port_mapping: Dict[str, int] = None,
-    parent_device_dict: _DeviceDictType = None) -> int:
+    port_mapping: Optional[Dict[str, int]] = None,
+    parent_device_dict: Optional[_DeviceDictType] = None) -> Optional[int]:
   """Last two digits correspond to the port number.
 
   Args:

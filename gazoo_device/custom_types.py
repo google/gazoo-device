@@ -34,3 +34,9 @@ PersistentConfigsDict = Dict[
 OptionalConfigsDict = Dict[
     Literal["device_options", "other_device_options"],
     Dict[DeviceName, DeviceConfig]]
+# Such entries are present in Manager._devices and Manager.other_devices.
+ManagerDeviceConfigDict = Dict[Literal["persistent", "options"],
+                               DeviceConfig]
+# Returned by <device_instance>.props.
+DeviceClassConfigDict = Dict[Literal["persistent_identifiers", "optional"],
+                             DeviceConfig]

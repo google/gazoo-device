@@ -143,6 +143,8 @@ import functools
 import inspect
 import logging
 import time
+from typing import Any, Callable
+
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 
@@ -251,6 +253,7 @@ class CapabilityProperty(property):
 
   Disambiguates device property definitions and device capability definitions.
   """
+  fget: Callable[[Any], Any]  # Make pytype aware of the "fget" attribute.
 
   def __init__(self, fget, classes):
     """Initialize the capability property.
@@ -503,6 +506,8 @@ class DynamicProperty(property):
   These properties may be settable if there is a corresponding setter property
   function.
   """
+  # Make pytype aware of the "setter" attribute.
+  setter: Callable[[Callable[[Any, Any], None]], None]
 
   def __init__(self, fget, fset=None, fdel=None, doc=None):
     if not doc:
@@ -522,7 +527,8 @@ class OptionalProperty(property):
   These values may be reset if a device is deleted and then re-added.
   If the device is redetected, optional properties will be preserved.
   """
-  setter = property.setter  # Make pytype aware of the "setter" attribute.
+  # Make pytype aware of the "setter" attribute.
+  setter: Callable[[Callable[[Any, Any], None]], None]
 
   def __init__(self, fget, fset=None, fdel=None, doc=None):
     if not doc:

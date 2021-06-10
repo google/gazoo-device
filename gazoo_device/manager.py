@@ -1300,7 +1300,8 @@ class Manager():
 
   def _get_config_prop(
       self, prop: Optional[str] = None
-  ) -> Union[custom_types.PropertyValue, Dict[str, custom_types.PropertyValue]]:
+  ) -> Union[custom_types.PropertyValue,
+             Dict[str, Dict[str, custom_types.PropertyValue]]]:
     """Returns the value of an GDM config property.
 
     Args:

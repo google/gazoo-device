@@ -101,7 +101,7 @@ def parallel_process(action_name,
   # initiate new process for each device with provided arguments
   for device in devices:
     device_type = device.DEVICE_TYPE
-    args = [fcn, return_queue, error_queue]
+    args = (fcn, return_queue, error_queue)
     kwargs = {"device": device}
     if logger:
       kwargs["logger"] = logger

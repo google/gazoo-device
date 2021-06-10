@@ -1,7 +1,23 @@
-"""Test suite for Switchboard capability on auxiliary devices."""
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Test suite for Switchboard capability."""
+import os.path
+import time
 from typing import Tuple, Type
 
-from gazoo_device.base_classes import auxiliary_device
+from gazoo_device.switchboard import log_process
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 
 
@@ -17,16 +33,15 @@ class MockPowerSwitch:
     return self._is_on
 
 
-class AuxiliaryDeviceSwitchboardTestSuite(gdm_test_base.GDMTestBase):
-  """Test suite for Switchboard capability on auxiliary devices."""
+class SwitchboardTestSuite(gdm_test_base.GDMTestBase):
+  """Test suite for Switchboard capability."""
 
   @classmethod
   def is_applicable_to(cls, device_type: str,
                        device_class: Type[gdm_test_base.DeviceType],
                        device_name: str) -> bool:
     """Determine if this test suite can run on the given device."""
-    return (issubclass(device_class, auxiliary_device.AuxiliaryDevice)
-            and device_class.has_capabilities(["switchboard"]))
+    return device_class.has_capabilities(["switchboard"])
 
   @classmethod
   def requires_pairing(cls) -> bool:
@@ -74,6 +89,34 @@ class AuxiliaryDeviceSwitchboardTestSuite(gdm_test_base.GDMTestBase):
                     "Response should have timed out, but it didn't. "
                     f"Requested log line regex: {phrase!r}. "
                     f"Device output: {response.before!r}")
+
+  def test_rotate_log(self):
+    """Tests max_log_size and auto log rotation features."""
+    old_log_file_name = self.device.log_file_name
+    expected_log_filename = log_process.get_next_log_filename(old_log_file_name)
+    expected_message = "Special message to trigger at least one log rotation"
+    max_log_size = len(expected_message) * 10
+    self.device.switchboard.set_max_log_size(max_log_size)
+
+    try:
+      for _ in range(20):
+        self.device.switchboard.add_log_note(expected_message)
+      end_time = time.time() + 3
+      while (old_log_file_name == self.device.log_file_name
+             and time.time() < end_time):
+        time.sleep(0.1)
+      self.assertTrue(
+          os.path.exists(old_log_file_name),
+          f"Expected old log file name {old_log_file_name} to exist")
+      self.assertTrue(
+          os.path.exists(expected_log_filename),
+          f"Expected new log file name {expected_log_filename} to exist")
+      self.assertNotEqual(
+          old_log_file_name, self.device.log_file_name,
+          f"Expected log file name to change from {old_log_file_name}")
+    finally:
+      # Disable log rotation (the default) after the test.
+      self.device.switchboard.set_max_log_size(0)
 
 
 if __name__ == "__main__":

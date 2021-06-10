@@ -19,8 +19,8 @@ transports, buttons, data framers, and line identifiers.
 """
 import abc
 import os
-import pathlib
-from typing import Dict, Optional
+import types
+from typing import Collection, Optional
 
 from gazoo_device import data_types
 from gazoo_device import errors
@@ -92,11 +92,9 @@ class CommunicationType(abc.ABC):
   Child classes will likely overwrite init with their required args.
   """
 
-  def __init__(self, comms_address, **kwargs):
+  def __init__(self, comms_address):
     """Initiates args."""
     self.comms_address = comms_address
-    for name, value in kwargs.items():
-      setattr(self, name, value)
 
   def get_button_list(self):
     """Set ups the list of FTDI button instances as needed.
@@ -195,8 +193,9 @@ class AdbComms(CommunicationType):
                log_cmd="logcat -v threadtime",
                shell_cmd="shell",
                event_log_cmd=None):
-    super(AdbComms, self).__init__(
-        comms_address=comms_address, log_cmd=log_cmd, shell_cmd=shell_cmd)
+    super().__init__(comms_address)
+    self.log_cmd = log_cmd
+    self.shell_cmd = shell_cmd
     self.event_log_cmd = event_log_cmd
 
   @classmethod
@@ -227,11 +226,9 @@ class DockerComms(CommunicationType):
                comms_address,
                secondary_comms_address=None,
                secondary_log_pattern=None):
-    self.comms_address = comms_address
-    super().__init__(
-        comms_address=comms_address,
-        secondary_comms_address=secondary_comms_address,
-        secondary_log_pattern=secondary_log_pattern)
+    super().__init__(comms_address)
+    self.secondary_comms_address = secondary_comms_address
+    self.secondary_log_pattern = secondary_log_pattern
 
   @classmethod
   def get_comms_addresses(cls):
@@ -258,11 +255,10 @@ class JlinkSerialComms(CommunicationType):
     return []
 
   def __init__(self, comms_address, baudrate=115200):
-    secondary_address = usb_utils.get_serial_number_from_path(comms_address)
-    super(JlinkSerialComms, self).__init__(
-        comms_address=comms_address,
-        secondary_address=secondary_address,
-        baudrate=baudrate)
+    super().__init__(comms_address)
+    self.secondary_address = usb_utils.get_serial_number_from_path(
+        comms_address)
+    self.baudrate = baudrate
 
   def get_transport_list(self):
     return [
@@ -288,9 +284,8 @@ class PtyProcessComms(CommunicationType):
   def __init__(self, comms_address):
     full_command_list = comms_address.split()
     comms_address = full_command_list[0]
-    args = " ".join(full_command_list[1:])
-    super(PtyProcessComms, self).__init__(
-        comms_address=comms_address, args=args)
+    super().__init__(comms_address)
+    self.args = " ".join(full_command_list[1:])
 
   def get_transport_list(self):
     return [pty_transport.PtyTransport(self.comms_address, args=self.args)]
@@ -318,12 +313,11 @@ class SshComms(CommunicationType):
                args: str = host_utils.DEFAULT_SSH_OPTIONS,
                key_info: Optional[data_types.KeyInfo] = None,
                username: str = "root"):
-    super().__init__(
-        comms_address=comms_address,
-        log_cmd=log_cmd,
-        args=args,
-        username=username,
-        key_info=key_info)
+    super().__init__(comms_address)
+    self.log_cmd = log_cmd
+    self.args = args
+    self.username = username
+    self.key_info = key_info
 
   def get_transport_list(self):
     return [
@@ -352,10 +346,9 @@ class SerialComms(CommunicationType):
                log_line_regex=None,
                baudrate=serial_transport.DEFAULT_BAUDRATE):
 
-    super(SerialComms, self).__init__(
-        comms_address=comms_address,
-        log_line_regex=log_line_regex,
-        baudrate=baudrate)
+    super().__init__(comms_address)
+    self.log_line_regex = log_line_regex
+    self.baudrate = baudrate
 
   @classmethod
   def get_comms_addresses(cls):
@@ -424,12 +417,11 @@ class PigweedSerialComms(CommunicationType):
 
   def __init__(self,
                comms_address: str,
-               protobufs: Dict[str, pathlib.Path],
+               protobufs: Collection[types.ModuleType],
                baudrate: int = serial_transport.DEFAULT_BAUDRATE):
-    super().__init__(
-        comms_address=comms_address,
-        protobufs=protobufs,
-        baudrate=baudrate)
+    super().__init__(comms_address)
+    self.protobufs = protobufs
+    self.baudrate = baudrate
 
   def get_transport_list(self):
     return [pigweed_rpc_transport.PigweedRPCTransport(

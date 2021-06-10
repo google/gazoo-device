@@ -305,7 +305,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
 
   def call(self,
            method: types.MethodType,
-           method_args: Tuple[Any] = (),
+           method_args: Tuple[Any, ...] = (),
            method_kwargs: Optional[Dict[str, Any]] = None,
            port: int = 0) -> Any:
     """Calls a transport method in a transport process and returns the response.
@@ -358,7 +358,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
                       searchwindowsize: int = config.SEARCHWINDOWSIZE,
                       expect_type: str = line_identifier.LINE_TYPE_ALL,
                       mode: str = MODE_TYPE_ANY,
-                      method_args: Tuple[Any] = (),
+                      method_args: Tuple[Any, ...] = (),
                       method_kwargs: Optional[Dict[str, Any]] = None,
                       port: int = 0,
                       raise_for_timeout: bool = False):
@@ -1058,7 +1058,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
                       add_newline=True,
                       newline="\n",
                       command_tries=1,
-                      raise_for_timeout=False):
+                      raise_for_timeout=False) -> ExpectResponse:
     r"""Sends the command and expects on the patterns provided.
 
     Note: this method does not prepend the command with a wakeup character which
@@ -1108,7 +1108,6 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     Note:
         Flushes the expect queue before and after an send.
     """
-    result = None
     for _ in range(command_tries):
       result = self.do_and_expect(
           self.send, [command], {
@@ -1126,7 +1125,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
         continue
       return result
 
-    if result and result.timedout and raise_for_timeout:
+    if result.timedout and raise_for_timeout:
       raise errors.DeviceError(
           "Device {} send_and_expect timed out for command {}".format(
               self._device_name, command))

@@ -19,7 +19,7 @@ import inspect
 import json
 import os.path
 import time
-from typing import Any, Dict, Iterable, List, Sequence, Tuple, Type
+from typing import Any, Collection, Dict, List, Sequence, Tuple, Type
 
 from absl import flags
 from gazoo_device import custom_types
@@ -102,7 +102,7 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
 
   @classmethod
   def check_properties_set(cls, device_name: str,
-                           property_list: Iterable[str]) -> bool:
+                           property_list: Collection[str]) -> bool:
     """Returns True if all of the properties are set."""
     mgr = manager.Manager()
     for property_name in property_list:

@@ -24,9 +24,11 @@ from gazoo_device.utility import pwrpc_utils
 # TODO(b/185956488): Remove conditional imports of Pigweed
 try:
   # pylint: disable=g-import-not-at-top
+  # pytype: disable=import-error
   from button_service import button_service_pb2
   from device_service import device_service_pb2
   from lighting_service import lighting_service_pb2
+  # pytype: enable=import-error
 except ImportError:
   button_service_pb2 = None
   device_service_pb2 = None

@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Implementation of the switch_power_usb_default capability."""
+from typing import Any, Callable, Dict
+
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -29,23 +31,24 @@ class SwitchPowerUsbDefault(switch_power_base.SwitchPowerBase):
   _REQUIRED_COMMANDS = ["POWER_ON", "POWER_OFF", "GET_MODE"]
   _REQUIRED_REGEXS = ["GET_MODE_REGEX"]
 
-  def __init__(self, shell_fn, regex_shell_fn, command_dict, regex_dict,
-               device_name, serial_number, total_ports):
-    """Create an instance of the default hub power capability.
+  def __init__(self,
+               shell_fn: Callable[..., Any],
+               regex_shell_fn: Callable[..., Any],
+               command_dict: Dict[str, str],
+               regex_dict: Dict[str, str],
+               device_name: str,
+               serial_number: str,
+               total_ports: int):
+    """Initializes an instance of SwitchPowerUsbDefault capability.
 
     Args:
-        shell_fn (func): Function for calling shell on the device.
-        regex_shell_fn (func): Function for calling shell_with_regex on the
-          device.
-        command_dict (dict): A dictionary containing the command used for
-          each method.
-        regex_dict (dict): A dictionary containing the response regex to use
-          to determine the return value for the property.
-        device_name (str): name of the device this capability is attached
-          to.
-        serial_number (str): serial number of device this capability is
-          attached to.
-        total_ports (int): number of ports on device
+      shell_fn: shell() function of the device.
+      regex_shell_fn: shell_with_regex() function of the device.
+      command_dict: A dictionary containing the command used for each method.
+      regex_dict: Response regexes to use to when identifying command responses.
+      device_name: name of the device this capability is attached to.
+      serial_number: serial number of device this capability is attached to.
+      total_ports: Number of ports on the device.
     """
     super().__init__(device_name=device_name)
     self._shell_fn = shell_fn

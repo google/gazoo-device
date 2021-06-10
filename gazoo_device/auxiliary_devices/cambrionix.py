@@ -88,6 +88,7 @@ import fcntl
 import os
 import select
 import time
+import typing
 
 from gazoo_device import decorators
 from gazoo_device import detect_criteria
@@ -540,12 +541,16 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
     while time.time() - start_time < self.timeouts["OPEN"]:
       try:
         if self._serial_port is None:
-          self._serial_port = serial.Serial(
-              port=self.communication_address,
-              baudrate=115200,
-              timeout=0.1,
-              exclusive=True)
-          # Prevent inheritance of file descriptors to exec'd child processes [NEP-1852]
+          # Windows is not supported due to use of fcntl.
+          # Cast to Posix serial so pytype understands this.
+          self._serial_port = typing.cast(
+              serial.serialposix.Serial,
+              serial.Serial(port=self.communication_address,
+                            baudrate=115200,
+                            timeout=0.1,
+                            exclusive=True))
+          # NEP-1852: Prevent inheritance of file descriptors to exec'd child
+          # processes.
           file_descriptor = self._serial_port.fd
           flags = fcntl.fcntl(file_descriptor, fcntl.F_GETFD)
           fcntl.fcntl(file_descriptor, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)

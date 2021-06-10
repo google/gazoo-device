@@ -16,13 +16,13 @@
 import fcntl
 import os
 import time
-
-import serial
-import six
+import typing
 
 from gazoo_device import gdm_logger
 from gazoo_device.switchboard import transport_properties as props
 from gazoo_device.switchboard.transports import transport_base
+import serial
+import six
 
 logger = gdm_logger.get_logger()
 DEFAULT_BAUDRATE = 115200
@@ -73,7 +73,9 @@ class SerialTransport(transport_base.TransportBase):
     })
     self.comms_address = comms_address
     self._read_errors = 0
-    self._serial = serial.Serial()
+    # Windows is not supported due to use of fcntl.
+    # Cast to Posix serial so pytype understands this.
+    self._serial = typing.cast(serial.serialposix.Serial, serial.Serial())
     self._serial.port = comms_address
 
   def is_open(self):
@@ -103,7 +105,8 @@ class SerialTransport(transport_base.TransportBase):
     self._serial.timeout = None
     self._serial.write_timeout = None
     self._serial.open()
-    # Prevent inheritance of file descriptors to exec'd child processes [NEP-1852]
+    # NEP-1852: Prevent inheritance of file descriptors to exec'd child
+    # processes
     fd = self._serial.fileno()
     flags = fcntl.fcntl(fd, fcntl.F_GETFD)
     fcntl.fcntl(fd, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)

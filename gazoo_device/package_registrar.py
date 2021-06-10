@@ -20,11 +20,12 @@ import collections
 import copy
 import importlib
 import inspect
+import itertools
 import json
 import logging
 import os.path
 import types
-from typing import Any, Callable, Iterable, List, Mapping, Tuple, Type, Union
+from typing import Any, Callable, Collection, List, Mapping, Tuple, Type, Union
 
 from gazoo_device import config
 from gazoo_device import data_types
@@ -64,6 +65,7 @@ _DetectQueryType = Callable[
     [str, logging.Logger, Callable[..., switchboard_base.SwitchboardBase]],
     Union[str, bool]
 ]
+_DetectQueryMapping = Mapping[detect_criteria.QueryEnum, _DetectQueryType]
 _VIRTUAL_ENV_PIP_PATH = os.path.join(config.VIRTUAL_ENV_DIRECTORY, "bin", "pip")
 
 _AuxiliaryDeviceBase = auxiliary_device.AuxiliaryDevice
@@ -149,7 +151,8 @@ def register(package: types.ModuleType) -> None:
   extensions_backup = _copy_extensions()
 
   try:
-    _register(new_extensions, package_name, package.__version__,
+    _register(new_extensions, package_name,
+              package.__version__,  # pytype: disable=attribute-error
               package.download_key)
   except errors.PackageRegistrationError:
     # Registration failed: revert all changes to the extensions to avoid
@@ -332,9 +335,9 @@ def _register(
   })
 
 
-def _validate_device_classes(ext_auxiliary_devices: Iterable[Type[Any]],
-                             ext_primary_devices: Iterable[Type[Any]],
-                             ext_virtual_devices: Iterable[Type[Any]],
+def _validate_device_classes(ext_auxiliary_devices: Collection[Type[Any]],
+                             ext_primary_devices: Collection[Type[Any]],
+                             ext_virtual_devices: Collection[Type[Any]],
                              package_name: str) -> None:
   """Validates the extension device classes.
 
@@ -354,9 +357,8 @@ def _validate_device_classes(ext_auxiliary_devices: Iterable[Type[Any]],
   _assert_subclasses(ext_virtual_devices, _VirtualDeviceBase, package_name,
                      "virtual device")
 
-  new_device_classes = (ext_auxiliary_devices
-                        + ext_primary_devices
-                        + ext_virtual_devices)
+  new_device_classes = tuple(itertools.chain(
+      ext_auxiliary_devices, ext_primary_devices, ext_virtual_devices))
   known_device_classes = (extensions.auxiliary_devices
                           + extensions.primary_devices
                           + extensions.virtual_devices)
@@ -387,8 +389,8 @@ def _validate_device_classes(ext_auxiliary_devices: Iterable[Type[Any]],
 
 
 def _get_device_class_conformance_issues(
-    device_classes: Iterable[_DeviceClassType]) -> List[Tuple[_DeviceClassType,
-                                                              List[str]]]:
+    device_classes: Collection[Type[_DeviceClassType]]
+) -> List[Tuple[Type[_DeviceClassType], List[str]]]:
   """Returns conformance issues identified in the device classes.
 
   Args:
@@ -456,7 +458,7 @@ def _get_device_class_conformance_issues(
 
 
 def _validate_comm_type_classes(
-    ext_communication_types: Iterable[Type[Any]],
+    ext_communication_types: Collection[Type[Any]],
     package_name: str) -> None:
   """Validates the extension communication types.
 
@@ -480,13 +482,15 @@ def _validate_comm_type_classes(
 
 
 def _validate_detect_criteria(
-    ext_detect_criteria: Mapping[detect_criteria.QueryEnum, _DetectQueryType],
-    ext_communication_types: Iterable[Type[Any]],
+    ext_detect_criteria: Mapping[str, _DetectQueryMapping],
+    ext_communication_types: Collection[Type[Any]],
     package_name: str) -> None:
   """Validates the extension detection criteria.
 
   Args:
-    ext_detect_criteria: Detection criteria to validate.
+    ext_detect_criteria: Detection criteria to validate, where mapping keys are
+      communication type names, and values are detection query mappings for each
+      communication type.
     ext_communication_types: Communication types exported by the package.
     package_name: Name of the package providing the extensions.
 
@@ -530,7 +534,7 @@ def _validate_detect_criteria(
 
 
 def _validate_capability_interfaces(
-    ext_capability_interfaces: Iterable[Type[Any]],
+    ext_capability_interfaces: Collection[Type[Any]],
     package_name: str) -> None:
   """Validates the extension capability interfaces.
 
@@ -566,7 +570,7 @@ def _validate_capability_interfaces(
       interface_name = capability_base.get_default_capability_name(interface)
     new_capability_names_list.append((interface_name, interface))
 
-  _assert_unique((name for name, _ in new_capability_names_list),
+  _assert_unique(tuple(name for name, _ in new_capability_names_list),
                  names_description="Capability names",
                  classes_description="capabilities",
                  package_name=package_name)
@@ -586,7 +590,7 @@ def _validate_capability_interfaces(
                  package_name=package_name)
 
 
-def _validate_capability_flavors(ext_capability_flavors: Iterable[Type[Any]],
+def _validate_capability_flavors(ext_capability_flavors: Collection[Type[Any]],
                                  package_name: str) -> None:
   """Validates the extension capability flavors.
 
@@ -635,8 +639,8 @@ def _validate_capability_flavors(ext_capability_flavors: Iterable[Type[Any]],
 
 
 def _get_capability_flavor_conformance_issues(
-    capability_flavors: Iterable[_CapabilityBase]
-) -> List[Tuple[_CapabilityBase, List[str]]]:
+    capability_flavors: Collection[Type[_CapabilityBase]]
+) -> List[Tuple[Type[_CapabilityBase], List[str]]]:
   """Returns conformance issues identified in the capability flavor classes.
 
   Args:
@@ -680,7 +684,7 @@ def _get_capability_flavor_conformance_issues(
   return all_issues
 
 
-def _validate_keys(keys: Iterable[data_types.KeyInfo],
+def _validate_keys(keys: Collection[data_types.KeyInfo],
                    package_name: str) -> None:
   """Validates the extension keys.
 
@@ -701,7 +705,7 @@ def _validate_keys(keys: Iterable[data_types.KeyInfo],
         f"({package_name!r}).", package_name=package_name)
 
 
-def _assert_subclasses(classes: Iterable[Type[Any]],
+def _assert_subclasses(classes: Collection[Type[Any]],
                        parent: Type[Any],
                        package_name: str,
                        class_description: str,
@@ -709,7 +713,7 @@ def _assert_subclasses(classes: Iterable[Type[Any]],
   """Raises an error if classes are not (concrete) subclasses of parent.
 
   Args:
-    classes: Iterable of class objects to check.
+    classes: Class objects to check.
     parent: The class object which should be the parent for all of classes.
     package_name: Name of the package being registered.
     class_description: Description of the classes being registered.
@@ -746,7 +750,7 @@ def _assert_subclasses(classes: Iterable[Type[Any]],
         package_name=package_name)
 
 
-def _assert_unique(names: Iterable[str],
+def _assert_unique(names: Collection[str],
                    names_description: str,
                    classes_description: str,
                    package_name: str) -> None:
@@ -786,7 +790,7 @@ def _raise_if_redefined(new_classes: Mapping[str, Type[Any]],
     PackageRegistrationError: Some of the new classes share names with the
       already known classes.
   """
-  redefined_names = list(old_classes.keys() & new_classes.keys())
+  redefined_names = list(set(old_classes.keys()) & set(new_classes.keys()))
   if redefined_names:
     offending = [new_classes[if_name] for if_name in redefined_names]
     redefined = [old_classes[if_name] for if_name in redefined_names]

@@ -170,7 +170,7 @@ class SwitchboardProcess(object):
         exception_queue (Queue): to use for reporting exception traceback
           message from subprocess
         command_queue (Queue): to receive commands into
-        valid_commands (iterable): optional tuple of valid command strings
+        valid_commands (Optional[Tuple[str, ...]]): Valid command strings.
     """
     self.device_name = device_name
     self.process_name = process_name

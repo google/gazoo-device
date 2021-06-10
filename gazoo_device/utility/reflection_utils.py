@@ -17,7 +17,7 @@ import importlib
 import inspect
 import os
 import types
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Type
+from typing import Any, Callable, Collection, Dict, List, Optional, Set, Type
 
 from gazoo_device import config
 from gazoo_device import gdm_logger
@@ -61,7 +61,7 @@ def _get_module_path(module: types.ModuleType) -> str:
 def get_all_subclasses_in_package(
     parent_class: Type[Any],
     package: types.ModuleType,
-    excluded_modules: Optional[Iterable[types.ModuleType]] = None,
+    excluded_modules: Optional[Collection[types.ModuleType]] = None,
     exclude_private: bool = True,
     exclude_abstract: bool = False,
     module_path_getter: Callable[[types.ModuleType], str] = _get_module_path

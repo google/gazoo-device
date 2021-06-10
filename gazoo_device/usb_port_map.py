@@ -174,7 +174,8 @@ def _discover_cambrionix_devices(manager, cambrionix_info_list,
           manager=manager,
           device_config=device_config,
           log_file_name=None,
-          log_directory=manager.log_directory)
+          log_directory=manager.log_directory  # pytype: disable=attribute-error
+      )
       cambrionix_inst.get_detection_info()  # populate undetected ones.
     except (KeyError, errors.DeviceError):
       cambrionix_info['port_list'] = []
@@ -227,7 +228,9 @@ class UsbPortMap(object):
     ]
 
     # use what has been detected to add to what was discovered
+    # pytype: disable=attribute-error
     gdm_config = self.manager_weakref()._devices
+    # pytype: enable=attribute-error
     self._correlate_discovered_and_detected(gdm_config)
     self._get_detected_device_information(gdm_config)
     self._get_power_state_information()
@@ -339,11 +342,12 @@ class UsbPortMap(object):
             'conflict_types']:
           issue_string = 'Undetected'
 
-        hub_dict['port_list'][port] = {}
-        hub_dict['port_list'][port]['Issue'] = issue_string
-        hub_dict['port_list'][port]['Mode'] = mode_string
-        hub_dict['port_list'][port]['Discovered'] = device_string
-        hub_dict['port_list'][port]['Configured'] = configured_devices
+        hub_dict['port_list'][port] = {
+            'Issue': issue_string,
+            'Mode': mode_string,
+            'Discovered': device_string,
+            'Configured': configured_devices,
+        }
       else:
         logger.info('{:>2}: -'.format(port))
 
@@ -367,12 +371,14 @@ class UsbPortMap(object):
     if device['type']:
       device_string += ' ' + device['type']
     issue_string = ''
+    # pytype: disable=key-error
     if USB_PORT_CONFLICT in device['conflict_types']:
       issue_string = 'Conflict'
     if USB_HUB_CONFLICT in device['conflict_types']:
       issue_string = 'Conflict'
     if NOT_DETECTED_CONFLICT in device['conflict_types']:
       issue_string = 'Undetected'
+    # pytype: enable=key-error
 
     device_dict = {}
     device_dict['hub_device'] = False
@@ -413,7 +419,9 @@ class UsbPortMap(object):
         serial_numbers[gdm_config[name]['persistent']['serial_number']] = name
       if 'console_port_name' in gdm_config[name]['persistent']:
         addresses[gdm_config[name]['persistent']['console_port_name']] = name
+    # pytype: disable=attribute-error
     other_devices = self.manager_weakref().other_devices
+    # pytype: enable=attribute-error
 
     for cambrionix_info in self.cambrionix_info_list:
       cambrionix_info['is_detected'] = False
@@ -490,11 +498,12 @@ class UsbPortMap(object):
             if not usb_port:
               device['conflict_types'].append(MISSING_USB_PORT)
 
-    # Look for conflicts for devices that were discovered and are not connected to a
-    # cambrionix.
+    # Look for conflicts for devices that were discovered and are not connected
+    # to a Cambrionix.
     for device in self.device_info_list:
       if device['known_device'] and 'gdm_config_name' not in device:
-        device['conflict_types'].append(NOT_DETECTED_CONFLICT)
+        device['conflict_types'].append(  # pytype: disable=key-error
+            NOT_DETECTED_CONFLICT)
       if 'gdm_config_name' in device:
         device_id = device['gdm_config_name']
         usb_hub_name, usb_port = self._get_usb_hub_info(device['type'],

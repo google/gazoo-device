@@ -15,7 +15,8 @@
 """Device detector module."""
 import copy
 import os
-from typing import Dict, List, Optional, Tuple
+import typing
+from typing import Any, Dict, List, Optional, Tuple
 import weakref
 
 from gazoo_device import config
@@ -42,7 +43,7 @@ class DeviceDetector(object):
 
   def __init__(
       self,
-      manager: "manager.Manager",
+      manager: Any,
       log_directory: str,
       persistent_configs: custom_types.PersistentConfigsDict,
       options_configs: custom_types.OptionalConfigsDict,
@@ -51,7 +52,7 @@ class DeviceDetector(object):
     """Initializes the device detector.
 
     Args:
-        manager: instance of manager.
+        manager: instance of Manager.
         log_directory: location of logs.
         persistent_configs: devices known to the manager.
         options_configs: device options known to the manager.
@@ -167,17 +168,17 @@ class DeviceDetector(object):
     """
     known_connections = []
 
-    for _, entry in self.persistent_configs["devices"].items():
+    for entry in self.persistent_configs["devices"].values():
       identifier = entry.get("console_port_name")
       if not identifier:
         # Use the IP address instead of the ADB port for ADB over IP
-        identifier = entry.get("adb_serial").replace(":5555", "")
-      known_connections.append(identifier)
-    for _, entry in self.persistent_configs["other_devices"].items():
+        identifier = typing.cast(str, entry["adb_serial"]).replace(":5555", "")
+      known_connections.append(typing.cast(str, identifier))
+    for entry in self.persistent_configs["other_devices"].values():
       identifier = entry.get("console_port_name")
       if not identifier:
-        identifier = entry.get("hub_port_name")
-      known_connections.append(identifier)
+        identifier = entry["hub_port_name"]
+      known_connections.append(typing.cast(str, identifier))
 
     return known_connections
 
@@ -328,7 +329,10 @@ class DeviceDetector(object):
             connection,
             key,
             detect_log,
-            self.manager_weakref().create_switchboard)
+            # pytype: disable=attribute-error
+            self.manager_weakref().create_switchboard
+            # pytype: enable=attribute-error
+        )
         if len(matching_classes) > 1:
           device_types = [
               device_class.DEVICE_TYPE for device_class in matching_classes

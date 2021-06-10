@@ -18,7 +18,7 @@ import queue
 import threading
 import time
 import types
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
+from typing import Any, Callable, Collection, Dict, Optional, Tuple
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.switchboard.transports import transport_base
@@ -27,11 +27,13 @@ import serial
 # TODO(b/181734752): Remove conditional imports of Pigweed
 try:
   # pylint: disable=g-import-not-at-top
+  # pytype: disable=import-error
   import pw_rpc
   from pw_rpc import callback_client
   from pw_hdlc import rpc
   from pw_hdlc import decode
   from pw_protobuf_compiler import python_protos
+  # pytype: enable=import-error
   PIGWEED_IMPORT = True
 except ImportError:
   PIGWEED_IMPORT = False
@@ -51,23 +53,19 @@ class PwHdlcRpcClient:
   def __init__(self,
                read: Callable[[], bytes],
                write: Callable[[bytes], int],
-               paths_or_modules: Union[Iterable["python_protos.PathOrModule"],
-                                       "python_protos.Library"]):
+               protobufs: Collection[types.ModuleType]):
     """Creates an RPC client configured to communicate using HDLC.
 
     Args:
       read: Function that reads bytes; e.g serial_device.read.
       write: Function that writes bytes; e.g serial_device.write.
-      paths_or_modules: Paths to .proto files or proto modules.
+      protobufs: Proto modules.
     """
     if not PIGWEED_IMPORT:
       raise errors.DependencyUnavailableError(
           "Pigweed python packages are not available in this environment.")
 
-    if isinstance(paths_or_modules, python_protos.Library):
-      self.protos = paths_or_modules
-    else:
-      self.protos = python_protos.Library.from_paths(paths_or_modules)
+    self.protos = python_protos.Library.from_paths(protobufs)
 
     client_impl = callback_client.Impl()
     channels = rpc.default_channels(write)
@@ -107,7 +105,7 @@ class PwHdlcRpcClient:
             .format(_JOIN_TIMEOUT_SEC))
       self._worker = None
 
-  def rpcs(self, channel_id: int = None) -> Any:
+  def rpcs(self, channel_id: Optional[int] = None) -> Any:
     """Returns object for accessing services on the specified channel."""
     if channel_id is None:
       return next(iter(self.client.channels())).rpcs
@@ -173,7 +171,7 @@ class PigweedRPCTransport(transport_base.TransportBase):
 
   def __init__(self,
                comms_address: str,
-               protobufs: List[types.ModuleType],
+               protobufs: Collection[types.ModuleType],
                baudrate: int,
                auto_reopen: bool = True,
                open_on_start: bool = True):
@@ -230,7 +228,7 @@ class PigweedRPCTransport(transport_base.TransportBase):
     except queue.Empty:
       return b""
 
-  def _write(self, data: str, timeout: float = None) -> int:
+  def _write(self, data: str, timeout: Optional[float] = None) -> int:
     """Dummy method for Pigweed RPC.
 
     Declared to pass the inheritance check of TransportBase.

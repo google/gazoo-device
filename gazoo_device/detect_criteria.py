@@ -19,12 +19,14 @@ import functools
 import logging
 import re
 import subprocess
-from typing import Any, Callable, Dict, Iterable, List, Union
+import typing
+from typing import Any, Callable, Collection, Dict, List, Union
 
 from gazoo_device import config
 from gazoo_device import extensions
 from gazoo_device.base_classes import auxiliary_device_base
 from gazoo_device.base_classes import primary_device_base
+from gazoo_device.capabilities.interfaces import switchboard_base
 from gazoo_device.utility import host_utils
 from gazoo_device.utility import http_utils
 from gazoo_device.utility import pwrpc_utils
@@ -96,7 +98,8 @@ class PigweedQuery(QueryEnum):
 def _docker_product_name_query(
     address: str,
     detect_logger: logging.Logger,
-    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> str:
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> str:
   """Gets product name from docker device."""
   del create_switchboard_func  # Unused by _docker_product_name_query
   try:
@@ -113,7 +116,8 @@ def _docker_product_name_query(
 def _always_true_query(
     address: str,
     detect_logger: logging.Logger,
-    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> True:
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> bool:
   """Used when there is just one type of device for a communication type."""
   del address, create_switchboard_func  # Unused: query always returns True
   detect_logger.info("_always_true_query response: True")
@@ -123,7 +127,8 @@ def _always_true_query(
 def _is_dli_query(
     address: str,
     detect_logger: logging.Logger,
-    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> bool:
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> bool:
   """Determines if address belongs to dli power switch."""
   del create_switchboard_func  # Unused by _is_dli_query
   try:
@@ -144,7 +149,8 @@ def _is_dli_query(
 def _is_rpi_query(
     address: str,
     detect_logger: logging.Logger,
-    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> bool:
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> bool:
   """Determines if address belongs to raspberry pi."""
   del create_switchboard_func  # Unused by _is_rpi_query
   try:
@@ -163,7 +169,8 @@ def _is_rpi_query(
 def _is_unifi_query(
     address: str,
     detect_logger: logging.Logger,
-    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> bool:
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> bool:
   """Determines if address belongs to unifi poe switch."""
   del create_switchboard_func  # Unused by _is_unifi_query
   try:
@@ -186,7 +193,8 @@ def _is_unifi_query(
 def _pty_process_name_query(
     address: str,
     detect_logger: logging.Logger,
-    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> str:
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> str:
   """Returns product name from pty process comms address directory.
 
   Args:
@@ -202,7 +210,8 @@ def _pty_process_name_query(
 def _usb_product_name_query(
     address: str,
     detect_logger: logging.Logger,
-    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> str:
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> str:
   """Gets product name from usb_info."""
   del create_switchboard_func  # Unused by _usb_product_name_query
   product_name = usb_utils.get_product_name_from_path(address).lower()
@@ -214,7 +223,8 @@ def _usb_product_name_query(
 def _manufacturer_name_query(
     address: str,
     detect_logger: logging.Logger,
-    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> str:
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> str:
   """Gets manufacturer name from usb_info."""
   del create_switchboard_func  # Unused by _manufacturer_name_query
   manufacturer = usb_utils.get_device_info(address).manufacturer.lower()
@@ -226,7 +236,8 @@ def _manufacturer_name_query(
 def _pigweed_application_query(
     address: str,
     detect_logger: logging.Logger,
-    create_switchboard_func: Callable[..., "SwitchboardDefault"]) -> str:
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> str:
   """Gets Pigweed application type of the device.
 
   Args:
@@ -237,7 +248,8 @@ def _pigweed_application_query(
   Returns:
     Pigweed application type.
   """
-  log_path = detect_logger.handlers[0].baseFilename
+  file_handler = typing.cast(logging.FileHandler, detect_logger.handlers[0])
+  log_path = file_handler.baseFilename
   app_type = pwrpc_utils.get_application_type(address,
                                               log_path,
                                               create_switchboard_func)
@@ -292,7 +304,7 @@ def determine_device_class(
     address: str,
     communication_type: str,
     log_file_path: str,
-    create_switchboard_func: Callable[..., "SwitchboardDefault"]
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> List[_DeviceClassType]:
   """Returns the device class(es) that matches the address' responses.
 
@@ -323,8 +335,8 @@ def find_matching_device_class(
     address: str,
     communication_type: str,
     detect_logger: logging.Logger,
-    create_switchboard_func: Callable[..., "SwitchboardDefault"],
-    device_classes: Iterable[_DeviceClassType]) -> List[_DeviceClassType]:
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase],
+    device_classes: Collection[_DeviceClassType]) -> List[_DeviceClassType]:
   """Returns all classes where the device responses match the detect criteria.
 
   Args:
@@ -373,7 +385,7 @@ def _get_detect_query_response(
     address: str,
     communication_type: str,
     detect_logger: logging.Logger,
-    create_switchboard_func: Callable[..., "SwitchboardDefault"]
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> Dict[str, Any]:
   """Gathers device responses for all queries of that communication type.
 

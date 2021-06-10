@@ -21,7 +21,9 @@ from gazoo_device.capabilities.interfaces import pwrpc_light_base
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
 try:
   # pylint: disable=g-import-not-at-top
+  # pytype: disable=import-error
   from lighting_service import lighting_service_pb2
+  # pytype: enable=import-error
 except ImportError:
   lighting_service_pb2 = None
 

@@ -27,7 +27,7 @@ Serves two purposes:
 """
 import abc
 import functools
-from typing import Any, Dict, Iterable, Type
+from typing import Any, Collection, Dict, Type
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import extensions
@@ -117,7 +117,7 @@ class CapabilityBase(abc.ABC):
 
   @decorators.CapabilityLogDecorator(logger, level=None)
   def validate_required_keys(self,
-                             key_list: Iterable[str],
+                             key_list: Collection[str],
                              dictionary: Dict[str, Any],
                              dictionary_name: str):
     """Verify that the required keys are present in the provided dictionary.

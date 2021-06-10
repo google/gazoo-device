@@ -1,3 +1,17 @@
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Test suite for all auxiliary devices, covers basic functionality."""
 import os
 import shutil
@@ -5,6 +19,7 @@ import time
 from typing import Tuple, Type
 
 import gazoo_device
+from gazoo_device import fire_manager
 from gazoo_device.base_classes import auxiliary_device
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 
@@ -38,8 +53,8 @@ class AuxiliaryDeviceCommonTestSuite(gdm_test_base.GDMTestBase):
     time.sleep(1)
     size = os.stat(log_file).st_size
     time.sleep(.1)
-    self.assertTrue(size == os.stat(log_file).st_size,
-                    "Log has updated after device is closed")
+    self.assertEqual(size, os.stat(log_file).st_size,
+                     "Log has updated after device is closed")
 
   def test_logging(self):
     """Tests that device logs are being captured."""
@@ -50,13 +65,13 @@ class AuxiliaryDeviceCommonTestSuite(gdm_test_base.GDMTestBase):
                     f"{self.device.name}'s log file {log_file} is empty")
 
   def test_serial_number(self):
-    """Tests retrieval of serial_number property."""
+    """Tests retrieval of 'serial_number' property."""
     serial_number = self.device.serial_number
     self.assertTrue(serial_number)
     self.assertIsInstance(serial_number, str)
 
   def test_firmware_version(self):
-    """Tests retrieval of firmware_version property."""
+    """Tests retrieval of 'firmware_version' property."""
     if not hasattr(type(self.device), "firmware_version"):
       self.skipTest(
           f"{self.device.device_type} does not implement firmware_version")
@@ -71,8 +86,11 @@ class AuxiliaryDeviceCommonTestSuite(gdm_test_base.GDMTestBase):
       self.skipTest(f"{self.device.device_type} does not implement reboot()")
 
     self.device.reboot()
-    self.assertTrue(self.device.connected,
-                    f"{self.device.name} is offline immediately after a reboot")
+    self.assertTrue(
+        self.device.connected,
+        f"{self.device.name} is offline after reboot() execution finished. "
+        "reboot should block until the device comes back online and becomes "
+        "responsive.")
 
   def test_factory_reset(self):
     """Tests factory resetting the device and verifies it's online after."""
@@ -96,21 +114,25 @@ class AuxiliaryDeviceCommonTestSuite(gdm_test_base.GDMTestBase):
     self.assertTrue(response)
     self.assertIsInstance(response, str)
 
-  def test_get_device_prop_can_execute(self):
-    """Tests retrieval of all device properties."""
+  def test_get_prop(self):
+    """Tests that FireManager.get_prop() can retrieve all properties."""
+    device_name = self.device.name
     self.device.close()
-    props = self.get_manager().get_device_prop(self.device.name)
-    self.assertTrue(props)
-    self.assertIsInstance(props, dict)
+    fire_manager_instance = fire_manager.FireManager()
+    try:
+      fire_manager_instance.get_prop(device_name)
+    finally:
+      fire_manager_instance.close()
 
   def test_redetect(self):
     """Tests device detection and properties populated during detection."""
     self.device.close()
     time.sleep(.2)
     new_file_devices_name = os.path.join(self.get_output_dir(),
-                                         "test_2003_devices.json")
+                                         "test_redetect_devices.json")
     new_file_options_name = os.path.join(self.get_output_dir(),
-                                         "test_2003_device_options.json")
+                                         "test_redetect_device_options.json")
+    new_log_file = os.path.join(self.get_output_dir(), "test_redetect_gdm.txt")
 
     shutil.copy(self.get_manager().device_file_name, new_file_devices_name)
     shutil.copy(self.get_manager().device_options_file_name,
@@ -119,25 +141,18 @@ class AuxiliaryDeviceCommonTestSuite(gdm_test_base.GDMTestBase):
         device_file_name=new_file_devices_name,
         device_options_file_name=new_file_options_name,
         log_directory=self.get_output_dir(),
-        gdm_log_file=os.path.join(self.get_output_dir(), "test_2003_gdm.txt"))
-    new_manager.redetect(self.device.name, self.get_output_dir())
-    new_manager.close()
+        gdm_log_file=new_log_file)
+    try:
+      new_manager.redetect(self.device.name, self.get_output_dir())
+    finally:
+      new_manager.close()
 
-    # pylint: disable=protected-access
     self.assertTrue(
-        (self.device.name in new_manager._devices or
-         self.device.name in new_manager.other_devices),
-        "Device was not successfully detected. "
-        "See test_2003_gdm.txt and {}_detect.txt for more info".format(
-            self.device.device_type))
-    if self.device.name in new_manager._devices:
-      old_dict = self.get_manager()._devices[self.device.name]["persistent"]
-      new_dict = new_manager._devices[self.device.name]["persistent"]
-    else:
-      old_dict = self.get_manager().other_devices[
-          self.device.name]["persistent"]
-      new_dict = new_manager.other_devices[self.device.name]["persistent"]
-    # pylint: enable=protected-access
+        self.device.name in new_manager.other_devices,
+        "Device was not successfully detected. See test_redetect_gdm.txt and "
+        f"{self.device.device_type}_detect.txt for more info")
+    old_dict = self.get_manager().other_devices[self.device.name]["persistent"]
+    new_dict = new_manager.other_devices[self.device.name]["persistent"]
 
     for name, a_dict in [("Old", old_dict), ("Detected", new_dict)]:
       self.logger.info("%s configuration:", name)

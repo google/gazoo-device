@@ -15,7 +15,7 @@
 """Helper methods for validating architecture conformance."""
 import inspect
 import re
-from typing import Any, Callable, Iterable, List, NoReturn, Optional, Tuple
+from typing import Any, Callable, Collection, List, NoReturn, Optional, Tuple
 from typing import Type, Union
 from gazoo_device import decorators
 from gazoo_device import manager
@@ -82,7 +82,7 @@ def get_invalid_health_check_names(device_class: Type[Any]) -> List[str]:
 
 def get_invalid_public_methods(
     device_class: Type[Any],
-    excluded_methods: Iterable[str] = None) -> List[str]:
+    excluded_methods: Optional[Collection[str]] = None) -> List[str]:
   """Returns names of public methods which are not allowed.
 
   The only allowed public methods are:
@@ -156,7 +156,7 @@ def get_log_decorator_violators(cls: _LogDecoratorType,
 
 def get_mismatching_signatures(
     cls: Type[Any],
-    excluded_methods: Optional[Iterable[str]] = None
+    excluded_methods: Optional[Collection[str]] = None
 ) -> List[Tuple[str, str, List[str]]]:
   """Returns methods that do not include same args as the parent method.
 
@@ -218,8 +218,8 @@ def get_mismatching_signatures(
 
 
 def get_mismatching_signature_err_strs(
-    classes: Iterable[Type[Any]],
-    excluded_methods: Optional[Iterable[str]] = None) -> List[str]:
+    classes: Collection[Type[Any]],
+    excluded_methods: Optional[Collection[str]] = None) -> List[str]:
   """Returns a list of the errors for the mismatched signatures on the classes.
 
   Looks for class signatures that don't match their parent's signatures.
@@ -249,7 +249,7 @@ def get_mismatching_signature_err_strs(
 
 def get_uncategorized_properties(
     cls: Type[Any],
-    excluded_properties: Optional[Iterable[str]] = None) -> List[str]:
+    excluded_properties: Optional[Collection[str]] = None) -> List[str]:
   """Returns names of public properties which do not fall into a known category.
 
   Allowed categories: persistent, dynamic, optional properties.
@@ -326,7 +326,7 @@ def _is_instance_method(obj: Any) -> bool:
   if is_method_or_func:
     unwrapped_func = decorators.unwrap(obj)
     args = inspect.getfullargspec(unwrapped_func).args
-    return args and args[0] == "self"
+    return bool(args) and args[0] == "self"
 
   return False
 

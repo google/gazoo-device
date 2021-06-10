@@ -52,7 +52,7 @@ def visible_members(component, class_attrs=None, verbose=False):
       inspect.getmembers.
       behavior with patch: component members are collected using
       _safely_get_members.
-    """
+  """
   if isinstance(component, dict):
     members = component.items()
   else:
@@ -60,10 +60,12 @@ def visible_members(component, class_attrs=None, verbose=False):
 
   # if class_attrs has not been provided, compute it.
   if class_attrs is None:
+    # pytype: disable=module-attr
     try:
       class_attrs = fire.inspectutils.GetClassAttrsDict(component)
     except AttributeError:
       class_attrs = fire.completion.GetClassAttrsDict(component)
+    # pytype: enable=module-attr
 
   return [(
       member_name, member

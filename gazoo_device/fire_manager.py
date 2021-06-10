@@ -28,7 +28,7 @@ import re
 import sys
 import textwrap
 import time
-from typing import Any, Iterable, Optional, Type
+from typing import Any, Collection, Optional, Type
 
 from gazoo_device import config
 from gazoo_device import decorators
@@ -74,7 +74,7 @@ _VISIBLE_CAPABILITY_ATTRIBUTES = [
 
 
 def _log_man_warning_for_multiple_flavors(
-    capability_classes: Iterable[Type[Any]],
+    capability_classes: Collection[Type[Any]],
     capability_name: str,
     device_type: str,
     capability_class: Type[Any]) -> None:
@@ -758,8 +758,9 @@ class FireManager(manager.Manager):
 
         # Parse alias from deprecated property docstring
         match = re.search(r'See "(?P<alias>.*)".', attribute.__doc__)
-        alias = match.group("alias")
-        deprecated_properties.append(f"{name} ({alias})")
+        if match:
+          alias = match.group("alias")
+          deprecated_properties.append(f"{name} ({alias})")
 
     # Generate a summary of supported capability methods and properties for each
     # capability

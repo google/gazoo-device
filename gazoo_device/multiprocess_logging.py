@@ -158,7 +158,7 @@ class LoggingThread(object):
       thread other than the main thread.
     """
     if (self._thread is not None and self._thread.is_alive() and
-        isinstance(threading.current_thread(), threading._MainThread)):
+        threading.current_thread() == threading.main_thread()):
       with DisablePeriodicGC():
         self._queue.put_nowait(_Sentinel.SYNC)
       if not self._synchonize_event.wait(timeout):

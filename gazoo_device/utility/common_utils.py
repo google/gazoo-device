@@ -262,8 +262,10 @@ def register_at_fork(before=None, after_in_parent=None, after_in_child=None):
 
       sentinel = _Sentinel()
       _register_after_fork_sentinels.append(sentinel)
+      # pytype: disable=module-attr
       multiprocessing.util.register_after_fork(sentinel,
                                                _consume_sentinel_wrapper)
+      # pytype: enable=module-attr
 
 
 def run_after_fork_in_parent():

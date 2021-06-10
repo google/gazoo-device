@@ -16,6 +16,7 @@
 import os
 from typing import Dict, Tuple
 
+from gazoo_device import custom_types
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -53,15 +54,9 @@ class NRFConnectSDKDevice(auxiliary_device.AuxiliaryDevice):
     return persistent_dict, {}
 
   @classmethod
-  def is_connected(cls, device_config: Dict[str, str]) -> bool:
-    """Checks whether or not the device is connected to the host.
-
-    Args:
-      device_config: Contains "persistent" dict.
-
-    Returns:
-      Whether or not the serial port is connected.
-    """
+  def is_connected(cls,
+                   device_config: custom_types.ManagerDeviceConfigDict) -> bool:
+    """Returns True if the device is connected to the host."""
     return os.path.exists(device_config["persistent"]["console_port_name"])
 
   @decorators.PersistentProperty

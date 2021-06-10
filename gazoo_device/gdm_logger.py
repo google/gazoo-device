@@ -51,7 +51,7 @@ def add_handler(handler):
       handler (logging.handler): A logging handler
   """
   logger = get_logger()
-  logger.logging_thread.add_handler(handler)
+  logger.logging_thread.add_handler(handler)  # pytype: disable=attribute-error
 
 
 def create_queue_handler(log_level):
@@ -65,14 +65,15 @@ def create_queue_handler(log_level):
       log_level (int): Integer log level, e.g. logging.DEBUG (value is 10)
   """
   logger = get_logger()
-  handler = multiprocess_logging.QueueHandler(logger.logging_queue)
+  handler = multiprocess_logging.QueueHandler(
+      logger.logging_queue)  # pytype: disable=attribute-error
   handler.setLevel(log_level)
   logger.handlers = [handler]
 
 
 def flush_queue_messages():
   """Wait until all messages currently in the logger queue are flushed."""
-  get_logger().logging_thread.sync()
+  get_logger().logging_thread.sync()  # pytype: disable=attribute-error
 
 
 def get_logger(component_name=None):

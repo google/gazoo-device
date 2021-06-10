@@ -200,8 +200,8 @@ class UsbStorage(object):
       return
     self.unmount(timeout=timeout)
     _validate_suid_bit(self.commands["EJECT"])
+    cmd_list = self.commands["EJECT"].format(self.disk).split()
     try:
-      cmd_list = self.commands["EJECT"].format(self.disk).split()
       subprocess.check_output(cmd_list)
     except subprocess.CalledProcessError as err:
       raise errors.DeviceError("Device eject failed. "
@@ -308,8 +308,8 @@ class UsbStorage(object):
     logger.debug(msg)
     self.add_log_note(msg)
     _validate_suid_bit(self.commands["MOUNT"])
+    cmd_list = self.commands["MOUNT"].format(self.disk).split()
     try:
-      cmd_list = self.commands["MOUNT"].format(self.disk).split()
       subprocess.check_output(cmd_list)
     except subprocess.CalledProcessError as err:
       if isinstance(err.output, bytes):
@@ -395,8 +395,8 @@ class UsbStorage(object):
                                                      mount_point))
 
     _validate_suid_bit(self.commands["UNMOUNT"])
+    cmd_list = self.commands["UNMOUNT"].format(mount_point).split()
     try:
-      cmd_list = self.commands["UNMOUNT"].format(mount_point).split()
       subprocess.check_output(cmd_list)
     except subprocess.CalledProcessError as err:
       raise errors.DeviceError("Device unmount failed. "

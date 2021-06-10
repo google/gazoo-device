@@ -20,7 +20,7 @@ import inspect
 import os
 import re
 import time
-from typing import List, Type
+from typing import List, Set, Type
 import weakref
 
 from gazoo_device import config
@@ -602,10 +602,10 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
         used depends on the firmware version and is determined at runtime.
     """
     if not self.has_capabilities([capability_name]):
-      raise errors.DeviceError("{} is_capability_initialized failed. "
-                               "Capability {} is not supported by {}.".format(
-                                   self.name, capability_name,
-                                   self.device_type))
+      raise errors.DeviceError(
+          "{} get_capability_classes failed. "
+          "Capability {} is not supported by {}."
+          .format(self.name, capability_name, self.device_type))
     capability_property = getattr(type(self), capability_name)
     return list(capability_property.capability_classes)
 
@@ -638,8 +638,9 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     return sorted(list(capability_names))
 
   @classmethod
-  def get_supported_capability_flavors(cls):
-    """Returns a set of all capability flavor classes supported by this device class."""
+  def get_supported_capability_flavors(
+      cls) -> Set[Type[capability_base.CapabilityBase]]:
+    """Returns all capability flavor classes supported by this device class."""
     capability_classes = [
         member.capability_classes
         for _, member in inspect.getmembers(cls)
@@ -945,7 +946,9 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     classes.add(cls)
     property_names = []
     for a_class in classes:
+      # pytype: disable=attribute-error
       prefix = "" if a_class == cls else a_class.get_capability_name() + "."
+      # pytype: enable=attribute-error
       for name, member in inspect.getmembers(a_class):
         if isinstance(member, property_type) and not name.startswith("_"):
           property_names.append("{}{}".format(prefix, name))
