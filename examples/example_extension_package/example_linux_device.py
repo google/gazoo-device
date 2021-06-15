@@ -54,12 +54,12 @@ _TIMEOUTS = immutabledict.immutabledict({})
 # TODO(user): You may need to change the value of _SSH_USERNAME for your device.
 _SSH_USERNAME = "root"
 
-_CONTROLLER_PACKAGE_DIR = os.path.abspath(os.path.dirname(__file__))
-_LOG_EVENT_FILTER_DIR = os.path.join(_CONTROLLER_PACKAGE_DIR,
+_EXTENSION_PACKAGE_DIR = os.path.abspath(os.path.dirname(__file__))
+_LOG_EVENT_FILTER_DIR = os.path.join(_EXTENSION_PACKAGE_DIR,
                                      "log_event_filters")
 
 # _PACKAGE_NAME must match the name of the package.
-_PACKAGE_NAME = "example_controller_package"
+_PACKAGE_NAME = "example_extension_package"
 SSH_KEY_INFO = data_types.KeyInfo(
     file_name="linuxexample_ssh_key",
     type=data_types.KeyType.SSH,

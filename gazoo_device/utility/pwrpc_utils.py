@@ -79,12 +79,15 @@ def get_application_type(
                                         device_name=os.path.basename(log_path),
                                         log_path=log_path,
                                         protobufs=_PWRPC_PROTOS)
-  for method_args, method_kwargs, app_type in _PIGWEED_APP_ENDPOINTS:
-    try:
-      switchboard.call(method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-                       method_args=method_args,
-                       method_kwargs=method_kwargs)
-      return app_type.value
-    except errors.DeviceError:
-      logger.info(f"Device {address} is not a Pigweed {app_type} device.")
+  try:
+    for method_args, method_kwargs, app_type in _PIGWEED_APP_ENDPOINTS:
+      try:
+        switchboard.call(method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+                         method_args=method_args,
+                         method_kwargs=method_kwargs)
+        return app_type.value
+      except errors.DeviceError:
+        logger.info(f"Device {address} is not a Pigweed {app_type} device.")
+  finally:
+    switchboard.close()
   return PigweedAppType.NON_PIGWEED.value

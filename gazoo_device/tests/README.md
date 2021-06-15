@@ -5,9 +5,8 @@ Manager.
 
 ## Unit tests
 
-Open-source unit tests are coming soon (early June).
-
-TODO(artorl): Open-source GDM unit tests.
+For information on unit testing, see
+[unit_tests/README.md](unit_tests/README.md).
 
 ## Functional (on-device) tests
 

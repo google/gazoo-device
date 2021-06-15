@@ -68,7 +68,7 @@ class ParserError(DeviceError):
 
 
 class PackageRegistrationError(Exception):
-  """Raised when GDM fails to register a controller package."""
+  """Raised when GDM fails to register an extension package."""
   err_code = 6
 
   def __init__(self, msg: str, package_name: str):
@@ -660,3 +660,18 @@ class CapabilityNotReadyError(CheckDeviceReadyError):
 class DependencyUnavailableError(DeviceError):
   """Exception raised when a dependency is not available."""
   err_code = 67
+
+
+class TestbedFailedToEnsureBuildsError(CheckTestbedReadyError):
+  """Raised when upgrade to expected build fails in a testbed."""
+  err_code = 68
+
+  def __init__(self, device_upgrade_exceptions):
+    msg = "upgrade failed on devices: {}".format(
+        ", ".join(device_upgrade_exceptions.keys()))
+    details = ". ".join([
+        f"{device}: {repr(exception)}"
+        for device, exception in device_upgrade_exceptions.items()
+    ])
+    recovery = "reflash devices"
+    super().__init__(msg, details, recovery)

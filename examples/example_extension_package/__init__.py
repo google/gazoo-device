@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""An example extension controller package for gazoo_device."""
+"""An example extension package for gazoo_device."""
 from typing import Any, Dict
 
 from gazoo_device import data_types
 from gazoo_device import detect_criteria
-from example_controller_package import example_linux_device
+from example_extension_package import example_linux_device
 
 __version__ = "0.0.1"
-_PACKAGE_NAME = "example_controller_package"
+_PACKAGE_NAME = "example_extension_package"
 
 
 def download_key(key_info: data_types.KeyInfo, local_key_path: str) -> None:
@@ -43,7 +43,7 @@ def download_key(key_info: data_types.KeyInfo, local_key_path: str) -> None:
 
 
 def export_extensions() -> Dict[str, Any]:
-  """Exports the device controller defined by the package."""
+  """Exports the device controller defined by the extension package."""
   return {
       "primary_devices": [example_linux_device.ExampleLinuxDevice],
       "auxiliary_devices": [],

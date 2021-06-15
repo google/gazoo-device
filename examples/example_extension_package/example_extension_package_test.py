@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for example_controller_package."""
+"""Tests for example_extension_package."""
 
 import unittest
 
@@ -20,18 +20,18 @@ import gazoo_device
 from gazoo_device import errors
 from gazoo_device import manager
 
-import example_controller_package
+import example_extension_package
 
 _EXAMPLE_CONTROLLER_DEVICE_TYPE = (
-    example_controller_package.example_linux_device.ExampleLinuxDevice
+    example_extension_package.example_linux_device.ExampleLinuxDevice
     .DEVICE_TYPE)
 
 
-class ExampleControllerPackageTest(unittest.TestCase):
-  """Unit tests for the example controller package."""
+class ExampleExtensionPackageTest(unittest.TestCase):
+  """Unit tests for the example extension package."""
 
   def test_registration(self):
-    """Test that the controller package can be registered with gazoo_device."""
+    """Test that the extension package can be registered with gazoo_device."""
     self.assertNotIn(
         _EXAMPLE_CONTROLLER_DEVICE_TYPE,
         manager.Manager.get_supported_device_types(),
@@ -39,10 +39,10 @@ class ExampleControllerPackageTest(unittest.TestCase):
         "before the package is registered")
 
     try:
-      gazoo_device.register(example_controller_package)
+      gazoo_device.register(example_extension_package)
     except errors.PackageRegistrationError as err:
       self.fail(
-          f"Unable to register example_controller_package with gazoo_device. "
+          f"Unable to register example_extension_package with gazoo_device. "
           f"Error: {err!r}")
 
     self.assertIn(

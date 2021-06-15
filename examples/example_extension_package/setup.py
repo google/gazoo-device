@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Build the example controller package."""
+"""Builds the example extension package."""
 import os
 from typing import List
 
 import setuptools
 
 _CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
-_PACKAGE_NAME = "example_controller_package"
+_PACKAGE_NAME = "example_extension_package"
 _README_FILE = "README.md"
 
 
 def _get_packages() -> List[str]:
-  """Returns packages to include in example_controller_package package."""
+  """Returns packages to include in example_extension_package package."""
   sub_packages = [_PACKAGE_NAME + "." + package
                   for package in setuptools.find_packages()]
   return [_PACKAGE_NAME] + sub_packages
@@ -55,9 +55,9 @@ setuptools.setup(
 
     # define list of packages included in distribution
     packages=_get_packages(),
-    package_dir={"example_controller_package": ""},
+    package_dir={"example_extension_package": ""},
     package_data={
-        "example_controller_package": ["log_event_filters/*.json"],
+        "example_extension_package": ["log_event_filters/*.json"],
     },
 
     # runtime dependencies that are installed by pip during install

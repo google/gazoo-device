@@ -62,7 +62,20 @@ setuptools.setup(
     description='Gazoo Device Manager',
     long_description=_get_readme(),
     long_description_content_type='text/markdown',
-    python_requires='>=3',
+    python_requires='>=3.7',
+    classifiers=[
+        'Development Status :: 5 - Production/Stable',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: Apache Software License',
+        'Operating System :: MacOS',
+        'Operating System :: POSIX :: Linux',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Topic :: Software Development :: Embedded Systems',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Topic :: Software Development :: Testing',
+    ],
 
     # project's homepage
     url='https://github.com/google/gazoo-device',

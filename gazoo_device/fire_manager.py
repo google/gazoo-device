@@ -529,7 +529,7 @@ class FireManager(manager.Manager):
 
     Args:
       package_name: Name of the package to register. For example,
-        "foo_controller" or "my_package.bar_devices".
+        "foo_extension_package" or "my_package.bar_devices".
 
     Note that this only registers the package for CLI usage. Tests and Python
     interpreter users must use package_registrar.register() instead.
@@ -550,7 +550,7 @@ class FireManager(manager.Manager):
 
     Args:
       package_name: Name of the package to unregister. For example,
-        "foo_controller" or "my_package.bar_devices".
+        "foo_extension_package" or "my_package.bar_devices".
 
     Note that this only removes the package from the CLI.
     """

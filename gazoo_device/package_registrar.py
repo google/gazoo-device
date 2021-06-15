@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Handles registration of device controller packages.
+"""Handles registration of device extension packages.
 
 Registered extensions are stored in gazoo_device.extensions.
 """
@@ -81,7 +81,7 @@ logger = gdm_logger.get_logger()
 
 
 def register(package: types.ModuleType) -> None:
-  """Registers the given controller package with GDM architecture.
+  """Registers the given extension package with GDM architecture.
 
   The provided module must define:
   * a "download_key" function;
@@ -135,8 +135,7 @@ def register(package: types.ModuleType) -> None:
   }
 
   Args:
-    package: Controller extension package to register (typically its __init__
-      module).
+    package: Extension package to register (typically its __init__ module).
 
   Raises:
     PackageRegistrationError: The extensions provided by
@@ -166,8 +165,8 @@ def import_and_register(package_name: str,
   """Attempts to import and register the extension package.
 
   Args:
-    package_name: Name of the package to import. For example, "foo_controller"
-      or "my_package.bar_devices".
+    package_name: Name of the package to import. For example,
+      "foo_extension_package" or "my_package.bar_devices".
     include_cli_instructions: Whether to include CLI-specific instructions to
       resolve the error.
 

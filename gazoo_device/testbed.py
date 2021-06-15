@@ -39,11 +39,12 @@ class Testbed(object):
     self.commands = COMMANDS
 
     # map from testing prop to corresponding testbed health check method
-    # e.g. if { "external_storage": self.check_external_storage_mounted }, then the
-    #      check_external_storage_mounted method will be executed as a health check
-    #      if the "external_storage" prop is provided during Testbed initialization.
-    self._PROP_TO_HEALTH_CHECK = {
-        "external_storage": self.check_external_storage_mounted
+    # e.g. if { "external_storage": self.check_external_storage_mounted }, then
+    #      the check_external_storage_mounted method will be executed as a
+    #      health check if the "external_storage" prop is provided during
+    #      Testbed initialization.
+    self._prop_to_health_check = {
+        "external_storage": self.check_external_storage_mounted,
     }
 
   @decorators.health_check
@@ -82,9 +83,9 @@ class Testbed(object):
     """Checks if the testbed is healthy by executing a series of health check methods."""
     health_check_call = []  # list of tuples: (health check method, prop value)
     for prop in self.testing_props:
-      if prop in self._PROP_TO_HEALTH_CHECK:
+      if prop in self._prop_to_health_check:
         health_check_call.append(
-            (self._PROP_TO_HEALTH_CHECK[prop], self.testing_props[prop]))
+            (self._prop_to_health_check[prop], self.testing_props[prop]))
     self._execute_health_check_methods(health_check_call)
 
   @decorators.LogDecorator(logger)

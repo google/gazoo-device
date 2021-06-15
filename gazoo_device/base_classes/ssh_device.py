@@ -124,11 +124,7 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
 
   @decorators.CapabilityDecorator(file_transfer_scp.FileTransferScp)
   def file_transfer(self):
-    """File transfer capability for moving files from and to the device.
-
-    Returns:
-      FileTransferScp: file transfer capability using "scp" command.
-    """
+    """File transfer capability for moving files from and to the device."""
     return self.lazy_init(
         file_transfer_scp.FileTransferScp,
         ip_address_or_fn=self.ip_address,
