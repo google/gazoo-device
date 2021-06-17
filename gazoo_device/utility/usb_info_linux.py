@@ -30,7 +30,9 @@ import pyudev
 PERSISTENT_SERIAL_PATH_FOLDER = '/dev/serial/by-id'
 MOUNTED_DISK_FOLDER = '/dev/disk/by-id'
 ADB_SERIAL_REGEX = r'\/dev\/disk\/by-id\/usb-Linux_File-CD_Gadget_([\da-z]+)-0:0'
-IDENTIFIER_REGEX = r'\d-\d(?:\.\d?)+(\d\.\d):\d\.\d'
+HUB_IDENTIFIER_REGEX = r'\d-\d(?:\.\d?)+/(\d-(?:\d\.)+)\d\.\d:\d\.\d'
+USB3_HUB_IDENTIFIER_REGEX = r'\d-\d(?:\.\d?)+/(\d-(?:\d\.)+)\d:\d\.\d'
+IDENTIFIER_REGEX_TEMPLATE = r'\d-\d(?:\.\d?)+/{hub}(\d\.\d)(?:\.\d)*:\d\.\d'
 ANDROID_DEVICE_PRODUCT_NAME = 'File-CD Gadget'
 
 # These vendor's mounted drives show up as multiple usb connections.
@@ -75,14 +77,14 @@ def get_pyudev_list_of_devices(subsystem=None, devtype=None):
   """Wrapper around pyudev.list_devices.
 
   Args:
-      subsystem (str): maps to pyudev.Context().list_devices arg.
-      devtype (str): maps to pyudev.Context().list_devices arg DEVTYPE.
+    subsystem (str): maps to pyudev.Context().list_devices arg.
+    devtype (str): maps to pyudev.Context().list_devices arg DEVTYPE.
 
   Returns:
-      list: a list of pyudev devices.
+    list: a list of pyudev devices.
 
   Raises:
-      RuntimeError: if platform is not linux.
+    RuntimeError: if platform is not linux.
   """
   args = {}
   if subsystem:
@@ -97,14 +99,13 @@ def get_pyudev_list_of_devices(subsystem=None, devtype=None):
 
 def _add_cambrionix_ports(address_to_usb_info_dict, location_dict, model_dict):
   """Add cambrionix port number and parent address to each cambrionix child."""
-  for cam_address, model in model_dict.items():
-    port_mapping = usb_config.CAMBRIONIX_PORT_MAP[model]
-    for child_address in address_to_usb_info_dict[cam_address].child_addresses:
+  for hub_address, model in model_dict.items():
+    for child_address in address_to_usb_info_dict[hub_address].child_addresses:
       if child_address in address_to_usb_info_dict:
         child_entry = address_to_usb_info_dict[child_address]
-        child_entry.usb_hub_address = cam_address
+        child_entry.usb_hub_address = hub_address
         child_entry.usb_hub_port = _get_cambrionix_port_number(
-            location_dict[child_address], port_mapping)
+            hub_address, model, child_address, location_dict)
 
 
 def _add_disk_info(address_to_usb_info_dict, disk_info):
@@ -144,31 +145,63 @@ def _get_cambrionix_model(udev_device):
     return parent.get('ID_MODEL')
 
 
-def _get_cambrionix_port_number(dev_path, port_mapping):
+def _get_cambrionix_port_number(hub_address,
+                                hub_model,
+                                child_address,
+                                location_dict):
   """Get port from dev path.
 
   Args:
-      dev_path (str): udev device dev path.
-      port_mapping (dict): dict of port identifiers to port numbers.
+    hub_address (str): Address for the Cambrionix hub.
+    hub_model (str): Model for the Cambrionix hub.
+    child_address (str): Address for a child device connected to the hub.
+    location_dict (dict): Dictionary to look up the dev_path by address.
 
   Returns:
-      int: port number or None if not found
+    int: Port number or None if not found.
 
   Note:
-      Port identifier is the last two digits before the ':'
-      So for "/devices/pci0000:00/0000:00:1a.0/usb1/"
-             "1-1/1-1.5/1-1.5.4/1-1.5.4.3/1-1.5.4.3:1.3/"
-             "ttyUSB42/tty/ttyUSB42"
-      "1-1.5.4.3:1.3" is the relevant number.
-      '1.3' indicates the FTDI interface
-      '4.3' indicates the Cambrionix port
-      1 - 1.5 indicates the parent usb.
+    The port number is determined by first finding the Cambionix (or parent)
+    identifier. The parent identifier can vary in length, but is found using
+    the hub dev path by looking between the '/' and the last one or two digits
+    (depending on hub model) before the ':' ("/<parent_identifier>n.n:n.n").
+    For children, the two digits following the parent identifier in their
+    dev path are used to look up the Cambrionix port.
+
+    Example:
+      hub dev path:
+        "/devices/pci0000:00/0000:00:14.0/usb1/1-4/1-4.1/1-4.1.2/1-4.1.2.4/"
+        "1-4.1.2.4.1/1-4.1.2.4.1:1.0/ttyUSB4/tty/ttyUSB4"
+      From the hub dev path "1-4.1.2.4.1:1.0" is used to find that the parent
+      identifier is "1-4.1.2".
+      child dev path:
+        "/devices/pci0000:00/0000:00:14.0/usb1/1-4/1-4.1/1-4.1.2/1-4.1.2.3/"
+        "1-4.1.2.3.4/1-4.1.2.3.4:1.2/ttyUSB2/tty/ttyUSB2"
+          "1-4.1.2.3.4:1.2" is the relevant number.
+          "1-4.1.2" is the parent identifier.
+          "3.4" is the child identifier used to look up the port number.
+          "1.2" indicates the FTDI interface.
+      child dev path (hub device):
+        "/devices/pci0000:00/0000:00:14.0/usb1/1-4/1-4.1/1-4.1.2/1-4.1.2.4/"
+        "1-4.1.2.4.2/1-4.1.2.4.2.1/1-4.1.2.4.2.1:1.0/tty/ttyACM1"
+          "1-4.1.2.4.2.1:1.0" is the relevant number.
+          "1-4.1.2" is the parent identifier.
+          "4.2" is the child identifier used to look up the port number.
+          "1:" is the hub device identifier
+          "1.0" indicates the FTDI interface.
   """
-  match = re.search(IDENTIFIER_REGEX, dev_path)
-  if match:
-    port_identifier = match.group(1)
-    if port_identifier in port_mapping:
-      return port_mapping[port_identifier]
+  if 'USB3' in hub_model:
+    hub_id_regex = USB3_HUB_IDENTIFIER_REGEX
+  else:
+    hub_id_regex = HUB_IDENTIFIER_REGEX
+  hub_match = re.search(hub_id_regex, location_dict[hub_address])
+  if hub_match:
+    parent_identifier = hub_match.group(1).replace('.', r'\.')
+    identifier_regex = IDENTIFIER_REGEX_TEMPLATE.format(hub=parent_identifier)
+    match = re.search(identifier_regex, location_dict[child_address])
+    if match:
+      port_mapping = usb_config.CAMBRIONIX_PORT_MAP[hub_model]
+      return port_mapping.get(match.group(1))
   return None
 
 

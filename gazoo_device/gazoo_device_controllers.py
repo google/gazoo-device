@@ -26,6 +26,7 @@ from gazoo_device.auxiliary_devices import cambrionix
 from gazoo_device.auxiliary_devices import dli_powerswitch
 from gazoo_device.auxiliary_devices import efr32
 from gazoo_device.auxiliary_devices import efr32_pigweed_lighting
+from gazoo_device.auxiliary_devices import esp32
 from gazoo_device.auxiliary_devices import nrf52840
 from gazoo_device.auxiliary_devices import nrf_pigweed_lighting
 from gazoo_device.auxiliary_devices import raspberry_pi
@@ -106,6 +107,7 @@ def export_extensions() -> Dict[str, Any]:
           dli_powerswitch.DliPowerSwitch,
           efr32.EFR32,
           efr32_pigweed_lighting.EFR32PigweedLighting,
+          esp32.ESP32,
           nrf52840.NRF52840,
           nrf_pigweed_lighting.NRFPigweedLighting,
           raspberry_pi.RaspberryPi,

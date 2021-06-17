@@ -207,16 +207,16 @@ def _pty_process_name_query(
   return address
 
 
-def _usb_product_name_query(
+def usb_product_name_query(
     address: str,
     detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> str:
   """Gets product name from usb_info."""
-  del create_switchboard_func  # Unused by _usb_product_name_query
+  del create_switchboard_func  # Unused by usb_product_name_query
   product_name = usb_utils.get_product_name_from_path(address).lower()
   detect_logger.info(
-      "_usb_product_name_query response: {}".format(product_name))
+      "usb_product_name_query response: {}".format(product_name))
   return product_name
 
 
@@ -273,7 +273,7 @@ PTY_PROCESS_QUERY_DICT = immutabledict.immutabledict({
 })
 
 SERIAL_QUERY_DICT = immutabledict.immutabledict({
-    SerialQuery.product_name: _usb_product_name_query,
+    SerialQuery.product_name: usb_product_name_query,
 })
 
 SSH_QUERY_DICT = immutabledict.immutabledict({
@@ -284,7 +284,7 @@ SSH_QUERY_DICT = immutabledict.immutabledict({
 
 PIGWEED_QUERY_DICT = immutabledict.immutabledict({
     PigweedQuery.app_type: _pigweed_application_query,
-    PigweedQuery.product_name: _usb_product_name_query,
+    PigweedQuery.product_name: usb_product_name_query,
     PigweedQuery.manufacturer_name: _manufacturer_name_query,
 })
 
