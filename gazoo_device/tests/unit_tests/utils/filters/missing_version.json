@@ -1,0 +1,10 @@
+{
+    "description": "Shows Parser rejects missing version key",
+    "filters": [
+        {
+            "description": "describes my_message filter",
+            "regex_match": "\\[APPL\\] Some non-existent message",
+            "name": "my_message"
+        }
+    ]
+}

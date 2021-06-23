@@ -12,7 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Testbed module."""
+"""Testbed module.
+
+Usage:
+
+To enable a testbed health check, you will need to...
+
+1. Add a health check method to the Testbed class below. This method should
+follow the naming convention 'check_<description>', be decorated with
+'@decorators.health_check', and accept 1 argument which will be the testing
+value of the property used to trigger the check (detailed in 2. below). You will
+have access to the devices in your testbed via self.devices within the health
+check method. If you'd like to issue a shell command to the device within the
+method, add the shell command to the global COMMANDS dictionary below and use it
+in the method via self.commands.
+
+2. Add an entry to the 'self._prop_to_health_check' dictionary in
+Testbed.__init__() below. The entry should follow the format
+{
+  <testing property>: <health check method>
+}
+The testing property should be the name of the property used to trigger the
+health check, and the health check method should be the newly added Testbed
+method. This will tell GDM to execute the method when the property exists in the
+testbed config (detailed in 3. below).
+
+3. Add the testing property from 2. above to the testbed configs of the testbeds
+you'd like to execute the health check on.
+
+Note that the property value will be passed to the corresponding health check
+method as an argument. If no property value is necessary, use 'true'.
+"""
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger

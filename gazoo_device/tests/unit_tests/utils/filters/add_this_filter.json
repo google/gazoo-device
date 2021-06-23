@@ -1,0 +1,11 @@
+{
+    "description": "Helps perform functional testing of add_new_filter method",
+    "version": {"major": 1, "minor": 0},
+    "filters": [
+        {
+            "description": "Generates entry in event file when message below is detected",
+            "regex_match": "Special log message",
+            "name": "special_message"
+        }
+    ]
+}

@@ -36,6 +36,7 @@ Supported models: EFR32MG
 gdm issue efr32pigweedlighting-3453 - pw_rpc_light - on  # Turn the light on
 gdm issue efr32pigweedlighting-3453 - pw_rpc_light - state  # Check the light state
 gdm issue efr32pigweedlighting-3453 - pw_rpc_light - off  # Turn the light off
+gdm issue efr32pigweedlighting-3453 - pw_rpc_button - push 0  # Push button 0
 gdm issue efr32pigweedlighting-3453 - factory_reset
 gdm issue efr32pigweedlighting-3453 - reboot
 gdm issue efr32pigweedlighting-3453 - pw_rpc_common - vendor_id

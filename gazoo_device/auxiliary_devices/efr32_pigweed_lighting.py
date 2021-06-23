@@ -17,9 +17,11 @@ from gazoo_device import decorators
 from gazoo_device import detect_criteria
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import silabs_efr32_device
+from gazoo_device.capabilities import pwrpc_button_default
 from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.capabilities import pwrpc_light_default
 from gazoo_device.utility import pwrpc_utils
+import immutabledict
 
 # TODO(b/185956488): Remove conditional imports of Pigweed
 try:
@@ -38,6 +40,12 @@ logger = gdm_logger.get_logger()
 _REGEXES = {"BOOT_UP": r"<efr32 > chip-efr32-lighting-example starting",}
 _BOOTUP_TIMEOUT = 10  # seconds
 _RPC_TIMEOUT = 10  # seconds
+# Button event dict: button id -> expected regex
+# Button action details can be referred to
+# https://github.com/project-chip/connectedhomeip/tree/master/examples/lighting-app/efr32#running-the-complete-example
+_BUTTON_EVENT_REGEXES = immutabledict.immutabledict({
+    0: "Thread joiner timer running",
+    1: "<efr32 > Turning light"})
 
 
 class EFR32PigweedLighting(silabs_efr32_device.SilabsEFR32Device):
@@ -101,6 +109,16 @@ class EFR32PigweedLighting(silabs_efr32_device.SilabsEFR32Device):
         rpc_timeout_s=_RPC_TIMEOUT,
         bootup_logline_regex=self.regexes["BOOT_UP"],
         bootup_timeout=_BOOTUP_TIMEOUT)
+
+  @decorators.CapabilityDecorator(pwrpc_button_default.PwRPCButtonDefault)
+  def pw_rpc_button(self):
+    """PwRPCButtonDefault capability to send RPC command."""
+    return self.lazy_init(
+        pwrpc_button_default.PwRPCButtonDefault,
+        device_name=self.name,
+        expect_button_regexes=_BUTTON_EVENT_REGEXES,
+        expect_timeout=_RPC_TIMEOUT,
+        switchboard_call_expect=self.switchboard.call_and_expect)
 
   @decorators.CapabilityDecorator(pwrpc_common_default.PwRPCCommonDefault)
   def pw_rpc_common(self):

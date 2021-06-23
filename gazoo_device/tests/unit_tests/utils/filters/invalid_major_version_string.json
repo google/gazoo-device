@@ -1,0 +1,10 @@
+{
+    "description": "This shows that a major version other than the expected is rejected",
+    "version": {"major": "one", "minor": 0},
+    "filters": [
+        {
+            "regex_match": "\\[APPL\\] Some non-existent message",
+            "name": "my_message"
+        }
+    ]
+}

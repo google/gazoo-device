@@ -1,0 +1,11 @@
+{"basic.firmware_info": ["1.0.0"], "raw_log_line": "Bootloader 1.0.0", "system_timestamp": "2018-06-25 14:55:01.241663"}
+{"basic.bootup": [], "system_timestamp": "2018-06-25 14:55:05.433307", "raw_log_line": "[0:00:00.055] [APPL] Welcome to Some App"}
+{"raw_log_line": "[0:00:00.059] [APPL] Reset cause: 04", "basic.reset_reason": ["04"], "system_timestamp": "2018-06-25 14:55:05.434582"}
+{"basic.firmware_info": ["1.0.0"], "raw_log_line": "Bootloader 1.0.0", "system_timestamp": "2018-06-25 14:55:19.533594"}
+{"basic.firmware_info": ["1.0.0"], "raw_log_line": "Bootloader 1.0.0", "system_timestamp": "2018-06-25 14:57:23.531819"}
+{"basic.bootup": [], "system_timestamp": "2018-06-25 14:57:27.723463", "raw_log_line": "[0:00:00.055] [APPL] Welcome to Some App"}
+{"raw_log_line": "[0:00:00.059] [APPL] Reset cause: 10", "basic.reset_reason": ["10"], "system_timestamp": "2018-06-25 14:57:27.724590"}
+{"basic.firmware_info": ["1.0.0"], "raw_log_line": "Bootloader 1.0.0", "system_timestamp": "2018-06-25 14:57:32.685324"}
+{"basic.firmware_info": ["1.1.0"], "raw_log_line": "Bootloader 1.1.0", "system_timestamp": "2018-06-25 14:58:03.755297"}
+{"basic.bootup": [], "system_timestamp": "2018-06-25 14:58:07.947229", "raw_log_line": "[0:00:00.055] [APPL] Welcome to Some App"}
+{"raw_log_line": "[0:00:00.059] [APPL] Reset cause: 10", "basic.reset_reason": ["10"], "system_timestamp": "2018-06-25 14:58:07.948379"}

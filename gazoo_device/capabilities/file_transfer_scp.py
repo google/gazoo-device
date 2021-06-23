@@ -63,7 +63,7 @@ class FileTransferScp(file_transfer_base.FileTransferBase):
     Note:
         If no dest is provided, the file will be copied to the current
         working directory on the host computer.
-        """
+    """
     dest_dir = os.path.dirname(dest)
     if dest_dir != "." and not os.path.exists(dest_dir):
       raise errors.DeviceError(

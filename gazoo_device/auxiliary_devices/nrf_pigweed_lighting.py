@@ -17,9 +17,11 @@ from gazoo_device import decorators
 from gazoo_device import detect_criteria
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import nrf_connect_sdk_device
+from gazoo_device.capabilities import pwrpc_button_default
 from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.capabilities import pwrpc_light_default
 from gazoo_device.utility import pwrpc_utils
+import immutabledict
 
 # TODO(b/185956488): Remove conditional imports of Pigweed
 try:
@@ -38,6 +40,14 @@ logger = gdm_logger.get_logger()
 _REGEXES = {"BOOT_UP": r"<inf> app: Starting CHIP task",}
 _BOOTUP_TIMEOUT = 10  # seconds
 _RPC_TIMEOUT = 10  # seconds
+# Button event dict: button id -> expected regex
+# Button action details can be referred to
+# https://github.com/project-chip/connectedhomeip/tree/master/examples/lighting-app/nrfconnect#device-ui
+_BUTTON_EVENT_REGEXES = immutabledict.immutabledict({
+    0: "Factory Reset Triggered",
+    1: "Action has been completed",
+    2: "New pairing for device",
+    3: "NFC Tag emulation and BLE advertisement"})
 
 
 class NRFPigweedLighting(nrf_connect_sdk_device.NRFConnectSDKDevice):
@@ -101,6 +111,16 @@ class NRFPigweedLighting(nrf_connect_sdk_device.NRFConnectSDKDevice):
         rpc_timeout_s=_RPC_TIMEOUT,
         bootup_logline_regex=self.regexes["BOOT_UP"],
         bootup_timeout=_BOOTUP_TIMEOUT)
+
+  @decorators.CapabilityDecorator(pwrpc_button_default.PwRPCButtonDefault)
+  def pw_rpc_button(self):
+    """PwRPCButtonDefault capability to send RPC command."""
+    return self.lazy_init(
+        pwrpc_button_default.PwRPCButtonDefault,
+        device_name=self.name,
+        expect_button_regexes=_BUTTON_EVENT_REGEXES,
+        expect_timeout=_RPC_TIMEOUT,
+        switchboard_call_expect=self.switchboard.call_and_expect)
 
   @decorators.CapabilityDecorator(pwrpc_common_default.PwRPCCommonDefault)
   def pw_rpc_common(self):

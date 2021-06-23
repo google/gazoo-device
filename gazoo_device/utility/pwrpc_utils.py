@@ -20,6 +20,7 @@ from typing import Callable
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import switchboard_base
+from gazoo_device.protos import echo_service_pb2
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
 
 # TODO(b/185956488): Remove conditional imports of Pigweed
@@ -30,7 +31,10 @@ try:
   from device_service import device_service_pb2
   from lighting_service import lighting_service_pb2
   # pytype: enable=import-error
-  _PWRPC_PROTOS = (button_service_pb2, device_service_pb2, lighting_service_pb2)
+  _PWRPC_PROTOS = (button_service_pb2,
+                   device_service_pb2,
+                   lighting_service_pb2,
+                   echo_service_pb2)
 except ImportError:
   _PWRPC_PROTOS = None
 
@@ -38,7 +42,7 @@ except ImportError:
 class PigweedAppType(enum.Enum):
   NON_PIGWEED = "nonpigweed"
   LIGHTING = "lighting"
-
+  ECHO = "echo"
 
 logger = gdm_logger.get_logger()
 
@@ -51,6 +55,7 @@ logger = gdm_logger.get_logger()
 # application_type is the Pigweed device type in string.
 _PIGWEED_APP_ENDPOINTS = (
     (("Lighting", "Get"), {}, PigweedAppType.LIGHTING),
+    (("msg",), {}, PigweedAppType.ECHO)
 )
 
 
@@ -82,7 +87,11 @@ def get_application_type(
   try:
     for method_args, method_kwargs, app_type in _PIGWEED_APP_ENDPOINTS:
       try:
-        switchboard.call(method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        if app_type == PigweedAppType.ECHO:
+          method = pigweed_rpc_transport.PigweedRPCTransport.echo_rpc
+        else:
+          method = pigweed_rpc_transport.PigweedRPCTransport.rpc
+        switchboard.call(method=method,
                          method_args=method_args,
                          method_kwargs=method_kwargs)
         return app_type.value

@@ -1,0 +1,16 @@
+{
+    "description": "Shows Parser rejects filters with the same name",
+    "version": {"major": 1, "minor": 0},
+    "filters": [
+        {
+            "description": "describes first same_name filter",
+            "regex_match": "\\[APPL\\] Some non-existent message",
+            "name": "same_name"
+        },
+        {
+            "description": "describes second same_name filter",
+            "regex_match": "\\[APPL\\] Some other non-existent message",
+            "name": "same_name"
+        }
+    ]
+}

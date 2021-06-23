@@ -1,0 +1,39 @@
+{
+    "description": "Mock device basic events",
+    "version": {"major": 1, "minor": 0},
+    "filters": [
+        {
+            "name": "bootup",
+            "description": "Detect any reboot of the device",
+            "regex_match": "\\[APPL\\] Welcome to Some App",
+            "examples": [
+                "<2018-05-16 13:11:42.464493> [0:00:00.058] [APPL] Welcome to Some App"
+            ]
+        },
+        {
+          "name": "reboot_trigger",
+          "description": "Detect GDM reboot triggers of the device",
+          "regex_match": "GDM triggered reboot",
+          "examples": [
+            "<2018-05-22 13:21:19.501817> Note: GDM triggered reboot"
+            ]
+        },
+        {
+            "name": "reset_reason",
+            "description": "Reset reason groups: 1-reason for reset",
+            "regex_match": "Reset cause: (\\d+)",
+            "examples": [
+                "<2018-05-09 13:44:02.705385> [0:00:00.207] [APPL] Reset cause: 10"
+            ]
+        },
+        {
+            "name": "firmware_info",
+            "description": "Application groups: 1-bootloader version",
+            "regex_match": "(\\S+),<none>",
+            "examples": [
+                "1.0.0,<none>"
+            ]
+        }
+    ]
+}
+

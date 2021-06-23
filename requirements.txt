@@ -2,6 +2,7 @@ dataclasses>=0.6
 fire>=0.2.1
 immutabledict>=1.2.0
 intelhex>=2.2.1
+protobuf>=3.17.3
 psutil>=5.0.1
 pylibftdi>=0.19.0
 pylink-square>=0.3.0

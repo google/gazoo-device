@@ -1,0 +1,4 @@
+{
+    "description": "Shows Parser rejects missing filters key",
+    "version": {"major": 1, "minor": 0}
+}

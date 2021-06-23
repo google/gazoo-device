@@ -36,6 +36,7 @@ Supported models: NRF52840 DK
 gdm issue nrfpigweedlighting-6125 - pw_rpc_light - on  # Turn the light on
 gdm issue nrfpigweedlighting-6125 - pw_rpc_light - state  # Check the light state
 gdm issue nrfpigweedlighting-6125 - pw_rpc_light - off  # Turn the light off
+gdm issue nrfpigweedlighting-6125 - pw_rpc_button - push 0  # Push button 0
 gdm issue nrfpigweedlighting-6125 - factory_reset
 gdm issue nrfpigweedlighting-6125 - reboot
 gdm issue nrfpigweedlighting-6125 - pw_rpc_common - vendor_id

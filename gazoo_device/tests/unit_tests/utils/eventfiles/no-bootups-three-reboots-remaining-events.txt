@@ -1,0 +1,11 @@
+{"basic.reboot_trigger": [], "system_timestamp": "2018-06-25 14:55:01.010453", "raw_log_line": "Note: GDM triggered reboot"}
+{"basic.firmware_info": ["1.0.0"], "raw_log_line": "Bootloader 1.0.0", "system_timestamp": "2018-06-25 14:55:01.241663"}
+{"raw_log_line": "[0:00:00.059] [APPL] Reset cause: 04", "basic.reset_reason": ["04"], "system_timestamp": "2018-06-25 14:55:05.434582"}
+{"basic.reboot_trigger": [], "system_timestamp": "2018-06-25 14:55:19.420630", "raw_log_line": "Note: GDM triggered reboot"}
+{"basic.firmware_info": ["1.0.0"], "raw_log_line": "Bootloader 1.0.0", "system_timestamp": "2018-06-25 14:55:19.533594"}
+{"basic.reboot_trigger": [], "system_timestamp": "2018-06-25 14:55:27.200832", "raw_log_line": "Note: GDM triggered reboot"}
+{"basic.firmware_info": ["1.0.0"], "raw_log_line": "Bootloader 1.0.0", "system_timestamp": "2018-06-25 14:57:23.531819"}
+{"raw_log_line": "[0:00:00.059] [APPL] Reset cause: 10", "basic.reset_reason": ["10"], "system_timestamp": "2018-06-25 14:57:27.724590"}
+{"basic.firmware_info": ["1.0.0"], "raw_log_line": "Bootloader 1.0.0", "system_timestamp": "2018-06-25 14:57:32.685324"}
+{"basic.firmware_info": ["1.1.0"], "raw_log_line": "Bootloader 1.1.0", "system_timestamp": "2018-06-25 14:58:03.755297"}
+{"raw_log_line": "[0:00:00.059] [APPL] Reset cause: 10", "basic.reset_reason": ["10"], "system_timestamp": "2018-06-25 14:58:07.948379"}

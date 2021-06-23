@@ -1,0 +1,10 @@
+{
+    "description": "Shows Parser rejects filters missing name key",
+    "version": {"major": 1, "minor": 0},
+    "filters": [
+        {
+            "description": "note missing name key here",
+            "regex_match": "\\[APPL\\] Some non-existent message"
+        }
+    ]
+}

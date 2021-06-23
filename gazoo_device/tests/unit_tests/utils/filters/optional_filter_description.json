@@ -1,0 +1,10 @@
+{
+    "description": "Shows filter object description is optional",
+    "version": {"major": 1, "minor": 0},
+    "filters": [
+        {
+            "regex_match": "\\[APPL\\] Some non-existent message",
+            "name": "my_message"
+        }
+    ]
+}

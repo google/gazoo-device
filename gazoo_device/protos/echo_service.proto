@@ -11,24 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 syntax = "proto3";
 
-package chip.rpc;
+package pw.rpc;
 
-message Empty {}
-
-message Button {
-  // 0=FUNCTION 1=LIGHTING 2=THREAD_START 3=BLE_START
-  uint32 idx = 1;
-
-  // 0=release 1=push
-  uint32 action = 2;
+service EchoService {
+  // Pigweed RPC Echo service
+  // See more details from
+  // https://github.com/project-chip/connectedhomeip/tree/master/examples/pigweed-app/esp32
+  rpc Echo(EchoMessage) returns (EchoMessage) {}
 }
 
-service LightingService {
-  // Pigweed RPC button event
-  // See more details from
-  // https://github.com/project-chip/connectedhomeip/tree/master/examples/lighting-app/nrfconnect
-  rpc ButtonEvent(Button) returns (Empty) {}
+message EchoMessage {
+  string msg = 1;
 }

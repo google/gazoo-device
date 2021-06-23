@@ -1,0 +1,3 @@
+{"basic.firmware_info": ["1.0.0"], "raw_log_line": "Bootloader 1.0.0", "system_timestamp": "2018-06-22 09:21:29.462068"}
+{"basic.bootup": [], "system_timestamp": "2018-06-22 09:21:33.655514", "raw_log_line": "[0:00:00.059] [APPL] Welcome to Some App"}
+{"raw_log_line": "[0:00:00.062] [APPL] Reset cause: 04", "basic.reset_reason": ["04"], "system_timestamp": "2018-06-22 09:21:33.670575"}

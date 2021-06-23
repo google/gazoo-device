@@ -89,7 +89,7 @@ setuptools.setup(
     packages=setuptools.find_packages(exclude=['gazoo_device.tests*']),
     package_dir={'gazoo_device': _SOURCE_CODE_DIR_NAME},
     package_data={
-        'gazoo_device': ['protos/*',]
+        'gazoo_device': [],
     },
 
     # runtime dependencies that are installed by pip during install

@@ -1,0 +1,11 @@
+{
+    "description": "Shows Parser rejects invalid version string value",
+    "version": "1.0",
+    "filters": [
+        {
+            "description": "describes my_message filter",
+            "regex_match": "\\[APPL\\] Some non-existent message",
+            "name": "my_message"
+        }
+    ]
+}

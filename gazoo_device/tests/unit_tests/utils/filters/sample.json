@@ -1,0 +1,38 @@
+{
+    "description": "A sample of the filter file format for demonstration purposes",
+    "version": {"major": 1, "minor": 0},
+    "filters": [
+        {
+            "name": "message",
+            "description": "a simple regular expression matching a log line",
+            "regex_match": "\\[APPL\\] Some unique message",
+            "examples": [
+                "<2018-02-02 12:00:01.123456> [APPL] Some unique message"
+            ]
+        },
+        {
+            "name": "message2",
+            "description": "another regular expression that matches the same line",
+            "regex_match": "unique message",
+            "examples": [
+                "<2018-02-02 12:00:01.123456> [APPL] Some unique message"
+            ]
+        },
+        {
+            "name": "message3",
+            "description": "a similarly named expression that doesn't match the same line",
+            "regex_match": "another message",
+            "examples": [
+                "<2018-02-02 12:00:01.123456> [APPL] This is another message"
+            ]
+        },
+        {
+            "name": "state",
+            "description": "a regular expression with group data",
+            "regex_match": "\\[APPL\\] Some other message with group data (\\d+)",
+            "examples": [
+                "<2018-02-02 12:00:01.123456> [APPL] Some other message with group data 911"
+            ]
+        }
+    ]
+}

@@ -12,5 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Gazoo Device Manager version."""
-version = "1.13.0"
+"""Common logs and responses used in Cambrionix unit testing."""
+
+CAMBRIONIX_LIMITS = [
+    "5V Min:   4.50", "5V Max:   5.58", "12V Min:  9.59", "12V Max: 14.50",
+    "Temperature (C): 75.0"
+]
+
+CAMBRIONIX_SYSTEM = [
+    "cambrionix PP15S 15 Port USB Charge+Sync", "Hardware: PP15S",
+    "Firmware: 1.68", "Compiled: Feb 14 2017 17:30:26", "Group: -",
+    "Panel ID: Absent"
+]

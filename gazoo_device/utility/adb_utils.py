@@ -16,6 +16,7 @@
 import json
 import os
 import subprocess
+import time
 
 from gazoo_device import config
 from gazoo_device import errors
@@ -24,6 +25,7 @@ from gazoo_device.utility import host_utils
 
 import six
 
+ADB_RETRY_SLEEP = 10
 FASTBOOT_TIMEOUT = 10.0
 PROPERTY_PATTERN = r"\[(.*)\]: \[(.*)\]\n"
 SYSENV_PATTERN = r"(.*)=(.*)\n"
@@ -317,7 +319,7 @@ def connect(adb_serial, adb_path=None):
         f"Unable to connect to device {adb_serial!r} via ADB: {resp}")
 
 
-def shell(adb_serial, command, adb_path=None, timeout=None):
+def shell(adb_serial, command, adb_path=None, timeout=None, retries=1):
   """Issues a command to the shell of the adb_serial provided.
 
   Args:
@@ -325,6 +327,7 @@ def shell(adb_serial, command, adb_path=None, timeout=None):
       command (str): command to send
       adb_path (str): optional alternative path to adb executable
       timeout (int): time in seconds to wait for adb process to complete.
+      retries (int): number of times to retry adb command.
 
   Returns:
       str: response from adb command
@@ -334,7 +337,7 @@ def shell(adb_serial, command, adb_path=None, timeout=None):
       used instead.
   """
   return _adb_command(["shell", command], adb_serial,
-                      adb_path=adb_path, timeout=timeout)
+                      adb_path=adb_path, timeout=timeout, retries=retries)
 
 
 def get_fastboot_devices(fastboot_path=None):
@@ -544,12 +547,13 @@ def push_to_device(adb_serial, sources, destination_path, adb_path=None):
   return output
 
 
-def reboot_device(adb_serial, adb_path=None):
+def reboot_device(adb_serial, adb_path=None, retries=1):
   """Calls 'adb reboot' for the adb_serial provided using adb_path.
 
   Args:
       adb_serial (str): Device serial number.
-      adb_path (str): optional alternative path to adb executable
+      adb_path (str): optional alternative path to adb executables
+      retries (int): number of times to retry adb command.
 
   Raises:
       RuntimeError: if adb_path is invalid or adb executable was not found by
@@ -563,7 +567,7 @@ def reboot_device(adb_serial, adb_path=None):
       used instead. If adb returns a non-zero return code then None will be
       returned.
   """
-  return _adb_command("reboot", adb_serial, adb_path=adb_path)
+  return _adb_command("reboot", adb_serial, adb_path=adb_path, retries=retries)
 
 
 def root_device(adb_serial, adb_path=None):
@@ -611,7 +615,8 @@ def _adb_command(command,
                  adb_serial=None,
                  adb_path=None,
                  include_return_code=False,
-                 timeout=None):
+                 timeout=None,
+                 retries=1):
   """Returns the output of the adb command and optionally the return code.
 
   Args:
@@ -621,6 +626,7 @@ def _adb_command(command,
       include_return_code (bool): flag indicating return code should also be
         returned.
       timeout (int): time in seconds to wait for adb process to complete.
+      retries (int): number of times to retry adb command.
 
   Raises:
       RuntimeError: if adb_path provided or obtained from get_adb_path is
@@ -645,20 +651,26 @@ def _adb_command(command,
     args.append(command)
   elif isinstance(command, (list, tuple)):
     args.extend(command)
-  proc = subprocess.Popen(
-      args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-  try:
-    output, _ = proc.communicate(timeout=timeout)
-  except subprocess.TimeoutExpired:
-    proc.terminate()
-    output, _ = proc.communicate()
-  output = output.decode("utf-8", "replace")
-  logger.debug("adb command {!r} to {} returned {!r}".format(
-      command, adb_serial, output))
-  if include_return_code:
-    return output, proc.returncode
-  return output
+  for i in range(0, retries):
+    proc = subprocess.Popen(
+        args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    try:
+      output, _ = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+      proc.terminate()
+      output, _ = proc.communicate()
+    output = output.decode("utf-8", "replace")
+    logger.debug("adb command {!r} to {} returned {!r}".format(
+        command, adb_serial, output))
+    if include_return_code:
+      return output, proc.returncode
+    if not any(msg in output for msg in ["error: closed", "offline"]):
+      return output
+    if i < retries - 1:
+      logger.info(f"Retrying adb command: {command} in {ADB_RETRY_SLEEP}s")
+      time.sleep(ADB_RETRY_SLEEP)
+  raise errors.DeviceError(
+      f"ADB command failed: {command} with output: {output}")
 
 
 def _fastboot_command(command,

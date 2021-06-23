@@ -43,7 +43,7 @@ setuptools.setup(
     },
     install_requires=[
         "absl-py>=0.12.0",
-        "protobuf>=3.17.0",
+        "protobuf>=3.17.3",
         "retry>=0.9.2",
     ]
 )
