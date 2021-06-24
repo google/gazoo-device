@@ -19,7 +19,7 @@ import inspect
 import json
 import os.path
 import time
-from typing import Any, Collection, Dict, List, Sequence, Tuple, Type
+from typing import Any, Collection, Dict, List, Optional, Sequence, Tuple, Type
 
 from absl import flags
 from gazoo_device import custom_types
@@ -32,10 +32,10 @@ from gazoo_device.tests.functional_tests.utils import gazootest
 
 DeviceType = custom_types.Device
 
+_DEVICE_CREATION_ATTEMPTS = 2
 _TEST_CONFIG_TEMPLATE = "{device_type}_test_config.json"
 _TIMEOUTS = immutabledict.immutabledict({
     "CREATION_FAILURE": 10,
-    "CREATION_FAILURE_NOT_CONNECTED": 30,
     "RECONNECT": 60,
 })
 
@@ -112,6 +112,41 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
     return True
 
   @classmethod
+  def create_device(
+      cls,
+      device_name: str,
+      log_name_prefix: str,
+      attempts: int = _DEVICE_CREATION_ATTEMPTS) -> Optional[DeviceType]:
+    """Creates a device instance.
+
+    Args:
+      device_name: GDM identifier of the device to create.
+      log_name_prefix: String to prepend to log filename.
+      attempts: Number of times to attempt device creation.
+
+    Returns:
+      GDM device instance.
+
+    Raises:
+      DeviceError: Device creation failed.
+    """
+    for attempt in range(attempts):
+      try:
+        return cls.get_manager().create_device(
+            device_name, log_name_prefix=log_name_prefix)
+
+      # Wait and retry if creation fails, or raise if final creation attempt.
+      except errors.DeviceError as err:
+        if attempt == attempts - 1:
+          raise
+        cls.logger.info(
+            "Device creation failed attempt %d/%d. "
+            "Waiting %d seconds before re-attempting device creation. "
+            "Error: %r.",
+            attempt + 1, attempts, _TIMEOUTS["CREATION_FAILURE"], err)
+        time.sleep(_TIMEOUTS["CREATION_FAILURE"])
+
+  @classmethod
   def get_test_config(cls) -> Dict[str, Any]:
     """Returns the functional test config for the device in the testbed."""
     config_file_name = _TEST_CONFIG_TEMPLATE.format(
@@ -146,25 +181,18 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
     """
     self.skip_if_not_applicable()
     self.validate_test_config_keys()
+    self.device = self.create_device(self.device_config.name,
+                                     self.get_log_suffix(),
+                                     attempts=_DEVICE_CREATION_ATTEMPTS)
 
-    creation_attempts = 2
-    for attempt in range(creation_attempts):
-      try:
-        self.device = self._create_device(self.device_config.name)
-        break
-      except errors.DeviceError as err:
-        if attempt < creation_attempts - 1:
-          retry_wait = _TIMEOUTS["CREATION_FAILURE"]
-          if "DeviceNotConnectedError" in str(err):
-            retry_wait = _TIMEOUTS["CREATION_FAILURE_NOT_CONNECTED"]
-          self.logger.warning(
-              "Device creation failed attempt %d/%d. "
-              "Waiting %d seconds before re-attempting device creation. "
-              "Error: %r.", attempt + 1, creation_attempts, retry_wait, err)
-          time.sleep(retry_wait)
-        else:
-          self.fail(f"Device creation failed in {creation_attempts} tries. "
-                    f"Aborting test. Error: {err!r}.")
+    try:
+      if hasattr(type(self.device), "firmware_version"):
+        self.logger.info(f"DUT: {self.device.name}, "
+                         f"firmware version: {self.device.firmware_version}")
+    except errors.DeviceError as error:
+      if self.device:  # for pytype
+        self.device.close()
+      raise
 
   def tearDown(self) -> None:
     """Closes the device."""
@@ -236,36 +264,6 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
     else:
       self.fail("{} failed to reconnect in {}s".format(self.device.name,
                                                        _TIMEOUTS["RECONNECT"]))
-
-  def _create_device(self, device_name: str) -> DeviceType:
-    """Creates a device instance and ensures basic communication works.
-
-    Args:
-      device_name: GDM identifier of the device to create.
-
-    Returns:
-      GDM device instance.
-
-    Raises:
-      DeviceError: Device creation or basic device communication failed.
-    """
-    device = self.get_manager().create_device(
-        device_name,
-        log_name_prefix=self.get_log_suffix())
-    try:
-      # confirm basic device communication works
-      if hasattr(type(device), "firmware_version"):
-        version = device.firmware_version
-        self.logger.info("DUT: %s, firmware version: %s", device.name, version)
-      else:
-        # Auxiliary devices may not have support for firmware_version.
-        device.device_is_connected()
-        self.logger.info("DUT: %s, device is connected", device.name)
-
-      return device
-    except errors.DeviceError:
-      device.close()
-      raise
 
   def _get_matching_tests(self, all_tests: Sequence[str],
                           category: TestCategory) -> List[str]:
