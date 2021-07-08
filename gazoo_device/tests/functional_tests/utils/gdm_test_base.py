@@ -19,9 +19,12 @@ import inspect
 import json
 import os.path
 import time
+import typing
 from typing import Any, Collection, Dict, List, Optional, Sequence, Tuple, Type
+import unittest
 
 from absl import flags
+from absl.testing import xml_reporter
 from gazoo_device import custom_types
 from gazoo_device import errors
 from gazoo_device import manager
@@ -33,6 +36,7 @@ from gazoo_device.tests.functional_tests.utils import gazootest
 DeviceType = custom_types.Device
 
 _DEVICE_CREATION_ATTEMPTS = 2
+_TEST_RETRY_INTERVAL = 30
 _TEST_CONFIG_TEMPLATE = "{device_type}_test_config.json"
 _TIMEOUTS = immutabledict.immutabledict({
     "CREATION_FAILURE": 10,
@@ -40,8 +44,8 @@ _TIMEOUTS = immutabledict.immutabledict({
 })
 
 
-class TestCategory(enum.Enum):
-  """Type of test defined in test config."""
+class TestLabel(enum.Enum):
+  """Test labels used in functional test configs."""
   DO_NOT_RUN = "do_not_run_tests"
   SLOW = "slow_tests"
   VOLATILE = "volatile_tests"
@@ -72,6 +76,7 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
     super().__init__(*args, **kwargs)
     self.device = None
     self.run_type = RunType(FLAGS.run_type)
+    self.is_do_not_run, self.is_slow, self.is_volatile = (False, False, False)
 
   @classmethod
   @abc.abstractmethod
@@ -179,7 +184,10 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
 
     Fails the test if unable to create the device in 2 attempts.
     """
-    self.skip_if_not_applicable()
+    super().setUp()
+    self.is_do_not_run, self.is_slow, self.is_volatile = self.get_test_labels()
+    self.skip_if_not_applicable(self.is_do_not_run, self.is_slow,
+                                self.is_volatile)
     self.validate_test_config_keys()
     self.device = self.create_device(self.device_config.name,
                                      self.get_log_suffix(),
@@ -201,13 +209,51 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
         self.wait_for_device()
       finally:
         self.device.close()
+    super().tearDown()
+
+  def run(
+      self, result: Optional[unittest.TestResult] = None
+  ) -> Optional[unittest.TestResult]:
+    """Retries the test if it's volatile. Otherwise identical to super().run."""
+    result = super().run(result)
+    test_failed = result and result.failures and result.failures[-1][0] is self
+    test_errored = result and result.errors and result.errors[-1][0] is self
+    should_retry = result and self.is_volatile and (test_failed or test_errored)
+
+    if should_retry:
+      # Erase the test result from the previous attempt in unittest.
+      # This reverts test result changes from
+      # unittest.result.TestResult.startTest(), .addError(), .addFailure().
+      result.testsRun -= 1
+      if test_failed:
+        result.failures.pop()
+      elif test_errored:
+        result.errors.pop()
+      # Erase the test result from the previous attempt in absltest.
+      # This reverts test result changes from
+      # absl.testing.xml_reporter._TestSuiteResult.add_test_case_result.
+      suite_name = type(self).__name__
+      result = typing.cast(xml_reporter._TextAndXMLTestResult, result)
+      result.suite.suites[suite_name].pop()
+      if test_failed:
+        result.suite.failure_counts[suite_name] -= 1
+      elif test_errored:
+        result.suite.error_counts[suite_name] -= 1
+      # Rerun the test.
+      self.logger.info(
+          f"Test {self._testMethodName} failed the first attempt and is known "
+          f"to be flaky on {self.device.device_type}. "
+          f"RETRYING in {_TEST_RETRY_INTERVAL}s.")
+      time.sleep(_TEST_RETRY_INTERVAL)
+      result = super().run(result)
+    return result
 
   def get_log_suffix(self) -> str:
     """Returns the log suffix to be used for test log files."""
     return type(self).__name__ + "." + self._testMethodName
 
-  def skip_if_not_applicable(self) -> None:
-    """Skips the current test if not applicable to the current test run."""
+  def get_test_labels(self) -> Tuple[bool, bool, bool]:
+    """Returns labels for the current test: "do_not_run", "slow", "volatile"."""
     current_test_name = self._testMethodName
     all_tests = [
         name for name, _ in inspect.getmembers(self, inspect.ismethod)
@@ -216,25 +262,29 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
 
     # Check the test config for any tests we might want to skip.
     do_not_run_tests = self._get_matching_tests(
-        all_tests, TestCategory.DO_NOT_RUN)
+        all_tests, TestLabel.DO_NOT_RUN)
     slow_tests = self._get_matching_tests(
-        all_tests, TestCategory.SLOW)
+        all_tests, TestLabel.SLOW)
     volatile_tests = self._get_matching_tests(
-        all_tests, TestCategory.VOLATILE)
+        all_tests, TestLabel.VOLATILE)
 
-    # skip current test if it does not apply to current flavor
-    if current_test_name in do_not_run_tests:
+    return (current_test_name in do_not_run_tests,
+            current_test_name in slow_tests,
+            current_test_name in volatile_tests)
+
+  def skip_if_not_applicable(
+      self, is_do_not_run: bool, is_slow: bool, is_volatile: bool) -> None:
+    """Skips the current test if it's not applicable to the current test run."""
+    if is_do_not_run:
       self.skipTest("Excluding do_not_run_tests from testing")
     if self.run_type == RunType.PRESUBMIT:
-      if current_test_name in slow_tests:
+      if is_slow:
         self.skipTest("Excluding slow tests from presubmit testing")
-      elif current_test_name in volatile_tests:
-        self.skipTest("Excluding volatile tests from presubmit testing")
     elif self.run_type == RunType.STABLE:
-      if current_test_name in volatile_tests:
+      if is_volatile:
         self.skipTest("Excluding volatile tests from stable testing")
     elif self.run_type == RunType.VOLATILE:
-      if current_test_name not in volatile_tests:
+      if not is_volatile:
         self.skipTest("Excluding non-volatile tests from volatile testing")
 
   def validate_test_config_keys(self) -> None:
@@ -266,15 +316,15 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
                                                        _TIMEOUTS["RECONNECT"]))
 
   def _get_matching_tests(self, all_tests: Sequence[str],
-                          category: TestCategory) -> List[str]:
-    """Returns test names in the current test suite matching the category.
+                          label: TestLabel) -> List[str]:
+    """Returns test names in the current test suite matching the label.
 
     Args:
       all_tests: Names of tests in the current test suite.
-      category: Test category to check: "do not run" tests, "slow" tests, or
+      label: Test label corresponding to "do not run" tests, "slow" tests, or
         "volatile" (flaky) tests.
     """
-    test_or_suite_names = self.test_config.get(category.value, [])
+    test_or_suite_names = self.test_config.get(label.value, [])
     filtered_tests = []
 
     for full_name in test_or_suite_names:

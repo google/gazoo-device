@@ -12,23 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Runs all unit tests for gazoo_device."""
-import os
-import unittest
+"""Switchboard unit tests."""
+import os.path
+
+from absl import flags
 from gazoo_device import config
 
-UNIT_TEST_DIR = os.path.join(config.PACKAGE_PATH, "tests", "unit_tests")
+_CUR_DIR = os.path.join(config.PACKAGE_PATH, "tests", "unit_tests",
+                        "switchboard_tests")
 
 
 def load_tests(loader, standard_tests, unused_pattern):
   """Called by unittest framework to load tests for this module."""
-  folder = UNIT_TEST_DIR
-  pattern_match = "test_*.py"
-  unit_tests = loader.discover(
-      folder, top_level_dir=UNIT_TEST_DIR, pattern=pattern_match)
-  standard_tests.addTests(unit_tests)
+  pattern_match = "*_test.py"
+
+  if flags.FLAGS.file:
+    filename = flags.FLAGS.file
+    if not filename.endswith(".py"):
+      filename += ".py"  # allow filenames without the .py extension
+    pattern_match = filename
+  elif flags.FLAGS.skip_slow:
+    return standard_tests  # skip switchboard tests
+
+  switchboard_tests = loader.discover(_CUR_DIR, pattern=pattern_match)
+  standard_tests.addTests(switchboard_tests)
   return standard_tests
-
-
-if __name__ == "__main__":
-  unittest.main()

@@ -919,19 +919,11 @@ class Manager():
     props_dict = self.get_device_configuration(device_identifier)["persistent"]
     return {key: value for key, value in props_dict.items() if "usb" in key}
 
-  def port_map(self, print_map=True):
-    """Gets the Port Map.
-
-    Args:
-      print_map (bool): prints out the map.
-
-    Returns:
-       list: list of cambrionixes and their port maps.
+  def port_map(self):
+    """Prints the USB Port Map.
     """
     usb_port_map = UsbPortMap(self)
-    if print_map:
-      usb_port_map.print_port_map()
-    return usb_port_map.get_port_map()
+    usb_port_map.print_port_map()
 
   def issue_devices(self,
                     devices,

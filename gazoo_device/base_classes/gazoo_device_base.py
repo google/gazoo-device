@@ -250,10 +250,6 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     """Dictionary of default timeouts to use when expecting certain actions."""
     return self._timeouts
 
-  @decorators.PersistentProperty
-  def build_properties(self):
-    return self.build_autocompleter.get_default_values()
-
   @decorators.LogDecorator(logger)
   def add_new_filter(self, filter_path):
     """Adds new log filter at path specified.

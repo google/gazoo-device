@@ -15,7 +15,6 @@
 """This test suite verifies comm_power capability."""
 from typing import Type
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
-import retry
 
 _ON = "on"
 _OFF = "off"
@@ -64,7 +63,6 @@ class CommPowerTestSuite(gdm_test_base.GDMTestBase):
     if self.device.comm_power.hub_type == "ethernet_switch":
       self.device.ethernet_switch = FakeManagerEthernetSwitch()
 
-  @retry.retry(tries=2, delay=10)
   def test_comm_power_on_and_off(self):
     """Verifies comm_power methods on and off work."""
     original_mode = self.device.comm_power.port_mode

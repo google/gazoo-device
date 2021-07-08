@@ -139,8 +139,8 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
         method_args=("Device", "GetDeviceInfo"),
         method_kwargs={})
     if not ack:
-      raise errors.DeviceError("{} getting static info failed.".format(
-          self._device_name))
+      raise errors.DeviceError(
+          f"{self._device_name} getting static info failed.")
     payload = device_service_pb2.DeviceInfo.FromString(payload_in_bytes)
     device_property = getattr(payload, property_name, None)
     if device_property is None:
@@ -182,8 +182,8 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
                        "arguments was provided. Both or neither should be "
                        "provided.")
     if not ack:
-      raise errors.DeviceError("{} triggering {} failed: The action did not"
-                               " succeed".format(self._device_name, action))
+      raise errors.DeviceError(f"{self._device_name} triggering {action} failed"
+                               ": The action did not succeed")
 
   def _wait_for_bootup_complete(self, bootup_timeout: int):
     """Waits for device to boot up.
@@ -198,12 +198,12 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     bootup_time = start_time + bootup_timeout
     while time.time() < bootup_time:
       try:
-        logger.debug("{} responded to the RPC call: {}".
-                     format(self._device_name, self.software_version))
-        logger.info("{} booted up in {}s".
-                    format(self._device_name, time.time() - start_time))
+        logger.debug(f"{self._device_name} responded to the RPC call: "
+                     f"{self.software_version}")
+        logger.info(f"{self._device_name} booted up in "
+                    f"{time.time() - start_time}s")
         return
       except errors.DeviceError:
-        logger.debug("{} hasn't booted up yet.".format(self._device_name))
+        logger.debug(f"{self._device_name} hasn't booted up yet.")
       time.sleep(0.5)
     raise errors.DeviceError(f"Failed to boot up within {bootup_timeout}s.")

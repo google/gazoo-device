@@ -17,16 +17,16 @@ import http.client
 import json
 import os.path
 import socket
-import unittest
 from unittest import mock
 import urllib
 
+from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import http_utils
 import requests
 import urllib3
 
 
-class FakeURLResponse(object):
+class FakeURLResponse:
   """Fake URL response."""
 
   def __init__(self, code=200, content=""):
@@ -40,7 +40,7 @@ class FakeURLResponse(object):
     return self.content
 
 
-class HTTPUtilsTests(unittest.TestCase):
+class HTTPUtilsTests(unit_test_case.UnitTestCase):
   """Unit tests for gazoo_device.utility.http_utils.py."""
 
   @mock.patch.object(requests.Session, "get")
@@ -256,5 +256,5 @@ class HTTPUtilsTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-  unittest.main()
+  unit_test_case.main()
 

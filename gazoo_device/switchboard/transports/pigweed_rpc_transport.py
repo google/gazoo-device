@@ -81,11 +81,11 @@ class PwHdlcRpcClient:
     self.log_queue = queue.Queue()
 
   def is_alive(self) -> bool:
-    """Return true if the worker thread has started."""
+    """Returns true if the worker thread has started."""
     return self._worker is not None and self._worker.is_alive()
 
-  def start(self):
-    """Create and start the worker thread if it hasn't been created."""
+  def start(self) -> None:
+    """Creates and starts the worker thread if it hasn't been created."""
     if self._stop_event.is_set():
       self._stop_event.clear()
     if self._worker is None:
@@ -94,15 +94,15 @@ class PwHdlcRpcClient:
 
       self._worker.start()
 
-  def close(self):
-    """Set the threading event and join the worker thread."""
+  def close(self) -> None:
+    """Sets the threading event and joins the worker thread."""
     self._stop_event.set()
     if self._worker is not None:
       self._worker.join(timeout=_JOIN_TIMEOUT_SEC)
       if self._worker.is_alive():
         raise errors.DeviceError(
-            "The child thread failed to join after {} seconds"
-            .format(_JOIN_TIMEOUT_SEC))
+            f"The child thread failed to join after {_JOIN_TIMEOUT_SEC} seconds"
+            )
       self._worker = None
 
   def rpcs(self, channel_id: Optional[int] = None) -> Any:
@@ -111,14 +111,14 @@ class PwHdlcRpcClient:
       return next(iter(self.client.channels())).rpcs
     return self.client.channel(channel_id).rpcs
 
-  def _handle_rpc_packet(self, frame: Any):
+  def _handle_rpc_packet(self, frame: Any) -> None:
     """Handler for processing HDLC frame."""
     if not self.client.process_packet(frame.data):
       logger.error("Packet not handled by RPC client: %s", frame.data)
 
   def read_and_process_data(self,
                             read: Callable[[], bytes],
-                            frame_handlers: Any):
+                            frame_handlers: Any) -> None:
     """Continuously reads and handles HDLC frames."""
     decoder = decode.FrameDecoder()
     while not self._stop_event.is_set():
@@ -135,8 +135,8 @@ class PwHdlcRpcClient:
         # TODO(b/184718613): Refactor to non-blocking IO.
         time.sleep(0.01)
 
-  def _push_to_log_queue(self, frame: Any):
-    """Push the HDLC log in frame into the log queue.
+  def _push_to_log_queue(self, frame: Any) -> None:
+    """Pushes the HDLC log in frame into the log queue.
 
     Args:
       frame: HDLC frame packet.
@@ -145,7 +145,7 @@ class PwHdlcRpcClient:
 
   def _handle_frame(self,
                     frame: Any,
-                    frame_handlers: Dict[int, Callable[[Any], None]]):
+                    frame_handlers: Dict[int, Callable[[Any], None]]) -> None:
     """Private method for processing HDLC frame.
 
     Args:
@@ -167,7 +167,7 @@ class PwHdlcRpcClient:
 
 
 class PigweedRPCTransport(transport_base.TransportBase):
-  """Perform transport communication using the Pigweed RPC to end devices."""
+  """Performs transport communication using the Pigweed RPC to end devices."""
 
   def __init__(self,
                comms_address: str,

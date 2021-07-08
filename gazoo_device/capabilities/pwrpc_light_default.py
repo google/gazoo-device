@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Default implementation of the PwRPC (Pigweed RPC) lighting capability."""
-from typing import Any, Callable
+from typing import Any, Callable, Tuple
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -83,15 +83,21 @@ class PwRPCLightDefault(pwrpc_light_base.PwRPCLightBase):
       DeviceError: When the device does not transition to the appropriate
       state or if it remains off.
     """
-    light_toggle_ack, state_in_bytes = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-        method_args=("Lighting", "Get"),
-        method_kwargs={})
-    if not light_toggle_ack:
-      raise errors.DeviceError("Device {} getting light state failed.".format(
-          self._device_name))
+    state_in_bytes = self._get_state()
     state = lighting_service_pb2.LightingState.FromString(state_in_bytes)
     return state.on
+
+  @decorators.DynamicProperty
+  def brightness(self) -> Tuple[int, int]:
+    """The brightness level of the device.
+
+    Returns:
+      Current brightness level and the maximal brightness level.
+    """
+    state_in_bytes = self._get_state()
+    brightness = lighting_service_pb2.LightingBrightness.FromString(
+        state_in_bytes)
+    return brightness.level, brightness.max_level
 
   def _on_off(self, on: bool, no_wait: bool = False) -> None:
     """Turn on/off the light of the device.
@@ -110,9 +116,27 @@ class PwRPCLightDefault(pwrpc_light_base.PwRPCLightBase):
         method_kwargs={"on": on})
     action = "on" if on else "off"
     if not lighting_ack:
-      raise errors.DeviceError("Device {} turning light {} failed.".format(
-          self._device_name, action))
+      raise errors.DeviceError(
+          f"Device {self._device_name} turning light {action} failed.")
     if not no_wait:
       if on != self.state:  # pylint: disable=comparison-with-callable
-        raise errors.DeviceError("Device {} light didn't turn {}.".format(
-            self._device_name, action))
+        raise errors.DeviceError(
+            f"Device {self._device_name} light didn't turn {action}.")
+
+  def _get_state(self) -> bytes:
+    """Returns the serialized lighting state of the device.
+
+    Returns:
+      The serialized lighting state.
+
+    Raises:
+      DeviceError: When the ack value is not true.
+    """
+    ack, state_in_bytes = self._switchboard_call(
+        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_args=("Lighting", "Get"),
+        method_kwargs={})
+    if not ack:
+      raise errors.DeviceError(
+          f"Device {self._device_name} getting light state failed.")
+    return state_in_bytes

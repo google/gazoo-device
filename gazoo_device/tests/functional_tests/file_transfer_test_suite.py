@@ -19,7 +19,6 @@ from typing import Type
 
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 import immutabledict
-import retry
 
 _COMMANDS = immutabledict.immutabledict({
     "IS_WRITABLE_DIRECTORY": "test -d {path} && test -w {path}",
@@ -70,7 +69,6 @@ class FileTransferTestSuite(gdm_test_base.GDMTestBase):
     with open(self.host_source_path, "w") as open_file:
       open_file.write(file_contents)
 
-  @retry.retry(tries=2, delay=10)
   def test_file_transfer(self):
     """Tests sending a file to the device and receiving it."""
     received_file_name = "file_transfer_received.txt"

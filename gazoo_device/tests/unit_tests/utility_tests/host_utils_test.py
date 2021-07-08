@@ -14,12 +14,12 @@
 
 """Unit tests for gazoo_device.utility.host_utils.py."""
 import os
-import unittest
 from unittest import mock
 
 from gazoo_device import config
 from gazoo_device import data_types
 from gazoo_device import extensions
+from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import host_utils
 import immutabledict
 
@@ -43,7 +43,7 @@ _TEST_KEY_OTHER = data_types.KeyInfo(
     _TEST_KEY_OTHER_NAME, type=data_types.KeyType.OTHER, package=_TEST_PACKAGE)
 
 
-class HostUtilsTests(unittest.TestCase):
+class HostUtilsTests(unit_test_case.UnitTestCase):
   """Unit tests for gazoo_device.utility.host_utils.py."""
 
   def setUp(self):
@@ -173,4 +173,4 @@ class HostUtilsTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-  unittest.main()
+  unit_test_case.main()

@@ -11,23 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""Tests that gazoo_device can be imported."""
-import logging
-import unittest
-
-
-class ImportTestSuite(unittest.TestCase):
-  """Tests that gazoo_device can be imported."""
-
-  def test_import(self):
-    """Tests importing gazoo_device."""
-    try:
-      import gazoo_device  # pylint: disable=g-import-not-at-top
-    except ImportError as err:
-      self.fail(f"Unable to import gazoo_device. Error: {err!r}.")
-    logging.info("gazoo_device version: %s", gazoo_device.version)
-
-
-if __name__ == "__main__":
-  unittest.main()

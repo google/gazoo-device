@@ -14,7 +14,7 @@
 
 """Base class module for Espressif ESP32 platform device."""
 import os
-from typing import Dict, Tuple, NoReturn
+from typing import Dict, Tuple
 from gazoo_device import custom_types
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -55,18 +55,6 @@ class EspressifESP32Device(auxiliary_device.AuxiliaryDevice):
                    device_config: custom_types.ManagerDeviceConfigDict) -> bool:
     """Returns True if the device is connected to the host."""
     return os.path.exists(device_config["persistent"]["console_port_name"])
-
-  @decorators.LogDecorator(logger)
-  def recover(self, error: errors.CheckDeviceReadyError) -> NoReturn:
-    """Recovery method to overwrite the abstract base class.
-
-    Args:
-      error: An error raised by check_device_ready.
-
-    Raises:
-      CheckDeviceReadyError: Currently no recovery mechanism is implemented.
-    """
-    raise error
 
   @decorators.PersistentProperty
   def os(self) -> str:

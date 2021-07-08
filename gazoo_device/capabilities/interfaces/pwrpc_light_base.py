@@ -14,6 +14,8 @@
 
 """Interface for an PwRPC (Pigweed RPC) lighting capability."""
 import abc
+from typing import Tuple
+
 from gazoo_device.capabilities.interfaces import capability_base
 
 
@@ -50,5 +52,14 @@ class PwRPCLightBase(capability_base.CapabilityBase):
     """The light state of the device.
 
     Returns:
-        True if the device is in on state, false if it's in off state.
+      True if the device is in on state, false if it's in off state.
+    """
+
+  @property
+  @abc.abstractmethod
+  def brightness(self) -> Tuple[int, int]:
+    """The brightness level of the device.
+
+    Returns:
+      Current brightness level and the maximal brightness level.
     """

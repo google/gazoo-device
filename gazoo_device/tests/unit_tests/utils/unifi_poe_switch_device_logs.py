@@ -22,7 +22,7 @@ DEFAULT_BEHAVIOR = {
         f"""
         Model:       USW-8P-150
         Version:     4.3.13.11253
-        MAC Address: e0:63:da:54:3d:2a
+        MAC Address: 12:34:56:78:90:ab
         IP Address:  123.45.67.89
         Hostname:    UBNT
         Uptime:      44625 seconds
@@ -92,8 +92,8 @@ TELNET_COMMAND_RESPONSES = {
         System Description............................. USW-8P-150, 4.3.13.11253, Linux 3.6.5
         Machine Type................................... USW-8P-150
         Machine Model.................................. US8P150
-        Serial Number.................................. e063da543d2a
-        Burned In MAC Address.......................... E0:63:DA:54:3D:2A
+        Serial Number.................................. 1234567890ab
+        Burned In MAC Address.......................... 12:34:56:78:90:AB
         Software Version............................... 4.3.13.11253
 
         (UBNT) #"""

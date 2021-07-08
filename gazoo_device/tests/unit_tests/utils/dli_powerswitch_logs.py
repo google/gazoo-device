@@ -23,7 +23,7 @@ DEFAULT_BEHAVIOR = {
         "status_code": "207"
     },
     "http://123.45.67.89/restapi/config/=serial/": {
-        "text": '["LPC92407023570"]',
+        "text": '["ABCD1234"]',
         "status_code": "207"
     },
     "http://123.45.67.89/restapi/config/=brand_company_name/": {

@@ -26,8 +26,8 @@ There are 3 types of special regression test labels:
 
 1. Slow tests. These are stable, but too slow to run in presubmit. These only
    run in nightly regression testing.
-2. Volatile tests. These do not run in presubmit due to flakiness, but do run in
-   nightly regression testing.
+2. Volatile tests. These tests run are flaky and are automatically retried once.
+   Volatile tests run in presubmit and nightly regression.
 3. Do not run tests. Either the device type does not support that functionality,
    or the test can put the device in a bad state. These tests do not run.
 
@@ -61,8 +61,10 @@ test suite names (format: SuiteName). For example:
 The regression run type determines the set of tests that is going to be run. \
 4 run types are supported:
 
-* **Full** (nightly regression) runs exclude only "do_not_run" tests.
-* **Presubmit** runs exclude "do_not_run", "slow", "volatile" tests.
+* **Full** (nightly regression) runs exclude only "do_not_run" tests. "volatile"
+  tests are retried once.
+* **Presubmit** runs exclude "do_not_run", "slow", tests. "volatile" tests are
+  retried once.
 * **Stable** runs exclude "do_not_run" and "volatile" tests.
 * **Volatile** runs only include "volatile" tests which aren't labeled as
   "do_not_run".
@@ -96,7 +98,7 @@ specified, all tests in the applicable (or selected) test suites will be run.
    ```
 
 4. Set up a virtual environment and install *gazoo-device* and
-   *gazoo-device.tests* in it:
+   *gazoo-device.tests* in editable mode:
 
    ```shell
    cd gazoo_device/tests/
@@ -107,7 +109,7 @@ specified, all tests in the applicable (or selected) test suites will be run.
 
 ### Run tests
 
-* Run all presubmit tests (excludes volatile & slow):
+* Run all presubmit tests (excludes slow tests):
 
   ```shell
   python3 functional_test_runner.py -t ~/gazoo/testbeds/device-1234.textproto \

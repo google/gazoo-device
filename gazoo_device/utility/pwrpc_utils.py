@@ -47,7 +47,6 @@ class PigweedAppType(enum.Enum):
 logger = gdm_logger.get_logger()
 
 
-# TODO(b/185298972): Add more endpoints for device type checking.
 # Element format in _PIGWEED_APP_ENDPOINTS container:
 # tuple of 3 elements: (method_args, method_kwargs, application_type)
 # where method_args, method_kwargs are the input arguments

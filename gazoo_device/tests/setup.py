@@ -43,7 +43,12 @@ setuptools.setup(
     },
     install_requires=[
         "absl-py>=0.12.0",
+        "immutabledict>=1.2.0",
+        "intelhex>=2.2.1",
         "protobuf>=3.17.3",
-        "retry>=0.9.2",
+        "psutil>=5.0.1",
+        "pyserial>=3.5",
+        "pyudev==0.21.0",
+        "websocket-client>=0.56.0",
     ]
 )

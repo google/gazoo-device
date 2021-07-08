@@ -30,6 +30,7 @@ from gazoo_device.tests.functional_tests import pw_rpc_light_test_suite
 from gazoo_device.tests.functional_tests import shell_ssh_test_suite
 from gazoo_device.tests.functional_tests import switch_power_test_suite
 from gazoo_device.tests.functional_tests import switchboard_test_suite
+from gazoo_device.tests.functional_tests.utils import gazoo_input
 from gazoo_device.tests.functional_tests.utils import gazootest
 from gazoo_device.tests.functional_tests.utils import runner_lib
 
@@ -57,7 +58,7 @@ def load_tests(loader: unittest.TestLoader,
   """Called by unittest framework to load tests."""
   del loader  # We use our own test loader.
   del pattern  # Not used since we don't use the default discovery mechanism.
-  testbed_config = gazootest.get_testbed_config()
+  testbed_config = gazoo_input.get_testbed_config()
   device_name = testbed_config.devices[0].name
 
   standard_tests.addTests(

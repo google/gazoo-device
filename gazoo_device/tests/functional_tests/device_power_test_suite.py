@@ -15,7 +15,6 @@
 """This test suite verifies device_power capability."""
 from typing import Type
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
-import retry
 
 
 class DevicePowerTestSuite(gdm_test_base.GDMTestBase):
@@ -36,7 +35,6 @@ class DevicePowerTestSuite(gdm_test_base.GDMTestBase):
     """Returns True if the device must be paired to run this test suite."""
     return False
 
-  @retry.retry(tries=2, delay=30)
   def test_device_power_on_off(self):
     """Verifies on() and off() methods work."""
     original_mode = self.device.device_power.port_mode

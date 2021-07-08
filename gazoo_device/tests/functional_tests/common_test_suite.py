@@ -24,10 +24,8 @@ from gazoo_device import errors
 from gazoo_device import fire_manager
 from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
-import retry
 
 # Allows the log process to catch up after device creation using time.sleep().
-# Prevents _verify_no_unexpected_bootups() from checking old bootup log events.
 _LOG_CATCH_UP_DELAY = 3
 
 
@@ -51,23 +49,18 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
     """Returns keys required to be present in the functional test config."""
     return ("shell_cmd", "expect", "known_logline")
 
-  @retry.retry(tries=2, delay=30)
   def test_01_factory_reset(self):
     """Tests factory resetting the device and verifies it's online after.
 
     The test name includes "01" to make sure this test appears (and therefore
     runs) before other tests in alphabetic order.
     """
-    time.sleep(_LOG_CATCH_UP_DELAY)
-    start_time = datetime.datetime.now()
-
     self.device.factory_reset()
     self.assertTrue(
         self.device.connected,
         f"{self.device.name} is offline after factory_reset() execution "
         "finished. factory_reset should block until the device comes back "
         "online and becomes responsive.")
-    self._verify_no_unexpected_reboots(start_time)
 
   def test_close_device(self):
     """Tests that device.close() stops logging."""
@@ -96,14 +89,12 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
     """Tests retrieval of 'firmware_version' property."""
     self._verify_firmware_version()
 
-  @retry.retry(tries=2, delay=30)
   def test_reboot_and_expect_known_logline(self):
     """Tests rebooting and waiting for a certain log line.
 
     After the reboot verifies that the device is connected, logging, able to
-    retrieve the firmware version, passes health checks, that the device
-    actually rebooted, and that no unexpected bootups happened. Also waits for
-    the known log line after rebooting.
+    retrieve the firmware version, passes health checks, and that the device
+    actually rebooted. Also waits for the known log line after rebooting.
     """
     time.sleep(_LOG_CATCH_UP_DELAY)
     start_time = datetime.datetime.now()
@@ -121,7 +112,6 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
     # Wait to ensure last bootup event has been logged by the logger process.
     time.sleep(_LOG_CATCH_UP_DELAY)
     self._verify_boot_up_log(start_time)
-    self._verify_no_unexpected_reboots(start_time)
 
     try:
       self.device.check_device_ready()
@@ -159,7 +149,6 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
     finally:
       fire_manager_instance.close()
 
-  @retry.retry(tries=2, delay=30)
   def test_redetect(self):
     """Tests device detection and properties populated during detection."""
     self.device.close()
@@ -232,7 +221,7 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
                     f"{self.device.name}'s log file {log_file} is empty")
 
   def _verify_boot_up_log(self, start_time):
-    """Verifies that the device booted up once after the start_time."""
+    """Verifies that the device booted up after the start_time."""
     parser_result = self.device.event_parser.get_last_event(["basic.bootup"])
     self.assertGreater(parser_result.count, 0,
                        "Error: event label 'basic.bootup' not found.")
@@ -251,17 +240,6 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
         res.timedout,
         "Expect timed out when waiting for log line {!r}. Shell response: {}"
         .format(self.test_config["known_logline"], res.before))
-
-  def _verify_no_unexpected_reboots(self, start_time):
-    """Verifies that no unexpected reboots occurred after start_time."""
-    bootups = self.device.event_parser.get_unexpected_reboots()
-    unexpected_timestamps = [event["system_timestamp"]
-                             for event in bootups
-                             if event["system_timestamp"] > start_time]
-    self.assertFalse(
-        unexpected_timestamps,
-        "There were {} unexpected bootups after {} at {}".format(
-            len(unexpected_timestamps), start_time, unexpected_timestamps))
 
 
 if __name__ == "__main__":

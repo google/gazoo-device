@@ -22,25 +22,17 @@ It does 4 things:
 """
 import datetime
 import logging
-import os.path
+import os
 import tempfile
 from typing import List
 from typing import Tuple
 
-from absl import flags
 from absl import logging as absl_logging
 from absl.testing import absltest
 import gazoo_device
-from gazoo_device.tests.functional_tests.utils import testbed_config_pb2
-from google.protobuf import text_format
 
-FLAGS = flags.FLAGS
-flags.DEFINE_string(
-    "testbed_config",
-    default=None,
-    help="Path to the testbed config file",
-    short_name="t",
-    required=True)
+from gazoo_device.tests.functional_tests.utils import gazoo_input
+from gazoo_device.tests.functional_tests.utils import testbed_config_pb2
 
 _DATETIME_FORMAT = "%m-%d-%Y_%H-%M-%S-%f"
 _OUTPUT_DIR_PREFIX = "gazoo-{suite_name}-{date_time}_"
@@ -51,24 +43,17 @@ _LOG_LINE_TIME_FORMAT = "%m-%d %H:%M:%S"
 _testbed = None
 
 
-def get_testbed_config() -> testbed_config_pb2.TestbedConfig:
-  """Returns the testbed config loaded from the testbed textproto."""
-  with open(FLAGS.testbed_config) as open_file:
-    return text_format.Parse(open_file.read(),
-                             testbed_config_pb2.TestbedConfig())
-
-
 def _create_output_dir(suite_name: str) -> str:
   """Creates a temporary directory for the test output."""
   date_time_str = datetime.datetime.now().strftime(_DATETIME_FORMAT)[:-3]
-  output_dir = tempfile.mkdtemp(prefix=_OUTPUT_DIR_PREFIX.format(
-      suite_name=suite_name.lower(),
-      date_time=date_time_str))
+  output_dir = tempfile.mkdtemp(
+      prefix=_OUTPUT_DIR_PREFIX.format(
+          suite_name=suite_name.lower(), date_time=date_time_str))
   return output_dir
 
 
-def _set_up_logger(log_path: str) -> Tuple[logging.Logger,
-                                           List[logging.Handler]]:
+def _set_up_logger(
+    log_path: str) -> Tuple[logging.Logger, List[logging.Handler]]:
   """Sets up a test logger.
 
   Logs to test_log.DEBUG, test_log.INFO, test_log.WARNING depending
@@ -113,7 +98,7 @@ def _teardown_logger(logger: logging.Logger,
 
 
 class TestCase(absltest.TestCase):
-  """Base class for Gazoo device tests based on unittest."""
+  """Base class for Gazoo device tests based on absltest."""
   logger = None
   _logger_handlers = []
   _manager = None
@@ -124,12 +109,14 @@ class TestCase(absltest.TestCase):
     """Loads the testbed config and creates a Manager instance."""
     super().setUpClass()
     global _testbed
-    cls._output_dir = _create_output_dir(suite_name=cls.__name__)
+    cls._output_dir = (
+        gazoo_input.get_output_dir_setting() or
+        _create_output_dir(suite_name=cls.__name__))
     cls.logger, cls._logger_handlers = _set_up_logger(
         log_path=cls.get_output_dir())
     cls.logger.info("Test output folder: %s", cls.get_output_dir())
     if not _testbed:
-      _testbed = get_testbed_config()
+      _testbed = gazoo_input.get_testbed_config()
     gdm_log_file = os.path.join(cls.get_output_dir(), "gdm.log")
     cls._manager = gazoo_device.Manager(
         log_directory=cls.get_output_dir(),
