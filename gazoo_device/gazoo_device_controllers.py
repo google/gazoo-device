@@ -48,6 +48,7 @@ from gazoo_device.capabilities import pwrpc_button_default
 from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.capabilities import pwrpc_echo_default
 from gazoo_device.capabilities import pwrpc_light_default
+from gazoo_device.capabilities import pwrpc_lock_default
 from gazoo_device.capabilities import shell_ssh
 from gazoo_device.capabilities import switch_power_dli_powerswitch
 from gazoo_device.capabilities import switch_power_ethernet
@@ -66,6 +67,7 @@ from gazoo_device.capabilities.interfaces import pwrpc_button_base
 from gazoo_device.capabilities.interfaces import pwrpc_common_base
 from gazoo_device.capabilities.interfaces import pwrpc_echo_base
 from gazoo_device.capabilities.interfaces import pwrpc_light_base
+from gazoo_device.capabilities.interfaces import pwrpc_lock_base
 from gazoo_device.capabilities.interfaces import shell_base
 from gazoo_device.capabilities.interfaces import switch_power_base
 from gazoo_device.capabilities.interfaces import switchboard_base
@@ -143,6 +145,7 @@ def export_extensions() -> Dict[str, Any]:
           pwrpc_common_base.PwRPCCommonBase,
           pwrpc_echo_base.PwRPCEchoBase,
           pwrpc_light_base.PwRPCLightBase,
+          pwrpc_lock_base.PwRPCLockBase,
           shell_base.ShellBase,
           switchboard_base.SwitchboardBase,
           switch_power_base.SwitchPowerBase,
@@ -164,6 +167,7 @@ def export_extensions() -> Dict[str, Any]:
           pwrpc_common_default.PwRPCCommonDefault,
           pwrpc_echo_default.PwRPCEchoDefault,
           pwrpc_light_default.PwRPCLightDefault,
+          pwrpc_lock_default.PwRPCLockDefault,
           shell_ssh.ShellSSH,
           switch_power_dli_powerswitch.SwitchPowerDliPowerswitch,
           switch_power_ethernet.SwitchPowerEthernet,

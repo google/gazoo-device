@@ -371,14 +371,12 @@ class UsbPortMap(object):
     if device['type']:
       device_string += ' ' + device['type']
     issue_string = ''
-    # pytype: disable=key-error
     if USB_PORT_CONFLICT in device['conflict_types']:
       issue_string = 'Conflict'
     if USB_HUB_CONFLICT in device['conflict_types']:
       issue_string = 'Conflict'
     if NOT_DETECTED_CONFLICT in device['conflict_types']:
       issue_string = 'Undetected'
-    # pytype: enable=key-error
 
     device_dict = {}
     device_dict['hub_device'] = False
@@ -502,8 +500,7 @@ class UsbPortMap(object):
     # to a Cambrionix.
     for device in self.device_info_list:
       if device['known_device'] and 'gdm_config_name' not in device:
-        device['conflict_types'].append(  # pytype: disable=key-error
-            NOT_DETECTED_CONFLICT)
+        device['conflict_types'].append(NOT_DETECTED_CONFLICT)
       if 'gdm_config_name' in device:
         device_id = device['gdm_config_name']
         usb_hub_name, usb_port = self._get_usb_hub_info(device['type'],
