@@ -21,6 +21,7 @@ from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import switchboard_base
 from gazoo_device.protos import echo_service_pb2
+from gazoo_device.protos import locking_service_pb2
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
 
 # TODO(b/185956488): Remove conditional imports of Pigweed
@@ -34,7 +35,8 @@ try:
   _PWRPC_PROTOS = (button_service_pb2,
                    device_service_pb2,
                    lighting_service_pb2,
-                   echo_service_pb2)
+                   echo_service_pb2,
+                   locking_service_pb2)
 except ImportError:
   _PWRPC_PROTOS = None
 
@@ -43,6 +45,7 @@ class PigweedAppType(enum.Enum):
   NON_PIGWEED = "nonpigweed"
   LIGHTING = "lighting"
   ECHO = "echo"
+  LOCKING = "locking"
 
 logger = gdm_logger.get_logger()
 
@@ -54,7 +57,8 @@ logger = gdm_logger.get_logger()
 # application_type is the Pigweed device type in string.
 _PIGWEED_APP_ENDPOINTS = (
     (("Lighting", "Get"), {}, PigweedAppType.LIGHTING),
-    (("msg",), {}, PigweedAppType.ECHO)
+    (("msg",), {}, PigweedAppType.ECHO),
+    (("Locking", "Get"), {}, PigweedAppType.LOCKING)
 )
 
 

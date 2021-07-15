@@ -28,6 +28,7 @@ from gazoo_device.auxiliary_devices import efr32
 from gazoo_device.auxiliary_devices import efr32_pigweed_lighting
 from gazoo_device.auxiliary_devices import esp32
 from gazoo_device.auxiliary_devices import esp32_pigweed_echo
+from gazoo_device.auxiliary_devices import esp32_pigweed_locking
 from gazoo_device.auxiliary_devices import nrf52840
 from gazoo_device.auxiliary_devices import nrf_pigweed_lighting
 from gazoo_device.auxiliary_devices import raspberry_pi
@@ -114,6 +115,7 @@ def export_extensions() -> Dict[str, Any]:
           efr32_pigweed_lighting.EFR32PigweedLighting,
           esp32.ESP32,
           esp32_pigweed_echo.ESP32PigweedEcho,
+          esp32_pigweed_locking.ESP32PigweedLocking,
           nrf52840.NRF52840,
           nrf_pigweed_lighting.NRFPigweedLighting,
           raspberry_pi.RaspberryPi,
