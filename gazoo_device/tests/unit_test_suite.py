@@ -14,6 +14,9 @@
 
 """Runs all unit tests for gazoo_device."""
 import os
+from typing import Union
+import unittest
+
 from absl import flags
 from absl.testing import absltest
 from gazoo_device import config
@@ -32,6 +35,16 @@ flags.DEFINE_boolean(  # Consumed by switchboard_tests/__init__.py.
     short_name="s")
 
 
+def _has_any_tests(
+    test_case_or_suite: Union[absltest.TestCase, unittest.TestSuite]) -> bool:
+  """Returns true if the test suite has any test cases to run."""
+  if isinstance(test_case_or_suite, absltest.TestCase):
+    return True
+  else:
+    return any(_has_any_tests(sub_test_case_or_suite)
+               for sub_test_case_or_suite in test_case_or_suite)
+
+
 def load_tests(loader, standard_tests, unused_pattern):
   """Called by unittest framework to load tests for this module."""
   pattern_match = "*_test.py"
@@ -44,7 +57,10 @@ def load_tests(loader, standard_tests, unused_pattern):
 
   unit_tests = loader.discover(
       _UNIT_TEST_DIR, top_level_dir=_UNIT_TEST_DIR, pattern=pattern_match)
+  if not _has_any_tests(unit_tests):
+    raise RuntimeError("Did not find any tests to run.")
   standard_tests.addTests(unit_tests)
+
   return standard_tests
 
 

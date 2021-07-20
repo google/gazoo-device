@@ -65,6 +65,7 @@ from gazoo_device import _version
 from gazoo_device import gazoo_device_controllers
 from gazoo_device import gdm_logger
 from gazoo_device import manager
+from gazoo_device import mobly_controller
 from gazoo_device import package_registrar
 from gazoo_device.utility import common_utils
 
@@ -72,6 +73,12 @@ Manager = manager.Manager
 register = package_registrar.register
 version = _version.version
 __version__ = _version.version
+
+# For Mobly integration
+MOBLY_CONTROLLER_CONFIG_NAME = "GazooDevice"
+create = mobly_controller.create
+destroy = mobly_controller.destroy
+get_info = mobly_controller.get_info
 
 # Defend against inadvertent basicConfig, which adds log noise
 logging.getLogger().addHandler(logging.NullHandler())
