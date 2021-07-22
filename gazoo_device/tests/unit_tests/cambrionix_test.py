@@ -50,6 +50,8 @@ _PERSISTENT_PROPERTIES = immutabledict.immutabledict({
         "4.4": 3,
     },
 })
+_SERIAL_PORT_PATH = (
+    "/dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_DN00I41W-if00-port0")
 
 
 def _mock_shell(cmd: str, close_delay: float = 0.0) -> List[str]:
@@ -71,11 +73,8 @@ class CambrionixTest(fake_device_test_case.FakeDeviceTestCase):
 
   def setUp(self):
     super().setUp()
-    serial_port_path_name = "usb-FTDI_FT230X_Basic_UART_DN00I41W-if00-port0"
     self.setup_fake_device_requirements("cambrionix-i41w")
-    self.device_config["persistent"][
-        "console_port_name"] = "/dev/serial/by-id/{}".format(
-            serial_port_path_name)
+    self.device_config["persistent"]["console_port_name"] = _SERIAL_PORT_PATH
     self.device_config["persistent"]["model"] = "PP15S"
     self.uut = cambrionix.Cambrionix(
         self.mock_manager,
@@ -83,11 +82,17 @@ class CambrionixTest(fake_device_test_case.FakeDeviceTestCase):
         log_directory=self.artifacts_directory,
         log_file_name=None)
 
-  def test_001_cambrionix_init(self):
-    """Testing the the creation of the cambrionix object."""
-    return self.assertTrue(
-        self.uut,
-        "The {} object failed to be created.".format("cambrionix_device"))
+  def test_001_cambrionix_init_old_config(self):
+    """Tests Cambrionix initialization from 'hub_port_name' property."""
+    del self.device_config["persistent"]["console_port_name"]
+    self.device_config["persistent"]["hub_port_name"] = _SERIAL_PORT_PATH
+    uut = cambrionix.Cambrionix(
+        self.mock_manager,
+        self.device_config,
+        log_directory=self.artifacts_directory,
+        log_file_name=None)
+    # Same instance should be returned for the same communication address.
+    self.assertIs(uut, self.uut)
 
   def test_002_is_connected(self):
     with mock.patch.object(os.path, "exists", return_value=True):

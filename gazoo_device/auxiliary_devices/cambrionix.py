@@ -162,17 +162,16 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
     Note:
         Instantiate a new serial_port_path if not found.
     """
-    # slowly migrate away from using 'hub_port_name' but maintain backwards compatibility
-    if "console_port_name" not in device_config["persistent"]:
-      device_config["persistent"]["console_port_name"] = \
-          device_config["persistent"]["hub_port_name"]
+    if "console_port_name" in device_config["persistent"]:
+      address = device_config["persistent"]["console_port_name"]
+    else:  # Backwards compatibility.
+      address = device_config["persistent"]["hub_port_name"]
 
-    identifier = device_config["persistent"]["console_port_name"]
-    if identifier not in cls._instances:
+    if address not in cls._instances:
       obj = super(Cambrionix, cls).__new__(cls)
-      cls._instances[identifier] = obj
+      cls._instances[address] = obj
 
-    return cls._instances[identifier]
+    return cls._instances[address]
 
   def __init__(self, manager, device_config, log_file_name, log_directory):
     """Constructor of the class Cambrionix.
@@ -239,6 +238,12 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
 
     super(Cambrionix, self).close()
 
+  @decorators.PersistentProperty
+  def communication_address(self):
+    """Returns the path to the UART communication port."""
+    return (self.props["persistent_identifiers"].get("console_port_name")
+            or self.props["persistent_identifiers"]["hub_port_name"])
+
   @decorators.LogDecorator(logger)
   def get_detection_info(self):
     """Gets the persistent and optional attributes of a Cambrionix.
@@ -251,7 +256,6 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
 
     Notes:
       persistent: model,
-                  hub_port_name,
                   console_port_name,
                   total_ports,
                   ftdi_serial_number,
@@ -266,7 +270,6 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
           "Model {} not supported. Supported models: {}".format(
               persistent_dict["model"],
               ",".join(usb_config.CAMBRIONIX_PORT_MAP.keys())))
-    persistent_dict["hub_port_name"] = self.communication_address
     persistent_dict["console_port_name"] = self.communication_address
     persistent_dict["total_ports"] = self.total_ports
     persistent_dict[

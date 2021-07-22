@@ -183,7 +183,7 @@ class Yepkit(auxiliary_device.AuxiliaryDevice):
         RuntimeError: if yepkit is not enabled.
 
     Notes:
-        persistent: device_type, model, hub_port_name, serial_number,
+        persistent: device_type, model, console_port_name, serial_number,
                     total_ports
 
         optional: {}
