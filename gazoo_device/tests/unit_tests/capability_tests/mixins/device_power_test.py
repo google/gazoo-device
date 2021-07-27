@@ -12,5 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Gazoo Device Manager version."""
-version = "1.18.2"
+"""Mixin for device_power capability."""
+from unittest import mock
+
+
+class DevicePowerTestMixin:
+  """Mixin for common device unit tests of device power.
+
+  Assumes self.uut is set.
+  """
+
+  def test_power_cycle(self):
+    """Test self.uut.device_power.power_cycle is called."""
+    with mock.patch.object(self.uut.device_power, "off"):
+      with mock.patch.object(self.uut.device_power, "on"):
+        self.uut.device_power.cycle()
+        self.uut.device_power.off.assert_called_once()
+        self.uut.device_power.on.assert_called_once()

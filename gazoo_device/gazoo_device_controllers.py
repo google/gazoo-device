@@ -35,7 +35,6 @@ from gazoo_device.auxiliary_devices import raspberry_pi
 from gazoo_device.auxiliary_devices import unifi_poe_switch
 from gazoo_device.auxiliary_devices import yepkit
 from gazoo_device.capabilities import comm_power_default
-from gazoo_device.capabilities import comm_power_usb_ethernet
 from gazoo_device.capabilities import device_power_default
 from gazoo_device.capabilities import event_parser_default
 from gazoo_device.capabilities import fastboot_default
@@ -155,7 +154,6 @@ def export_extensions() -> Dict[str, Any]:
       ],
       "capability_flavors": [
           comm_power_default.CommPowerDefault,
-          comm_power_usb_ethernet.CommPowerUsbEthernet,
           device_power_default.DevicePowerDefault,
           event_parser_default.EventParserDefault,
           fastboot_default.FastbootDefault,

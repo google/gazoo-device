@@ -11,11 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Tests the websocket_transport.py module."""
-import logging
-import os
-import sys
 from unittest import mock
 
 from gazoo_device import gdm_logger
@@ -33,21 +29,6 @@ class WebSocketTransportTests(unit_test_case.UnitTestCase):
   def setUp(self):
     super().setUp()
     self.uut = websocket_transport.WebSocketTransport(_BOGUS_URL)
-
-    self._logfile_path = os.path.join(self.artifacts_directory,
-                                      self.__class__.__name__ + ".log")
-    self._file_handler = logging.FileHandler(self._logfile_path, "w")
-    self._stream_handler = logging.StreamHandler(sys.stdout)
-    logger.addHandler(self._file_handler)
-    logger.addHandler(self._stream_handler)
-
-  def tearDown(self):
-    logger.removeHandler(self._file_handler)
-    del self._file_handler
-    logger.removeHandler(self._stream_handler)
-    del self._stream_handler
-    del self._logfile_path
-    super().tearDown()
 
   def test_001_transport_closed(self):
     """Test calling transport methods when transport is closed."""
@@ -153,7 +134,9 @@ class WebSocketTransportTests(unit_test_case.UnitTestCase):
     self.uut.close()
 
   @mock.patch("websocket.create_connection")
-  def test_105_transport_read_exception(self, mock_create_connection):
+  @mock.patch.object(websocket_transport.logger, "debug")
+  def test_105_transport_read_exception(self, mock_debug,
+                                        mock_create_connection):
     """Test that read exceptions are logged and empty string is returned."""
     mock_create_connection.return_value.recv.side_effect = websocket.WebSocketProtocolException
 
@@ -161,16 +144,14 @@ class WebSocketTransportTests(unit_test_case.UnitTestCase):
     read_bytes = self.uut.read()
     self.assertEqual("", read_bytes)
     self.uut.close()
-
-    with open(self._logfile_path) as log_file:
-      log_contents = log_file.read()
-      self.assertIn(
-          "_read() from websocket with URL {} failed".format(_BOGUS_URL),
-          log_contents)
-      self.assertIn("WebSocketProtocolException", log_contents)
+    mock_debug.assert_any_call(
+        "_read() from websocket with URL {} failed due to an error.".format(
+            _BOGUS_URL))
 
   @mock.patch("websocket.create_connection")
-  def test_106_transport_write_exception(self, mock_create_connection):
+  @mock.patch.object(websocket_transport.logger, "debug")
+  def test_106_transport_write_exception(self, mock_debug,
+                                         mock_create_connection):
     """Test that write exceptions are logged and 0 is returned."""
     mock_create_connection.return_value.send.side_effect = websocket.WebSocketProtocolException
 
@@ -178,16 +159,13 @@ class WebSocketTransportTests(unit_test_case.UnitTestCase):
     bytes_sent = self.uut.write("somedata")
     self.assertEqual(0, bytes_sent)
     self.uut.close()
-
-    with open(self._logfile_path) as log_file:
-      log_contents = log_file.read()
-      self.assertIn(
-          "_write() to websocket with URL {} failed".format(_BOGUS_URL),
-          log_contents)
-      self.assertIn("WebSocketProtocolException", log_contents)
+    mock_debug.assert_any_call(
+        "_write() to websocket with URL {} failed due to an error.".format(
+            _BOGUS_URL))
 
   @mock.patch("websocket.create_connection")
-  def test_110_transport_read_timeout(self, mock_create_connection):
+  @mock.patch.object(websocket_transport.logger, "debug")
+  def test_110_transport_read_timeout(self, mock_debug, mock_create_connection):
     """Test that read timeout exceptions are not logged."""
     mock_create_connection.return_value.recv.side_effect = websocket.WebSocketTimeoutException
 
@@ -196,13 +174,12 @@ class WebSocketTransportTests(unit_test_case.UnitTestCase):
     self.assertEqual("", read_bytes)
     self.uut.close()
 
-    with open(self._logfile_path) as log_file:
-      log_contents = log_file.read()
-      self.assertNotIn("_read() failed", log_contents)
-      self.assertNotIn("WebSocketTimeoutException", log_contents)
+    mock_debug.assert_not_called()
 
   @mock.patch("websocket.create_connection")
-  def test_111_transport_write_timeout(self, mock_create_connection):
+  @mock.patch.object(websocket_transport.logger, "debug")
+  def test_111_transport_write_timeout(self, mock_debug,
+                                       mock_create_connection):
     """Test that write timeout exceptions are not logged and 0 is returned."""
     mock_create_connection.return_value.send.side_effect = websocket.WebSocketTimeoutException
 
@@ -211,10 +188,7 @@ class WebSocketTransportTests(unit_test_case.UnitTestCase):
     self.assertEqual(0, bytes_sent)
     self.uut.close()
 
-    with open(self._logfile_path) as log_file:
-      log_contents = log_file.read()
-      self.assertNotIn("_write() failed", log_contents)
-      self.assertNotIn("WebSocketTimeoutException", log_contents)
+    mock_debug.assert_not_called()
 
 
 if __name__ == "__main__":

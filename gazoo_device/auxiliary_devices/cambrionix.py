@@ -517,8 +517,8 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
       Panel ID: Absent
     """
     sysinfo_strings = self._command(self.commands["SYSTEM_STATUS"])
-    sysinfo_dict = {"name": sysinfo_strings[0]}
-    for line in sysinfo_strings:
+    sysinfo_dict = {"name": sysinfo_strings[0]}  # pytype: disable=unsupported-operands
+    for line in sysinfo_strings:  # pytype: disable=attribute-error
       if ":" in line:
         key, value = line.split(":", 1)
         sysinfo_dict[key.lower()] = value.strip()

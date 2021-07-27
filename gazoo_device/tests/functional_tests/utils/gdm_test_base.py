@@ -242,7 +242,7 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
       # Rerun the test.
       self.logger.info(
           f"Test {self._testMethodName} failed the first attempt and is known "
-          f"to be flaky on {self.device.device_type}. "
+          f"to be flaky on {self.device_config.device_type}. "
           f"RETRYING in {_TEST_RETRY_INTERVAL}s.")
       time.sleep(_TEST_RETRY_INTERVAL)
       result = super().run(result)

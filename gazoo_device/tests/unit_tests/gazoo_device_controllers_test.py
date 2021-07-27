@@ -50,7 +50,6 @@ _EXPECTED_CAPABILITY_INTERFACE_CLASS_NAMES = (
 
 _EXPECTED_CAPABILITY_FLAVOR_CLASS_NAMES = (
     "CommPowerDefault",
-    "CommPowerUsbEthernet",
     "DevicePowerDefault",
     "EventParserDefault",
     "FastbootDefault",

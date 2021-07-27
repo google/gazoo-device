@@ -264,12 +264,12 @@ class PtyProcessTransportTests(ProcessTransportTests):
         count, 2, "Expected 2 found {}. Data read: {!r}".format(count, data_in))
 
   @mock.patch.object(
-      os, "read", side_effect=[b""] + 50 * [OSError("Input/Output error")])
+      os, "read", side_effect=[b""] + 200 * [OSError("Input/Output error")])
   def test_110_read_error(self, mock_read):
     self.uut = self._TRANSPORT_CLASS(comms_address="/bin/bash", args="-i")
     self.uut.open()
     # verify error caught and empty string returned
-    data_in = self.uut.read(1024, timeout=.01)
+    data_in = self.uut.read(1024, timeout=.001)
     self.assertEqual(
         len(data_in), 0,
         "Expected {} bytes written found {}.".format(len(data_in), 0))

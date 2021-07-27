@@ -29,11 +29,8 @@ import logging
 import multiprocessing
 import os
 import queue
-import re
 import shutil
 import signal
-import subprocess
-import textwrap
 import time
 from typing import Dict, Optional, Union
 
@@ -46,16 +43,15 @@ from gazoo_device import gdm_logger
 
 from gazoo_device.capabilities import event_parser_default
 from gazoo_device.log_parser import LogParser
-from gazoo_device.switchboard import communication_types
 from gazoo_device.switchboard import switchboard
 
 from gazoo_device.usb_port_map import UsbPortMap
 from gazoo_device.utility import common_utils
 from gazoo_device.utility import host_utils
 from gazoo_device.utility import parallel_utils
-from gazoo_device.utility import usb_utils
 
 logger = gdm_logger.get_logger()
+_EXPECTED_FOLDER_PERMISSIONS = "755"
 
 
 class Manager():
@@ -1657,19 +1653,19 @@ class Manager():
       DeviceError: if unable to access files.
     """
     # Ensure all folders exist and have correct permissions.
-    expected_permissions = "755"
+
     for folder in config.REQUIRED_FOLDERS:
       if not os.path.exists(folder):
         os.makedirs(folder)
       permissions = oct(os.stat(folder).st_mode)[-3:]
-      if permissions != expected_permissions:
+      if permissions != _EXPECTED_FOLDER_PERMISSIONS:
         try:
-          os.chmod(folder, int(expected_permissions, 8))
+          os.chmod(folder, int(_EXPECTED_FOLDER_PERMISSIONS, 8))
         except OSError:
           raise errors.DeviceError(
               f"Unable to set correct permissions on {folder} without "
               f"sudo. Current permissions: {permissions}. Please run "
-              f"sudo chmod -R {expected_permissions} {folder}'")
+              f"sudo chmod -R {_EXPECTED_FOLDER_PERMISSIONS} {folder}'")
 
     # Ensure all files exist and are correctly populated
     config_info = {
@@ -2003,13 +1999,13 @@ class Manager():
       if "device_usb_hub_name" not in device_config["persistent"]:
         if "usb_hub" in device_config["options"] and device_config["options"][
             "usb_hub"]:
-          device_config["persistent"]["device_usb_hub_name"] = \
-              device_config["options"]["usb_hub"]
+          device_config["persistent"]["device_usb_hub_name"] = device_config[
+              "options"]["usb_hub"]
       if "device_usb_port" not in device_config["persistent"]:
         if "usb_port" in device_config["options"] and device_config["options"][
             "usb_port"]:
-          device_config["persistent"]["device_usb_port"] = \
-              device_config["options"]["usb_port"]
+          device_config["persistent"]["device_usb_port"] = device_config[
+              "options"]["usb_port"]
 
   def __del__(self):
     self.close()
