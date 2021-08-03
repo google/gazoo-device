@@ -947,6 +947,65 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
       with self.assertRaises(errors.DeviceError):
         adb_utils.shell('echo "fake"', "12345")
 
+  @mock.patch.object(adb_utils, "_adb_command", return_value=("Output", 0))
+  def test_320_adb_utils_add_port_forwarding_success(self, mock_adb_command):
+    """Verifies add_port_forwarding on success."""
+    output = adb_utils.add_port_forwarding(host_port=123,
+                                           device_port=456,
+                                           adb_serial=DEVICE_ADB_SERIAL,
+                                           adb_path=ADB_CMD_PATH)
+
+    mock_adb_command.assert_called_once_with(
+        ("forward", "tcp:123", "tcp:456"),
+        adb_serial=DEVICE_ADB_SERIAL,
+        adb_path=ADB_CMD_PATH,
+        include_return_code=True)
+    self.assertEqual(output, "Output")
+
+  @mock.patch.object(adb_utils, "_adb_command", return_value=("Error", 1))
+  def test_321_adb_utils_add_port_forwarding_exception(self, mock_adb_command):
+    """Verifies add_port_forwarding raises exception."""
+    with self.assertRaises(RuntimeError):
+      adb_utils.add_port_forwarding(host_port=123,
+                                    device_port=456,
+                                    adb_serial=DEVICE_ADB_SERIAL,
+                                    adb_path=ADB_CMD_PATH)
+
+    mock_adb_command.assert_called_once_with(
+        ("forward", "tcp:123", "tcp:456"),
+        adb_serial=DEVICE_ADB_SERIAL,
+        adb_path=ADB_CMD_PATH,
+        include_return_code=True)
+
+  @mock.patch.object(adb_utils, "_adb_command", return_value=("Output", 0))
+  def test_325_adb_utils_remove_port_forwarding_success(self, mock_adb_command):
+    """Verifies remove_port_forwarding on success."""
+    output = adb_utils.remove_port_forwarding(host_port=123,
+                                              adb_serial=DEVICE_ADB_SERIAL,
+                                              adb_path=ADB_CMD_PATH)
+
+    mock_adb_command.assert_called_once_with(
+        ("forward", "--remove", "tcp:123"),
+        adb_serial=DEVICE_ADB_SERIAL,
+        adb_path=ADB_CMD_PATH,
+        include_return_code=True)
+    self.assertEqual(output, "Output")
+
+  @mock.patch.object(adb_utils, "_adb_command", return_value=("Error", 1))
+  def test_326_adb_utils_remove_port_forwarding_exception(self,
+                                                          mock_adb_command):
+    """Verifies remove_port_forwarding on raise exception."""
+    with self.assertRaises(RuntimeError):
+      adb_utils.remove_port_forwarding(host_port=123,
+                                       adb_serial=DEVICE_ADB_SERIAL,
+                                       adb_path=ADB_CMD_PATH)
+
+    mock_adb_command.assert_called_once_with(
+        ("forward", "--remove", "tcp:123"),
+        adb_serial=DEVICE_ADB_SERIAL,
+        adb_path=ADB_CMD_PATH,
+        include_return_code=True)
+
 
 if __name__ == "__main__":
   unit_test_case.main()

@@ -199,6 +199,8 @@ class UnitTestCase(parameterized.TestCase):
             adb_utils, "get_fastboot_path", return_value="/usr/bin/fastboot"),
         mock.patch.object(adb_utils, "is_fastboot_mode", return_value=False),
         mock.patch.object(adb_utils, "verify_user_has_fastboot"),
+        mock.patch.object(adb_utils, "add_port_forwarding"),
+        mock.patch.object(adb_utils, "remove_port_forwarding"),
         mock.patch.object(adb_utils, "_adb_command")
     ]
     for patcher in adb_patchers:

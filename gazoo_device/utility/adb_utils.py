@@ -17,6 +17,7 @@ import json
 import os
 import subprocess
 import time
+from typing import Optional
 
 from gazoo_device import config
 from gazoo_device import errors
@@ -785,3 +786,61 @@ def uninstall_package_on_device(package_name, adb_serial=None, adb_path=None):
                           adb_path=adb_path)
   if "Success\n" not in response:
     raise errors.DeviceError("uninstall_package_on_device failed.")
+
+
+def add_port_forwarding(host_port: int,
+                        device_port: int,
+                        adb_serial: Optional[str] = None,
+                        adb_path: Optional[str] = None) -> str:
+  """Forwards the socket connection from host to device.
+
+  Args:
+      host_port: The port on the host side.
+      device_port: The port on the device side.
+      adb_serial: The device serial, optional.
+      adb_path: Alternative path to adb executable.
+
+  Raises:
+      RuntimeError: If the port forwarding doesn't exist.
+
+  Returns:
+      The command output.
+  """
+  commands = ("forward", f"tcp:{host_port}", f"tcp:{device_port}")
+  output, returncode = _adb_command(commands,
+                                    adb_serial=adb_serial,
+                                    adb_path=adb_path,
+                                    include_return_code=True)
+  if returncode != 0:
+    raise RuntimeError(
+        f"Failed to add port forwarding on device serial:{adb_serial} from "
+        f"host port {host_port} to device port {device_port}. {output}")
+  return output
+
+
+def remove_port_forwarding(host_port: int,
+                           adb_serial: Optional[str] = None,
+                           adb_path: Optional[str] = None) -> str:
+  """Removes a forward socket connection.
+
+  Args:
+      host_port: The port on the host side.
+      adb_serial: The device serial, optional.
+      adb_path: Alternative path to adb executable.
+
+  Raises:
+      RuntimeError: If the port forwarding doesn't exist.
+
+  Returns:
+      The command output.
+  """
+  commands = ("forward", "--remove", f"tcp:{host_port}")
+  output, returncode = _adb_command(commands,
+                                    adb_serial=adb_serial,
+                                    adb_path=adb_path,
+                                    include_return_code=True)
+  if returncode != 0:
+    raise RuntimeError(
+        f"Failed to remove port forwarding on device serial:{adb_serial} "
+        f"on host port {host_port}. {output}")
+  return output
