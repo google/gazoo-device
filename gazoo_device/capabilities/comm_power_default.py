@@ -123,6 +123,13 @@ class CommPowerDefault(comm_power_base.CommPowerBase):
     self._verify_switch_created(self._hub)
     self._healthy = True
 
+  @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
+  def close(self):
+    """Closes the hub device instance."""
+    if hasattr(self._hub, "close"):  # self._hub may not be a device instance.
+      self._hub.close()
+    super().close()
+
   @decorators.OptionalProperty
   def hub_name(self):
     """Name of the hub the device is attached to."""

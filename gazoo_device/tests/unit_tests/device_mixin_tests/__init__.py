@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Mixins for testing capabilities in device classes."""
+"""Mixins for testing common device functionality."""
 
 
 def load_tests(loader, standard_tests, pattern):

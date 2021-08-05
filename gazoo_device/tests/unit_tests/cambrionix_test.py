@@ -96,18 +96,6 @@ class CambrionixTest(fake_device_test_case.FakeDeviceTestCase):
         log_directory=self.artifacts_directory,
         log_file_name=None)
 
-  def test_001_cambrionix_init_old_config(self):
-    """Tests Cambrionix initialization from 'hub_port_name' property."""
-    del self.device_config["persistent"]["console_port_name"]
-    self.device_config["persistent"]["hub_port_name"] = _SERIAL_PORT_PATH
-    uut = cambrionix.Cambrionix(
-        self.mock_manager,
-        self.device_config,
-        log_directory=self.artifacts_directory,
-        log_file_name=None)
-    # Same instance should be returned for the same communication address.
-    self.assertIs(uut, self.uut)
-
   def test_002_is_connected(self):
     with mock.patch.object(os.path, "exists", return_value=True):
       self.assertTrue(cambrionix.Cambrionix.is_connected(self.device_config))

@@ -42,8 +42,8 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
             "device_usb_port": self.port_num
         }
     }
-    self.mock_manager.create_device.return_value = mock.MagicMock(
-        spec=cambrionix.Cambrionix)
+    self.mock_cambrionix = mock.MagicMock(spec=cambrionix.Cambrionix)
+    self.mock_manager.create_device.return_value = self.mock_cambrionix
     self.wait_for_bootup_complete = mock.MagicMock()
     self.uut = device_power_default.DevicePowerDefault(
         device_name=self.name,
@@ -136,6 +136,18 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
         change_triggers_reboot=False)
     with self.assertRaisesRegex(errors.DeviceError, err_msg):
       self.uut.health_check()
+
+  def test_close_doesnt_close_hub_instance_if_not_initialized(self):
+    """Tests that close() doesn't close the hub instance if it's initialized."""
+    self.uut.close()
+    self.mock_cambrionix.close.assert_not_called()
+
+  def test_close_closes_hub_instance_if_initialized(self):
+    """Tests that close() closes the hub device instance if it's initialized."""
+    self.uut.health_check()
+    self.mock_cambrionix.close.assert_not_called()
+    self.uut.close()
+    self.mock_cambrionix.close.assert_called_once()
 
 
 if __name__ == "__main__":

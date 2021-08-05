@@ -523,6 +523,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       self._mp_manager.shutdown()
       delattr(self, "_mp_manager")
     self.ensure_serial_paths_unlocked(comms_addresses)
+    super().close()
 
   @decorators.CapabilityLogDecorator(logger)
   def close_all_transports(self):

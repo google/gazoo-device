@@ -151,6 +151,18 @@ class UsbHubDefaultTests(unit_test_case.UnitTestCase):
     self.uut.power_off(port=1)
     self._mock_wait_for_bootup_complete.assert_called_once()
 
+  def test_close_doesnt_close_hub_instance_if_not_initialized(self):
+    """Tests that close() doesn't close the hub instance if it's initialized."""
+    self.uut.close()
+    self.cambrionix_mock.close.assert_not_called()
+
+  def test_close_closes_hub_instance_if_initialized(self):
+    """Tests that close() closes the hub device instance if it's initialized."""
+    self.uut.health_check()
+    self.cambrionix_mock.close.assert_not_called()
+    self.uut.close()
+    self.cambrionix_mock.close.assert_called_once()
+
 
 if __name__ == "__main__":
   unit_test_case.main()

@@ -54,7 +54,7 @@ logger = gdm_logger.get_logger()
 _EXPECTED_FOLDER_PERMISSIONS = "755"
 
 
-class Manager():
+class Manager:
   """Manages the setup and communication of smart devices."""
 
   def __init__(self,
@@ -167,8 +167,16 @@ class Manager():
 
   def close_open_devices(self):
     """Closes all open devices."""
+    # Convert to a list as it's expected that the dictionary values will be
+    # removed as we iterate over them.
     for device in list(self._open_devices.values()):
       device.close()
+    if self._open_devices:
+      # There must have been a mismatch in number of create_device/close calls
+      # for some auxiliary devices. Close the devices ignoring the user count so
+      # that we don't have any open devices after the close_open_devices() call.
+      for device in list(self._open_devices.values()):
+        device.close(force=True)
 
   def close_device(self, identifier):
     """Closes open device via identifier.
@@ -219,6 +227,9 @@ class Manager():
       DeviceError: Device not connected
     """
     logger.debug("In create_device")
+    if not log_directory:
+      # sets the device log directory to manager's log_directory
+      log_directory = self.log_directory
 
     if identifier.endswith("sim"):
       return self.create_device_sim(
@@ -243,27 +254,29 @@ class Manager():
 
     self._type_check("identifier", identifier)
     device_name = self._get_device_name(identifier, raise_error=True)
+    device_config = self.get_device_configuration(device_name)
+    device_type = device_config["persistent"]["device_type"]
     if device_name in self._open_devices:
-      raise errors.DeviceError(
-          "Device {name} already created. Call manager.get_open_device('{name}')."
-          .format(name=device_name))
+      if device_type not in self.get_supported_auxiliary_device_types():
+        raise errors.DeviceError(f"Device {device_name} already created. Call "
+                                 f"manager.get_open_device('{device_name}').")
+      else:
+        # b/193758294: Allow create_device to return open auxiliary devices.
+        logger.info(f"{device_name} is an auxiliary device and is already "
+                    "open. Returning the existing device instance.")
+        device_inst = self.get_open_device(device_name)
+        device_inst.increment_user_count()
+        return device_inst
+
     if new_alias is not None:
       self.set_prop(device_name, "alias", new_alias)
-    device_config = self.get_device_configuration(device_name)
     self._update_device_config(device_config, skip_recover_device,
                                make_device_ready, log_name_prefix, filters)
-    device_type = device_config["persistent"]["device_type"]
-    if not log_directory:
-      # sets the device log directory to manager's log_directory
-      log_directory = self.log_directory
 
-    logger.info("Creating {}".format(device_name))
+    logger.info(f"Creating {device_name}")
     device_class = self.get_supported_device_class(device_type)
-    track_device = device_type not in self.get_supported_auxiliary_device_types(
-    )
     device_inst = self._get_device_class(device_class, device_config,
-                                         log_file_name, log_directory,
-                                         track_device)
+                                         log_file_name, log_directory)
     try:
       device_inst.make_device_ready(make_device_ready)
 
@@ -306,9 +319,6 @@ class Manager():
       DeviceError: Device not connected
     """
     logger.info("In create_device_sim")
-    if not log_directory:
-      # sets the device log directory to manager's log_directory
-      log_directory = self.log_directory
 
     device_config = {}
     self._update_device_config(device_config, skip_recover_device,
@@ -1498,16 +1508,14 @@ class Manager():
                         device_class,
                         device_config,
                         log_file_name,
-                        log_directory,
-                        track_device=True):
+                        log_directory):
     """Returns the device class after adding it to the list of shared resources."""
     device = device_class(
         self,
         device_config,
         log_file_name=log_file_name,
         log_directory=log_directory)
-    if track_device:
-      self._open_devices[device.name] = device
+    self._open_devices[device.name] = device
     return device
 
   def _get_device_sim_class(self, device_class, device_config, log_file_name,

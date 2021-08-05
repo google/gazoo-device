@@ -45,10 +45,10 @@ class CommPowerDefaultTests(unit_test_case.UnitTestCase):
             "device_usb_port": 3
         }
     }
-    mock_cambrionix = mock.MagicMock(spec=cambrionix.Cambrionix)
-    mock_cambrionix.switch_power = mock.MagicMock(
+    self.mock_cambrionix = mock.MagicMock(spec=cambrionix.Cambrionix)
+    self.mock_cambrionix.switch_power = mock.MagicMock(
         spec=switch_power_usb_with_charge.SwitchPowerUsbWithCharge)
-    self.mock_manager.create_device.return_value = mock_cambrionix
+    self.mock_manager.create_device.return_value = self.mock_cambrionix
     self.uut = comm_power_default.CommPowerDefault(
         device_name=self.name,
         create_device_func=self.mock_manager.create_device,
@@ -130,6 +130,18 @@ class CommPowerDefaultTests(unit_test_case.UnitTestCase):
     err_msg = "'switch_power' capability is missing in hub device"
     with self.assertRaisesRegex(errors.CapabilityNotReadyError, err_msg):
       self.uut.health_check()
+
+  def test_close_doesnt_close_hub_instance_if_not_initialized(self):
+    """Tests that close() doesn't close the hub instance if it's initialized."""
+    self.uut.close()
+    self.mock_cambrionix.close.assert_not_called()
+
+  def test_close_closes_hub_instance_if_initialized(self):
+    """Tests that close() closes the hub device instance if it's initialized."""
+    self.uut.health_check()
+    self.mock_cambrionix.close.assert_not_called()
+    self.uut.close()
+    self.mock_cambrionix.close.assert_called_once()
 
 
 if __name__ == "__main__":

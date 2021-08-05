@@ -84,37 +84,6 @@ class Yepkit(auxiliary_device.AuxiliaryDevice):
   DEVICE_TYPE = "yepkit"
   _MODEL = MODEL
   _OWNER_EMAIL = "gdm-authors@google.com"
-  _instances = {}
-
-  def __new__(cls,
-              manager,
-              device_config,
-              log_file_name=None,
-              log_directory=None):
-    """Object associated with the serial_number (new or previous if already instantiated).
-
-    Args:
-        manager(manager.Manager): Manager object for this device instance.
-        device_config (dict): dict of two dicts, 'optional' device
-          parameters and 'persistent' device parameters.
-        log_file_name (str): file name in the log directory for device logs.
-        log_directory (str): directory in which the controller will create
-          the log file.
-
-    Returns:
-        Yepkit: instance to matching serial port path
-
-    Raises:
-        RuntimeError: if yepkit is not enabled.
-    """
-    if not yepkit_enabled:
-      raise RuntimeError("yepkit is not enabled.")
-    identifier = device_config["persistent"]["console_port_name"]
-    if identifier not in cls._instances:
-      obj = super(Yepkit, cls).__new__(cls)
-      cls._instances[identifier] = obj
-
-    return cls._instances[identifier]
 
   def __init__(self,
                manager,
@@ -132,8 +101,11 @@ class Yepkit(auxiliary_device.AuxiliaryDevice):
           the log file.
 
     Raises:
-        RuntimeError: if serial number is too short.
+        RuntimeError: if yepkit is not enabled.
     """
+    if not yepkit_enabled:
+      raise RuntimeError("yepkit is not enabled.")
+
     super().__init__(
         manager,
         device_config,

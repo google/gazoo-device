@@ -79,6 +79,7 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
         log_directory (str): directory in which the controller will create
           the log file.
     """
+    self._log_object_lifecycle_event("__init__")
     self.manager_weakref = weakref.ref(manager)
 
     # Create a dictionary to store "properties".  For now keep the
@@ -100,6 +101,8 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
       self._log_file_name = get_log_filename(
           log_directory, self.name, name_prefix=log_name_prefix)
     self.device_type = self.DEVICE_TYPE
+    self._user_count = 1  # Successive create_device calls just increment the
+    # user count and reuse the same instance.
 
   @decorators.OptionalProperty
   def alias(self):
@@ -150,6 +153,11 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
   def health_checks(self):
     """Returns list of methods to execute as health checks."""
     return [self.check_device_connected]
+
+  @decorators.LogDecorator(logger, decorators.DEBUG)
+  def increment_user_count(self):
+    """Increments the active user count for this device instance."""
+    self._user_count += 1
 
   @decorators.DynamicProperty
   def log_file_name(self) -> str:
@@ -213,21 +221,46 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
     self._execute_health_check_methods(self.health_checks)
 
   @decorators.LogDecorator(logger, decorators.DEBUG)
-  def close(self):
-    """Calls close on the communication ports and resets anything needed.
+  def close(self, force: bool = False):
+    """Releases all resources if there are no more instance users.
 
-    Note:
-        Resets the buttons and terminates the child processes.
+    If there is at least one other instance user, does not close the device and
+    only decrements user count.
+
+    Args:
+      force: If True, ignore the active user count and close the device even if
+        there are remaining users.
     """
+    self._log_object_lifecycle_event("close")
+    if force:
+      self._user_count = 0
+      self._close()
+    else:
+      # If user_count > 1, there are other users of this device instance, and we
+      # can't clean up yet. If user_count == 0, cleanup already ran before.
+      run_cleanup = self._user_count == 1
+      if self._user_count > 0:
+        self._user_count -= 1
+      if run_cleanup:
+        self._close()
+
+  @decorators.LogDecorator(logger, decorators.DEBUG)
+  def _close(self):
+    """Releases all resources."""
     self.reset_all_capabilities()
 
     if hasattr(self, "manager_weakref"):
       manager_instance = self.manager_weakref()
       if manager_instance is not None:
+        # pylint: disable=protected-access
         if self.name in manager_instance._open_devices:
-          self._log_object_lifecycle_event("close")
+          self._log_object_lifecycle_event("_close")
           del manager_instance._open_devices[self.name]
       del manager_instance
+
+  def __del__(self):
+    self._log_object_lifecycle_event("__del__")
+    self.close(force=True)
 
   @decorators.health_check
   def check_device_connected(self):

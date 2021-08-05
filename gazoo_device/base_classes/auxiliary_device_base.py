@@ -83,11 +83,15 @@ class AuxiliaryDeviceBase(abc.ABC):
     """
 
   @abc.abstractmethod
-  def close(self):
-    """Calls close on the communication ports and resets anything needed.
+  def close(self, force: bool = False):
+    """Releases all resources if there are no more instance users.
 
-    Note:
-        Resets the buttons and terminates the child processes.
+    If there is at least one other instance user, does not close the device and
+    only decrements user count.
+
+    Args:
+      force: If True, ignore the active user count and close the device even if
+        there are remaining users.
     """
 
   @abc.abstractmethod

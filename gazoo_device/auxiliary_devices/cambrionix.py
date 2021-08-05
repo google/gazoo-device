@@ -143,35 +143,6 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
   }
   DEVICE_TYPE = "cambrionix"
   _OWNER_EMAIL = "gdm-authors@google.com"
-  _instances = {}
-
-  def __new__(cls, manager, device_config, log_file_name, log_directory):
-    """Returns the same object for the same serial_port_path.
-
-    Args:
-        manager(manager.Manager): Manager object for this device instance.
-        device_config(dict): dict of two dicts, 'optional' device parameters
-          and 'persistent' device parameters.
-        log_file_name(str): file name in the log directory for device logs.
-        log_directory(str): directory in which the controller will create
-          the log file.
-
-    Returns:
-        Cambrionix: Instance matching serial port path
-
-    Note:
-        Instantiate a new serial_port_path if not found.
-    """
-    if "console_port_name" in device_config["persistent"]:
-      address = device_config["persistent"]["console_port_name"]
-    else:  # Backwards compatibility.
-      address = device_config["persistent"]["hub_port_name"]
-
-    if address not in cls._instances:
-      obj = super(Cambrionix, cls).__new__(cls)
-      cls._instances[address] = obj
-
-    return cls._instances[address]
 
   def __init__(self, manager, device_config, log_file_name, log_directory):
     """Constructor of the class Cambrionix.
@@ -196,9 +167,6 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
     self._regexes.update(REGEXES)
     self._timeouts.update(TIMEOUTS)
     self._serial_port = None
-
-  def __del__(self):
-    self.close()
 
   @decorators.health_check
   def check_clear_flags(self):
@@ -231,12 +199,12 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
     return len(self.port_extension_map.keys())
 
   @decorators.LogDecorator(logger, level=decorators.DEBUG)
-  def close(self):
+  def _close(self):
     """Closes the serial port connection."""
     if self._serial_port is not None and self._serial_port.is_open:
       self._serial_port.close()
 
-    super(Cambrionix, self).close()
+    super()._close()
 
   @decorators.PersistentProperty
   def communication_address(self):
@@ -494,7 +462,7 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
     finally:
       if close_delay > 0.0:
         time.sleep(close_delay)
-      self.close()
+      self._serial_port.close()
 
     # Discard the last line which is the prompt
     return response[:-1]

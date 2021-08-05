@@ -431,11 +431,6 @@ class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
     dyn_list = ["firmware_version", "kernel_version"]
     return set(dyn_list)
 
-  def __del__(self):
-    self._log_object_lifecycle_event("__del__")
-    if hasattr(self, "close"):
-      self.close()
-
 
 deprecation_utils.add_deprecated_attributes(
     RaspbianDevice,

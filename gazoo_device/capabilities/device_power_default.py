@@ -115,6 +115,13 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
           msg=str(err), device_name=self._device_name)
     self._healthy = True
 
+  @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
+  def close(self):
+    """Closes the hub device instance."""
+    if self._hub:
+      self._hub.close()
+    super().close()
+
   @decorators.OptionalProperty
   def hub_name(self):
     """Name of the hub the device is attached to."""

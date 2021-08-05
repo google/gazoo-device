@@ -986,6 +986,44 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         # console port should be closed when error in make_device_ready
         FakeSSHDevice.close.assert_called()
 
+  def test_create_device_returns_same_auxiliary_device_instance(self):
+    """Test that multiple create_device calls return same auxiliary device."""
+    self.uut = self._create_manager_object()
+    with MockOutDevices():
+      device_1 = self.uut.create_device("cambrionix-1234")
+      device_2 = self.uut.create_device("cambrionix-1234")
+      self.assertIs(device_2, device_1)
+      self.assertCountEqual(self.uut.get_open_devices(), [device_1])
+
+  def test_get_open_devices_for_auxiliary_devices(self):
+    """Tests get_open_devices() behavior with multiple auxiliary devices."""
+    self.uut = self._create_manager_object()
+    with MockOutDevices():
+      device_1 = self.uut.create_device("cambrionix-1234")
+      device_2 = self.uut.create_device("cambrionix-1234")
+      # Closing one of two references shouldn't actually close the device.
+      device_1.close()
+      self.assertCountEqual(self.uut.get_open_devices(), [device_1])
+      # Closing the second reference should release resources.
+      device_2.close()
+      self.assertFalse(self.uut.get_open_devices())
+
+  def test_close_open_devices_nonzero_auxiliary_device_user_count(self):
+    """Tests that close_open_devices closes all auxiliary devices.
+
+    The devices should still be closed despite nonzero instance user counts.
+    """
+    self.uut = self._create_manager_object()
+    with MockOutDevices():
+      # Create 2 devices and don't close them directly.
+      device = self.uut.create_device("cambrionix-1234")
+      self.uut.create_device("cambrionix-1234")
+      with mock.patch.object(
+          device, "_close", wraps=device._close) as close_wrapper:
+        self.uut.close_open_devices()
+        self.assertFalse(self.uut.get_open_devices())
+        close_wrapper.assert_called_once()
+
   def test_408_manager_create_devices_with_list_of_strings_successful(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():

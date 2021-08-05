@@ -103,6 +103,13 @@ class UsbHubDefault(usb_hub_base.UsbHubBase):
           msg=str(err), device_name=self._device_name)
     self._healthy = True
 
+  @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
+  def close(self):
+    """Closes the USB hub device instance."""
+    if self._usb_hub:
+      self._usb_hub.close()
+    super().close()
+
   @decorators.PersistentProperty
   def name(self):
     """The name of the usb hub.
