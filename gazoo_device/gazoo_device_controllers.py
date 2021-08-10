@@ -36,6 +36,7 @@ from gazoo_device.auxiliary_devices import unifi_poe_switch
 from gazoo_device.auxiliary_devices import yepkit
 from gazoo_device.capabilities import comm_power_default
 from gazoo_device.capabilities import device_power_default
+from gazoo_device.capabilities import embedded_script_dli_powerswitch
 from gazoo_device.capabilities import event_parser_default
 from gazoo_device.capabilities import fastboot_default
 from gazoo_device.capabilities import file_transfer_adb
@@ -58,6 +59,7 @@ from gazoo_device.capabilities import switch_power_usb_with_charge
 from gazoo_device.capabilities import usb_hub_default
 from gazoo_device.capabilities.interfaces import comm_power_base
 from gazoo_device.capabilities.interfaces import device_power_base
+from gazoo_device.capabilities.interfaces import embedded_script_base
 from gazoo_device.capabilities.interfaces import event_parser_base
 from gazoo_device.capabilities.interfaces import fastboot_base
 from gazoo_device.capabilities.interfaces import file_transfer_base
@@ -137,6 +139,7 @@ def export_extensions() -> Dict[str, Any]:
       "capability_interfaces": [
           comm_power_base.CommPowerBase,
           device_power_base.DevicePowerBase,
+          embedded_script_base.EmbeddedScriptBase,
           event_parser_base.EventParserBase,
           fastboot_base.FastbootBase,
           file_transfer_base.FileTransferBase,
@@ -155,6 +158,7 @@ def export_extensions() -> Dict[str, Any]:
       "capability_flavors": [
           comm_power_default.CommPowerDefault,
           device_power_default.DevicePowerDefault,
+          embedded_script_dli_powerswitch.EmbeddedScriptDliPowerswitch,
           event_parser_default.EventParserDefault,
           fastboot_default.FastbootDefault,
           file_transfer_adb.FileTransferAdb,

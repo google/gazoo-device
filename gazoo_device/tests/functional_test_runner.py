@@ -23,6 +23,7 @@ from gazoo_device.tests.functional_tests import auxiliary_device_common_test_sui
 from gazoo_device.tests.functional_tests import comm_power_test_suite
 from gazoo_device.tests.functional_tests import common_test_suite
 from gazoo_device.tests.functional_tests import device_power_test_suite
+from gazoo_device.tests.functional_tests import embedded_script_test_suite
 from gazoo_device.tests.functional_tests import file_transfer_test_suite
 from gazoo_device.tests.functional_tests import optional_properties_test_suite
 from gazoo_device.tests.functional_tests import package_management_test_suite
@@ -42,6 +43,7 @@ TEST_SUITES = (
     comm_power_test_suite.CommPowerTestSuite,
     common_test_suite.CommonTestSuite,
     device_power_test_suite.DevicePowerTestSuite,
+    embedded_script_test_suite.EmbeddedScriptTestSuite,
     file_transfer_test_suite.FileTransferTestSuite,
     optional_properties_test_suite.OptionalPropertiesTestSuite,
     package_management_test_suite.PackageManagementTestSuite,

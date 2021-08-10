@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Digital Loggers Web Power Switch."""
+
 from gazoo_device import decorators
 from gazoo_device import detect_criteria
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import auxiliary_device
+from gazoo_device.capabilities import embedded_script_dli_powerswitch
 from gazoo_device.capabilities import switch_power_dli_powerswitch
 from gazoo_device.switchboard import log_process
 from gazoo_device.switchboard import switchboard
@@ -35,6 +37,11 @@ GET_CONFIG = HTTP_FRAMEWORK + "config/="
 HEADERS = {
     "GET_PROP": {
         "Accept": "application/json"
+    },
+    "SCRIPT": {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-CSRF": "x"
     },
     "SET_PROP": {
         "Accept": "application/json",
@@ -110,6 +117,21 @@ class DliPowerSwitch(auxiliary_device.AuxiliaryDevice):
         device_name=self.name,
         total_ports=self._NUMBER_OF_PORTS)
 
+  @decorators.CapabilityDecorator(
+      embedded_script_dli_powerswitch.EmbeddedScriptDliPowerswitch)
+  def embedded_script(self):
+    """Capability for executing embedded LUA scripts.
+
+    Returns:
+        object: embedded_script_dli_powerswitch
+    """
+    return self.lazy_init(
+        embedded_script_dli_powerswitch.EmbeddedScriptDliPowerswitch,
+        http_fn=self._write_command,
+        ip_address=self.ip_address,
+        base_url=HTTP_FRAMEWORK,
+        device_name=self.name)
+
   @decorators.PersistentProperty
   def health_checks(self):
     """Returns list of methods to execute as health checks."""
@@ -173,19 +195,19 @@ class DliPowerSwitch(auxiliary_device.AuxiliaryDevice):
         url (str): HTTP formated command to send to the device.
         headers (dict): Headers required for the HTTP request.
         data (dict): Data that is needed for the HTTP POST Request
-        json_data (dict): JSON data that is needed for the HTTP POST Request
+        json_data (object): JSON data that is needed for the HTTP POST Request
 
     Raises:
         RuntimeError: if response.status_code returned by requests.get or
         requests.post is not in valid_return_codes.
-        TypeError: if headers / json_data is not a dictionary or None.
+        TypeError: if headers is not a dictionary or None.
 
     Returns:
         str: Formatted GET/POST HTTP response
     """
     log_message = ("Sending command '{command}' to {device} via http {method} "
                    "method.").format(
-        command=url, device=self.name, method=method)
+                       command=url, device=self.name, method=method)
     self._log_to_file(log_message)
     try:
       if "GET" in method:
@@ -210,7 +232,7 @@ class DliPowerSwitch(auxiliary_device.AuxiliaryDevice):
 
     log_message = ("Command '{command}' sent successfully. Return Code: "
                    "{return_code}").format(
-        command=url, return_code=response.status_code)
+                       command=url, return_code=response.status_code)
     self._log_to_file(log_message)
     return self._format_response(response)
 

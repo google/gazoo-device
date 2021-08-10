@@ -140,6 +140,7 @@ def send_http_get(url,
   if data and not isinstance(data, dict):
     raise TypeError("Expecting a dict value data param but received: {}".format(
         type(data)))
+
   if headers and not isinstance(headers, dict):
     raise TypeError(
         "Expecting a dict value in headers param but received: {}".format(
@@ -199,7 +200,7 @@ def send_http_post(url,
       auth (auth.AuthBase): HTTP authentication object (i.e. HTTPDigestAuth)
       data (dict): Data that is needed for this HTTP GET Request
       headers (dict): Headers needed that is needed for this HTTP POST Request
-      json_data (dict): JSON data that is needed for this HTTP POST Request
+      json_data (object): JSON data that is needed for this HTTP POST Request
       ssl_version (int): SSL version to be used for secure http (https)
         requests. For example, ssl.PROTOCOL_TLSv1_2
       valid_return_codes (list): List of valid HTTP return codes.
@@ -221,10 +222,15 @@ def send_http_post(url,
   json_data = json_data or {}
   valid_return_codes = valid_return_codes or [200]
 
-  if not isinstance(headers, dict) or not isinstance(json_data, dict):
+  if not isinstance(json_data, (dict, list)):
     raise TypeError(
-        "Expecting a dict value in headers and json_data params but received: "
-        "{} {} respectively".format(type(headers), type(json_data)))
+        "Expecting a dict or list value in json_data params but received: "
+        "{}.".format(type(json_data)))
+
+  if not isinstance(headers, dict):
+    raise TypeError(
+        "Expecting a dict value in headers params but received: "
+        "{}.".format(type(headers)))
 
   try:
     session = requests.Session()

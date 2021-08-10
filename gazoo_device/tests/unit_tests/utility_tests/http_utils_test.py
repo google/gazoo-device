@@ -95,7 +95,7 @@ class HTTPUtilsTests(unit_test_case.UnitTestCase):
           url="http://sometesturl:1234/some/endpoint",
           headers="invalid_headers",
           json_data={})
-    self.assertNotIn("Expecting a dict value in headers and json_data",
+    self.assertNotIn("Expecting a dict value in headers",
                      str(error))
 
     with self.assertRaises(TypeError) as error:
@@ -103,7 +103,7 @@ class HTTPUtilsTests(unit_test_case.UnitTestCase):
           url="http://sometesturl:1234/some/endpoint",
           headers={},
           json_data="invalid_headers")
-    self.assertNotIn("Expecting a dict value in headers and json_data",
+    self.assertNotIn("Expecting a dict or list value in json_data",
                      str(error))
 
   @mock.patch.object(
