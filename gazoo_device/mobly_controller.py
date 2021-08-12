@@ -21,13 +21,19 @@ class Test(base_test.TestCase):
 """
 import logging
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Sequence
 
 from gazoo_device import custom_types
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device import manager
 
+# Device properties for gazoo device analytics.
+_DEVICE_PROPS = ("name", "device_type", "model", "platform", "serial_number",
+                 "wifi_mac_address", "firmware_version", "firmware_branch",
+                 "firmware_type", "alias", "communication_address",
+                 "secondary_communication_address", "build_date",
+                 "initial_code_name")
 _LOGGER = gdm_logger.get_logger()
 _MANAGER_INSTANCE = None
 
@@ -72,19 +78,16 @@ def create(configs: List[Dict[str, Any]]) -> List[custom_types.Device]:
   return devices
 
 
-def get_info(devices: List[custom_types.Device]) -> List[Dict[str, Any]]:
+def get_info(devices: Sequence[custom_types.Device]) -> List[Dict[str, Any]]:
   """Returns persistent info and firmware version for each device."""
   info = []
   for device in devices:
-    props = _MANAGER_INSTANCE.get_device_configuration(
-        device.name)["persistent"]
-    try:
-      if hasattr(type(device), "firmware_version"):
-        props["firmware_version"] = device.firmware_version
-      else:
-        props["firmware_version"] = "NotImplemented"
-    except errors.DeviceError as err:
-      props["firmware_version"]: "Error: " + repr(err)
+    props = {}
+    for device_prop in _DEVICE_PROPS:
+      try:
+        props[device_prop] = device.get_property(device_prop, raise_error=True)
+      except AttributeError:
+        props[device_prop] = "Undefined"
     info.append(props)
   return info
 

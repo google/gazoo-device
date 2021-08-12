@@ -20,6 +20,7 @@ from unittest import mock
 import gazoo_device
 from gazoo_device import errors
 from gazoo_device import mobly_controller
+from gazoo_device.tests.unit_tests.utils import fake_gazoo_device_base
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from mobly import asserts
 from mobly import base_test
@@ -46,7 +47,8 @@ FAKE_CONFIGURATION = {
     },
     "options": {
         "alias": "a"
-    }
+    },
+    "log_name_prefix": "test"
 }
 
 
@@ -119,19 +121,28 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
 
   def test_get_info(self):
     mock_manager = mock.Mock()
-    mobly_controller._MANAGER_INSTANCE = mock_manager
-    mock_manager.get_device_configuration.return_value = FAKE_CONFIGURATION
-    mock_device = mock.Mock()
-    mock_device.name = "sshdevice-0000"
+    mock_device = fake_gazoo_device_base.FakeGazooDeviceBase(
+        mock_manager, FAKE_CONFIGURATION, log_directory="/a/b/c")
+    type(mock_device).firmware_version = mock.PropertyMock(return_value="123")
+    type(mock_device).platform = mock.PropertyMock(return_value="sshdevice")
+    type(mock_device).firmware_branch = mock.PropertyMock(return_value="master")
+    type(mock_device).firmware_type = mock.PropertyMock(return_value="eng")
     info = gazoo_device.get_info([mock_device])
-    mock_manager.get_device_configuration.assert_called_with(mock_device.name)
     expected_info = [{
-        "serial_number": "00000000",
         "name": "sshdevice-0000",
-        "device_type": "sshdevice",
+        "device_type": None,
         "model": "linux",
-        "console_port_name": "123.456.78.9",
-        "firmware_version": "NotImplemented"
+        "platform": "sshdevice",
+        "serial_number": "00000000",
+        "wifi_mac_address": "Undefined",
+        "firmware_version": "123",
+        "firmware_branch": "master",
+        "firmware_type": "eng",
+        "alias": "a",
+        "communication_address": "123.456.78.9",
+        "secondary_communication_address": "Undefined",
+        "build_date": "Undefined",
+        "initial_code_name": "Undefined"
     }]
     self.assertDictEqual(info[0], expected_info[0])
 
