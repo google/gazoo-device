@@ -52,7 +52,7 @@ class ESP32PigweedLocking(espressif_esp32_device.EspressifESP32Device):
   DETECT_MATCH_CRITERIA = {
       detect_criteria.PigweedQuery.product_name:
           "cp2104 usb to uart bridge controller",
-      detect_criteria.PigweedQuery.manufacturer_name: "silicon_labs",
+      detect_criteria.PigweedQuery.manufacturer_name: r"silicon(_| )labs",
       detect_criteria.PigweedQuery.app_type:
           pwrpc_utils.PigweedAppType.LOCKING.value,
   }

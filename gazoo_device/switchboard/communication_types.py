@@ -43,9 +43,11 @@ logger = gdm_logger.get_logger()
 
 JLINK_COMMS_PRODUCT_NAME = "J-Link"
 CP2104_COMMS_PRODUCT_NAME = "CP2104"
-NRF_DK_COMMS_ADDRESS = "SEGGER_J-Link"
-EFR32_COMMS_ADDRESS = "Silicon_Labs_J-Link"
-ESP32_M5STACK_COMMS_ADDRESS = "Silicon_Labs_CP2104"
+NRF_DK_COMMS_ADDRESS_LINUX = "SEGGER_J-Link"
+NRF_DK_EFR32_COMMS_ADDRESS_MAC = "tty.usbmodem"
+EFR32_COMMS_ADDRESS_LINUX = "Silicon_Labs_J-Link"
+ESP32_M5STACK_COMMS_ADDRESS_LINUX = "Silicon_Labs_CP2104"
+ESP32_M5STACK_COMMS_ADDRESS_MAC = "tty.usbserial"
 
 
 def get_specific_serial_addresses(match_criteria):
@@ -406,15 +408,16 @@ class PigweedSerialComms(CommunicationType):
   @classmethod
   def get_comms_addresses(cls):
     include_product = [JLINK_COMMS_PRODUCT_NAME, CP2104_COMMS_PRODUCT_NAME]
-    include_address = [NRF_DK_COMMS_ADDRESS,
-                       EFR32_COMMS_ADDRESS,
-                       ESP32_M5STACK_COMMS_ADDRESS]
+    include_address = [NRF_DK_COMMS_ADDRESS_LINUX,
+                       NRF_DK_EFR32_COMMS_ADDRESS_MAC,
+                       EFR32_COMMS_ADDRESS_LINUX,
+                       ESP32_M5STACK_COMMS_ADDRESS_LINUX,
+                       ESP32_M5STACK_COMMS_ADDRESS_MAC]
     match_criteria = {
         "product_name": {
             "include_regex": "|".join(include_product)
         },
         "address": {
-            # TODO(b/187163734): Add address regex for Mac.
             "include_regex": "|".join(include_address)
         }
     }

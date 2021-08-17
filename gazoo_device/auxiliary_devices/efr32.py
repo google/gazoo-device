@@ -27,7 +27,7 @@ class EFR32(silabs_efr32_device.SilabsEFR32Device):
   """
   DETECT_MATCH_CRITERIA = {
       detect_criteria.PigweedQuery.product_name: "j-link",
-      detect_criteria.PigweedQuery.manufacturer_name: "silicon_labs",
+      detect_criteria.PigweedQuery.manufacturer_name: r"silicon(_| )labs",
       detect_criteria.PigweedQuery.app_type:
           pwrpc_utils.PigweedAppType.NON_PIGWEED.value,
   }
