@@ -36,6 +36,11 @@ try:
   # pytype: enable=import-error
   PIGWEED_IMPORT = True
 except ImportError:
+  pw_rpc = None
+  callback_client = None
+  rpc = None
+  decode = None
+  python_protos = None
   PIGWEED_IMPORT = False
 
 _STDOUT_ADDRESS = 1
@@ -65,13 +70,12 @@ class PwHdlcRpcClient:
       raise errors.DependencyUnavailableError(
           "Pigweed python packages are not available in this environment.")
 
-    self.protos = python_protos.Library.from_paths(protobufs)
-
+    protos = python_protos.Library.from_paths(protobufs)
     client_impl = callback_client.Impl()
     channels = rpc.default_channels(write)
     self.client = pw_rpc.Client.from_modules(client_impl,
                                              channels,
-                                             self.protos.modules())
+                                             protos.modules())
     self.frame_handlers = {
         _DEFAULT_ADDRESS: self._handle_rpc_packet,
         _STDOUT_ADDRESS: self._push_to_log_queue}

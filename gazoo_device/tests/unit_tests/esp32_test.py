@@ -13,13 +13,17 @@
 # limitations under the License.
 
 """Unit tests for esp32 module."""
+from unittest import mock
+
 from gazoo_device import errors
 from gazoo_device.auxiliary_devices import esp32
+from gazoo_device.base_classes import espressif_esp32_device
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 import immutabledict
 
 
-_MOCK_ESP32_ADDRESS = "/dev/bus/usb/001/002"
+_FAKE_DEVICE_ID = "esp32-detect"
+_FAKE_DEVICE_ADDRESS = "/dev/bus/usb/001/002"
 _ESP32_PERSISTENT_PROPERTIES = immutabledict.immutabledict({
     "os": "FreeRTOS",
     "platform": "ESP32",
@@ -34,27 +38,28 @@ class ESP32DeviceTests(fake_device_test_case.FakeDeviceTestCase):
 
   def setUp(self):
     super().setUp()
-    self.setup_fake_device_requirements("esp32-detect")
-    self.device_config["persistent"]["console_port_name"] = _MOCK_ESP32_ADDRESS
+    self.setup_fake_device_requirements()
+    self.device_config["persistent"]["console_port_name"] = _FAKE_DEVICE_ADDRESS
     self.uut = esp32.ESP32(self.mock_manager,
                            self.device_config,
                            log_directory=self.artifacts_directory)
 
   def test_001_esp32_attributes(self):
-    """Verify esp32 attributes."""
-    self._test_get_detection_info(_MOCK_ESP32_ADDRESS,
+    """Verifies esp32 attributes."""
+    self._test_get_detection_info(_FAKE_DEVICE_ADDRESS,
                                   esp32.ESP32,
                                   _ESP32_PERSISTENT_PROPERTIES)
 
-  def test_002_recover(self):
-    """Verify recover method."""
-    with self.assertRaises(errors.DeviceError):
-      self.uut.recover(errors.CheckDeviceReadyError(self.uut.name, "error"))
-
-  def test_003_switchboard(self):
-    """Verify the inactive switchboard in esp32."""
+  def test_002_switchboard(self):
+    """Verifies the inactive switchboard in esp32."""
     with self.assertRaises(errors.DeviceError):
       self.uut.switchboard.send()
+
+  @mock.patch.object(espressif_esp32_device.os.path, "exists")
+  def test_003_is_connected_true(self, mock_exists):
+    """Verifies is_connected works as expected."""
+    mock_exists.return_value = True
+    self.assertTrue(esp32.ESP32.is_connected(self.device_config))
 
 
 if __name__ == "__main__":

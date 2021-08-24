@@ -22,10 +22,14 @@ from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 import immutabledict
 
 
+_FAKE_DEVICE_ID = "nrf52840-detect"
+_FAKE_DEVICE_ADDRESS = "/dev/bus/usb/001/002"
 _NRF_CONNECT_PERSISTENT_PROPERTIES = immutabledict.immutabledict({
     "os": "Zephyr RTOS",
     "platform": "nRF Connect",
-    "serial_number": "123456",
+    "serial_number": "FT2BSR6O",
+    "name": "nrf52840_detect",
+    "device_type": "nrf52840",
 })
 
 
@@ -34,9 +38,8 @@ class NRF52840DeviceTests(fake_device_test_case.FakeDeviceTestCase):
 
   def setUp(self):
     super().setUp()
-    self.setup_fake_device_requirements("nrf52840-1234")
-    self.device_config["persistent"]["console_port_name"] = (
-        "/dev/bus/usb/001/002")
+    self.setup_fake_device_requirements(_FAKE_DEVICE_ID)
+    self.device_config["persistent"]["console_port_name"] = _FAKE_DEVICE_ADDRESS
     jlink_patcher = mock.patch("pylink.JLink")
     jlink_patcher.start()
     self.addCleanup(jlink_patcher.stop)
@@ -45,38 +48,26 @@ class NRF52840DeviceTests(fake_device_test_case.FakeDeviceTestCase):
                 self.device_config,
                 log_directory=self.artifacts_directory)
 
-  def test_001_create_nrf52840_device(self):
-    """Verify create_device works as expected."""
-    self.assertIsNotNone(self.uut)
-    self.assertIsInstance(self.uut, nrf_connect_sdk_device.NRFConnectSDKDevice)
+  def test_001_nrf52840_attributes(self):
+    """Verifies nrf52840 attributes."""
+    self._test_get_detection_info(_FAKE_DEVICE_ADDRESS,
+                                  nrf52840.NRF52840,
+                                  _NRF_CONNECT_PERSISTENT_PROPERTIES)
 
-  def test_002_nrf52840_attributes(self):
-    """Verify nrf52840 attributes."""
-    self.assertEqual(self.uut.os, _NRF_CONNECT_PERSISTENT_PROPERTIES["os"])
-    self.assertEqual(self.uut.platform,
-                     _NRF_CONNECT_PERSISTENT_PROPERTIES["platform"])
-    self.assertEqual(self.uut.serial_number,
-                     _NRF_CONNECT_PERSISTENT_PROPERTIES["serial_number"])
-
-  def test_003_get_detection_info(self):
-    """Verify get_detection_info."""
-    persistent_dict, _ = self.uut.get_detection_info()
-    self.assertEqual(persistent_dict["name"], "nrf52840-1234")
-    self.assertEqual(persistent_dict["device_type"], "nrf52840")
-
-  def test_004_recover(self):
-    """Verify recover method."""
-    with self.assertRaises(errors.DeviceError):
-      self.uut.recover(None)
-
-  def test_005_switchboard(self):
-    """Verify the deactive switchboard in nrf52840."""
+  def test_002_switchboard(self):
+    """Verifies the deactive switchboard in nrf52840."""
     with self.assertRaises(errors.DeviceError):
       self.uut.switchboard.send()
 
-  def test_006_jlink_flash_capability(self):
-    """Verify the initialization of j_link_flash capability."""
+  def test_003_jlink_flash_capability(self):
+    """Verifies the initialization of j_link_flash capability."""
     self.assertTrue(self.uut.flash_build)
+
+  @mock.patch.object(nrf_connect_sdk_device.os.path, "exists")
+  def test_004_is_connected_true(self, mock_exists):
+    """Verifies is_connected works as expected."""
+    mock_exists.return_value = True
+    self.assertTrue(nrf52840.NRF52840.is_connected(self.device_config))
 
 
 if __name__ == "__main__":

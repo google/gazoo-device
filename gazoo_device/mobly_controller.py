@@ -88,6 +88,8 @@ def get_info(devices: Sequence[custom_types.Device]) -> List[Dict[str, Any]]:
         props[device_prop] = device.get_property(device_prop, raise_error=True)
       except AttributeError:
         props[device_prop] = "Undefined"
+      except errors.DeviceError as e:
+        props[device_prop] = repr(e)
     info.append(props)
   return info
 

@@ -15,6 +15,7 @@
 """Utility module for interaction with adb."""
 import json
 import os
+import re
 import subprocess
 import time
 from typing import Optional
@@ -133,6 +134,34 @@ def fastboot_lock_device(fastboot_serial,
                            fastboot_serial=fastboot_serial,
                            fastboot_path=fastboot_path,
                            timeout=timeout)
+
+
+def fastboot_check_is_unlocked(fastboot_serial: str,
+                               fastboot_path: Optional[str] = None,
+                               timeout: float = FASTBOOT_TIMEOUT) -> bool:
+  """Checks if the device is unlocked.
+
+  Args:
+      fastboot_serial: Device serial number
+      fastboot_path: Optional alternative path to fastboot executable
+      timeout: In seconds to wait for fastboot command to return
+
+  Raises:
+      RuntimeError: If the response is not in the expected format.
+
+  Returns:
+      True if the device is unlocked, else False.
+  """
+  raw_result = _fastboot_command(("getvar", "unlocked"),
+                                 fastboot_serial=fastboot_serial,
+                                 fastboot_path=fastboot_path,
+                                 timeout=timeout)
+  # Raw result would be like "unlocked: yes"
+  match = re.search(r"unlocked: (yes|no)", raw_result)
+  if not match:
+    raise RuntimeError(
+        f"Unknown output from fastboot getvar unlocked: {raw_result}")
+  return match.group(1) == "yes"
 
 
 def fastboot_wipe_userdata(fastboot_serial,

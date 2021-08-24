@@ -1006,6 +1006,35 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
         adb_path=ADB_CMD_PATH,
         include_return_code=True)
 
+  @mock.patch.object(adb_utils, "_fastboot_command")
+  def test_330_adb_utils_fastboot_check_is_unlocked(self,
+                                                    mock_fastboot_command):
+    """Verifies fastboot_check_is_unlocked function return correct result."""
+    fastboot_serial = "fake_fastboot_serial"
+    unlocked_output = "unlocked: yes"
+    locked_output = "unlocked: no"
+
+    mock_fastboot_command.return_value = unlocked_output
+    unlocked_expected = adb_utils.fastboot_check_is_unlocked(
+        fastboot_serial=fastboot_serial)
+    mock_fastboot_command.return_value = locked_output
+    locked_expected = adb_utils.fastboot_check_is_unlocked(
+        fastboot_serial=fastboot_serial)
+
+    self.assertTrue(unlocked_expected)
+    self.assertFalse(locked_expected)
+
+  @mock.patch.object(adb_utils, "_fastboot_command")
+  def test_331_adb_utils_fastboot_check_is_unlocked_exception(
+      self, mock_fastboot_command):
+    """Verifies fastboot_check_is_unlocked function raises with bad output."""
+    fastboot_serial = "fake_fastboot_serial"
+    unknown_output = "something went wrong"
+    mock_fastboot_command.return_value = unknown_output
+
+    with self.assertRaises(RuntimeError):
+      adb_utils.fastboot_check_is_unlocked(fastboot_serial=fastboot_serial)
+
 
 if __name__ == "__main__":
   unit_test_case.main()

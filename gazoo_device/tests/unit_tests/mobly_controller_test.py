@@ -120,14 +120,6 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
     mock_set.assert_called_with("sshdevice-0001", "other", "b")
 
   def test_get_info(self):
-    mock_manager = mock.Mock()
-    mock_device = fake_gazoo_device_base.FakeGazooDeviceBase(
-        mock_manager, FAKE_CONFIGURATION, log_directory="/a/b/c")
-    type(mock_device).firmware_version = mock.PropertyMock(return_value="123")
-    type(mock_device).platform = mock.PropertyMock(return_value="sshdevice")
-    type(mock_device).firmware_branch = mock.PropertyMock(return_value="master")
-    type(mock_device).firmware_type = mock.PropertyMock(return_value="eng")
-    info = gazoo_device.get_info([mock_device])
     expected_info = [{
         "name": "sshdevice-0000",
         "device_type": None,
@@ -136,7 +128,7 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
         "serial_number": "00000000",
         "wifi_mac_address": "Undefined",
         "firmware_version": "123",
-        "firmware_branch": "master",
+        "firmware_branch": "DeviceError('Communication error')",
         "firmware_type": "eng",
         "alias": "a",
         "communication_address": "123.456.78.9",
@@ -144,7 +136,32 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
         "build_date": "Undefined",
         "initial_code_name": "Undefined"
     }]
-    self.assertDictEqual(info[0], expected_info[0])
+
+    mock_manager = mock.Mock()
+    mock_device = fake_gazoo_device_base.FakeGazooDeviceBase(
+        mock_manager, FAKE_CONFIGURATION, log_directory="/a/b/c")
+    mocks = {
+        "firmware_version": mock.PropertyMock(return_value="123"),
+        "platform": mock.PropertyMock(return_value="sshdevice"),
+        "firmware_branch": mock.PropertyMock(
+            side_effect=errors.DeviceError("Communication error")),
+        "firmware_type": mock.PropertyMock(return_value="eng"),
+    }
+    original_properties = {}
+    for attribute_name, replacement in mocks.items():
+      original_properties[attribute_name] = getattr(
+          type(mock_device), attribute_name, None)
+      setattr(type(mock_device), attribute_name, replacement)
+
+    try:
+      info = gazoo_device.get_info([mock_device])
+      self.assertDictEqual(info[0], expected_info[0])
+    finally:
+      for attribute_name, original in original_properties.items():
+        if original is None:
+          delattr(type(mock_device), attribute_name)
+        else:
+          setattr(type(mock_device), attribute_name, original)
 
   def test_destroy(self):
     mock_manager = mock.Mock()
