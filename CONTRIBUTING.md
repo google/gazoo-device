@@ -27,6 +27,7 @@ device(s) to GDM.
     *   [Adding a new transport type](#adding-a-new-transport-type)
     *   [Adding a new detection query](#adding-a-new-detection-query)
     *   [Adding a new key](#adding-a-new-key)
+    *   [Adding a new CLI command](#adding-a-new-cli-command)
     *   [Adding a new capability](#adding-a-new-capability)
 *   [Other questions](#other-questions)
 
@@ -257,7 +258,8 @@ define:
 *   detection criteria for each communication type;
     *   including new detection queries;
 *   metadata (extension package name and version);
-*   keys (such as SSH or API keys).
+*   keys (such as SSH or API keys);
+*   CLI commands.
 
 In addition to the above, extension packages must define:
 
@@ -692,6 +694,26 @@ GDM to download all registered keys by running `gdm download-keys`.
     given local path. `download_key` is only called if the key does not exist
     yet. The local folder where the key is expected to be stored is guaranteed
     to exist.
+
+### Adding a new CLI command
+
+Extension packages can define their own CLI commands, which are exposed through
+the `gdm` CLI. \
+CLI commands are defined as `FireManager` mixin classes. Each method corresponds
+to a CLI command.
+
+For example, here's a `FireManager` mixin that defines a CLI command that can be
+accessed as `gdm some-command 1234` (or `gdm some_command
+--some_argument=1234`):
+
+```python
+from gazoo_device import fire_manager
+
+class SomePackageFireManagerCliMixin(fire_manager.FireManager):
+
+  def some_command(self, some_argument):
+    pass
+```
 
 ### Adding a new capability
 

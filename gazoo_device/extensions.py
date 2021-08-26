@@ -40,6 +40,7 @@ virtual_devices = []  # List of device classes
 # immutabledict({"version": Version, "key_download_function": function})
 package_info = {}
 keys = []  # List of data_types.KeyInfo instances
+manager_cli_mixins = []  # List of class objects inheriting from FireManager
 
 
 def get_registered_package_info() -> str:

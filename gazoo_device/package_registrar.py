@@ -25,7 +25,8 @@ import json
 import logging
 import os.path
 import types
-from typing import Any, Callable, Collection, List, Mapping, Tuple, Type, Union
+from typing import (
+    Any, Callable, Collection, List, Mapping, Optional, Tuple, Type, Union)
 
 from gazoo_device import config
 from gazoo_device import data_types
@@ -57,6 +58,7 @@ _EXTENSION_DICT_DEFAULTS = immutabledict.immutabledict({
     "capability_interfaces": [],
     "capability_flavors": [],
     "keys": [],
+    "manager_cli_mixin": None,
 })
 _EXPECTED_QUERY_ARGS = ("address", "detect_logger", "create_switchboard_func")
 _MISMATCHING_SIGNATURE_TEMPLATE = (
@@ -131,7 +133,9 @@ def register(package: types.ModuleType) -> None:
       ],
       "keys": [  # data_types.KeyInfo instances
           <KeyInfoSsh1>, <KeyInfoSsh2>, <KeyInfoApiToken1>, <...>
-      ]
+      ],
+      # Manager mixins are used to expose package-defined CLI commands.
+      "manager_cli_mixin": <class object inheriting from FireManager> or None,
   }
 
   Args:
@@ -307,6 +311,8 @@ def _register(
       ext_communication_types=new_extensions["communication_types"],
       package_name=package_name)
   _validate_keys(new_extensions["keys"], package_name=package_name)
+  _validate_manager_cli_mixin(new_extensions["manager_cli_mixin"],
+                              package_name=package_name)
 
   extensions.auxiliary_devices = list(set(
       extensions.auxiliary_devices
@@ -327,6 +333,8 @@ def _register(
     else:
       extensions.detect_criteria[comm_type_name].update(query_dict)
   extensions.keys.extend(new_extensions["keys"])
+  if new_extensions["manager_cli_mixin"]:
+    extensions.manager_cli_mixins.append(new_extensions["manager_cli_mixin"])
 
   extensions.package_info[package_name] = immutabledict.immutabledict({
       "version": package_version,
@@ -702,6 +710,37 @@ def _validate_keys(keys: Collection[data_types.KeyInfo],
     raise errors.PackageRegistrationError(
         "KeyInfo.package attribute must match the name of the package "
         f"({package_name!r}).", package_name=package_name)
+
+
+def _validate_manager_cli_mixin(manager_cli_mixin: Optional[Type[Any]],
+                                package_name: str) -> None:
+  """Validates the provided FireManager mixin.
+
+  Args:
+    manager_cli_mixin: None or a class object inheriting from FireManager.
+    package_name: Name of the extension package.
+
+  Raises:
+    PackageRegistrationError: The provided FireManager mixin is invalid.
+  """
+  if manager_cli_mixin is None:
+    return
+
+  if inspect.isclass(manager_cli_mixin):  # Non-classes don't have __mro__.
+    # fire_manager is not imported for a subclass check to prevent a circular
+    # import.
+    mro_class_names = [
+        a_class.__name__ for a_class in manager_cli_mixin.__mro__]
+    is_invalid = (inspect.isabstract(manager_cli_mixin)
+                  or "FireManager" not in mro_class_names)
+  else:
+    is_invalid = True
+
+  if is_invalid:
+    raise errors.PackageRegistrationError(
+        "Provided FireManager mixin class is invalid. It must be None or a "
+        "concrete class object which inherits from gazoo_device.FireManager.",
+        package_name=package_name)
 
 
 def _assert_subclasses(classes: Collection[Type[Any]],

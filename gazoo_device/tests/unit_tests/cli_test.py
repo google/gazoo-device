@@ -18,7 +18,6 @@ from typing import Dict
 from unittest import mock
 
 from absl.testing import parameterized
-from gazoo_device import fire_manager
 from gazoo_device import gdm_cli
 from gazoo_device.auxiliary_devices import raspberry_pi
 from gazoo_device.tests.unit_tests.utils import unit_test_case
@@ -70,7 +69,7 @@ class CLITests(unit_test_case.UnitTestCase):
         for command in _GOOD_COMMANDS))
   def test_command(self, command: str):
     """Tests that CLI commands can be executed successfully."""
-    manager_instance = fire_manager.FireManager()
+    manager_instance = gdm_cli._create_manager_for_cli({})
     with mock.patch.object(raspberry_pi.RaspberryPi, "__init__",
                            return_value=None):
       raspberry_pi_inst = raspberry_pi.RaspberryPi(manager_instance, {})
@@ -96,7 +95,7 @@ class CLITests(unit_test_case.UnitTestCase):
     manager_mock.create_device.return_value = raspberry_pi_mock
 
     with mock.patch.object(
-        fire_manager, "FireManager", return_value=manager_mock):
+        gdm_cli, "_create_manager_for_cli", return_value=manager_mock):
       with mock.patch.object(
           raspberry_pi, "RaspberryPi",
           return_value=raspberry_pi_mock):

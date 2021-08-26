@@ -38,6 +38,25 @@ OMIT_FLAGS = ["help"]
 _CLI_NAME = "gdm"
 
 
+def _create_manager_for_cli(
+    manager_kwargs: Dict[str, bool]) -> fire_manager.FireManager:
+  """Returns a Manager instance to be used by the CLI.
+
+  Args:
+    manager_kwargs: FireManager __init__ keyword arguments.
+
+  The Manager class used by the CLI includes CLI-only methods from FireManager
+  and CLI-only methods from Manager CLI mixins provided by extension packages.
+  """
+  extended_manager_class = type(
+      "ExtendedFireManager",
+      (*extensions.manager_cli_mixins, fire_manager.FireManager),
+      {})
+  logger.debug("ExtendedFireManager method resolution order: "
+               f"{extended_manager_class.__mro__}")
+  return extended_manager_class(**manager_kwargs)
+
+
 def execute_command(command: Optional[str] = None,
                     cli_name: str = _CLI_NAME) -> int:
   """Executes the CLI command through Python Fire.
@@ -57,9 +76,7 @@ def execute_command(command: Optional[str] = None,
     args = sys.argv[1:]
   flags = _get_flags(args)
   commands = [arg for arg in args if arg[len(FLAG_MARKER):] not in flags.keys()]
-
-  # Instantiate FireManager instance with provided flags
-  manager_inst = fire_manager.FireManager(**flags)
+  manager_inst = _create_manager_for_cli(flags)
 
   # Execute CLI command
   exit_code = 0

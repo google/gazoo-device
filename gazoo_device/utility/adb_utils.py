@@ -694,7 +694,8 @@ def _adb_command(command,
         command, adb_serial, output))
     if include_return_code:
       return output, proc.returncode
-    if not any(msg in output for msg in ["error: closed", "offline"]):
+    adb_failure_messages = ["error: closed", "adb: device offline"]
+    if not any(msg in output for msg in adb_failure_messages):
       return output
     if i < retries - 1:
       logger.info(f"Retrying adb command: {command} in {ADB_RETRY_SLEEP}s")

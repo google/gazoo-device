@@ -26,12 +26,15 @@ from gazoo_device.utility import adb_utils
 from gazoo_device.utility import host_utils
 
 ADB_CMD_PATH = "/usr/bin/adb"
-ADB_DEVICES = ["04576e89", "04576ee5", "123.45.67.89", "123.45.67.90"]
-FAKE_ADB_DEVICES = ("List of devices attached\n"
-                    "04576e89\tdevice\n"
-                    "04576ee5\tdevice\n"
-                    "123.45.67.89:5555\tdevice\n"
-                    "123.45.67.90:5555\tdevice\n\n")
+FAKE_ADB_DEVICES_OUTPUT = ("List of devices attached\n"
+                           "04576e89\tdevice\n"
+                           "04576ee5\tsideload\n"
+                           "04576eaz\toffline\n"
+                           "123.45.67.89:5555\tdevice\n"
+                           "123.45.67.90:5555\tsideload\n"
+                           "123.45.67.91:5555\toffline\n\n")
+ADB_DEVICES = ["04576e89", "123.45.67.89"]
+SIDELOAD_DEVICES = ["04576ee5", "123.45.67.90:5555"]
 FAKE_ADB_REBOOT = ""
 FAKE_ADB_ROOT = ""
 
@@ -47,13 +50,6 @@ FAKE_FASTBOOT_REBOOT = ("Rebooting...\n\n"
 DEVICE_NAME = "somedevice"
 DEVICE_ADB_SERIAL = "aabbccdd"
 DEVICE_FASTBOOT_SERIAL = "aabbccdd"
-
-SIDELOAD_DEVICES = ["04576ee5", "123.45.67.90:5555"]
-FAKE_ADB_DEVICES_WITH_SIDELOAD_DEVICE = ("List of devices attached\n"
-                                         "04576e89\tdevice\n"
-                                         "04576ee5\tsideload\n"
-                                         "123.45.67.89:5555\tdevice\n"
-                                         "123.45.67.90:5555\tsideload\n\n")
 
 TEST_GROUP_ENTRY = ("plugdev", None, 46, None)
 TEST_GOOD_GROUP_LIST = [42, 46]
@@ -245,7 +241,8 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
     path = adb_utils.get_adb_path(adb_path="genuine/path")
     self.assertEqual(path, "genuine/path")
 
-  @mock.patch.object(adb_utils, "_adb_command", return_value=FAKE_ADB_DEVICES)
+  @mock.patch.object(
+      adb_utils, "_adb_command", return_value=FAKE_ADB_DEVICES_OUTPUT)
   def test_060_adb_utils_get_adb_devices_calls_get_adb_path(
       self, mock_adb_command):
     """Verify get_adb_devices calls _adb_command."""
@@ -260,9 +257,7 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
     self.assertEqual([], adb_utils.get_adb_devices())
 
   @mock.patch.object(
-      adb_utils,
-      "_adb_command",
-      return_value=FAKE_ADB_DEVICES_WITH_SIDELOAD_DEVICE)
+      adb_utils, "_adb_command", return_value=FAKE_ADB_DEVICES_OUTPUT)
   def test_062_adb_utils_get_sideload_devices_on_success(
       self, mock_adb_command):
     """Verify get_sideload_devices returns devices on success."""
@@ -423,6 +418,18 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
           command, DEVICE_ADB_SERIAL, include_return_code=True)
     self.assertEqual(command_output, output)
     self.assertEqual(command_return_code, return_code)
+    mock_get_adb_path.assert_called()
+
+  @mock.patch.object(adb_utils, "get_adb_path", return_value=ADB_CMD_PATH)
+  def test_107_adb_utils_adb_command_with_offline(self, mock_get_adb_path):
+    """Verify _adb_command succeeds if output includes "offline"."""
+    command = "fake_command"
+    mock_popen = mock.MagicMock(spec=subprocess.Popen, returncode=0)
+    mock_popen.communicate.return_value = (
+        FAKE_ADB_DEVICES_OUTPUT.encode("utf-8"), None)
+    with mock.patch.object(subprocess, "Popen", return_value=mock_popen):
+      output = adb_utils._adb_command(command)
+    self.assertEqual(FAKE_ADB_DEVICES_OUTPUT, output)
     mock_get_adb_path.assert_called()
 
   @mock.patch.object(adb_utils, "_adb_command", return_value="Success\n")

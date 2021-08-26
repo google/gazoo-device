@@ -26,6 +26,7 @@ from gazoo_device import decorators
 from gazoo_device import detect_criteria
 from gazoo_device import errors
 from gazoo_device import extensions
+from gazoo_device import fire_manager
 from gazoo_device import gdm_logger
 from gazoo_device import package_registrar
 from gazoo_device.base_classes import auxiliary_device
@@ -239,6 +240,13 @@ GoodKey = data_types.KeyInfo(file_name="good_key",
 BadKeyMismatchingPackage = data_types.KeyInfo(file_name="bad_key",
                                               type=data_types.KeyType.SSH,
                                               package="mismatching_name")
+
+
+class GoodManagerCliMixin(fire_manager.FireManager):
+  """A valid CLI FireManager mixin class."""
+
+  def some_cli_command(self):
+    pass
 
 
 class PackageRegistrarTests(unit_test_case.UnitTestCase):
@@ -607,6 +615,22 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
     with self.assertRaisesRegex(errors.PackageRegistrationError, regex):
       package_registrar.register(self.mock_package)
 
+  def test_register_invalid_manager_cli_mixin_type(self):
+    """Test registering a package with a bad Manager CLI mixin type."""
+    test_cases = [
+        1,  # Not a class object.
+        int,  # Class object, but does not inherit from FireManager.
+    ]
+
+    for manager_cli_mixin in test_cases:
+      with self.subTest(manager_cli_mixin=manager_cli_mixin):
+        self.mock_package.export_extensions.return_value = {
+            "manager_cli_mixin": manager_cli_mixin,
+        }
+        regex = "FireManager mixin class is invalid"
+        with self.assertRaisesRegex(errors.PackageRegistrationError, regex):
+          package_registrar.register(self.mock_package)
+
   @mock.patch.object(extensions, "primary_devices", new=[])
   @mock.patch.dict(extensions.capability_interfaces)
   @mock.patch.dict(extensions.capability_flavors)
@@ -640,6 +664,7 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
   @mock.patch.object(extensions, "primary_devices", new=[])
   @mock.patch.object(extensions, "virtual_devices", new=[])
   @mock.patch.object(extensions, "keys", new=[])
+  @mock.patch.object(extensions, "manager_cli_mixins", new=[])
   @mock.patch.dict(extensions.capability_interfaces)
   @mock.patch.dict(extensions.capability_flavors)
   @mock.patch.dict(extensions.capabilities)
@@ -658,6 +683,7 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
         "capability_interfaces": [GoodCapabilityBase],
         "capability_flavors": [GoodCapabilityDefault],
         "keys": [GoodKey],
+        "manager_cli_mixin": GoodManagerCliMixin,
     }
 
     package_registrar.register(self.mock_package)
