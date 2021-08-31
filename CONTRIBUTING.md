@@ -73,7 +73,7 @@ When not to contribute to gazoo-device Github repository:
 
 When to contribute to gazoo-device Github repository:
 
-*   You are adding an open-source device controller. For instance, it could be
+*   You are adding an open source device controller. For instance, it could be
     an example application running on a new development board.
 *   You are adding a proprietary device controller but need to extend or adjust
     the general GDM architecture to suit your case. The GDM architecture change
@@ -261,23 +261,80 @@ define:
 *   keys (such as SSH or API keys);
 *   CLI commands.
 
-In addition to the above, extension packages must define:
+Extension packages must define:
 
 *   a key download function (`download_key`);
-*   a package version (`__version__`).
+*   a package version (`__version__`);
+*   a function to export extensions (`export_extensions`).
 
 Extension packages make functionality defined within them available to GDM by
-exporting it via a `export_extensions` function.
+exporting it via a single `export_extensions` function.
 [gazoo_device/package_registrar.py](gazoo_device/package_registrar.py) documents
-the expected return format of `export_extensions`. \
-GDM's open-source device controllers are implemented as a built-in extension
-package
-([gazoo_device/gazoo_device_controllers.py](gazoo_device/gazoo_device_controllers.py)).
+the expected return format of `export_extensions`.
 
-To register an extension package with GDM from Python, call
+Any module can serve as the entry point of an extension package as long as it
+implements the required attributes. \
+Typically, the entry point is the `__init__.py` module of the extension package.
+
+The `__init__.py` module of an extension package should look like this (let's
+say the file is `my_extension_package/__init__.py`):
 
 ```python
-gazoo_device.register(<your-extension-package-init-module>)
+"""An example of an extension package."""
+from typing import Dict
+
+from gazoo_device import data_types
+
+__version__ = "0.0.1"
+
+
+def download_key(key_info: data_types.KeyInfo, local_key_path: str) -> None:
+  """Downloads a key or provides instructions for generating one.
+
+  Args:
+    key_info: Information about key to download.
+    local_key_path: File to which the key should be stored.
+
+  Raises:
+    RuntimeError: If the key has to be retrieved or generated manually.
+  """
+  # Downloading from a URL could look like this:
+  import requests
+
+  response = requests.get("https://your-key-url")
+  with open(local_key_path, "w") as key_file:
+    key_file.write(response.text)
+
+  # Downloading from GCS could look like this:
+  from gazoo_device.utility import host_utils
+
+  host_utils.gsutil_command(
+      cmd="cp",
+      gsutil_path="gs://your-gcs-url",
+      extra_args=[local_key_path],
+      boto_path="/some/path/to/GCS/credentials/on/the/host")
+
+  # Providing instructions for generating the key manually could look like this:
+  raise RuntimeError(
+      "Run 'ssh-keygen' to generate your own key. "
+      f"Select {local_key_path} as the file to which the key should be saved.")
+
+
+def export_extensions() -> Dict[str, Any]:
+  """Exports built-in device controllers, capabilities, communication types."""
+  return {
+      # See the documentation sections below to learn how to export various
+      # extensions.
+  }
+```
+
+To register the extension package with GDM from Python, call
+
+```python
+import gazoo_device
+import my_extension_package
+
+gazoo_device.register(my_extension_package)
 ```
 
 Python package registration **is not** persistent. Registered packages are
@@ -302,18 +359,22 @@ use from a Python environment.
 
 For a hands-on introduction to extension packages, try the
 [extension package codelab](https://github.com/google/gazoo-device/blob/master/examples/example_extension_package/README.md).
+\
+Another good reference is GDM's open source device controllers and capabilities,
+which are implemented as a built-in extension package
+([gazoo_device/gazoo_device_controllers.py](gazoo_device/gazoo_device_controllers.py)).
 
 ### Adding a new device class
 
 #### Primary device
 
 Primary device classes implement all methods of the
-[`PrimaryDeviceBase` interface](gazoo_device/base_classes/primary_device_base.py).
-The typical pattern is to create a base class corresponding to a common device
-platform and then create one or more device classes inheriting from the base
-class. However, creating a base class is not required, and all device
-functionality can reside directly in the device class. The new base class (or
-the device class) must directly or indirectly inherit from
+[`PrimaryDeviceBase`](gazoo_device/base_classes/primary_device_base.py)
+interface. The typical pattern is to create a base class corresponding to a
+common device platform and then create one or more device classes inheriting
+from the base class. However, creating a base class is not required, and all
+device functionality can reside directly in the device class. The new base class
+(or the device class) must directly or indirectly inherit from
 [`GazooDeviceBase`](gazoo_device/base_classes/gazoo_device_base.py).
 
 A device class typically has the following:
@@ -543,6 +604,57 @@ A device class typically has the following:
           key_info=self._COMMUNICATION_KWARGS["key_info"])
     ```
 
+To export primary device classes, add a `"primary_devices"` key to the
+dictionary returned by your package's `export_extensions` function and include
+the list of device classes as the corresponding value:
+
+```python
+from gazoo_device.base_classes import gazoo_device_base
+
+
+class MyPrimaryDevice(gazoo_device_base.GazooDeviceBase):
+  """A primary device class (implementation omitted)."""
+
+
+def export_extensions() -> Dict[str, Any]:
+  """Exports built-in device controllers, capabilities, communication types."""
+  return {
+      # ... other exports ...
+      "primary_devices": [MyPrimaryDevice],
+      # ... other exports ...
+  }
+```
+
+#### Virtual device
+
+Virtual device classes are handled identically to primary device classes.
+
+Similarly to primary device classes, virtual device classes implement the
+[`PrimaryDeviceBase`](gazoo_device/base_classes/primary_device_base.py)
+interface and must inherit (directly or indirectly) from
+[`GazooDeviceBase`](gazoo_device/base_classes/gazoo_device_base.py).
+
+To export virtual device classes, add a `"virtual_devices"` key to the
+dictionary returned by your package's `export_extensions` function and include
+the list of device classes as the corresponding value:
+
+```python
+from gazoo_device.base_classes import gazoo_device_base
+
+
+class MyVirtualDevice(gazoo_device_base.GazooDeviceBase):
+  """A virtual device class (implementation omitted)."""
+
+
+def export_extensions() -> Dict[str, Any]:
+  """Exports built-in device controllers, capabilities, communication types."""
+  return {
+      # ... other exports ...
+      "virtual_devices": [MyVirtualDevice],
+      # ... other exports ...
+  }
+```
+
 #### Auxiliary device
 
 Auxiliary devices are very similar to primary devices, but the requirements are
@@ -562,6 +674,27 @@ Differences between primary and auxiliary devices:
   `reboot`, `factory_reset`, `shell`.
 
 Auxiliary devices are identical to primary devices in all other aspects.
+
+To export auxiliary device classes, add an `"auxiliary_devices"` key to the
+dictionary returned by your package's `export_extensions` function and include
+the list of device classes as the corresponding value:
+
+```python
+from gazoo_device.base_classes import auxiliary_device
+
+
+class MyAuxiliaryDevice(auxiliary_device.AuxiliaryDevice):
+  """An auxiliary device class (implementation omitted)."""
+
+
+def export_extensions() -> Dict[str, Any]:
+  """Exports built-in device controllers, capabilities, communication types."""
+  return {
+      # ... other exports ...
+      "auxiliary_devices": [MyAuxiliaryDevice],
+      # ... other exports ...
+  }
+```
 
 ### Adding a new communication type
 
@@ -614,6 +747,27 @@ During the detection process, GDM:
     query responses satisfy the detection match criteria specified by the device
     class (`<device_class>.DETECT_MATCH_CRITERIA`).
 
+To export communication types, add a `"communication_types"` key to the
+dictionary returned by your package's `export_extensions` function and include
+the list of communication type classes as the corresponding value:
+
+```python
+from gazoo_device.switchboard import communication_types
+
+
+class MyCommunicationType(communication_types.CommunicationType):
+  """A communication type (implementation omitted)."""
+
+
+def export_extensions() -> Dict[str, Any]:
+  """Exports built-in device controllers, capabilities, communication types."""
+  return {
+      # ... other exports ...
+      "communication_types": [MyCommunicationType],
+      # ... other exports ...
+  }
+```
+
 ### Adding a new transport type
 
 A transport is a bidirectional communication channel with the device. Most GDM
@@ -632,6 +786,11 @@ Transports are managed by `TransportProcess`es
 ([gazoo_device/switchboard/transport_process.py](gazoo_device/switchboard/transport_process.py)),
 which are child processes. The main process does not interact with transports
 directly. Instead, it sends commands to the child processes.
+
+New transports do not need to be exported explicitly. A communication type
+defines a list of transports to use through its `get_transport_list` method, so
+exporting a communication type which makes use of a new transport will make it
+implicitly available to GDM.
 
 ### Adding a new detection query
 
@@ -679,6 +838,61 @@ class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
   COMMUNICATION_TYPE = "SshComms"
 ```
 
+To export detection queries, add a `"detect_criteria"` key to the dictionary
+returned by your package's `export_extensions` function and include the
+detection query dictionary (see the example below to understand its format) as
+the corresponding value:
+
+```python
+from gazoo_device import detect_criteria
+from gazoo_device.utility import host_utils
+import immutabledict
+
+
+class SerialQuery(detect_criteria.QueryEnum):
+  """Query names for detection of serial devices."""
+  example_serial_query = "example_serial_query"
+
+
+class SshQuery(detect_criteria.QueryEnum):
+  """Query names for detection of SSH devices."""
+  example_ssh_query = "example_ssh_query"
+
+
+def _hello_world_serial_query(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> str:
+  """An example serial query (implementation omitted)."""
+  return "hello world"
+
+
+def _hello_world_ssh_query(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> str:
+  """An example SSH query (implementation omitted)."""
+  return "hello world"
+
+
+def export_extensions() -> Dict[str, Any]:
+  """Exports built-in device controllers, capabilities, communication types."""
+  return {
+      # ... other exports ...
+      "detect_criteria": immutabledict.immutabledict({
+            "SerialComms": immutabledict.immutabledict({
+                 SerialQuery.example_serial_query: _hello_world_serial_query,
+            }),
+            "SshComms": immutabledict.immutabledict({
+                 SshQuery.example_ssh_query: _hello_world_ssh_query,
+            }),
+      }),
+      # ... other exports ...
+  }
+```
+
 ### Adding a new key
 
 Extension packages may need to use SSH or API keys. GDM has a mechanism which
@@ -695,6 +909,33 @@ GDM to download all registered keys by running `gdm download-keys`.
     yet. The local folder where the key is expected to be stored is guaranteed
     to exist.
 
+To export key information, add a `"keys"` key to the dictionary returned by your
+package's `export_extensions` function and include the list of `KeyInfo` entries
+describing the keys as the corresponding value:
+
+```python
+from gazoo_device import data_types
+
+MySshKey = data_types.KeyInfo(
+    file_name="my_ssh_key",
+    type=data_types.KeyType.SSH,
+    package="my_extension_package")
+
+MyApiKey = data_types.KeyInfo(
+    file_name="my_api_key",
+    type=data_types.KeyType.OTHER,
+    package="my_extension_package")
+
+
+def export_extensions() -> Dict[str, Any]:
+  """Exports built-in device controllers, capabilities, communication types."""
+  return {
+      # ... other exports ...
+      "keys": [MySshKey, MyApiKey],
+      # ... other exports ...
+  }
+```
+
 ### Adding a new CLI command
 
 Extension packages can define their own CLI commands, which are exposed through
@@ -709,10 +950,24 @@ accessed as `gdm some-command 1234` (or `gdm some_command
 ```python
 from gazoo_device import fire_manager
 
-class SomePackageFireManagerCliMixin(fire_manager.FireManager):
+class MyManagerCliMixin(fire_manager.FireManager):
 
   def some_command(self, some_argument):
     pass
+```
+
+To export CLI command, add a `"manager_cli_mixin"` key to the dictionary
+returned by your package's `export_extensions` function and include the Manager
+CLI mixin class containing the commands (methods) as the corresponding value:
+
+```python
+def export_extensions() -> Dict[str, Any]:
+  """Exports built-in device controllers, capabilities, communication types."""
+  return {
+      # ... other exports ...
+      "manager_cli_mixin": MyManagerCliMixin,
+      # ... other exports ...
+  }
 ```
 
 ### Adding a new capability
@@ -748,6 +1003,55 @@ Each capability consists of 3 parts:
     capability definitions. Use `GazooDeviceBase.lazy_init` to initialize the
     capability.
 
+For example, here's a new capability interface:
+
+```python
+import abc
+
+from gazoo_device.capabilities.interfaces import capability_base
+
+
+class MyCapabilityBase(capability_base.CapabilityBase):
+  """Abstract base class defining the API for my_capability."""
+
+  @abc.abstractmethod
+  def do_something(self, some_arg):
+    """Does something."""
+```
+
+And here's a flavor of the new capability:
+
+```python
+class MyCapabilityPrint(MyCapabilityBase):
+  """A print-based implementation of my_capability."""
+
+  def __init__(self, some_custom_init_arg, device_name):
+    """Initalizes a MyCapabilityPrint instance."""
+    super().__init__(device_name=device_name)
+
+    self._some_custom_init_arg = some_custom_init_arg
+
+  def do_something(self, some_arg):
+    """Does something."""
+    print("Hello world")
+```
+
+To export capability interfaces and flavors, add `"capability_interfaces"` and
+`"capability_flavors"` keys to the dictionary returned by your package's
+`export_extensions` function and include the lists of capability interface
+classes and capability flavor classes as the corresponding values:
+
+```python
+def export_extensions() -> Dict[str, Any]:
+  """Exports built-in device controllers, capabilities, communication types."""
+  return {
+      # ... other exports ...
+      "capability_interfaces": [MyCapabilityBase],
+      "capability_flavors": [MyCapabilityPrint],
+      # ... other exports ...
+  }
+```
+
 ## Other questions
 
 Still have questions?
@@ -758,5 +1062,5 @@ and the existing
 [base & device classes, communication types, transports, and capabilities](https://github.com/google/gazoo-device/tree/master/gazoo_device).
 \
 If that fails, open a
-[new Githib issue](https://github.com/google/gazoo-device/issues/new) with your
+[new Github issue](https://github.com/google/gazoo-device/issues/new) with your
 question or send us an email at gdm-authors@google.com.
