@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Built-in GDM communication types.
 
 A communication type identifies all possible connections and maps them to
@@ -79,8 +78,9 @@ def get_specific_serial_addresses(match_criteria):
       if instance not in accessible_instances
   ]
   if inaccessible_addresses:
-    logger.warning("No read/write permission for these serial address(es): {}"
-                   .format(inaccessible_addresses))
+    logger.warning(
+        "No read/write permission for these serial address(es): {}".format(
+            inaccessible_addresses))
   return [
       instance.address
       for instance in accessible_instances
@@ -408,11 +408,11 @@ class PigweedSerialComms(CommunicationType):
   @classmethod
   def get_comms_addresses(cls):
     include_product = [JLINK_COMMS_PRODUCT_NAME, CP2104_COMMS_PRODUCT_NAME]
-    include_address = [NRF_DK_COMMS_ADDRESS_LINUX,
-                       NRF_DK_EFR32_COMMS_ADDRESS_MAC,
-                       EFR32_COMMS_ADDRESS_LINUX,
-                       ESP32_M5STACK_COMMS_ADDRESS_LINUX,
-                       ESP32_M5STACK_COMMS_ADDRESS_MAC]
+    include_address = [
+        NRF_DK_COMMS_ADDRESS_LINUX, NRF_DK_EFR32_COMMS_ADDRESS_MAC,
+        EFR32_COMMS_ADDRESS_LINUX, ESP32_M5STACK_COMMS_ADDRESS_LINUX,
+        ESP32_M5STACK_COMMS_ADDRESS_MAC
+    ]
     match_criteria = {
         "product_name": {
             "include_regex": "|".join(include_product)
@@ -432,10 +432,12 @@ class PigweedSerialComms(CommunicationType):
     self.baudrate = baudrate
 
   def get_transport_list(self):
-    return [pigweed_rpc_transport.PigweedRPCTransport(
-        comms_address=self.comms_address,
-        protobufs=self.protobufs,
-        baudrate=self.baudrate)]
+    return [
+        pigweed_rpc_transport.PigweedRPCTransport(
+            comms_address=self.comms_address,
+            protobufs=self.protobufs,
+            baudrate=self.baudrate)
+    ]
 
 
 def detect_connections(static_ips):
@@ -464,10 +466,12 @@ def detect_connections(static_ips):
           len(comms_addresses)))
 
       # Verify ssh keys exist if ssh connections are detected
-      if comms_name == "SshComms" and comms_addresses:
+      if issubclass(comms_class, SshComms) and comms_addresses:
         missing_keys = []
-        ssh_keys = [key_info for key_info in extensions.keys
-                    if key_info.type == data_types.KeyType.SSH]
+        ssh_keys = [
+            key_info for key_info in extensions.keys
+            if key_info.type == data_types.KeyType.SSH
+        ]
         for ssh_key in ssh_keys:
           try:
             host_utils.verify_key(ssh_key)
@@ -476,12 +480,11 @@ def detect_connections(static_ips):
           except (errors.DownloadKeyError, FileNotFoundError, RuntimeError):
             missing_keys.append(ssh_key)
         if missing_keys:
-          logger.warning(
-              "Found {} missing SSH keys:\n{}\n"
-              "Detection of SSH devices may not work correctly. "
-              "Run 'gdm download-keys'.".format(
-                  len(missing_keys),
-                  "\n".join(str(key) for key in missing_keys)))
+          logger.warning("Found {} missing SSH keys:\n{}\n"
+                         "Detection of SSH devices may not work correctly. "
+                         "Run 'gdm download-keys'.".format(
+                             len(missing_keys),
+                             "\n".join(str(key) for key in missing_keys)))
     except Exception as err:  # pylint: disable=broad-except
       logger.warning(
           "Unable to detect {} communication addresses. Err: {!r}".format(

@@ -15,10 +15,10 @@
 """Pigweed RPC transport class."""
 import fcntl
 import queue
+import select
 import threading
-import time
 import types
-from typing import Any, Callable, Collection, Dict, Optional, Tuple
+from typing import Any, Collection, Dict, Optional, Tuple
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.switchboard.transports import transport_base
@@ -46,6 +46,7 @@ except ImportError:
 _STDOUT_ADDRESS = 1
 _DEFAULT_ADDRESS = ord("R")
 _JOIN_TIMEOUT_SEC = 1  # seconds
+_SELECT_TIMEOUT_SEC = 0.1  # seconds
 logger = gdm_logger.get_logger()
 
 
@@ -56,14 +57,12 @@ class PwHdlcRpcClient:
   """
 
   def __init__(self,
-               read: Callable[[], bytes],
-               write: Callable[[bytes], int],
+               serial_instance: serial.Serial,
                protobufs: Collection[types.ModuleType]):
     """Creates an RPC client configured to communicate using HDLC.
 
     Args:
-      read: Function that reads bytes; e.g serial_device.read.
-      write: Function that writes bytes; e.g serial_device.write.
+      serial_instance: Serial interface instance.
       protobufs: Proto modules.
     """
     if not PIGWEED_IMPORT:
@@ -72,14 +71,11 @@ class PwHdlcRpcClient:
 
     protos = python_protos.Library.from_paths(protobufs)
     client_impl = callback_client.Impl()
-    channels = rpc.default_channels(write)
-    self.client = pw_rpc.Client.from_modules(client_impl,
-                                             channels,
-                                             protos.modules())
-    self.frame_handlers = {
-        _DEFAULT_ADDRESS: self._handle_rpc_packet,
-        _STDOUT_ADDRESS: self._push_to_log_queue}
-    self.read = read
+    channels = rpc.default_channels(serial_instance.write)
+    self._client = pw_rpc.Client.from_modules(client_impl,
+                                              channels,
+                                              protos.modules())
+    self._serial = serial_instance
     self._stop_event = threading.Event()
     self._worker = None
     self.log_queue = queue.Queue()
@@ -93,9 +89,7 @@ class PwHdlcRpcClient:
     if self._stop_event.is_set():
       self._stop_event.clear()
     if self._worker is None:
-      self._worker = threading.Thread(target=self.read_and_process_data,
-                                      args=(self.read, self.frame_handlers))
-
+      self._worker = threading.Thread(target=self.read_and_process_data)
       self._worker.start()
 
   def close(self) -> None:
@@ -110,34 +104,42 @@ class PwHdlcRpcClient:
       self._worker = None
 
   def rpcs(self, channel_id: Optional[int] = None) -> Any:
-    """Returns object for accessing services on the specified channel."""
+    """Returns object for accessing services on the specified channel.
+
+    Args:
+      channel_id: None or RPC channel id.
+
+    Returns:
+      RPC instance over the specificed channel.
+    """
     if channel_id is None:
-      return next(iter(self.client.channels())).rpcs
-    return self.client.channel(channel_id).rpcs
+      return next(iter(self._client.channels())).rpcs
+    return self._client.channel(channel_id).rpcs
 
-  def _handle_rpc_packet(self, frame: Any) -> None:
-    """Handler for processing HDLC frame."""
-    if not self.client.process_packet(frame.data):
-      logger.error("Packet not handled by RPC client: %s", frame.data)
-
-  def read_and_process_data(self,
-                            read: Callable[[], bytes],
-                            frame_handlers: Any) -> None:
+  def read_and_process_data(self) -> None:
     """Continuously reads and handles HDLC frames."""
     decoder = decode.FrameDecoder()
     while not self._stop_event.is_set():
-      try:
-        data = read()
-      except Exception:  # pylint: disable=broad-except
-        logger.exception("Exception occurred when reading in "
-                         "PwHdlcRpcClient thread.")
-        data = None
-      if data:
-        for frame in decoder.process_valid_frames(data):
-          self._handle_frame(frame, frame_handlers)
-      else:
-        # TODO(b/184718613): Refactor to non-blocking IO.
-        time.sleep(0.01)
+      readfds, _, _ = select.select([self._serial], [], [], _SELECT_TIMEOUT_SEC)
+      for fd in readfds:
+        try:
+          data = fd.read()
+        except Exception:  # pylint: disable=broad-except
+          logger.exception(
+              "Exception occurred when reading in PwHdlcRpcClient thread.")
+          data = None
+        if data:
+          for frame in decoder.process_valid_frames(data):
+            self._handle_frame(frame)
+
+  def _handle_rpc_packet(self, frame: Any) -> None:
+    """Handler for processing HDLC frame.
+
+    Args:
+      frame: HDLC frame packet.
+    """
+    if not self._client.process_packet(frame.data):
+      logger.error(f"Packet not handled by RPC client: {frame.data}")
 
   def _push_to_log_queue(self, frame: Any) -> None:
     """Pushes the HDLC log in frame into the log queue.
@@ -147,27 +149,23 @@ class PwHdlcRpcClient:
     """
     self.log_queue.put(frame.data + b"\n")
 
-  def _handle_frame(self,
-                    frame: Any,
-                    frame_handlers: Dict[int, Callable[[Any], None]]) -> None:
+  def _handle_frame(self, frame: Any) -> None:
     """Private method for processing HDLC frame.
 
     Args:
       frame: HDLC frame packet.
-      frame_handlers: Handler for processing HDLC frame.
     """
     try:
       if not frame.ok():
         return
-      try:
-        frame_handlers[frame.address](frame)
-      except KeyError:
-        logger.warning("Unhandled frame for address %d: %s",
-                       frame.address, frame)
+      if frame.address == _DEFAULT_ADDRESS:
+        self._handle_rpc_packet(frame)
+      elif frame.address == _STDOUT_ADDRESS:
+        self._push_to_log_queue(frame)
+      else:
+        logger.warning(f"Unhandled frame for address {frame.address}: {frame}")
     except Exception:  # pylint: disable=broad-except
-      logger.exception("Exception occurred in PwHdlcRpcClient"
-                       "frame handler %s.",
-                       frame_handlers[frame.address].__name__)
+      logger.exception("Exception occurred in PwHdlcRpcClient.")
 
 
 class PigweedRPCTransport(transport_base.TransportBase):
@@ -188,10 +186,7 @@ class PigweedRPCTransport(transport_base.TransportBase):
     self._serial.port = comms_address
     self._serial.baudrate = baudrate
     self._serial.timeout = 0.01
-    self._hdlc_client = PwHdlcRpcClient(
-        lambda: self._serial.read(4096),
-        self._serial.write,
-        protobufs)
+    self._hdlc_client = PwHdlcRpcClient(self._serial, protobufs)
 
   def is_open(self) -> bool:
     """Returns True if the PwRPC transport is connected to the target.

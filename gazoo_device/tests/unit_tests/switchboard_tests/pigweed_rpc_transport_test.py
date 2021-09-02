@@ -15,6 +15,7 @@
 """Switchboard unit test for pigweed_rpc_transport module."""
 import fcntl
 import queue
+import select
 import threading
 from unittest import mock
 
@@ -35,7 +36,8 @@ _FAKE_SERIALIZED_BYTES = b"fake_bytes"
 _FAKE_DATA = "fake-data"
 _FAKE_FRAME = b"fake-frame"
 _FAKE_FRAME_ADDRESS = 0
-_FAKE_HANDLER_NAME = "fake-handler-name"
+_STDOUT_ADDRESS = 1
+_DEFAULT_ADDRESS = ord("R")
 
 _FAKE_PROTO_MODULE_PATH = (
     "gazoo_device.switchboard.transports.pigweed_rpc_transport.python_protos")
@@ -69,17 +71,16 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
     fake_decode = decode_patcher.start()
     self.addCleanup(decode_patcher.stop)
     self.fake_decoder = fake_decode.FrameDecoder.return_value
-    self.fake_read = mock.Mock()
     self.uut = pigweed_rpc_transport.PwHdlcRpcClient(
-        self.fake_read, mock.Mock(), _FAKE_PROTO_FILE_PATH)
-    self.uut.client = mock.Mock()
+        serial_instance=mock.Mock(), protobufs=_FAKE_PROTO_FILE_PATH)
+    self.uut._client = mock.Mock()
 
   @mock.patch.object(pigweed_rpc_transport, "PIGWEED_IMPORT", False)
   def test_000_dependency_unavailable(self):
     """Verifies if the Pigweed packages are not available."""
     error_regex = "Pigweed python packages are not available"
     with self.assertRaisesRegex(errors.DependencyUnavailableError, error_regex):
-      pigweed_rpc_transport.PwHdlcRpcClient(None, None, None)
+      pigweed_rpc_transport.PwHdlcRpcClient(None, None)
 
   def test_001_is_alive(self):
     """Verifies is_alive method returning True."""
@@ -116,86 +117,115 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
 
   def test_005_rpcs_on_success_without_channel_id(self):
     """Verifies rpcs method on success without channel id."""
-    self.uut.client.channels.return_value = [mock.Mock()]
+    self.uut._client.channels.return_value = [mock.Mock()]
     self.uut.rpcs(channel_id=None)
-    self.uut.client.channels.assert_called_once()
+    self.uut._client.channels.assert_called_once()
 
   def test_005_rpcs_on_success_with_channel_id(self):
     """Verifies rpcs method on success with channel id."""
-    fake_channel_id = 0
+    fake_channel_id = 1
     self.uut.rpcs(channel_id=fake_channel_id)
-    self.uut.client.channel.assert_called_once_with(fake_channel_id)
+    self.uut._client.channel.assert_called_once_with(fake_channel_id)
+
+  @mock.patch.object(pigweed_rpc_transport.PwHdlcRpcClient, "_handle_frame")
+  @mock.patch.object(select, "select")
+  def test_006_read_and_process_data_on_success(self, mock_select, mock_handle):
+    """Verifies read_and_process_data method on success."""
+    fake_is_set = mock.Mock()
+    fake_is_set.side_effect = [False, True]
+    self.uut._stop_event.is_set = fake_is_set
+    fake_fd = mock.Mock()
+    fake_fd.read.return_value = _FAKE_DATA
+    mock_select.return_value = [fake_fd], [], []
+    self.fake_decoder.process_valid_frames.return_value = [_FAKE_FRAME]
+
+    self.uut.read_and_process_data()
+
+    self.assertEqual(2, fake_is_set.call_count)
+    fake_fd.read.assert_called_once()
+    mock_select.assert_called_once()
+    mock_handle.assert_called_once()
 
   @mock.patch.object(pigweed_rpc_transport, "logger")
-  def test_006_handle_rpc_packet_logs_error(self, mock_logger):
-    """Verifies handle_rpc_packet method logging error."""
-    self.uut.client.process_packet.return_value = False
-    fake_frame = mock.Mock()
-    self.uut._handle_rpc_packet(fake_frame)
-    mock_logger.error.assert_called_once()
-
-  def test_007_read_and_process_data(self):
-    """Verifies read_and_process_data method on success.
-
-    Verifies the method for the following scenarios:
-    1. Exception occurs during reading frame data and keeps looping.
-    2. Reads frame data on success and processes the frame.
-    """
-    fake_frame_handler = mock.Mock()
-    self.uut._handle_frame = fake_frame_handler
-    fake_read = mock.Mock()
-    fake_read.side_effect = [RuntimeError, _FAKE_DATA]
+  @mock.patch.object(select, "select")
+  def test_006_read_and_process_data_exception(self, mock_select, mock_logger):
+    """Verifies read_and_process_data method with exception."""
     fake_is_set = mock.Mock()
-    fake_is_set.side_effect = [False, False, True]
+    fake_is_set.side_effect = [False, True]
     self.uut._stop_event.is_set = fake_is_set
-    self.fake_decoder.process_valid_frames.return_value = [_FAKE_FRAME]
-    self.uut.read_and_process_data(fake_read, None)
-    self.assertEqual(3, fake_is_set.call_count)
-    self.assertEqual(2, fake_read.call_count)
-    fake_frame_handler.assert_called_with(_FAKE_FRAME, None)
+    fake_fd = mock.Mock()
+    fake_fd.read.side_effect = RuntimeError
+    mock_select.return_value = [fake_fd], [], []
+
+    self.uut.read_and_process_data()
+
+    mock_logger.exception.assert_called_once()
+
+  @mock.patch.object(pigweed_rpc_transport, "logger")
+  def test_007_handle_rpc_packet_logs_error(self, mock_logger):
+    """Verifies handle_rpc_packet method logging error."""
+    self.uut._client.process_packet.return_value = False
+    fake_frame = mock.Mock()
+
+    self.uut._handle_rpc_packet(fake_frame)
+
+    mock_logger.error.assert_called_once()
 
   def test_008_push_to_log_queue(self):
     """Verifies push_to_log_queue on success."""
     fake_frame = mock.Mock(data=_FAKE_FRAME)
+
     self.uut._push_to_log_queue(fake_frame)
+
     self.assertFalse(self.uut.log_queue.empty())
     self.assertEqual(_FAKE_FRAME + b"\n", self.uut.log_queue.queue[-1])
 
-  def test_009_handle_frame_on_success(self):
-    """Verifies handle_frame method on success."""
-    fake_frame = mock.Mock(address=_FAKE_FRAME_ADDRESS)
+  @mock.patch.object(
+      pigweed_rpc_transport.PwHdlcRpcClient, "_handle_rpc_packet")
+  def test_009_handle_frame_default_address_on_success(self, mock_handle):
+    """Verifies handle_frame method on success with default address."""
+    fake_frame = mock.Mock(address=_DEFAULT_ADDRESS)
     fake_frame.ok.return_value = True
-    fake_handler = mock.Mock()
-    fake_handlers = {_FAKE_FRAME_ADDRESS: fake_handler}
-    self.uut._handle_frame(fake_frame, fake_handlers)
-    fake_handler.assert_called_with(fake_frame)
+
+    self.uut._handle_frame(fake_frame)
+
+    mock_handle.assert_called_once_with(fake_frame)
+
+  @mock.patch.object(
+      pigweed_rpc_transport.PwHdlcRpcClient, "_push_to_log_queue")
+  def test_009_handle_frame_stdout_address_on_success(self, mock_push):
+    """Verifies handle_frame method on success with stdout address."""
+    fake_frame = mock.Mock(address=_STDOUT_ADDRESS)
+    fake_frame.ok.return_value = True
+
+    self.uut._handle_frame(fake_frame)
+
+    mock_push.assert_called_once_with(fake_frame)
 
   def test_009_handle_frame_not_ok(self):
     """Verifies handle_frame method handling not ok frame."""
-    fake_frame = mock.Mock(address=_FAKE_FRAME_ADDRESS)
+    fake_frame = mock.Mock()
     fake_frame.ok.return_value = False
-    fake_handler = mock.Mock()
-    fake_handlers = {_FAKE_FRAME_ADDRESS: fake_handler}
-    self.uut._handle_frame(fake_frame, fake_handlers)
-    self.assertEqual(0, fake_handler.call_count)
+    self.uut._handle_frame(fake_frame)
 
   @mock.patch.object(pigweed_rpc_transport, "logger")
   def test_009_handle_frame_on_failure_invalid_frame_address(self, mock_logger):
     """Verifies handle_frame method on failure with invalid frame address."""
     fake_frame = mock.Mock(address=_FAKE_FRAME_ADDRESS)
     fake_frame.ok.return_value = True
-    self.uut._handle_frame(fake_frame, {})
+
+    self.uut._handle_frame(fake_frame)
+
     mock_logger.warning.assert_called_once()
 
   @mock.patch.object(pigweed_rpc_transport, "logger")
   def test_009_handle_frame_on_failure_exception(self, mock_logger):
     """Verifies handle_frame method on failure with unexpected exception."""
-    fake_frame = mock.Mock(address=_FAKE_FRAME_ADDRESS)
-    fake_frame.ok.return_value = True
-    fake_handler = mock.Mock(__name__=_FAKE_HANDLER_NAME)
-    fake_handler.side_effect = RuntimeError
-    fake_handlers = {_FAKE_FRAME_ADDRESS: fake_handler}
-    self.uut._handle_frame(fake_frame, fake_handlers)
+    fake_frame = mock.Mock()
+    fake_frame.ok.side_effect = RuntimeError
+
+    self.uut._handle_frame(fake_frame)
+
     mock_logger.exception.assert_called_once()
 
 

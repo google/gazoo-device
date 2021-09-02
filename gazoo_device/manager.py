@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Manager module.
 
   - detects devices
@@ -32,7 +31,7 @@ import queue
 import shutil
 import signal
 import time
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, Any
 
 from gazoo_device import config
 from gazoo_device import custom_types
@@ -42,6 +41,7 @@ from gazoo_device import extensions
 from gazoo_device import gdm_logger
 
 from gazoo_device.capabilities import event_parser_default
+from gazoo_device.capabilities.interfaces import event_parser_base
 from gazoo_device.log_parser import LogParser
 from gazoo_device.switchboard import switchboard
 
@@ -203,19 +203,17 @@ class Manager:
     """Returns created device object by identifier specified.
 
     Args:
-      identifier (str): The identifier string to identify a single device.
-        For simulators, the identifier can be the simulator device type
+      identifier (str): The identifier string to identify a single device. For
+        simulators, the identifier can be the simulator device type
       new_alias (str): A string to replace device's alias kept in file.
       log_file_name (str): A string log file name to use for log results.
       log_directory (str): A directory path to use for storing log file.
       log_to_stdout (bool): Enable streaming of log results to stdout
         (DEPRECATED).
-      skip_recover_device (bool): Don't recover device if it fails ready
-        check.
+      skip_recover_device (bool): Don't recover device if it fails ready check.
       make_device_ready (str): "on", "check_only", "off". Toggles
         make_device_ready.
-      filters (list): paths to custom Parser filter files or directories to
-        use.
+      filters (list): paths to custom Parser filter files or directories to use.
       log_name_prefix (str): string to prepend to log filename.
 
     Returns:
@@ -301,12 +299,10 @@ class Manager:
       device_type (str): The device type of the simulator.
       log_file_name (str): A string log file name to use for log results.
       log_directory (str): A directory path to use for storing log file.
-      skip_recover_device (bool): Don't recover device if it fails ready
-        check.
+      skip_recover_device (bool): Don't recover device if it fails ready check.
       make_device_ready (str): "on", "check_only", "off". Toggles
         make_device_ready.
-      filters (list): paths to custom Parser filter files or directories to
-        use.
+      filters (list): paths to custom Parser filter files or directories to use.
       log_name_prefix (str): string to prepend to log filename.
       build_info_kwargs (dict): build info args by name to pass to upgrade
         method.
@@ -341,8 +337,7 @@ class Manager:
 
     Args:
       device_list (list): list of mobly configs.
-      device_type (str): filter to just return device instances of list
-        type.
+      device_type (str): filter to just return device instances of list type.
       log_to_stdout (bool): Enable streaming of log results to stdout
         (DEPRECATED).
       category (str): 'gazoo', 'other' or 'all' to filter connected devices.
@@ -401,8 +396,8 @@ class Manager:
 
     Args:
         log_filename (str): filename containing raw, log event data
-        filter_list (list): List of files or directories containing JSON
-          filter files.
+        filter_list (list): List of files or directories containing JSON filter
+          files.
 
     Returns:
         LogParser: object which creates an event file by parsing a log file
@@ -416,25 +411,24 @@ class Manager:
 
   def create_switchboard(
       self,
-      communication_address,
-      communication_type,
-      device_name="unknown",
-      log_path=None,
-      force_slow=False,
-      event_parser=None,
+      communication_address: str,
+      communication_type: str,
+      device_name: str = "unknown",
+      log_path: Optional[str] = None,
+      force_slow: bool = False,
+      event_parser: Optional[event_parser_base.EventParserBase] = None,
       **kwargs):
     """Creates a switchboard instance.
 
     Args:
-      communication_address (str): primary device address for communication.
-        For example, "123.45.56.123", ADB serial number, or serial port path.
-      communication_type (str): identifier for the type of communication.
-      device_name (str): device identifier. Used in stdout.
-      log_path (str): path to write GDM device logs to.
-      force_slow (bool): send device input at human speed. Used for devices with
-        input speed limitations.
-      event_parser (Parser): parses log stream into events and saves them to
-        event file.
+      communication_address: primary device address for communication. For
+        example, "123.45.56.123", ADB serial number, or serial port path.
+      communication_type: identifier for the type of communication.
+      device_name: device identifier. Used in stdout.
+      log_path: path to write GDM device logs to.
+      force_slow: send device input at human speed. Used for devices with input
+        speed limitations.
+      event_parser: parses log stream into events and saves them to event file.
       **kwargs (dict): additional kwargs to pass onto the communication setup.
 
     Returns:
@@ -459,8 +453,10 @@ class Manager:
 
     comm_type_class = extensions.communication_types[communication_type]
 
-    method_args = inspect.getfullargspec(
-        comm_type_class.__init__).args[1:]  # remove self
+    method_args = []
+    for base_class in comm_type_class.__mro__:
+      method_args += inspect.getfullargspec(
+          base_class.__init__).args[1:]  # remove self
     bad_keys = set(kwargs.keys()) - set(method_args)
     if bad_keys:
       raise errors.SwitchboardCreationError(
@@ -542,9 +538,9 @@ class Manager:
        static_ips (list): list of static ips to detect.
        log_directory (str): alternative location to store log from default.
        save_changes (bool): if True, updates the config files.
-       device_configs (None or tuple[dict, dict]): device configs
-         (persistent, options) to pass to the device detector. If None, uses
-         the current Manager configs.
+       device_configs (None or tuple[dict, dict]): device configs (persistent,
+         options) to pass to the device detector. If None, uses the current
+         Manager configs.
 
     Returns:
         None: if save_changes is True.
@@ -664,8 +660,7 @@ class Manager:
     """Retrieve a list of connected devices for the category specified.
 
     Args:
-      category (str): device category ('gazoo', 'other', or 'all') to
-        retrieve.
+      category (str): device category ('gazoo', 'other', or 'all') to retrieve.
 
     Returns:
       list: List of known connected devices.
@@ -686,8 +681,7 @@ class Manager:
 
     Args:
         identifier (str): Name or alias to search for.
-        category (str): device category ('gazoo', 'other' or 'all') to
-          retrieve.
+        category (str): device category ('gazoo', 'other' or 'all') to retrieve.
 
     Returns:
       dict: Configuration obtained for the device found.
@@ -738,8 +732,8 @@ class Manager:
     """Gets an prop's value for device or GDM configuration depends on identifier.
 
     Args:
-        device_name (str): "manager", name, serial_number, alias, or
-          adb_serial of the device.
+        device_name (str): "manager", name, serial_number, alias, or adb_serial
+          of the device.
         prop (str): Public prop available in device_options.json or gdm.json.
           Default is None.
 
@@ -862,8 +856,7 @@ class Manager:
 
     Args:
       identifier (str): Name or alias to search for.
-      category (str): device category ('gazoo', 'other', or 'all') to
-        retrieve.
+      category (str): device category ('gazoo', 'other', or 'all') to retrieve.
 
     Returns:
       bool: True if the matching devices is connected. False otherwise.
@@ -926,8 +919,7 @@ class Manager:
     return {key: value for key, value in props_dict.items() if "usb" in key}
 
   def port_map(self):
-    """Prints the USB Port Map.
-    """
+    """Prints the USB Port Map."""
     usb_port_map = UsbPortMap(self)
     usb_port_map.print_port_map()
 
@@ -941,8 +933,8 @@ class Manager:
     Args:
         devices (list): list of device identifiers.
         method_name (str): name of device method to execute in parallel.
-        timeout (int): maximum amount of seconds to allow parallel methods
-          to complete.
+        timeout (int): maximum amount of seconds to allow parallel methods to
+          complete.
         **kwargs (dict): arguments to pass to device method.
 
     Returns:
@@ -961,8 +953,8 @@ class Manager:
 
     Args:
         method_name (str): name of device method to execute in parallel.
-        timeout (int): maximum amount of seconds to allow parallel methods
-          to complete.
+        timeout (int): maximum amount of seconds to allow parallel methods to
+          complete.
         **kwargs (dict): arguments to pass to device method.
 
     Returns:
@@ -985,12 +977,11 @@ class Manager:
     """Execute a device method in parallel for connected devices that match a given string.
 
     Args:
-      match (str): wildcard-supported string to match against device
-        names, i.e. "raspberrypi*" will call provided method on all connected
-        Raspberry Pis.
+      match (str): wildcard-supported string to match against device names, i.e.
+        "raspberrypi*" will call provided method on all connected Raspberry Pis.
       method_name (str): name of device method to execute in parallel.
-      timeout (int): maximum amount of seconds to allow parallel methods
-        to complete.
+      timeout (int): maximum amount of seconds to allow parallel methods to
+        complete.
       **kwargs (dict): arguments to pass to device method.
 
     Returns:
@@ -1103,10 +1094,9 @@ class Manager:
     """Add new attribute to self.config dict.
 
     Args:
-      key (str): key's name. if there is no such key, a new key will be
-        created.
-      value (str): key's corresponding value. If value is not None, the
-        value is used.
+      key (str): key's name. if there is no such key, a new key will be created.
+      value (str): key's corresponding value. If value is not None, the value is
+        used.
       default (str): default value for key
 
     Raises:
@@ -1133,10 +1123,9 @@ class Manager:
     """Add new path configuration to self.config dict.
 
     Args:
-      key (str): key's name. if there is no such key, a new key will be
-        created.
-      path (str): key's corresponding value. If value is not None, this
-        value is used.
+      key (str): key's name. if there is no such key, a new key will be created.
+      path (str): key's corresponding value. If value is not None, this value is
+        used.
       default (str): default value for key.
 
     Raises:
@@ -1270,9 +1259,9 @@ class Manager:
                 - capability flavor names ("filetransferscp").
             If an interface name or capability name is specified, the behavior
             is identical: any capability flavor which implements the given
-            interface will match. If a flavor name is specified, only that
-            capability flavor will match. Different kinds of capability names
-            can be used together (["usb_hub", "filetransferscp"]).
+              interface will match. If a flavor name is specified, only that
+              capability flavor will match. Different kinds of capability names
+              can be used together (["usb_hub", "filetransferscp"]).
 
     Returns:
         bool: True if all capabilities are supported by the device type,
@@ -1285,8 +1274,8 @@ class Manager:
     """Returns a dict of all device name aliases for the category specified.
 
     Args:
-      category (str): Indicates the device category ('gazoo', 'other', or
-        'all') to retrieve.
+      category (str): Indicates the device category ('gazoo', 'other', or 'all')
+        to retrieve.
 
     Returns:
       dict: Device name aliases for the category.
@@ -1324,8 +1313,8 @@ class Manager:
 
     Args:
       name (str): Key to use for obtaining device configuration.
-      category (str): Indicates the device category ('gazoo', 'other' or
-        'all') to retrieve.
+      category (str): Indicates the device category ('gazoo', 'other' or 'all')
+        to retrieve.
 
     Returns:
       dict: Configuration obtained for the device found
@@ -1349,8 +1338,7 @@ class Manager:
         identifier (str): Name or alias to search for.
         category (str): Device category. Options: ('gazoo', 'other', or
           'all') Default: 'all'.
-        raise_error (bool): raise error if unable to find device. Default:
-          False
+        raise_error (bool): raise error if unable to find device. Default: False
 
     Returns:
       str: Device key name to use for the identifier specified.
@@ -1423,8 +1411,7 @@ class Manager:
     """Gets a prop's value for a device if the device and the prop exist.
 
     Args:
-      identifier (str): name, serial_number, alias, or adb_serial of the
-        device.
+      identifier (str): name, serial_number, alias, or adb_serial of the device.
       prop (str): Name of a single property to fetch.
 
     Returns:
@@ -1504,10 +1491,7 @@ class Manager:
       return all_props
     return all_attributes
 
-  def _get_device_class(self,
-                        device_class,
-                        device_config,
-                        log_file_name,
+  def _get_device_class(self, device_class, device_config, log_file_name,
                         log_directory):
     """Returns the device class after adding it to the list of shared resources."""
     device = device_class(
@@ -1540,8 +1524,8 @@ class Manager:
     Args:
         devices (list): list of device identifiers.
         method_name (str): name of device method to execute in parallel.
-        timeout (int): maximum amount of seconds to allow parallel methods
-          to complete.
+        timeout (int): maximum amount of seconds to allow parallel methods to
+          complete.
         **kwargs (dict): arguments to pass to device method.
 
     Returns:
@@ -1754,8 +1738,8 @@ class Manager:
     """Sets a property's value for device or GDM configuration depends on identifier.
 
     Args:
-      device_name (str): "manager", name, serial_number, alias, or
-        adb_serial of the device.
+      device_name (str): "manager", name, serial_number, alias, or adb_serial of
+        the device.
       prop (str): Public prop available in device_options.json or gdm.json.
       value (str): Input value for specific property.
 
@@ -1857,8 +1841,7 @@ class Manager:
     """Sets a property's value for device.
 
     Args:
-      identifier (str): name, serial_number, alias, or adb_serial of the
-        device.
+      identifier (str): name, serial_number, alias, or adb_serial of the device.
       prop (str): Public prop available in device_options.json.
       value (str): Input value for specific property.
 
@@ -1900,8 +1883,7 @@ class Manager:
     """Removes prop from device config dict and file if in 'options'.
 
     Args:
-      identifier (str): name, serial_number, alias, or adb_serial of the
-        device.
+      identifier (str): name, serial_number, alias, or adb_serial of the device.
       prop (str): Public prop available in device_options.json.
 
     Raises:
@@ -1933,8 +1915,7 @@ class Manager:
     if new_alias is not None:
       self.aliases[new_alias.lower()] = name
 
-  def _set_config_prop(self,
-                       prop: str,
+  def _set_config_prop(self, prop: str,
                        value: custom_types.PropertyValue) -> None:
     """Sets an GDM config property.
 

@@ -13,9 +13,8 @@
 # limitations under the License.
 
 """Simple data types without dependencies on other gazoo_device modules."""
-import enum
-
 import dataclasses
+import enum
 
 
 @enum.unique
