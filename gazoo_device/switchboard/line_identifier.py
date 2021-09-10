@@ -34,14 +34,17 @@ All others are unknown.
 """
 import abc
 import re
-import six
+from typing import Optional
+
+from typing_extensions import Literal
 
 LINE_TYPE_ALL = "all"
 LINE_TYPE_LOG = "log"
 LINE_TYPE_RESPONSE = "response"
+LINE_TYPE = Literal[LINE_TYPE_ALL, LINE_TYPE_LOG, LINE_TYPE_RESPONSE]
 
 
-class LineIdentifier(six.with_metaclass(abc.ABCMeta), object):
+class LineIdentifier(abc.ABC):
   """Base class used to identify device output lines as Log, Response, or Unknown."""
 
   @abc.abstractmethod
@@ -107,57 +110,59 @@ class PortLogIdentifier(LineIdentifier):
 
 
 class RegexIdentifier(LineIdentifier):
-  """Identifies output as match_type if regex matches."""
+  """Identifies output based on a log or a response regex (or both)."""
 
-  def __init__(self, pattern, match_type, use_match=False):
-    """Identifies log lines using the log pattern specified."""
-    self._pattern = re.compile(pattern)
-    self._match_type = match_type
-    self._use_match = use_match
+  def __init__(self, log_pattern: Optional[str] = None,
+               response_pattern: Optional[str] = None) -> None:
+    """Initializes a RegexIdentifier.
 
-  def accept(self, port, line, line_type):
-    if self._use_match:
-      is_type = self._pattern.match(line)
+    Args:
+      log_pattern: Regular expression which matches logs.
+      response_pattern: Regular expression which matches command responses.
+    """
+    if log_pattern is None and response_pattern is None:
+      raise ValueError("log_pattern or response_pattern must be specified.")
+    if log_pattern is not None:
+      self._log_pattern = re.compile(log_pattern)
     else:
-      is_type = self._pattern.search(line)
+      self._log_pattern = None
+    if response_pattern is not None:
+      self._response_pattern = re.compile(response_pattern)
+    else:
+      self._response_pattern = None
 
+  def accept(self, port: int, line: str, line_type: LINE_TYPE) -> bool:
+    """Returns whether the given line should be accepted."""
     if line_type == LINE_TYPE_ALL:
       return True
-    if line_type == self._match_type and not is_type:
-      return False
-    elif line_type != self._match_type and is_type:
-      return False
+
+    if line_type == LINE_TYPE_LOG:
+      if self._log_pattern is not None:
+        return bool(re.search(self._log_pattern, line))
+      else:
+        return not bool(re.search(self._response_pattern, line))
+
+    if line_type == LINE_TYPE_RESPONSE:
+      if self._response_pattern is not None:
+        return bool(re.search(self._response_pattern, line))
+      else:
+        return not bool(re.search(self._log_pattern, line))
+
     return True
 
 
 class RegexLogIdentifier(RegexIdentifier):
   """Identifies all output as logs if regex matches else its Unknown."""
 
-  def __init__(self, log_pattern, use_match=False):
-    """Identifies all output as logs if regex matches else its Unknown.
-
-    Args:
-        log_pattern (str): regex to match to beginning of line.
-        use_match (str): must match to beginning of line.
-    """
-    super(RegexLogIdentifier, self).__init__(
-        pattern=log_pattern, match_type=LINE_TYPE_LOG, use_match=use_match)
+  def __init__(self, log_pattern: str) -> None:
+    super().__init__(log_pattern=log_pattern)
 
 
 class RegexResponseIdentifier(RegexIdentifier):
   """Identifies all output as response if regex matches else its Unknown."""
 
-  def __init__(self, response_pattern, use_match=False):
-    """Identifies all output as logs if regex matches else its Unknown.
-
-    Args:
-        response_pattern (str): regex to match to beginning of line.
-        use_match (str): must match to beginning of line.
-    """
-    super(RegexResponseIdentifier, self).__init__(
-        pattern=response_pattern,
-        match_type=LINE_TYPE_RESPONSE,
-        use_match=use_match)
+  def __init__(self, response_pattern: str) -> None:
+    super().__init__(response_pattern=response_pattern)
 
 
 class MultiportIdentifier(LineIdentifier):

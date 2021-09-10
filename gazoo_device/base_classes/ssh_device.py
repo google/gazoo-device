@@ -16,6 +16,7 @@
 import time
 
 from gazoo_device import config
+from gazoo_device import console_config
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -132,6 +133,11 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
         add_log_note_fn=self.switchboard.add_log_note,
         user=self._COMMUNICATION_KWARGS["username"],
         key_info=self._COMMUNICATION_KWARGS["key_info"])
+
+  def get_console_configuration(self) -> console_config.ConsoleConfiguration:
+    """Returns the interactive console configuration."""
+    return console_config.get_log_response_separate_port_configuration(
+        self.switchboard.get_line_identifier())
 
   @decorators.LogDecorator(logger)
   def get_detection_info(self):

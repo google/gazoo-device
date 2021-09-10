@@ -25,11 +25,11 @@ PARENT_CAPABILITY_NAME = "valid_parent_capability"
 CHILD_CAPABILITY_NAME = "valid_child_capability"
 
 
-def _interface_name(interface):
+def get_interface_name(interface):
   return common_utils.generate_name(interface)
 
 
-def _flavor_name(flavor):
+def get_flavor_name(flavor):
   return common_utils.generate_name(flavor)
 
 
@@ -86,22 +86,23 @@ _SUPPORTED_INTERFACES = [
 ]
 
 SUPPORTED_INTERFACES = {
-    _interface_name(interface): interface for interface in _SUPPORTED_INTERFACES
+    get_interface_name(interface): interface
+    for interface in _SUPPORTED_INTERFACES
 }
 
 # Note: NonConformingCapabilityInterfaceNameNoOverride is intentionally
 # excluded. Generating a name for it should raise an error.
 CAPABILITIES = {
     VALID_CAPABILITY_NAME:
-        _interface_name(ValidCapabilityBase),
+        get_interface_name(ValidCapabilityBase),
     OTHER_VALID_CAPABILITY_NAME:
-        _interface_name(ValidOtherCapabilityBase),
+        get_interface_name(ValidOtherCapabilityBase),
     NONCONFORMING_CAPABILITY_NAME:
-        _interface_name(NonConformingCapabilityInterfaceNameWithOverride),
+        get_interface_name(NonConformingCapabilityInterfaceNameWithOverride),
     PARENT_CAPABILITY_NAME:
-        _interface_name(ValidParentCapabilityBase),
+        get_interface_name(ValidParentCapabilityBase),
     CHILD_CAPABILITY_NAME:
-        _interface_name(ValidChildCapabilityBase)
+        get_interface_name(ValidChildCapabilityBase)
 }
 
 
@@ -151,7 +152,7 @@ _SUPPORTED_FLAVORS = [
 ]
 
 SUPPORTED_FLAVORS = {
-    _flavor_name(flavor): flavor for flavor in _SUPPORTED_FLAVORS
+    get_flavor_name(flavor): flavor for flavor in _SUPPORTED_FLAVORS
 }
 
 

@@ -741,9 +741,9 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
 
       try:
         health_check_method()
-      except errors.CheckDeviceReadyError:
-        logger.info("{} health check {}/{} failed: {}.".format(
-            self.name, step + 1, len(health_checks), health_check_name))
+      except errors.CheckDeviceReadyError as err:
+        logger.info("{} health check {}/{} {!r} failed: {!r}.".format(
+            self.name, step + 1, len(health_checks), health_check_name, err))
         raise
 
       logger.info("{} health check {}/{} succeeded: {}.".format(

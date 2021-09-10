@@ -39,6 +39,10 @@ class FakeGazooDeviceBase(gazoo_device_base.GazooDeviceBase):
   def firmware_version(self):
     return "some_version"
 
+  @decorators.LogDecorator(logger)
+  def get_console_configuration(self):
+    return None
+
   @decorators.PersistentProperty
   def os(self):
     return "Linux"

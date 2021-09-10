@@ -19,6 +19,9 @@ re-implemented in derived device classes. Device classes should inherit from
 GazooDeviceBase, not from this class.
 """
 import abc
+from typing import Optional
+
+from gazoo_device import console_config
 
 
 class PrimaryDeviceBase(abc.ABC):
@@ -50,6 +53,11 @@ class PrimaryDeviceBase(abc.ABC):
   @abc.abstractproperty
   def firmware_version(self):
     """Returns the firmware version installed on the device."""
+
+  @abc.abstractmethod
+  def get_console_configuration(
+      self) -> Optional[console_config.ConsoleConfiguration]:
+    """Returns interactive console configuration or None if not supported."""
 
   @abc.abstractproperty
   def health_checks(self):

@@ -17,6 +17,7 @@ import re
 import time
 
 from gazoo_device import config
+from gazoo_device import console_config
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -139,6 +140,11 @@ class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
         self.commands["FIRMWARE_VERSION"],
         self.regexes["FIRMWARE_VERSION_REGEX"],
         raise_error=True)
+
+  def get_console_configuration(self) -> console_config.ConsoleConfiguration:
+    """Returns the interactive console configuration."""
+    return console_config.get_log_response_separate_port_configuration(
+        self.switchboard.get_line_identifier())
 
   @decorators.PersistentProperty
   def health_checks(self):

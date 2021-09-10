@@ -323,8 +323,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     if hasattr(self, "comm_power"):
       try:
         self.comm_power.health_check()
-      except errors.CapabilityNotReadyError as err:
-        logger.debug(str(err))
+      except errors.CapabilityNotReadyError:
         logger.info("{}'s comm_power capability is not set up.".format(
             self.name))
 
@@ -332,8 +331,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     if hasattr(self, "device_power"):
       try:
         self.device_power.health_check()
-      except errors.CapabilityNotReadyError as err:
-        logger.debug(str(err))
+      except errors.CapabilityNotReadyError:
         logger.info("{}'s device_power capability is not set up.".format(
             self.name))
 
@@ -574,7 +572,15 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
       logger.info(
           "{} failed to create switchboard. Power cycling communication port"
           .format(self.name))
-      self.comm_power.cycle()
+
+      try:
+        self.comm_power.cycle()
+      except errors.CapabilityNotReadyError as err:
+        logger.info("{}'s comm_power capability encountered an error: {!r}"
+                    "Unable to power cycle communication port. "
+                    "Try manually power cycling communication port.".format(
+                        self.name, err))
+        raise error
     else:
       raise error
 
@@ -902,8 +908,8 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
       try:
         health_check_method()
       except errors.CheckDeviceReadyError as err:
-        logger.info("{} health check {}/{} failed: {}.".format(
-            self.name, step + 1, len(health_checks), health_check_name))
+        logger.info("{} health check {}/{} {!r} failed: {!r}.".format(
+            self.name, step + 1, len(health_checks), health_check_name, err))
         err.checks_passed = checks_passed
         err.properties = self.props["persistent_identifiers"].copy()
         raise

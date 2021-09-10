@@ -15,6 +15,8 @@
 """Base class module for Espressif ESP32 platform device."""
 import os
 from typing import Dict, Tuple
+
+from gazoo_device import console_config
 from gazoo_device import custom_types
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -34,6 +36,10 @@ class EspressifESP32Device(auxiliary_device.AuxiliaryDevice):
   """
   COMMUNICATION_TYPE = "PigweedSerialComms"
   _COMMUNICATION_KWARGS = {"protobufs": None, "baudrate": BAUDRATE}
+
+  def get_console_configuration(self) -> console_config.ConsoleConfiguration:
+    """Returns the interactive console configuration."""
+    return console_config.get_log_only_configuration()
 
   @decorators.LogDecorator(logger)
   def get_detection_info(self) -> Tuple[Dict[str, str], Dict[str, str]]:

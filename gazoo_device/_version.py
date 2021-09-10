@@ -13,4 +13,4 @@
 # limitations under the License.
 
 """Gazoo Device Manager version."""
-version = "1.22.2"
+version = "1.23.0"

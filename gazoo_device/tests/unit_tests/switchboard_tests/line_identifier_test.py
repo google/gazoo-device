@@ -17,7 +17,7 @@ from gazoo_device.switchboard import line_identifier
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 
 _LOG_LINE_REGEX = (
-    r"([A-Z|a-z]{3}\s{1,2}[0-9]{1,2}\s[0-9]{2}:[0-9]{2}:[0-9]{2}\s.*\n)")
+    r"^([A-Z|a-z]{3}\s{1,2}[0-9]{1,2}\s[0-9]{2}:[0-9]{2}:[0-9]{2}\s.*\n)")
 _RESPONSE_LINE_REGEX = "root@123456789AB#"
 _FAKE_LOG_LINE = (
     "Jan  1 19:45:18 some log line\n")
@@ -93,22 +93,9 @@ class LineIdentifierTests(unit_test_case.UnitTestCase):
     self._test_state_machine(uut, "PortLogIdentifier", reject_inputs,
                              accept_inputs)
 
-  def test_005_regex_log_identifier_without_match(self):
-    uut = line_identifier.RegexLogIdentifier(_LOG_LINE_REGEX, use_match=False)
-
-    reject_inputs = [[0, _FAKE_LOG_LINE, TYPE_RESPONSE],
-                     [0, _FAKE_RESPONSE, TYPE_LOG]]
-    accept_inputs = [[0, _FAKE_LOG_LINE, TYPE_LOG],
-                     [0, _FAKE_LOG_LINE, TYPE_ALL],
-                     [0, _FAKE_RESPONSE, TYPE_ALL],
-                     [0, _FAKE_RESPONSE_AND_LOG_LINE, TYPE_LOG],
-                     [0, _FAKE_RESPONSE, TYPE_RESPONSE]]
-
-    self._test_state_machine(uut, "RegexLogIdentifier_without_match",
-                             reject_inputs, accept_inputs)
-
-  def test_006_regex_log_identifier_with_match(self):
-    uut = line_identifier.RegexLogIdentifier(_LOG_LINE_REGEX, use_match=True)
+  def test_005_regex_log_identifier(self):
+    """Tests RegexLogIdentifier."""
+    uut = line_identifier.RegexLogIdentifier(_LOG_LINE_REGEX)
 
     reject_inputs = [[0, _FAKE_LOG_LINE, TYPE_RESPONSE],
                      [0, _FAKE_RESPONSE, TYPE_LOG],
@@ -118,10 +105,11 @@ class LineIdentifierTests(unit_test_case.UnitTestCase):
                      [0, _FAKE_RESPONSE, TYPE_ALL],
                      [0, _FAKE_RESPONSE, TYPE_RESPONSE]]
 
-    self._test_state_machine(uut, "RegexLogIdentifier_with_match",
+    self._test_state_machine(uut, "RegexLogIdentifier",
                              reject_inputs, accept_inputs)
 
-  def test_007_regex_response_identifier(self):
+  def test_006_regex_response_identifier(self):
+    """Tests RegexResponseIdentifier."""
     uut = line_identifier.RegexResponseIdentifier(_RESPONSE_LINE_REGEX)
 
     reject_inputs = [[0, _FAKE_LOG_LINE, TYPE_RESPONSE],
@@ -131,7 +119,23 @@ class LineIdentifierTests(unit_test_case.UnitTestCase):
                      [0, _FAKE_RESPONSE, TYPE_ALL],
                      [0, _FAKE_RESPONSE, TYPE_RESPONSE]]
 
-    self._test_state_machine(uut, "RegexResponseIdentifier_without_match",
+    self._test_state_machine(uut, "RegexResponseIdentifier",
+                             reject_inputs, accept_inputs)
+
+  def test_007_regex_identifier(self):
+    """Tests RegexIdentifier with both log and response patterns provided."""
+    uut = line_identifier.RegexIdentifier(
+        log_pattern=_LOG_LINE_REGEX, response_pattern=_RESPONSE_LINE_REGEX)
+
+    reject_inputs = [[0, _FAKE_LOG_LINE, TYPE_RESPONSE],
+                     [0, _FAKE_RESPONSE, TYPE_LOG],
+                     [0, _FAKE_RESPONSE_AND_LOG_LINE, TYPE_LOG]]
+    accept_inputs = [[0, _FAKE_LOG_LINE, TYPE_LOG],
+                     [0, _FAKE_LOG_LINE, TYPE_ALL],
+                     [0, _FAKE_RESPONSE, TYPE_ALL],
+                     [0, _FAKE_RESPONSE, TYPE_RESPONSE]]
+
+    self._test_state_machine(uut, "RegexIdentifier",
                              reject_inputs, accept_inputs)
 
   def test_009_multiport_identifier(self):

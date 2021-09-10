@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Digital Loggers Web Power Switch."""
-
+from gazoo_device import console_config
 from gazoo_device import decorators
 from gazoo_device import detect_criteria
 from gazoo_device import gdm_logger
@@ -99,6 +99,11 @@ class DliPowerSwitch(auxiliary_device.AuxiliaryDevice):
     return self._write_command(
         "GET", self.commands["FIRMWARE_VERSION"].format(ip=self.ip_address),
         HEADERS["GET_PROP"])
+
+  def get_console_configuration(self) -> console_config.ConsoleConfiguration:
+    """Returns the interactive console configuration."""
+    return console_config.get_log_response_separate_port_configuration(
+        self.switchboard.get_line_identifier())
 
   @decorators.CapabilityDecorator(
       switch_power_dli_powerswitch.SwitchPowerDliPowerswitch)

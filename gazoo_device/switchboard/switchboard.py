@@ -237,7 +237,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       partial_line_timeout_list = []
 
     self.log_path = log_path
-    self._button_list = button_list
+    self.button_list = button_list
     self._force_slow = force_slow
     self._identifier = identifier or line_identifier.AllUnknownIdentifier()
     time.sleep(.1)
@@ -431,7 +431,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     log_message = "click button {} on port {} for duration {} - begin".format(
         button, port, duration)
     self.add_log_note(log_message)
-    self._button_list[port].click(button, duration)
+    self.button_list[port].click(button, duration)
     log_message = "click button {} on port {} for duration {} - end".format(
         button, port, duration)
     self.add_log_note(log_message)
@@ -442,7 +442,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
                        duration=0.5,
                        timeout=30.0,
                        searchwindowsize=config.SEARCHWINDOWSIZE,
-                       expect_type="log",
+                       expect_type=line_identifier.LINE_TYPE_ALL,
                        port=0,
                        mode="any",
                        raise_for_timeout=False):
@@ -507,10 +507,10 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
         proc.transport.comms_address for proc in self._transport_processes
     ]
     self._stop_processes()
-    if hasattr(self, "_button_list") and self._button_list:
-      for button in self._button_list:
+    if hasattr(self, "button_list") and self.button_list:
+      for button in self.button_list:
         button.close()
-      self._button_list = []
+      self.button_list = []
     if hasattr(self, "_call_result_queue") and self._call_result_queue:
       delattr(self, "_call_result_queue")
     if hasattr(self, "_raw_data_queue") and self._raw_data_queue:
@@ -552,11 +552,13 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     log_message = "closing transport for port {}".format(port)
     self.add_log_note(log_message)
     try:
-      if self._button_list:
-        button = self._button_list[port]
+      if self.button_list:
+        button = self.button_list[port]
         button.close()
     except IndexError:
-      pass  # If _button_list does not have an entry for [port], there is nothing to close
+      # If button_list does not have an entry for [port], there is nothing to
+      # close.
+      pass
 
     start_time = time.time()
     transport_proc = self._transport_processes[port]
@@ -575,7 +577,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
                     pattern_list,
                     timeout=30.0,
                     searchwindowsize=config.SEARCHWINDOWSIZE,
-                    expect_type=line_identifier.LINE_TYPE_LOG,
+                    expect_type=line_identifier.LINE_TYPE_ALL,
                     mode=MODE_TYPE_ANY,
                     raise_for_timeout=False,
                     include_func_response=False):
@@ -894,7 +896,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     log_message = "pressing button {} on port {} and waiting {}s - begin".format(
         button, port, wait)
     self.add_log_note(log_message)
-    self._button_list[port].press(button, wait)
+    self.button_list[port].press(button, wait)
     log_message = "pressing button {} on port {} and waiting {}s - end".format(
         button, port, wait)
     self.add_log_note(log_message)
@@ -905,7 +907,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
                        wait=0.0,
                        timeout=30.0,
                        searchwindowsize=config.SEARCHWINDOWSIZE,
-                       expect_type="log",
+                       expect_type=line_identifier.LINE_TYPE_ALL,
                        port=0,
                        mode="any"):
     """Press button and expect for pattern_list and other arguments provided.
@@ -967,7 +969,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     """
     self._check_button_args("release", button, port)
 
-    self._button_list[port].release(button)
+    self.button_list[port].release(button)
     log_message = "released button {}".format(button)
     self.add_log_note(log_message)
 
@@ -976,7 +978,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
                          pattern_list,
                          timeout=30.0,
                          searchwindowsize=config.SEARCHWINDOWSIZE,
-                         expect_type="log",
+                         expect_type=line_identifier.LINE_TYPE_ALL,
                          port=0,
                          mode="any"):
     """Release button, matches pattern_list in loglines as specified by expect_type.
@@ -1480,7 +1482,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     """
     self._validate_port(port, func_name)
 
-    if not self._button_list:
+    if not self.button_list:
       raise errors.DeviceError(
           "Device {} {} failed. "
           "Buttons are not supported for this device.".format(
@@ -1509,12 +1511,12 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       raise errors.DeviceError("Device {} {} failed. "
                                "Invalid wait value {} expected >=0.0".format(
                                    self._device_name, func_name, wait))
-    elif not self._button_list[port].is_valid(button):
+    elif not self.button_list[port].is_valid(button):
       raise errors.DeviceError(
           "Device {} {} failed. "
           "Invalid button {} for port {} expected {}.".format(
               self._device_name, func_name, button, port,
-              self._button_list[port].valid_buttons()))
+              self.button_list[port].valid_buttons()))
 
   def _check_expect_args(self, pattern_list, timeout, searchwindowsize,
                          expect_type, mode):

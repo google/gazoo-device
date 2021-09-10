@@ -19,6 +19,9 @@ re-implemented in derived device classes. Device classes should inherit from
 AuxiliaryDevice, not from this class.
 """
 import abc
+from typing import Optional
+
+from gazoo_device import console_config
 
 
 class AuxiliaryDeviceBase(abc.ABC):
@@ -46,6 +49,11 @@ class AuxiliaryDeviceBase(abc.ABC):
   @abc.abstractproperty
   def connected(self):
     """Returns whether the device is connected or not."""
+
+  @abc.abstractmethod
+  def get_console_configuration(
+      self) -> Optional[console_config.ConsoleConfiguration]:
+    """Returns interactive console configuration or None if not supported."""
 
   @abc.abstractproperty
   def health_checks(self):

@@ -136,6 +136,12 @@ class GoodAuxiliaryDevice(auxiliary_device.AuxiliaryDevice):
   })
   _OWNER_EMAIL = "gdm-authors@google.com"
 
+  @decorators.LogDecorator(logger)
+  def get_console_configuration(self):
+    """Dummy get_console_configuration implementation: console not supported."""
+    del self  # Unused because console is not supported.
+    return None
+
   @classmethod
   def is_connected(cls, device_config):
     """Dummy is_connected() implementation."""

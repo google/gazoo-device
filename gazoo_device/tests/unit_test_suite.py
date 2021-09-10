@@ -36,9 +36,9 @@ flags.DEFINE_boolean(  # Consumed by switchboard_tests/__init__.py.
 
 
 def _has_any_tests(
-    test_case_or_suite: Union[absltest.TestCase, unittest.TestSuite]) -> bool:
+    test_case_or_suite: Union[unittest.TestCase, unittest.TestSuite]) -> bool:
   """Returns true if the test suite has any test cases to run."""
-  if isinstance(test_case_or_suite, absltest.TestCase):
+  if isinstance(test_case_or_suite, unittest.TestCase):
     return True
   else:
     return any(_has_any_tests(sub_test_case_or_suite)

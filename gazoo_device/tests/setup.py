@@ -46,6 +46,7 @@ setuptools.setup(
         "immutabledict>=1.2.0",
         "intelhex>=2.2.1",
         "mobly>=1.10.1",
+        "prompt-toolkit>=3.0.19",
         "protobuf>=3.17.3",
         "psutil>=5.0.1",
         "pyserial>=3.5",

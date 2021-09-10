@@ -83,7 +83,7 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
                                                self.fake_device_info_in_bytes)
     error_regex = "not_exist doesn't exist in static info."
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
-      self.uut._get_static_info("not_exist")  # pylint: disable=protected-access
+      self.uut._get_static_info("not_exist")
     self.switchboard_call_mock.assert_called_once()
 
   @mock.patch.object(
@@ -186,7 +186,6 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     """Verifies failure for passing invalid argument."""
     error_regex = "Both or neither should be provided"
     with self.assertRaisesRegex(ValueError, error_regex):
-      # pylint: disable=protected-access
       self.uut._trigger_device_action(action="SomeAction",
                                       rpc_timeout_s=0,
                                       expect_regex="SomeRegex")

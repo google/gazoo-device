@@ -19,6 +19,7 @@ import os
 import re
 from unittest import mock
 
+from gazoo_device import console
 from gazoo_device import errors
 from gazoo_device import fire_manager
 from gazoo_device import gdm_logger
@@ -45,6 +46,7 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
           debug=False, dev_debug=False, quiet=False)
     self.mock_switchboard = mock.MagicMock(spec=switchboard.SwitchboardDefault)
     self.mock_switchboard.device_name = "FakeDevice"
+    self.mock_switchboard.button_list = []
     self.uut.create_switchboard = mock.MagicMock(
         return_value=self.mock_switchboard)
     self.uut.reload_configuration(  # Load the mock device configuration files
@@ -465,6 +467,26 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
                        ["other_package"])
     mock_info.assert_called_once_with(
         "Removed package 'some_package' from GDM CLI.")
+
+  def test_console_success(self):
+    """Tests running console on a device which supports it."""
+    with mock.patch.object(console.ConsoleApp, "run"):
+      self.uut.console("sshdevice-0000")
+    # Check that the device has been closed and stdout logging has been
+    # reenabled.
+    self.assertNotIn("sshdevice-0000", self.uut.get_open_device_names())
+    self.assertIn(gdm_logger._stdout_handler, logger.logging_thread._handlers)
+
+  def test_console_no_switchboard(self):
+    """Tests that console raises an error if Switchboard is not supported."""
+    with self.assertRaisesRegex(
+        NotImplementedError,
+        "cambrionix-1234 does not have a Switchboard capability"):
+      self.uut.console("cambrionix-1234")
+    # Check that the device has been closed and stdout logging has been
+    # reenabled.
+    self.assertNotIn("cambrionix-1234", self.uut.get_open_device_names())
+    self.assertIn(gdm_logger._stdout_handler, logger.logging_thread._handlers)
 
 
 if __name__ == "__main__":

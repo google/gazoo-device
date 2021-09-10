@@ -151,6 +151,12 @@ def initialize_logger():
   logging_thread.start()
 
 
+def reenable_progress_messages():
+  """Reenables streaming GDM Logger messages to stdout."""
+  if _stdout_handler:
+    add_handler(_stdout_handler)
+
+
 def remove_handler(handler):
   """Removes the given handler from the GDM Logger's LoggingThread.
 

@@ -183,6 +183,12 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
     """
     return self._get_system_status()["firmware"]
 
+  @decorators.LogDecorator(logger)
+  def get_console_configuration(self) -> None:
+    """Returns None. Console is not supported because there's no Switchboard."""
+    del self  # Unused because console is not supported.
+    return None
+
   @decorators.PersistentProperty
   def health_checks(self):
     """Returns list of methods to execute as health checks."""

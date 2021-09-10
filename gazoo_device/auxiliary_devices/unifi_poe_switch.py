@@ -16,6 +16,7 @@
 import time
 
 from gazoo_device import config
+from gazoo_device import console_config
 from gazoo_device import decorators
 from gazoo_device import detect_criteria
 from gazoo_device import errors
@@ -124,6 +125,11 @@ class UnifiPoeSwitch(auxiliary_device.AuxiliaryDevice):
     return self.shell_with_regex(
         command=self.commands["FIRMWARE_VERSION"],
         regex=self._regexes["FIRMWARE_VERSION_REGEX"])
+
+  def get_console_configuration(self) -> console_config.ConsoleConfiguration:
+    """Returns the interactive console configuration."""
+    return console_config.get_log_response_separate_port_configuration(
+        self.switchboard.get_line_identifier())
 
   @decorators.PersistentProperty
   def health_checks(self):

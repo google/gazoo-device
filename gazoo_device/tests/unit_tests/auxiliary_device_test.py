@@ -33,6 +33,9 @@ class AuxDevTester(auxiliary_device.AuxiliaryDevice):
   _OWNER_EMAIL = "gdm-authors@google.com"
   DEVICE_TYPE = "aux"
 
+  def get_console_configuration(self):
+    return None
+
   @property
   def some_property(self):
     return "something"

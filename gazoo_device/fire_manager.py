@@ -31,6 +31,7 @@ import time
 from typing import Any, Collection, Optional, Type
 
 from gazoo_device import config
+from gazoo_device import console
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -106,6 +107,37 @@ class FireManager(manager.Manager):
     debug_level = logging.WARNING if quiet else logging.DEBUG
 
     super().__init__(debug_level=debug_level, stream_debug=stream_debug)
+
+  def console(self, device_name: str, health_check: bool = False) -> None:
+    """Starts an interactive device console.
+
+    Use Tab and Shift-Tab to navigate between console windows (next/previous).
+
+    Args:
+      device_name: Name of the device to start the console for.
+      health_check: Whether to run health checks before starting the console.
+
+    Raises:
+      NotImplementedError: If the device does not have a Switchboard capability.
+    """
+    make_device_ready = "on" if health_check else "off"
+    device = self.create_device(device_name,
+                                make_device_ready=make_device_ready)
+
+    try:
+      if not device.has_capabilities(["switchboard"]):
+        raise NotImplementedError(
+            f"{device.name} does not have a Switchboard capability, which is "
+            "required for the console.")
+      console_configuration = device.get_console_configuration()
+      device.switchboard.set_max_log_size(0)  # Disable log rotation.
+      gdm_logger.silence_progress_messages()  # To avoid interference with GUI.
+      console_app = console.ConsoleApp(
+          device.switchboard, device.log_file_name, console_configuration)
+      console_app.run()
+    finally:
+      gdm_logger.reenable_progress_messages()
+      device.close()
 
   def exec(self, identifier):
     """Alias for create_device with health checks disabled.
