@@ -20,11 +20,10 @@ import signal
 import socket
 import traceback
 
-import psutil
-import six.moves.queue
-
 from gazoo_device import gdm_logger
 from gazoo_device.utility import common_utils
+import psutil
+import six.moves.queue
 
 logger = gdm_logger.get_logger()
 

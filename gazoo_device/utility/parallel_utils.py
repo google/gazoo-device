@@ -32,10 +32,9 @@ Example usage:
 import multiprocessing
 import time
 
-from six.moves import queue
-
 from gazoo_device import gdm_logger
 from gazoo_device.utility import common_utils
+from six.moves import queue
 
 logger_gdm = gdm_logger.get_logger()
 

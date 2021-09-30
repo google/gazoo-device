@@ -14,7 +14,6 @@
 
 """Unit tests for the usb_hub_default capability."""
 from unittest import mock
-import weakref
 
 from gazoo_device import errors
 from gazoo_device.auxiliary_devices import cambrionix
@@ -39,6 +38,7 @@ class UsbHubDefaultTests(unit_test_case.UnitTestCase):
         return_value=self.mock_switchboard)
     self.manager_mock = mock.Mock()
     self.manager_mock.create_device.return_value = self.cambrionix_mock
+    self.mock_get_manager = mock.Mock(return_value=self.manager_mock)
     self.usb_supported_modes_patch = mock.patch.object(
         usb_hub_default.UsbHubDefault,
         "supported_modes",
@@ -48,7 +48,7 @@ class UsbHubDefaultTests(unit_test_case.UnitTestCase):
     self.addCleanup(self.usb_supported_modes_patch.stop)
     self.uut = usb_hub_default.UsbHubDefault(
         self._device_name,
-        manager_weakref=weakref.ref(self.manager_mock),
+        get_manager=self.mock_get_manager,
         hub_name=self._hub_name,
         device_port=1,
         get_switchboard_if_initialized=self.get_switchboard_if_initialized)
@@ -57,7 +57,7 @@ class UsbHubDefaultTests(unit_test_case.UnitTestCase):
     """Verifies capability raises error if device parameter is None."""
     self.uut = usb_hub_default.UsbHubDefault(
         self._device_name,
-        manager_weakref=weakref.ref(mock.Mock()),
+        get_manager=self.mock_get_manager,
         hub_name=self._hub_name,
         device_port=None,
         get_switchboard_if_initialized=self.get_switchboard_if_initialized)
@@ -128,7 +128,7 @@ class UsbHubDefaultTests(unit_test_case.UnitTestCase):
     """Verify that a note is logged if change_triggers_reboot is True."""
     self.uut = usb_hub_default.UsbHubDefault(
         self._device_name,
-        manager_weakref=weakref.ref(self.manager_mock),
+        get_manager=self.mock_get_manager,
         hub_name=self._hub_name,
         device_port=1,
         get_switchboard_if_initialized=self.get_switchboard_if_initialized,
@@ -142,7 +142,7 @@ class UsbHubDefaultTests(unit_test_case.UnitTestCase):
     """Verify wait_for_bootup_complete_fn is called when expecting a reboot."""
     self.uut = usb_hub_default.UsbHubDefault(
         self._device_name,
-        manager_weakref=weakref.ref(self.manager_mock),
+        get_manager=self.mock_get_manager,
         hub_name=self._hub_name,
         device_port=1,
         get_switchboard_if_initialized=self.get_switchboard_if_initialized,

@@ -188,7 +188,7 @@ class DliPowerSwitch(auxiliary_device.AuxiliaryDevice):
           "device_name": self.name,
           "event_parser": None})
       setattr(self, switchboard_name,
-              self.manager_weakref().create_switchboard(**switchboard_kwargs))
+              self.get_manager().create_switchboard(**switchboard_kwargs))
 
     return getattr(self, switchboard_name)
 

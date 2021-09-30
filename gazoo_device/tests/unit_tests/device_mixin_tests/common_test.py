@@ -17,6 +17,7 @@ from unittest import mock
 
 from absl.testing import parameterized
 from gazoo_device import errors
+from gazoo_device import manager
 from gazoo_device.capabilities import usb_hub_default
 
 _CDR_ERROR_1 = errors.DeviceNotResponsiveError("device-1234", "Not responsive")
@@ -26,6 +27,19 @@ _RECOVERY_ERROR = errors.DeviceError("Something went wrong")
 
 class CommonTestMixin(parameterized.TestCase):
   """Unit test mixin for testing common device functionality."""
+
+  @parameterized.named_parameters(
+      ("manager_is_alive", mock.Mock(spec=manager.Manager), False),
+      ("manager_is_dead", None, True))
+  def test_get_manager(self, manager_weakref_return, error_expected):
+    """Tests make_device_ready with setting 'check_only'."""
+    with mock.patch.object(self.uut, "_manager_weakref",
+                           return_value=manager_weakref_return):
+      if error_expected:
+        with self.assertRaisesRegex(RuntimeError, "Manager is no longer alive"):
+          self.uut.get_manager()
+      else:
+        self.assertEqual(self.uut.get_manager(), manager_weakref_return)
 
   def test_make_device_ready_off(self):
     """Tests make_device_ready with setting 'off'."""

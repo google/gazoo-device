@@ -139,7 +139,7 @@ def retry(func,
     tried_times += 1
     try:
       func_result = func(*func_args, **func_kwargs)
-    except Exception:
+    except Exception:  # pylint: disable=broad-except
       if reraise:
         raise
       else:

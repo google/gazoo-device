@@ -14,7 +14,6 @@
 
 """Tests for auxiliary device base class."""
 from unittest import mock
-import weakref
 
 from absl.testing import parameterized
 from gazoo_device import decorators
@@ -98,7 +97,7 @@ class AuxDevTester(auxiliary_device.AuxiliaryDevice):
           "device_name": self.name,
           "event_parser": None})
       setattr(self, switchboard_name,
-              self.manager_weakref().create_switchboard(**switchboard_kwargs))
+              self.get_manager().create_switchboard(**switchboard_kwargs))
 
     return getattr(self, switchboard_name)
 
@@ -275,7 +274,7 @@ class TestAuxiliaryDevice(fake_device_test_case.FakeDeviceTestCase,
         "commands": {},
         "health_checks": [self.uut.check_device_connected],
         "model": "Development",
-        "communication_address": "/dev/serial/by-id/aux-device-1234",
+        "communication_address": "123.456.78.9",
         "regexes": {},
         "timeouts": {
             "CONNECTED": 3,
@@ -306,7 +305,7 @@ class TestAuxiliaryDevice(fake_device_test_case.FakeDeviceTestCase,
     """Verify get_property can take in capability properties."""
     self.uut.usb_hub = usb_hub_default.UsbHubDefault(
         device_name=self.uut.name,
-        manager_weakref=weakref.ref(self.mock_manager),
+        get_manager=self.uut.get_manager,
         hub_name="cambrionix-1234",
         device_port=1,
         get_switchboard_if_initialized=lambda: self.mock_switchboard)

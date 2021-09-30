@@ -87,7 +87,7 @@ class NRFConnectSDKDevice(auxiliary_device.AuxiliaryDevice):
           "log_path": self.log_file_name,
           "device_name": self.name,
           "event_parser": None})
-      setattr(self, name, self.manager_weakref().create_switchboard(**kwargs))
+      setattr(self, name, self.get_manager().create_switchboard(**kwargs))
     return getattr(self, name)
 
   @decorators.CapabilityDecorator(flash_build_jlink.FlashBuildJLink)

@@ -11,6 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+// The Pigweed echo RPC proto definition.
+// The source of truth of this proto can be found at https://github.com/project-chip/connectedhomeip/tree/master/examples/common/pigweed/protos
 syntax = "proto3";
 
 package pw.rpc;

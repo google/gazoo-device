@@ -52,16 +52,35 @@ the relevant [device setup section](docs/Raspberry_Pi_as_host.md)).
 
 MacOS prerequisites:
 
-1. Install Xcode Command Line Tools:
+1.  Install Xcode Command Line Tools:
 
-   ```shell
-   xcode-select --install
-   ```
+    ```shell
+    xcode-select --install
+    ```
 
-2. Install Brew (MacOS package manager):
+2.  Install Brew (MacOS package manager):
 
-   https://brew.sh/
+    https://brew.sh/
 
+3.  Verify your system `python3` executable.
+
+    1.  Check that Python 3 is available:
+
+        ```shell
+        which python3
+        ```
+
+    2.  Check that your Python 3 version is at least 3.7:
+
+        ```
+        python3 -V
+        ```
+
+    3.  Check that your `python3` executable has `pip` module:
+
+        ```
+        python3 -m pip --version
+        ```
 
 Installation steps:
 
@@ -589,8 +608,15 @@ If you are interested in adding support for your device(s) to GDM, refer to
 
 ## License
 
-Licensed under the
+Gazoo Device Manager is licensed under the
 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) License.
+
+### Dependency license compliance
+
+Gazoo Device Manager contains a dependency on
+[pyudev](https://pypi.org/project/pyudev/), which is licensed under
+[LGPL 2.1](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html). \
+`pyudev` source code can be found here: https://github.com/pyudev/pyudev.
 
 ## Disclaimer
 

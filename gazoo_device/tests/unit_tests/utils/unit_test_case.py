@@ -290,6 +290,13 @@ class MultiprocessingTestCase(UnitTestCase):
   Checks that there are no file descriptor leaks at the end of each test.
   """
 
+  @classmethod
+  def setUpClass(cls):
+    """Performs one-time setup before FD leak check starts."""
+    # Create the ABSL error log file before any test starts.
+    gdm_logger.get_logger().error("Starting a log file")
+    super().setUpClass()
+
   def setUp(self):
     super().setUp()
 

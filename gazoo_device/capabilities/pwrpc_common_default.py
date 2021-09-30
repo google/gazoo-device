@@ -19,14 +19,9 @@ from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import pwrpc_common_base
+from gazoo_device.protos import device_service_pb2
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
-try:
-  # pylint: disable=g-import-not-at-top
-  # pytype: disable=import-error
-  from device_service import device_service_pb2
-  # pytype: enable=import-error
-except ImportError:
-  device_service_pb2 = None
+
 
 logger = gdm_logger.get_logger()
 _RPC_TIMEOUT = 10

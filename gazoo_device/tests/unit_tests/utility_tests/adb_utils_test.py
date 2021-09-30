@@ -733,11 +733,23 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
 
   @mock.patch.object(adb_utils, "_adb_command", return_value="fake\n")
   def test_200_adb_shell(self, mock_adb_command):
-    """Verify shell works as expected."""
+    """Verifies shell works as expected."""
     self.assertEqual("fake\n", adb_utils.shell("12345", 'echo "fake"'))
     mock_adb_command.assert_called_once_with(
         ["shell", 'echo "fake"'], "12345",
-        adb_path=None, retries=mock.ANY, timeout=None)
+        adb_path=None, retries=mock.ANY, timeout=None,
+        include_return_code=False)
+
+  @mock.patch.object(adb_utils, "_adb_command", return_value=("fake\n", 0))
+  def test_201_adb_shell_include_return_code(self, mock_adb_command):
+    """Verifies shell include return code will return output and code tuple."""
+    output, return_code = adb_utils.shell(
+        "12345", 'echo "fake"', include_return_code=True)
+    self.assertEqual("fake\n", output)
+    self.assertEqual(0, return_code)
+    mock_adb_command.assert_called_once_with(
+        ["shell", 'echo "fake"'], "12345",
+        adb_path=None, retries=mock.ANY, timeout=None, include_return_code=True)
 
   @mock.patch.object(
       adb_utils, "get_fastboot_path", return_value="/fake/path/to/fastboot")
@@ -1041,6 +1053,33 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
 
     with self.assertRaises(RuntimeError):
       adb_utils.fastboot_check_is_unlocked(fastboot_serial=fastboot_serial)
+
+  @mock.patch.object(
+      adb_utils, "_adb_command", return_value=("bugreport output\n", 0))
+  def test_340_adb_utils_bugreport(self, mock_adb_command):
+    """Verifies bugreport."""
+    adb_utils.bugreport(DEVICE_ADB_SERIAL)
+    mock_adb_command.assert_called()
+
+  @mock.patch.object(
+      adb_utils, "_adb_command", return_value=("bugreport output\n", 1))
+  def test_341_adb_utils_bugreport_bad_returncode(
+      self, mock_adb_command):
+    """Verifies bugreport raises if ADB command fails."""
+    with self.assertRaises(RuntimeError):
+      adb_utils.bugreport(DEVICE_ADB_SERIAL)
+    mock_adb_command.assert_called()
+
+  @mock.patch.object(adb_utils, "_adb_command")
+  @mock.patch.object(os.path, "exists", return_value=False)
+  def test_342_adb_utils_pull_from_device_bad_destination_path(
+      self, mock_os_path_exists, mock_adb_command):
+    """Verifies bugreport provided bad destination path."""
+    destination_path = "/bogus/path"
+    with self.assertRaises(ValueError):
+      adb_utils.bugreport(DEVICE_ADB_SERIAL, destination_path=destination_path)
+    mock_os_path_exists.assert_called()
+    mock_adb_command.assert_not_called()
 
 
 if __name__ == "__main__":

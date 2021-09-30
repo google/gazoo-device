@@ -12,27 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The Pigweed locking RPC proto definition.
+// The Pigweed device RPC proto definition.
 // The source of truth of this proto can be found at https://github.com/project-chip/connectedhomeip/tree/master/examples/common/pigweed/protos
 syntax = "proto3";
 
 package chip.rpc;
 
-message Empty {
+message DeviceEmpty {
 }
 
-message LockingState {
-  bool locked = 1;
+// type lengths defined in chip spec 8.2.3.1
+message DeviceInfo {
+  uint32 vendor_id = 1;
+  uint32 product_id = 2;
+  uint32 software_version = 3;
+  string serial_number = 4;
 }
 
-service Locking {
-  // Set will return OK if all supported fields are successfully applied, any
-  // unsupported fields will be ignored.
-  // Get can be used to determine which fields are supported.
-  rpc Set(LockingState) returns (Empty){}
+service Device {
+  // To factory reset the device.
+  rpc FactoryReset(DeviceEmpty) returns (DeviceEmpty){}
 
-  // Get will populate all of the supported locking state fields with the
-  // current values. This can be used to discover the devices supported
-  // locking features.
-  rpc Get(Empty) returns (LockingState){}
+  // To reboot the device.
+  rpc Reboot(DeviceEmpty) returns (DeviceEmpty){}
+
+  // To trigger the device OTA.
+  rpc TriggerOta(DeviceEmpty) returns (DeviceEmpty){}
+
+  // To get the device information.
+  rpc GetDeviceInfo(DeviceEmpty) returns (DeviceInfo){}
 }
+

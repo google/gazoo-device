@@ -18,10 +18,9 @@ The CLI is generated dynamically by Python Fire:
 https://github.com/google/python-fire.
 """
 import sys
-from typing import Dict, Optional, Sequence
+from typing import Dict, NoReturn, Optional, Sequence
 
 import fire
-
 import gazoo_device
 from gazoo_device import errors
 from gazoo_device import extensions
@@ -36,6 +35,28 @@ VERSION_FLAG = "-v"
 FLAG_MARKER = "--"
 OMIT_FLAGS = ["help"]
 _CLI_NAME = "gdm"
+
+
+def _get_flags(args: Sequence[str]) -> Dict[str, bool]:
+  """Parses flags out of array of CLI args.
+
+  Flags in OMIT_FLAGS dict will not be returned.
+
+  Args:
+    args: CLI arguments provided by the user.
+
+  Returns:
+    Parsed flags to pass to the CLI.
+  """
+  flags = {}
+  for arg in args:
+    if arg.startswith(FLAG_MARKER):
+      flag_name = arg[len(FLAG_MARKER):]
+      if flag_name and flag_name not in OMIT_FLAGS:
+        flags[flag_name] = True
+    else:
+      break  # Ignore flags after initial CLI call
+  return flags
 
 
 def _create_manager_for_cli(
@@ -57,17 +78,9 @@ def _create_manager_for_cli(
   return extended_manager_class(**manager_kwargs)
 
 
-def execute_command(command: Optional[str] = None,
-                    cli_name: str = _CLI_NAME) -> int:
-  """Executes the CLI command through Python Fire.
-
-  Args:
-    command: Passed to Python Fire. If None, sys.argv are used instead.
-    cli_name: Name of the CLI executable ("gdm").
-
-  Returns:
-    Error code: 0 if command was successful, non-zero otherwise.
-  """
+def _execute_command(command: Optional[str] = None,
+                     cli_name: str = _CLI_NAME) -> int:
+  """Executes the CLI command through Python Fire."""
   # Parse flags out of commands. E.g. "gdm --debug - devices" ->
   # flags = {"debug": True}, commands = ["-", "devices"].
   if command:
@@ -94,36 +107,15 @@ def execute_command(command: Optional[str] = None,
   return exit_code
 
 
-def _get_flags(args: Sequence[str]) -> Dict[str, bool]:
-  """Parses flags out of array of CLI args.
-
-  Flags in OMIT_FLAGS dict will not be returned.
-
-  Args:
-    args: CLI arguments provided by the user.
-
-  Returns:
-    Parsed flags to pass to the CLI.
-  """
-  flags = {}
-  for arg in args:
-    if arg.startswith(FLAG_MARKER):
-      flag_name = arg[len(FLAG_MARKER):]
-      if flag_name and flag_name not in OMIT_FLAGS:
-        flags[flag_name] = True
-    else:
-      break  # Ignore flags after initial CLI call
-  return flags
-
-
-def main(command: Optional[str] = None) -> int:
+def main(command: Optional[str] = None, cli_name: str = _CLI_NAME) -> NoReturn:
   """Main function for Gazoo Device Manager (gazoo_device) package.
 
   Args:
     command: Passed to Python Fire. If None, sys.argv are used instead.
+    cli_name: Name of the CLI executable ("gdm").
 
-  Returns:
-    Error code: 0 if command was successful, non-zero otherwise.
+  Raises:
+    SystemExit: always calls sys.exit(<return code>).
   """
   package_registrar.import_and_register_cli_extension_packages()
 
@@ -131,9 +123,9 @@ def main(command: Optional[str] = None) -> int:
     logger.info(f"Gazoo Device Manager {gazoo_device.version}")
     package_versions = extensions.get_registered_package_info()
     logger.info(f"Registered extension packages: {package_versions}")
-    return 0
+    sys.exit(0)
 
-  return execute_command(command)
+  sys.exit(_execute_command(command, cli_name))
 
 
 if __name__ == "__main__":

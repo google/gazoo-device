@@ -15,7 +15,6 @@
 """Unit tests for GazooDeviceBase class."""
 import os
 from unittest import mock
-import weakref
 
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -30,11 +29,11 @@ from gazoo_device.switchboard import switchboard
 from gazoo_device.tests.unit_tests.device_mixin_tests import common_test
 from gazoo_device.tests.unit_tests.utils import fake_capabilities
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
-from gazoo_device.tests.unit_tests.utils import fake_gazoo_device_base
+from gazoo_device.tests.unit_tests.utils import fake_devices
 from gazoo_device.tests.unit_tests.utils import gc_test_utils
 
 
-class GazooDeviceBaseStub(fake_gazoo_device_base.FakeGazooDeviceBase):
+class GazooDeviceBaseStub(fake_devices.FakeGazooDeviceBase):
   """Stub GazooDevice implementation with additional attributes for testing."""
   COMMUNICATION_TYPE = "SshComms"
   DEVICE_TYPE = "devicestub"
@@ -105,11 +104,11 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     self.uut.close()
     self.mock_switchboard.close.assert_called_once()
 
-  def test_002_manager_available_after_device_is_closed(self):
-    """Test that the Manager instance is available after device is closed."""
-    self.assertIsNotNone(self.uut.manager_weakref())
+  def test_002_get_manager(self):
+    """Tests get_manager() for open and closed device."""
+    self.assertTrue(self.uut.get_manager())
     self.uut.close()
-    self.assertIsNotNone(self.uut.manager_weakref())
+    self.assertTrue(self.uut.get_manager())
 
   def test_010_make_device_ready_must_be_a_string(self):
     """Verify that an exception is raised if make_device_ready is a bool."""
@@ -126,7 +125,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
 
   def test_050_gazoo_device_base_close_manager_weakref_dead(self):
     """Verify GazooDeviceBase can close when Manager weakref is dead."""
-    with mock.patch.object(self.uut, "manager_weakref",
+    with mock.patch.object(self.uut, "_manager_weakref",
                            new=mock.Mock(return_value=None)):
       self.uut.close()
 
@@ -481,7 +480,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     """Verify get_property() handles capability (nested) properties."""
     self.uut.usb_hub = usb_hub_default.UsbHubDefault(
         device_name=self.uut.name,
-        manager_weakref=weakref.ref(self.mock_manager),
+        get_manager=self.uut.get_manager,
         hub_name="cambrionix-1234",
         device_port=1,
         get_switchboard_if_initialized=lambda: self.mock_switchboard)

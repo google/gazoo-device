@@ -72,6 +72,11 @@ class JLinkFlashDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     with self.assertRaises(errors.DeviceError):
       self.uut.flash_device(["h1.hex", "h2.hex"])
 
+  def test_003_return_unknown_properties(self):
+    for name in ["get_firmware_version", "get_firmware_type"]:
+      method = getattr(self.uut, name)
+      self.assertEqual(method(), flash_build_jlink.UNKNOWN)
+
 
 if __name__ == "__main__":
   fake_device_test_case.main()

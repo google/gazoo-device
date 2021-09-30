@@ -27,11 +27,10 @@ import re
 from unittest import mock
 
 from gazoo_device import gdm_logger
-from gazoo_device import manager
 from gazoo_device.base_classes import auxiliary_device
 from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.capabilities import event_parser_default
-from gazoo_device.switchboard import switchboard
+from gazoo_device.tests.unit_tests.utils import fake_devices
 from gazoo_device.tests.unit_tests.utils import fake_responder
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import usb_utils
@@ -113,61 +112,17 @@ class FakeDeviceTestCase(unit_test_case.UnitTestCase):
     Raises:
       RuntimeError: If uut_name is not in <device_type>-<device-id> format.
     """
-    self.mock_out_usb_utils_methods()
-    if "-" not in uut_name:
-      raise RuntimeError(
-          "device name {} needs to be in format <device_type>-<device-id>")
     self.uut_name = uut_name
-    self.device_config = {
-        "persistent": {
-            "name": uut_name,
-            "device_type": uut_name.split("-")[0],
-            "serial_number": "123456",
-            "console_port_name": f"/dev/serial/by-id/{uut_name}",
-            "wpan_mac_address": "123456",
-            "model": "Development",
-        },
-        "options": {
-            "usb_port": None,
-            "usb_hub": None,
-            "alias": None,
-        },
-        "skip_recover_device": False,
-        "make_device_ready": "off",
-        "log_name_prefix": "",
-        "filters": None,
-    }
+    self.device_config = fake_devices.create_default_device_config(uut_name)
 
-    self.mock_manager = mock.MagicMock(spec=manager.Manager)
-    # pylint: disable=protected-access
-    self.mock_manager._open_devices = {}
-    self.mock_manager._devices = {}
-    # pylint: enable=protected-access
-    self.mock_manager.other_devices = {}
-    self.mock_manager.log_directory = self.artifacts_directory
+    self.mock_manager = fake_devices.create_mock_manager(
+        self.artifacts_directory)
 
     self._log_to_artifacts_directory()
-
-    self.mock_switchboard = mock.MagicMock(spec=switchboard.SwitchboardDefault)
-    self.mock_switchboard.healthy = True
-    self.mock_switchboard.device_name = uut_name
-    self.mock_switchboard.number_transports = 2
-
     self.fake_responder = fake_responder.FakeResponder(debug=debug)
-    self.mock_switchboard.send_and_expect.side_effect = (
-        self.fake_responder.send_and_expect)
-    self.mock_switchboard.expect.side_effect = (
-        self.fake_responder.expect)
-    self.mock_switchboard.click_and_expect.side_effect = (
-        self.fake_responder.click_and_expect)
-    self.mock_switchboard.press_and_expect.side_effect = (
-        self.fake_responder.press_and_expect)
-    self.mock_switchboard.release_and_expect.side_effect = (
-        self.fake_responder.release_and_expect)
-
-    self.mock_manager.create_switchboard.side_effect = (
-        self._mock_create_switchboard)
-
+    self.mock_switchboard = fake_devices.create_mock_switchboard(
+        uut_name, self.mock_manager, self.fake_responder)
+    self.mock_out_usb_utils_methods()
     self.add_time_mocks()
     self.check_device_connected_patch_primary = mock.patch.object(
         gazoo_device_base.GazooDeviceBase,
@@ -198,13 +153,6 @@ class FakeDeviceTestCase(unit_test_case.UnitTestCase):
         expected_dynamic_properties,
         error_msg,
         exception_property_regexes=exception_property_regexes)
-
-  def _mock_create_switchboard(self, communication_address, communication_type,
-                               **kwargs):
-    # pylint: disable=protected-access
-    self.mock_switchboard._force_slow = kwargs.get("force_slow", False)
-    # pylint: enable=protected-access
-    return self.mock_switchboard
 
   def _log_to_artifacts_directory(self):
     """Sets up logging to test artifact directory."""

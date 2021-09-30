@@ -100,9 +100,11 @@ class CLITests(unit_test_case.UnitTestCase):
           raspberry_pi, "RaspberryPi",
           return_value=raspberry_pi_mock):
 
-        retvalue = gdm_cli.main(command)
-        if retvalue != 0:
-          self.fail(f"{command!r} failed with return code {retvalue}")
+        with self.assertRaises(SystemExit) as assertion:
+          gdm_cli.main(command)
+        self.assertEqual(
+            assertion.exception.code, 0,
+            f"{command!r} failed with return code {assertion.exception.code}.")
 
   @parameterized.parameters(
       dict(command="--debug - detect", expected_flags={"debug": True}),

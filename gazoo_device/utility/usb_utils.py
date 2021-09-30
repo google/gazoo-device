@@ -172,7 +172,7 @@ def get_other_ftdi_line(address, ftdi_interface):
       serial_number, ftdi_interface))
 
 
-def get_serial_number_from_path(address):
+def get_serial_number_from_path(address) -> str:
   """Returns the serial number embedded in address provided.
 
   Args:
@@ -180,9 +180,6 @@ def get_serial_number_from_path(address):
 
   Raises:
       ValueError: if FTDI serial number can't be obtained from address.
-
-  Returns:
-      str: Serial number from address.
   """
   usb_info_inst = get_device_info(address)
   return usb_info_inst.serial_number

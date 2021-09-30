@@ -19,18 +19,11 @@ from gazoo_device import gdm_logger
 from gazoo_device.base_classes import espressif_esp32_device
 from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.capabilities import pwrpc_lock_default
+from gazoo_device.protos import device_service_pb2
 from gazoo_device.protos import locking_service_pb2
 from gazoo_device.utility import pwrpc_utils
 import immutabledict
 
-# TODO(b/185956488): Remove conditional imports of Pigweed
-try:
-  # pylint: disable=g-import-not-at-top
-  # pytype: disable=import-error
-  from device_service import device_service_pb2
-  # pytype: enable=import-error
-except ImportError:
-  device_service_pb2 = None
 
 logger = gdm_logger.get_logger()
 _LOCK_SERVICE_REGEXES = immutabledict.immutabledict({

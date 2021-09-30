@@ -23,6 +23,7 @@ import intelhex
 import pylink
 
 logger = gdm_logger.get_logger()
+UNKNOWN = flash_build_base.UNKNOWN
 
 
 class FlashBuildJLink(flash_build_base.FlashBuildBase):
@@ -106,10 +107,14 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
         "get_defaults is not available in flash_build_jlink for now.")
 
   @decorators.CapabilityLogDecorator(logger)
+  def get_firmware_type(self, build_args=None):
+    """Returns the firmware type based on the build arguments."""
+    return UNKNOWN
+
+  @decorators.CapabilityLogDecorator(logger)
   def get_firmware_version(self, build_args=None):
     """Returns the firmware version based on the build arguments."""
-    raise NotImplementedError(
-        "get_firmware_version is not available in flash_build_jlink for now.")
+    return UNKNOWN
 
   @decorators.CapabilityLogDecorator(logger)
   def get_remote_build_folder(self, build_args=None):

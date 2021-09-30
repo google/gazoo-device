@@ -26,8 +26,10 @@ from gazoo_device import gdm_logger
 from gazoo_device import manager
 from gazoo_device import package_registrar
 from gazoo_device import testbed
+
 from gazoo_device.switchboard import switchboard
 from gazoo_device.tests.unit_tests import manager_test
+from gazoo_device.tests.unit_tests.utils import fake_devices
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import usb_utils
 import yaml
@@ -177,34 +179,34 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
     """Test that FireManager.issue() runs all health checks."""
     with manager_test.MockOutDevices():
       self.uut.issue("sshdevice-0000")
-      manager_test.FakeSSHDevice.make_device_ready.assert_called_once_with("on")
+      fake_devices.FakeSSHDevice.make_device_ready.assert_called_once_with("on")
 
   def test_12_exec(self):
     """Test that FireManager.exec() does not run health checks."""
     with manager_test.MockOutDevices():
       self.uut.exec("sshdevice-0000")
-      manager_test.FakeSSHDevice.make_device_ready.assert_called_once_with(
+      fake_devices.FakeSSHDevice.make_device_ready.assert_called_once_with(
           "off")
 
-  @mock.patch.object(manager_test.FakeSSHDevice, "close")
+  @mock.patch.object(fake_devices.FakeSSHDevice, "close")
   def test_13_health_check_success_without_recover(self, mock_close):
     """Test FireManager.health_check(recover=False) success."""
     with manager_test.MockOutDevices():
       self.uut.health_check("sshdevice-0000", recover=False)
-      manager_test.FakeSSHDevice.make_device_ready.assert_called_with(
+      fake_devices.FakeSSHDevice.make_device_ready.assert_called_with(
           setting="check_only")
     mock_close.assert_called_once()
 
-  @mock.patch.object(manager_test.FakeSSHDevice, "close")
+  @mock.patch.object(fake_devices.FakeSSHDevice, "close")
   def test_14_health_check_success_with_recover(self, mock_close):
     """Test FireManager.health_check(recover=True) success."""
     with manager_test.MockOutDevices():
       self.uut.health_check("sshdevice-0000", recover=True)
-      manager_test.FakeSSHDevice.make_device_ready.assert_called_with(
+      fake_devices.FakeSSHDevice.make_device_ready.assert_called_with(
           setting="on")
     mock_close.assert_called_once()
 
-  @mock.patch.object(manager_test.FakeSSHDevice, "close")
+  @mock.patch.object(fake_devices.FakeSSHDevice, "close")
   def test_15_health_check_raises_on_error(self, mock_close):
     """Test that FireManager.health_check() raises when health checks fail."""
 
@@ -216,13 +218,13 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
                                             "Did not respond to 'foo' in 10s")
 
     with manager_test.MockOutDevices():
-      manager_test.FakeSSHDevice.make_device_ready = mock.Mock(
-          side_effect=mock_make_device_ready)
-      with self.assertRaises(errors.DeviceNotResponsiveError):
-        self.uut.health_check("sshdevice-0000")
-      manager_test.FakeSSHDevice.make_device_ready.assert_called_with(
-          setting="check_only")
-      mock_close.assert_called_once()
+      with mock.patch.object(fake_devices.FakeSSHDevice, "make_device_ready",
+                             side_effect=mock_make_device_ready):
+        with self.assertRaises(errors.DeviceNotResponsiveError):
+          self.uut.health_check("sshdevice-0000")
+        fake_devices.FakeSSHDevice.make_device_ready.assert_called_with(
+            setting="check_only")
+        mock_close.assert_called_once()
 
   def test_16_get_prop(self):
     """Test FireManager.get_prop() retrieves all properties successfully."""
@@ -322,7 +324,7 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
         "wifi ssid not pingable")
     with manager_test.MockOutDevices():
       with mock.patch.object(
-          manager_test.FakeSSHDevice,
+          fake_devices.FakeSSHDevice,
           "make_device_ready",
           side_effect=expected_error):
         with mock.patch.object(
@@ -349,7 +351,7 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
     with manager_test.MockOutDevices():
       device = self.uut.create_device("sshdevice-0000")
       with mock.patch.object(
-          manager_test.FakeSSHDevice,
+          fake_devices.FakeSSHDevice,
           "make_device_ready",
           side_effect=expected_error):
         parameter_dict = {"sshdevice": {"setting": "on"}}

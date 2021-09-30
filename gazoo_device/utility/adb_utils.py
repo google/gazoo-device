@@ -18,7 +18,7 @@ import os
 import re
 import subprocess
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from gazoo_device import config
 from gazoo_device import errors
@@ -32,6 +32,41 @@ FASTBOOT_TIMEOUT = 10.0
 PROPERTY_PATTERN = r"\[(.*)\]: \[(.*)\]\n"
 SYSENV_PATTERN = r"(.*)=(.*)\n"
 logger = gdm_logger.get_logger()
+
+
+def bugreport(adb_serial: str,
+              destination_path: str = "./",
+              adb_path: Optional[str] = None) -> str:
+  """Gets a bugreport to destination_path on host for the adb_serial provided.
+
+  Args:
+      adb_serial: Device serial number
+      destination_path: Path to destination on host computer where bugreport
+          should copied to.
+      adb_path: optional alternative path to adb executable. If adb_path is not
+          provided then path returned by get_adb_path will be used instead.
+
+  Raises:
+      RuntimeError: if adb_path is invalid or adb executable was not found by
+          get_adb_path or bugreport failed.
+      ValueError: if destination_path does not exist.
+
+  Returns:
+      Output from calling 'adb bugreport'.
+  """
+  destination_dir = os.path.dirname(destination_path)
+  if not os.path.exists(destination_dir):
+    raise ValueError(f"The destination_path directory {destination_dir} does "
+                     "not exist.")
+  output, returncode = _adb_command(command=["bugreport", destination_path],
+                                    adb_serial=adb_serial,
+                                    adb_path=adb_path,
+                                    include_return_code=True)
+  if returncode != 0:
+    raise RuntimeError(f"Getting bugreport on ADB device {adb_serial} to "
+                       f"{destination_path} failed. "
+                       f"Error: {output!r} with return code {returncode}")
+  return output
 
 
 def enter_fastboot(adb_serial, adb_path=None):
@@ -349,25 +384,30 @@ def connect(adb_serial, adb_path=None):
         f"Unable to connect to device {adb_serial!r} via ADB: {resp}")
 
 
-def shell(adb_serial, command, adb_path=None, timeout=None, retries=1):
+def shell(adb_serial: str,
+          command: str,
+          adb_path: Optional[str] = None,
+          timeout: Optional[int] = None,
+          retries: int = 1,
+          include_return_code: bool = False) -> Any:
   """Issues a command to the shell of the adb_serial provided.
 
   Args:
-      adb_serial (str): Device serial number
-      command (str): command to send
-      adb_path (str): optional alternative path to adb executable
-      timeout (int): time in seconds to wait for adb process to complete.
-      retries (int): number of times to retry adb command.
+    adb_serial: Device serial number.
+    command: Command to send.
+    adb_path: Optional alternative path to adb executable.
+    timeout: Time in seconds to wait for adb process to complete.
+    retries: Number of times to retry adb command.
+    include_return_code: A flag indicating return code should also be
+      returned.
 
   Returns:
-      str: response from adb command
-
-  Note:
-      If adb_path is not provided then path returned by get_adb_path will be
-      used instead.
+    Response string if include_return_code is False; (response, return code)
+      tuple otherwise.
   """
   return _adb_command(["shell", command], adb_serial,
-                      adb_path=adb_path, timeout=timeout, retries=retries)
+                      adb_path=adb_path, timeout=timeout, retries=retries,
+                      include_return_code=include_return_code)
 
 
 def get_fastboot_devices(fastboot_path=None):

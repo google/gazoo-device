@@ -15,7 +15,7 @@
 """Fake capability definitions and fake device classes with fake capabilities for unit testing."""
 from gazoo_device import decorators
 from gazoo_device.capabilities.interfaces import capability_base
-from gazoo_device.tests.unit_tests.utils import fake_gazoo_device_base
+from gazoo_device.tests.unit_tests.utils import fake_devices
 from gazoo_device.utility import common_utils
 
 VALID_CAPABILITY_NAME = "some_valid_capability"
@@ -166,7 +166,7 @@ class UnsupportedFlavor(UnsupportedCapabilityBase):
 
 
 # Device classes with invalid capability definitions
-class DeviceWithInvalidCapability1(fake_gazoo_device_base.FakeGazooDeviceBase):
+class DeviceWithInvalidCapability1(fake_devices.FakeGazooDeviceBase):
   """Capability doesn't inherit from CapabilityBase."""
 
   @decorators.CapabilityDecorator(InvalidCapabilityBase)
@@ -174,7 +174,7 @@ class DeviceWithInvalidCapability1(fake_gazoo_device_base.FakeGazooDeviceBase):
     return 1
 
 
-class DeviceWithInvalidCapability2(fake_gazoo_device_base.FakeGazooDeviceBase):
+class DeviceWithInvalidCapability2(fake_devices.FakeGazooDeviceBase):
   """Invalid capability class."""
 
   @decorators.CapabilityDecorator(str)
@@ -182,7 +182,7 @@ class DeviceWithInvalidCapability2(fake_gazoo_device_base.FakeGazooDeviceBase):
     return 1
 
 
-class DeviceWithInvalidCapability3(fake_gazoo_device_base.FakeGazooDeviceBase):
+class DeviceWithInvalidCapability3(fake_devices.FakeGazooDeviceBase):
   """Capability is a class instance (not a class object)."""
 
   @decorators.CapabilityDecorator("some_string")
@@ -190,23 +190,21 @@ class DeviceWithInvalidCapability3(fake_gazoo_device_base.FakeGazooDeviceBase):
     return 1
 
 
-class DeviceWithUnsupportedCapability(
-    fake_gazoo_device_base.FakeGazooDeviceBase):
+class DeviceWithUnsupportedCapability(fake_devices.FakeGazooDeviceBase):
 
   @decorators.CapabilityDecorator(UnsupportedFlavor)
   def foo(self):
     return 1
 
 
-class DeviceInvalidCapabilityName(fake_gazoo_device_base.FakeGazooDeviceBase):
+class DeviceInvalidCapabilityName(fake_devices.FakeGazooDeviceBase):
 
   @decorators.CapabilityDecorator(ValidCapabilityFlavor)
   def unexpected_capability_name(self):
     return 1
 
 
-class DeviceDifferentCapabilityInterfaces(
-    fake_gazoo_device_base.FakeGazooDeviceBase):
+class DeviceDifferentCapabilityInterfaces(fake_devices.FakeGazooDeviceBase):
 
   @decorators.CapabilityDecorator(
       [ValidCapabilityFlavor, ValidOtherCapabilityFlavor])
@@ -215,7 +213,7 @@ class DeviceDifferentCapabilityInterfaces(
 
 
 class DeviceCapabilityInterfaceInsteadOfFlavor(
-    fake_gazoo_device_base.FakeGazooDeviceBase):
+    fake_devices.FakeGazooDeviceBase):
 
   @decorators.CapabilityDecorator(ValidCapabilityBase)
   def some_valid_capability(self):
@@ -223,47 +221,46 @@ class DeviceCapabilityInterfaceInsteadOfFlavor(
 
 
 # Device classes with valid capability definitions
-class DeviceNoCapabilities(fake_gazoo_device_base.FakeGazooDeviceBase):
+class DeviceNoCapabilities(fake_devices.FakeGazooDeviceBase):
   pass
 
 
-class DeviceOneFlavorCapability(fake_gazoo_device_base.FakeGazooDeviceBase):
+class DeviceOneFlavorCapability(fake_devices.FakeGazooDeviceBase):
 
   @decorators.CapabilityDecorator(ValidCapabilityFlavor)
   def some_valid_capability(self):
     return 1
 
 
-class DeviceOneFlavorCapabilityList(fake_gazoo_device_base.FakeGazooDeviceBase):
+class DeviceOneFlavorCapabilityList(fake_devices.FakeGazooDeviceBase):
 
   @decorators.CapabilityDecorator([ValidCapabilityFlavor])
   def some_valid_capability(self):
     return 1
 
 
-class DeviceParentFlavorCapability(fake_gazoo_device_base.FakeGazooDeviceBase):
+class DeviceParentFlavorCapability(fake_devices.FakeGazooDeviceBase):
 
   @decorators.CapabilityDecorator([ValidParentCapabilityFlavor])
   def valid_parent_capability(self):
     return 1
 
 
-class DeviceChildFlavorCapability(fake_gazoo_device_base.FakeGazooDeviceBase):
+class DeviceChildFlavorCapability(fake_devices.FakeGazooDeviceBase):
 
   @decorators.CapabilityDecorator([ValidChildCapabilityFlavor])
   def valid_child_capability(self):
     return 1
 
 
-class DeviceNonConformingNameFlavor(fake_gazoo_device_base.FakeGazooDeviceBase):
+class DeviceNonConformingNameFlavor(fake_devices.FakeGazooDeviceBase):
 
   @decorators.CapabilityDecorator(NonConformingInterfaceNameFlavor)
   def non_conforming_capability(self):
     return 1
 
 
-class DeviceMultipleFlavorsCapabilityList(
-    fake_gazoo_device_base.FakeGazooDeviceBase):
+class DeviceMultipleFlavorsCapabilityList(fake_devices.FakeGazooDeviceBase):
 
   @decorators.CapabilityDecorator(
       [ValidCapabilityFlavor, ValidCapabilityFlavor1])
@@ -271,8 +268,7 @@ class DeviceMultipleFlavorsCapabilityList(
     return 1
 
 
-class DeviceMultipleFlavorsCapabilityTuple(
-    fake_gazoo_device_base.FakeGazooDeviceBase):
+class DeviceMultipleFlavorsCapabilityTuple(fake_devices.FakeGazooDeviceBase):
 
   @decorators.CapabilityDecorator(
       (ValidCapabilityFlavor, ValidCapabilityFlavor1))
@@ -280,7 +276,7 @@ class DeviceMultipleFlavorsCapabilityTuple(
     return 1
 
 
-class DeviceMultipleCapabilities(fake_gazoo_device_base.FakeGazooDeviceBase):
+class DeviceMultipleCapabilities(fake_devices.FakeGazooDeviceBase):
 
   @decorators.CapabilityDecorator(ValidCapabilityFlavor)
   def some_valid_capability(self):
@@ -292,7 +288,7 @@ class DeviceMultipleCapabilities(fake_gazoo_device_base.FakeGazooDeviceBase):
 
 
 class DeviceMultipleCapabilitiesMultipleFlavors(
-    fake_gazoo_device_base.FakeGazooDeviceBase):
+    fake_devices.FakeGazooDeviceBase):
   """Mock device with multiple capabilities and multiple flavors of them."""
 
   @decorators.CapabilityDecorator(

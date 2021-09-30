@@ -14,9 +14,8 @@
 
 """Interface for an PwRPC (Pigweed RPC) lighting capability."""
 import abc
-from typing import Tuple
-
 from gazoo_device.capabilities.interfaces import capability_base
+from gazoo_device.protos import lighting_service_pb2
 
 
 class PwRPCLightBase(capability_base.CapabilityBase):
@@ -57,9 +56,21 @@ class PwRPCLightBase(capability_base.CapabilityBase):
 
   @property
   @abc.abstractmethod
-  def brightness(self) -> Tuple[int, int]:
-    """The brightness level of the device.
+  def brightness(self) -> int:
+    """The brightness level of the device: between 0 and 255 inclusive.
 
     Returns:
-      Current brightness level and the maximal brightness level.
+      The current brightness level.
+    """
+
+  @property
+  @abc.abstractmethod
+  def color(self) -> lighting_service_pb2.LightingColor:
+    """The lighting color of the device.
+
+    Color consists of hue and saturation, which are between 0x00 and 0xFE
+    inclusive.
+
+    Returns:
+      The current lighting color.
     """

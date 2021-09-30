@@ -20,21 +20,11 @@ from gazoo_device.base_classes import nrf_connect_sdk_device
 from gazoo_device.capabilities import pwrpc_button_default
 from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.capabilities import pwrpc_light_default
+from gazoo_device.protos import button_service_pb2
+from gazoo_device.protos import device_service_pb2
+from gazoo_device.protos import lighting_service_pb2
 from gazoo_device.utility import pwrpc_utils
 import immutabledict
-
-# TODO(b/185956488): Remove conditional imports of Pigweed
-try:
-  # pylint: disable=g-import-not-at-top
-  # pytype: disable=import-error
-  from button_service import button_service_pb2
-  from device_service import device_service_pb2
-  from lighting_service import lighting_service_pb2
-  # pytype: enable=import-error
-except ImportError:
-  button_service_pb2 = None
-  device_service_pb2 = None
-  lighting_service_pb2 = None
 
 logger = gdm_logger.get_logger()
 _REGEXES = {"BOOT_UP": r"<inf> app: Starting CHIP task",}
@@ -48,6 +38,9 @@ _BUTTON_EVENT_REGEXES = immutabledict.immutabledict({
     1: "Action has been completed",
     2: "New pairing for device",
     3: "NFC Tag emulation and BLE advertisement"})
+_LIGHTING_SERVICE_REGEXES = immutabledict.immutabledict({
+    pwrpc_light_default.LightingAction.ON: "Setting brightness level to 1",
+    pwrpc_light_default.LightingAction.OFF: "Setting brightness level to 0"})
 
 
 class NRFPigweedLighting(nrf_connect_sdk_device.NRFConnectSDKDevice):
@@ -134,6 +127,10 @@ class NRFPigweedLighting(nrf_connect_sdk_device.NRFConnectSDKDevice):
   @decorators.CapabilityDecorator(pwrpc_light_default.PwRPCLightDefault)
   def pw_rpc_light(self):
     """PwRPCLight capability to send RPC command."""
-    return self.lazy_init(pwrpc_light_default.PwRPCLightDefault,
-                          device_name=self.name,
-                          switchboard_call=self.switchboard.call)
+    return self.lazy_init(
+        pwrpc_light_default.PwRPCLightDefault,
+        device_name=self.name,
+        expect_lighting_regexes=_LIGHTING_SERVICE_REGEXES,
+        expect_timeout=_RPC_TIMEOUT,
+        switchboard_call=self.switchboard.call,
+        switchboard_call_expect=self.switchboard.call_and_expect)

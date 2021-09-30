@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Unit tests for package_registrar.py."""
 import abc
 import builtins
@@ -34,7 +33,7 @@ from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.capabilities import event_parser_default
 from gazoo_device.capabilities.interfaces import capability_base
 from gazoo_device.switchboard import communication_types
-from gazoo_device.tests.unit_tests.utils import fake_gazoo_device_base
+from gazoo_device.tests.unit_tests.utils import fake_devices
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 import immutabledict
 
@@ -108,22 +107,20 @@ class GoodQueryKey(detect_criteria.QueryEnum):
   another_valid_query = "another_valid_query"
 
 
-class GoodPrimaryDevice(fake_gazoo_device_base.FakeGazooDeviceBase):
+class GoodPrimaryDevice(fake_devices.FakeGazooDeviceBase):
   DEVICE_TYPE = "some_primary_device"
   COMMUNICATION_TYPE = "GoodCommunicationType"
-  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
-      GoodQueryKey.some_valid_query: "some_value"
-  })
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict(
+      {GoodQueryKey.some_valid_query: "some_value"})
   _OWNER_EMAIL = "gdm-authors@google.com"
 
 
-class GoodVirtualDevice(fake_gazoo_device_base.FakeGazooDeviceBase):
+class GoodVirtualDevice(fake_devices.FakeGazooDeviceBase):
   """A dummy valid concrete virtual device class."""
   DEVICE_TYPE = "some_virtual_device"
   COMMUNICATION_TYPE = "GoodCommunicationType"
-  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
-      GoodQueryKey.some_valid_query: "some_value"
-  })
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict(
+      {GoodQueryKey.some_valid_query: "some_value"})
   _OWNER_EMAIL = "gdm-authors@google.com"
 
 
@@ -131,9 +128,8 @@ class GoodAuxiliaryDevice(auxiliary_device.AuxiliaryDevice):
   """A dummy valid concrete auxiliary device class."""
   DEVICE_TYPE = "some_auxiliary_device"
   COMMUNICATION_TYPE = "GoodCommunicationType"
-  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
-      GoodQueryKey.some_valid_query: "some_value"
-  })
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict(
+      {GoodQueryKey.some_valid_query: "some_value"})
   _OWNER_EMAIL = "gdm-authors@google.com"
 
   @decorators.LogDecorator(logger)
@@ -179,8 +175,7 @@ def good_detection_query(address, detect_logger, create_switchboard_func):
   return True
 
 
-def another_good_detection_query(address,
-                                 detect_logger,
+def another_good_detection_query(address, detect_logger,
                                  create_switchboard_func):
   """Dummy detection query with correct arguments."""
   # Unused: this is a dummy implementation
@@ -227,8 +222,7 @@ class BadPrimaryDeviceMisnamedHealthCheck(GoodPrimaryDevice):
     """All health checks should be prefixed with "check_<...>"."""
 
 
-class BadPrimaryDeviceMissingClassConstants(
-    fake_gazoo_device_base.FakeGazooDeviceBase):
+class BadPrimaryDeviceMissingClassConstants(fake_devices.FakeGazooDeviceBase):
   """Primary device class which misses several required class constants."""
 
 
@@ -240,12 +234,14 @@ class BadPrimaryDeviceMisnamedCapability(GoodPrimaryDevice):
     """The capability must be defined as "event_parser"."""
 
 
-GoodKey = data_types.KeyInfo(file_name="good_key",
-                             type=data_types.KeyType.SSH,
-                             package=_TEST_PACKAGE_NAME)
-BadKeyMismatchingPackage = data_types.KeyInfo(file_name="bad_key",
-                                              type=data_types.KeyType.SSH,
-                                              package="mismatching_name")
+GoodKey = data_types.KeyInfo(
+    file_name="good_key",
+    type=data_types.KeyType.SSH,
+    package=_TEST_PACKAGE_NAME)
+BadKeyMismatchingPackage = data_types.KeyInfo(
+    file_name="bad_key",
+    type=data_types.KeyType.SSH,
+    package="mismatching_name")
 
 
 class GoodManagerCliMixin(fire_manager.FireManager):
@@ -281,12 +277,16 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
     with self.assertRaisesRegex(errors.PackageRegistrationError, regex):
       package_registrar.register(self.mock_package)
 
-  @mock.patch.object(extensions, "package_info", new={
-      _TEST_PACKAGE_NAME: immutabledict.immutabledict({
-          "version": "0.0.1",
-          "key_download_function": lambda: None,
+  @mock.patch.object(
+      extensions,
+      "package_info",
+      new={
+          _TEST_PACKAGE_NAME:
+              immutabledict.immutabledict({
+                  "version": "0.0.1",
+                  "key_download_function": lambda: None,
+              })
       })
-  })
   def test_register_already_known_package(self):
     """Test registering package which has already been registered."""
     error_regex = r"Package 'foo_package' has already been registered"
@@ -296,12 +296,8 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
   def test_register_not_a_class(self):
     """Test registering an object which is not a class."""
     test_cases = [
-        "auxiliary_devices",
-        "primary_devices",
-        "virtual_devices",
-        "communication_types",
-        "capability_interfaces",
-        "capability_flavors"
+        "auxiliary_devices", "primary_devices", "virtual_devices",
+        "communication_types", "capability_interfaces", "capability_flavors"
     ]
     for extension in test_cases:
       with self.subTest(extension=extension):
@@ -314,16 +310,14 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
 
   def test_register_abstract_class(self):
     """Test registering an abstract class."""
-    test_cases = [
-        ("auxiliary_devices", [AbstractAuxiliaryDevice]),
-        ("primary_devices", [AbstractPrimaryDevice]),
-        ("virtual_devices", [AbstractVirtualDevice]),
-        ("communication_types", [AbstractCommunicationType]),
-        ("capability_flavors", [AbstractCapabilityFlavorDefault])
-    ]
+    test_cases = [("auxiliary_devices", [AbstractAuxiliaryDevice]),
+                  ("primary_devices", [AbstractPrimaryDevice]),
+                  ("virtual_devices", [AbstractVirtualDevice]),
+                  ("communication_types", [AbstractCommunicationType]),
+                  ("capability_flavors", [AbstractCapabilityFlavorDefault])]
     for extension, extension_classes in test_cases:
-      with self.subTest(extension=extension,
-                        extension_classes=extension_classes):
+      with self.subTest(
+          extension=extension, extension_classes=extension_classes):
         self.mock_package.export_extensions.return_value = {
             extension: extension_classes
         }
@@ -341,8 +335,8 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
                   ("capability_interfaces", capability_base.CapabilityBase),
                   ("capability_flavors", capability_base.CapabilityBase)]
     for extension, expected_base_class in test_cases:
-      with self.subTest(extension=extension,
-                        expected_base_class=expected_base_class):
+      with self.subTest(
+          extension=extension, expected_base_class=expected_base_class):
         self.mock_package.export_extensions.return_value = {
             extension: [ClassNotInheritingFromInterface]
         }
@@ -365,8 +359,7 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
     with self.assertRaisesRegex(errors.PackageRegistrationError, regex):
       package_registrar.register(self.mock_package)
 
-  @mock.patch.object(extensions, "primary_devices",
-                     new=[GoodPrimaryDevice])
+  @mock.patch.object(extensions, "primary_devices", new=[GoodPrimaryDevice])
   def test_register_duplicate_device_class(self):
     """Test registering a duplicate device class."""
     self.mock_package.export_extensions.return_value = {
@@ -385,45 +378,45 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
                     r"\t{err}")
     test_cases = (
         (BadPrimaryDeviceNoLogDecorator,
-         r"Public methods without return values must be decorated with "
-         r"@decorators\.LogDecorator\(<logger>\)\. "
-         r"Incompliant methods: \['factory_reset'\]"),
+         (r"Public methods without return values must be decorated with "
+          r"@decorators\.LogDecorator\(<logger>\)\. "
+          r"Incompliant methods: \['factory_reset'\]")),
         (BadPrimaryDeviceSignatureOverride,
-         r"Methods may not fully override signatures inherited from parents\. "
-         r"Only extending the argument list is allowed\. "
-         r"Incompliant method signatures: \[\"Method 'reboot', child signature "
-         r".*BadPrimaryDeviceSignatureOverride\.reboot\(self\), inherited "
-         r"signature\(s\) \["
-         r"'.*FakeGazooDeviceBase\.reboot\(self, no_wait, method\)', "
-         r"'.*PrimaryDeviceBase.reboot\(self, no_wait, method\)'\].\"\]"),
+         (r"Methods may not fully override signatures inherited from parents\."
+          r" Only extending the argument list is allowed\. Incompliant method "
+          r"signatures: \[\"Method 'reboot', child signature "
+          r".*BadPrimaryDeviceSignatureOverride\.reboot\(self\), inherited "
+          r"signature\(s\) \['.*FakeGazooDeviceBase\.reboot\(self, no_wait, "
+          r"method\)', '.*PrimaryDeviceBase.reboot\(self, no_wait, "
+          r"method\)'\].\"\]")),
         (BadPrimaryDeviceNewPublicMethod,
-         r"New public methods are not allowed, except for health checks\. "
-         r"Methods must either be private or, if public, moved into "
-         r"capabilities\. Incompliant methods: \['new_method'\]"),
+         (r"New public methods are not allowed, except for health checks\. "
+          r"Methods must either be private or, if public, moved into "
+          r"capabilities\. Incompliant methods: \['new_method'\]")),
         (BadPrimaryDeviceUncategorizedProperty,
-         r"Public properties must be categorized as either "
-         r"@decorators\.DynamicProperty, \.PersistentProperty, "
-         r"\.OptionalProperty, or \.CapabilityDecorator\. "
-         r"Incompliant properties: \['new_property'\]"),
+         (r"Public properties must be categorized as either "
+          r"@decorators\.DynamicProperty, \.PersistentProperty, "
+          r"\.OptionalProperty, or \.CapabilityDecorator\. "
+          r"Incompliant properties: \['new_property'\]")),
         (BadPrimaryDeviceMisnamedHealthCheck,
-         r"Health checks must follow the <check_\.\.\.> naming convention\. "
-         r"Incompliant health checks: \['misnamed_health_check'\]"),
+         (r"Health checks must follow the <check_\.\.\.> naming convention\. "
+          r"Incompliant health checks: \['misnamed_health_check'\]")),
         (BadPrimaryDeviceMissingClassConstants,
-         r"Class constants \['DEVICE_TYPE', 'COMMUNICATION_TYPE', "
-         r"'DETECT_MATCH_CRITERIA', '_OWNER_EMAIL'\] are not set"),
+         (r"Class constants \['DEVICE_TYPE', 'COMMUNICATION_TYPE', "
+          r"'DETECT_MATCH_CRITERIA', '_OWNER_EMAIL'\] are not set")),
         (BadPrimaryDeviceMisnamedCapability,
-         r"Capability definition\(s\) are invalid\. "
-         r"Capability 'wrong_name': RuntimeError\(\"Attempting to define "
-         r"capability flavor\(s\) .*EventParserDefault'.* under invalid name "
-         r"wrong_name.*expected name: event_parser\.\"\)"),
+         (r"Capability definition\(s\) are invalid\. "
+          r"Capability 'wrong_name': RuntimeError\(\"Attempting to define "
+          r"capability flavor\(s\) .*EventParserDefault'.* under invalid name "
+          r"wrong_name.*expected name: event_parser\.\"\)")),
     )
     for bad_device_class, expected_error_regex in test_cases:
       with self.subTest(device_class=bad_device_class):
         self.mock_package.export_extensions.return_value = {
             "primary_devices": [bad_device_class]
         }
-        error_regex = err_template.format(cls=bad_device_class,
-                                          err=expected_error_regex)
+        error_regex = err_template.format(
+            cls=bad_device_class, err=expected_error_regex)
         with self.assertRaisesRegex(errors.PackageRegistrationError,
                                     error_regex):
           package_registrar.register(self.mock_package)
@@ -503,14 +496,14 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
         "foo_query": good_detection_query  # Invalid key type (str)
     }
     self.mock_package.export_extensions.return_value = {
-        "detect_criteria": immutabledict.immutabledict({
-            GoodCommunicationType.__name__: invalid_query_dict
-        })
+        "detect_criteria":
+            immutabledict.immutabledict(
+                {GoodCommunicationType.__name__: invalid_query_dict})
     }
     regex = (r"Unable to register query {} for communication type {!r}. "
-             "Detection query keys must be {} instances."
-             .format("foo_query", GoodCommunicationType.__name__,
-                     detect_criteria.QueryEnum.__name__))
+             "Detection query keys must be {} instances.".format(
+                 "foo_query", GoodCommunicationType.__name__,
+                 detect_criteria.QueryEnum.__name__))
     with self.assertRaisesRegex(errors.PackageRegistrationError, regex):
       package_registrar.register(self.mock_package)
 
@@ -524,14 +517,15 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
         GoodQueryKey.some_valid_query: None  # Invalid query type (None)
     }
     self.mock_package.export_extensions.return_value = {
-        "detect_criteria": immutabledict.immutabledict({
-            GoodCommunicationType.__name__: invalid_query_dict_bad_query_type
-        })
+        "detect_criteria":
+            immutabledict.immutabledict({
+                GoodCommunicationType.__name__:
+                    invalid_query_dict_bad_query_type
+            })
     }
     regex = (r"Unable to register query {} for communication type {!r}. "
-             "Detection queries must be callable"
-             .format(GoodQueryKey.some_valid_query,
-                     GoodCommunicationType.__name__))
+             "Detection queries must be callable".format(
+                 GoodQueryKey.some_valid_query, GoodCommunicationType.__name__))
 
     with self.assertRaisesRegex(errors.PackageRegistrationError, regex):
       package_registrar.register(self.mock_package)
@@ -540,18 +534,16 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
         GoodQueryKey.some_valid_query: lambda: None  # Invalid query args
     }
     self.mock_package.export_extensions.return_value = {
-        "detect_criteria": immutabledict.immutabledict({
-            GoodCommunicationType.__name__: invalid_query_dict_bad_args
-        })
+        "detect_criteria":
+            immutabledict.immutabledict(
+                {GoodCommunicationType.__name__: invalid_query_dict_bad_args})
     }
 
     args = r"\('address', 'detect_logger', 'create_switchboard_func'\)"
     regex = (r"Unable to register query {} for communication type {!r}. "
              r"Detection queries must be callable functions which accept 3 "
-             r"arguments: {}".format(
-                 GoodQueryKey.some_valid_query,
-                 GoodCommunicationType.__name__,
-                 args))
+             r"arguments: {}".format(GoodQueryKey.some_valid_query,
+                                     GoodCommunicationType.__name__, args))
 
     with self.assertRaisesRegex(errors.PackageRegistrationError, regex):
       package_registrar.register(self.mock_package)
@@ -559,17 +551,15 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
   @mock.patch.object(extensions, "communication_types", new={})
   def test_register_detect_query_for_unknown_comm_type(self):
     """Test registering a detect query comm type not known to GDM."""
-    valid_query_dict = {
-        GoodQueryKey.some_valid_query: good_detection_query
-    }
+    valid_query_dict = {GoodQueryKey.some_valid_query: good_detection_query}
     self.mock_package.export_extensions.return_value = {
-        "detect_criteria": immutabledict.immutabledict({
-            "SomeUnknownCommunicationType": valid_query_dict
-        })
+        "detect_criteria":
+            immutabledict.immutabledict(
+                {"SomeUnknownCommunicationType": valid_query_dict})
     }
     regex = (r"Unable to register detection criteria for communication type "
-             "{!r} as it has not been exported by the package."
-             .format("SomeUnknownCommunicationType"))
+             "{!r} as it has not been exported by the package.".format(
+                 "SomeUnknownCommunicationType"))
     with self.assertRaisesRegex(errors.PackageRegistrationError, regex):
       package_registrar.register(self.mock_package)
 
@@ -581,24 +571,22 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
       extensions,
       "detect_criteria",
       new={
-          GoodCommunicationType.__name__: immutabledict.immutabledict({
-              GoodQueryKey.some_valid_query: good_detection_query
-          })
+          GoodCommunicationType.__name__:
+              immutabledict.immutabledict(
+                  {GoodQueryKey.some_valid_query: good_detection_query})
       })
   def test_register_duplicate_detect_query(self):
     """Test registering a duplicate detect query."""
-    duplicate_query_dict = {
-        GoodQueryKey.some_valid_query: good_detection_query
-    }
+    duplicate_query_dict = {GoodQueryKey.some_valid_query: good_detection_query}
     self.mock_package.export_extensions.return_value = {
-        "detect_criteria": immutabledict.immutabledict({
-            GoodCommunicationType.__name__: duplicate_query_dict
-        })
+        "detect_criteria":
+            immutabledict.immutabledict(
+                {GoodCommunicationType.__name__: duplicate_query_dict})
     }
     regex = re.escape(
         r"Detection queries {} for communication type {!r} are already "
-        "defined in GDM.".format(list(duplicate_query_dict.keys()),
-                                 GoodCommunicationType.__name__))
+        "defined in GDM.".format(
+            list(duplicate_query_dict.keys()), GoodCommunicationType.__name__))
     with self.assertRaisesRegex(errors.PackageRegistrationError, regex):
       package_registrar.register(self.mock_package)
 
@@ -649,8 +637,7 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
         "capability_flavors": [GoodCapabilityDefault]
     }
     primary_devices_before = extensions.primary_devices.copy()
-    capability_interfaces_before = extensions.capability_interfaces.copy(
-    )
+    capability_interfaces_before = extensions.capability_interfaces.copy()
     capability_flavors_before = extensions.capability_flavors.copy()
     capabilities_before = extensions.capabilities.copy()
 
@@ -659,8 +646,7 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
     self.assertEqual(primary_devices_before, extensions.primary_devices)
     self.assertEqual(capability_interfaces_before,
                      extensions.capability_interfaces)
-    self.assertEqual(capability_flavors_before,
-                     extensions.capability_flavors)
+    self.assertEqual(capability_flavors_before, extensions.capability_flavors)
     self.assertEqual(capabilities_before, extensions.capabilities)
 
   @mock.patch.object(extensions, "detect_criteria", new={})
@@ -682,9 +668,9 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
         "virtual_devices": [GoodVirtualDevice],
         "communication_types": [GoodCommunicationType],
         "detect_criteria": {
-            GoodCommunicationType.__name__: immutabledict.immutabledict({
-                GoodQueryKey.some_valid_query: good_detection_query
-            })
+            GoodCommunicationType.__name__:
+                immutabledict.immutabledict(
+                    {GoodQueryKey.some_valid_query: good_detection_query})
         },
         "capability_interfaces": [GoodCapabilityBase],
         "capability_flavors": [GoodCapabilityDefault],
@@ -694,12 +680,12 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
 
     package_registrar.register(self.mock_package)
     self.assertEqual(
-        extensions.package_info,
-        {
-            self.mock_package.__name__: immutabledict.immutabledict({
-                "version": self.mock_package.__version__,
-                "key_download_function": self.mock_package.download_key,
-            })
+        extensions.package_info, {
+            self.mock_package.__name__:
+                immutabledict.immutabledict({
+                    "version": self.mock_package.__version__,
+                    "key_download_function": self.mock_package.download_key,
+                })
         })
     self.assertEqual(extensions.auxiliary_devices, [GoodAuxiliaryDevice])
     self.assertEqual(extensions.primary_devices, [GoodPrimaryDevice])
@@ -707,21 +693,17 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
     self.assertEqual(extensions.communication_types,
                      {GoodCommunicationType.__name__: GoodCommunicationType})
     self.assertEqual(
-        extensions.detect_criteria,
-        {
+        extensions.detect_criteria, {
             GoodCommunicationType.__name__: {
                 GoodQueryKey.some_valid_query: good_detection_query
             }
         })
-    self.assertEqual(
-        extensions.capability_interfaces["good_capability_base"],
-        GoodCapabilityBase)
-    self.assertEqual(
-        extensions.capability_flavors["good_capability_default"],
-        GoodCapabilityDefault)
-    self.assertEqual(
-        extensions.capabilities["good_capability"],
-        "good_capability_base")
+    self.assertEqual(extensions.capability_interfaces["good_capability_base"],
+                     GoodCapabilityBase)
+    self.assertEqual(extensions.capability_flavors["good_capability_default"],
+                     GoodCapabilityDefault)
+    self.assertEqual(extensions.capabilities["good_capability"],
+                     "good_capability_base")
     self.assertEqual(extensions.keys, [GoodKey])
 
     # Test registering a different package which extends detect criteria for
@@ -729,16 +711,17 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
     self.mock_package.__name__ = "bar_package"
     self.mock_package.export_extensions.return_value = {
         "detect_criteria": {
-            GoodCommunicationType.__name__: immutabledict.immutabledict({
-                GoodQueryKey.another_valid_query: another_good_detection_query,
-            })
+            GoodCommunicationType.__name__:
+                immutabledict.immutabledict({
+                    GoodQueryKey.another_valid_query:
+                        another_good_detection_query,
+                })
         }
     }
     package_registrar.register(self.mock_package)
 
     self.assertEqual(
-        extensions.detect_criteria,
-        {
+        extensions.detect_criteria, {
             GoodCommunicationType.__name__: {
                 GoodQueryKey.some_valid_query: good_detection_query,
                 GoodQueryKey.another_valid_query: another_good_detection_query,
@@ -746,8 +729,8 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
         })
 
   @mock.patch.object(package_registrar, "register")
-  @mock.patch.object(importlib, "import_module",
-                     side_effect=ImportError("Package not found"))
+  @mock.patch.object(
+      importlib, "import_module", side_effect=ImportError("Package not found"))
   @mock.patch.object(package_registrar.logger, "warning")
   def test_import_and_register_import_failure(self, mock_warning, mock_import,
                                               mock_register):
@@ -759,9 +742,11 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
     mock_import.assert_called_once_with("nonexistent-package")
     mock_register.assert_not_called()
 
-  @mock.patch.object(package_registrar, "register",
-                     side_effect=errors.PackageRegistrationError(
-                         "Something failed", "some_package"))
+  @mock.patch.object(
+      package_registrar,
+      "register",
+      side_effect=errors.PackageRegistrationError("Something failed",
+                                                  "some_package"))
   @mock.patch.object(importlib, "import_module")
   @mock.patch.object(package_registrar.logger, "warning")
   def test_import_and_register_registration_failure(self, mock_warning,
@@ -808,33 +793,38 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
     mock_open.assert_called_once()
     mock_load.assert_called_once()
 
-  @mock.patch.object(json, "load", return_value={
-      "cli_extension_packages": ["package_one", "package_two"],
-  })
+  @mock.patch.object(
+      json,
+      "load",
+      return_value={
+          "cli_extension_packages": ["package_one", "package_two"],
+      })
   @mock.patch.object(builtins, "open")
   @mock.patch.object(os.path, "exists", return_value=True)
   def test_get_cli_extension_packages_success(self, mock_exists, mock_open,
                                               mock_load):
     """Test get_cli_extension_packages() with some registered CLI packages."""
-    self.assertCountEqual(
-        package_registrar.get_cli_extension_packages(),
-        ["package_one", "package_two"])
+    self.assertCountEqual(package_registrar.get_cli_extension_packages(),
+                          ["package_one", "package_two"])
     mock_exists.assert_called_once()
     mock_open.assert_called_once()
     mock_load.assert_called_once()
 
-  @mock.patch.object(package_registrar, "get_cli_extension_packages",
-                     return_value=["package_one", "package_two"])
+  @mock.patch.object(
+      package_registrar,
+      "get_cli_extension_packages",
+      return_value=["package_one", "package_two"])
   @mock.patch.object(package_registrar, "import_and_register")
   def test_import_and_register_cli_extension_packages(
       self, mock_import_and_register, mock_get_cli_extension_packages):
     """Test import_and_register_cli_extension_packages() with some packages."""
     package_registrar.import_and_register_cli_extension_packages()
     mock_get_cli_extension_packages.assert_called_once()
-    mock_import_and_register.assert_has_calls(
-        [mock.call("package_one", include_cli_instructions=True),
-         mock.call("package_two", include_cli_instructions=True)],
-        any_order=True)
+    mock_import_and_register.assert_has_calls([
+        mock.call("package_one", include_cli_instructions=True),
+        mock.call("package_two", include_cli_instructions=True)
+    ],
+                                              any_order=True)
 
 
 if __name__ == "__main__":

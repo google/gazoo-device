@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This test script verifies GDM is working with Manager."""
 import atexit
 import builtins
@@ -26,6 +25,7 @@ import os
 import shutil
 import signal
 from unittest import mock
+
 from gazoo_device import config as config_gdm
 from gazoo_device import data_types
 from gazoo_device import decorators
@@ -36,11 +36,10 @@ from gazoo_device import gdm_logger
 from gazoo_device import log_parser
 from gazoo_device import manager
 from gazoo_device.auxiliary_devices import cambrionix
-from gazoo_device.base_classes import ssh_device
 from gazoo_device.capabilities import switch_power_usb_with_charge
-from gazoo_device.capabilities import usb_hub_default
 from gazoo_device.switchboard import log_process
 from gazoo_device.switchboard import switchboard
+from gazoo_device.tests.unit_tests.utils import fake_devices
 from gazoo_device.tests.unit_tests.utils import fake_transport
 from gazoo_device.tests.unit_tests.utils import gc_test_utils
 from gazoo_device.tests.unit_tests.utils import unit_test_case
@@ -139,36 +138,6 @@ USB_INFO_DICT = {
 }
 
 
-class FakeSSHDevice(ssh_device.SshDevice):
-  """Fake SSH device for testing purposes."""
-  DEVICE_TYPE = "sshdevice"
-
-  def factory_reset(self):
-    pass
-
-  @decorators.DynamicProperty
-  def firmware_version(self):
-    return "1234"
-
-  @decorators.PersistentProperty
-  def platform(self):
-    return "Linux"
-
-  def reboot(self):
-    pass
-
-  @decorators.CapabilityDecorator(usb_hub_default.UsbHubDefault)
-  def usb_hub(self):
-    """Returns a usb_hub capability to send commands."""
-    return self.lazy_init(
-        usb_hub_default.UsbHubDefault,
-        device_name=self.name,
-        manager_weakref=self.manager_weakref,
-        hub_name=self.props["optional"].get("usb_hub"),
-        device_port=self.props["optional"].get("usb_port"),
-        get_switchboard_if_initialized=self.switchboard)
-
-
 def load_config(file_name, key=None):
   """Loads a json config from a file into a dict and returns the dict.
 
@@ -244,14 +213,17 @@ class MockOutDevices:
   def __init__(self):
     self.patchs = []
     self.patchs.append(
-        mock.patch.object(FakeSSHDevice, "is_connected", return_value=True))
+        mock.patch.object(
+            fake_devices.FakeSSHDevice, "is_connected", return_value=True))
     self.patchs.append(
         mock.patch.object(
             cambrionix.Cambrionix, "is_connected", return_value=True))
     self.patchs.append(
         mock.patch.object(cambrionix.Cambrionix, "make_device_ready"))
-    self.patchs.append(mock.patch.object(FakeSSHDevice, "make_device_ready"))
-    self.patchs.append(mock.patch.object(FakeSSHDevice, "check_device_ready"))
+    self.patchs.append(
+        mock.patch.object(fake_devices.FakeSSHDevice, "make_device_ready"))
+    self.patchs.append(
+        mock.patch.object(fake_devices.FakeSSHDevice, "check_device_ready"))
     self.patchs.append(
         mock.patch.object(cambrionix.Cambrionix, "check_device_ready"))
     self.patchs.append(mock.patch.object(cambrionix.Cambrionix, "_command"))
@@ -316,11 +288,11 @@ class ManagerTestsSetup(unit_test_case.UnitTestCase):
     super().setUpClass()
     cls.fake_gdm_config, cls.files = populate_config_files(
         cls.artifacts_directory)
-    extensions.primary_devices.append(FakeSSHDevice)
+    extensions.primary_devices.append(fake_devices.FakeSSHDevice)
 
   @classmethod
   def tearDownClass(cls):
-    extensions.primary_devices.remove(FakeSSHDevice)
+    extensions.primary_devices.remove(fake_devices.FakeSSHDevice)
     super().tearDownClass()
 
   def setUp(self):
@@ -458,7 +430,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       self.assertTrue(self.uut.get_open_device_names())
       self.uut.close()
       self.assertFalse(self.uut.get_open_device_names())
-      with mock.patch.object(FakeSSHDevice, "close") as mock_close:
+      with mock.patch.object(fake_devices.FakeSSHDevice, "close") as mock_close:
         self.uut.close()
         mock_close.assert_not_called()
 
@@ -514,10 +486,13 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
-      FakeSSHDevice.make_device_ready.side_effect = errors.DeviceError("x")
-      with self.assertRaises(errors.DeviceError):
-        self.logger.info(
-            self.uut.get_device_prop(self.first_name, "firmware_version"))
+      with mock.patch.object(
+          fake_devices.FakeSSHDevice,
+          "make_device_ready",
+          side_effect=errors.DeviceError("x")):
+        with self.assertRaises(errors.DeviceError):
+          self.logger.info(
+              self.uut.get_device_prop(self.first_name, "firmware_version"))
 
   def test_105_manager_get_device_prop_manager_successful(self):
     """Testing gdm returns all types of properties."""
@@ -735,7 +710,9 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     with MockOutDevices():
       # Test with on a dynamic property without setter
       with mock.patch.object(
-          FakeSSHDevice, "file_transfer", DynamicWithOutSetter(),
+          fake_devices.FakeSSHDevice,
+          "file_transfer",
+          DynamicWithOutSetter(),
           spec_set=True):
         device = self.uut.create_device("sshdevice-0000")
         with mock.patch.object(
@@ -752,7 +729,10 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     with MockOutDevices():
       # Test with on a dynamic property with a setter
       with mock.patch.object(
-          FakeSSHDevice, "file_transfer", DynamicWithSetter(), spec_set=True):
+          fake_devices.FakeSSHDevice,
+          "file_transfer",
+          DynamicWithSetter(),
+          spec_set=True):
         device = self.uut.create_device("sshdevice-0000")
         with mock.patch.object(
             device,
@@ -979,12 +959,15 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     """Ensures create switchboard and make_device_ready errors get handled."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
-      with mock.patch.object(FakeSSHDevice, "close"):
-        FakeSSHDevice.make_device_ready.side_effect = errors.DeviceError("x")
-        with self.assertRaisesRegex(errors.DeviceError, "x"):
-          self.uut.create_device("sshdevice-0000")
-        # console port should be closed when error in make_device_ready
-        FakeSSHDevice.close.assert_called()
+      with mock.patch.object(fake_devices.FakeSSHDevice, "close"):
+        with mock.patch.object(
+            fake_devices.FakeSSHDevice,
+            "make_device_ready",
+            side_effect=errors.DeviceError("x")):
+          with self.assertRaisesRegex(errors.DeviceError, "x"):
+            self.uut.create_device("sshdevice-0000")
+          # console port should be closed when error in make_device_ready
+          fake_devices.FakeSSHDevice.close.assert_called()
 
   def test_create_device_returns_same_auxiliary_device_instance(self):
     """Test that multiple create_device calls return same auxiliary device."""
@@ -1561,7 +1544,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     """Test is_device_connected() returns False when is_connected() raises."""
     self.uut = self._create_manager_object()
     with mock.patch.object(
-        FakeSSHDevice,
+        fake_devices.FakeSSHDevice,
         "is_connected",
         side_effect=errors.DeviceError("Some error")):
       self.assertFalse(self.uut.is_device_connected("sshdevice-0000"))
@@ -1708,7 +1691,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       test_error = errors.DeviceError(test_error_message)
       # confirm method was called by raising an exception
       with mock.patch.object(
-          FakeSSHDevice,
+          fake_devices.FakeSSHDevice,
           "make_device_ready",
           side_effect=iter([None, None, test_error, test_error])):
         with self.assertRaisesRegexp(RuntimeError, test_error_message):
@@ -1724,7 +1707,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       test_error = errors.DeviceError(test_error_message)
       # confirm method was called by raising an exception
       with mock.patch.object(
-          FakeSSHDevice,
+          fake_devices.FakeSSHDevice,
           "make_device_ready",
           side_effect=iter([None, None, test_error, test_error])):
         with self.assertRaisesRegexp(RuntimeError, test_error_message):
@@ -1748,7 +1731,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       test_error = errors.DeviceError(test_error_message)
       # confirm method was called by raising an exception
       with mock.patch.object(
-          FakeSSHDevice,
+          fake_devices.FakeSSHDevice,
           "make_device_ready",
           side_effect=iter([None, None, test_error, test_error])):
         with self.assertRaisesRegexp(RuntimeError, test_error_message):
@@ -1844,7 +1827,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     """Test that the call uses the correct device class."""
     mock_capabilities = ["cap1, cap2"]
     with mock.patch.object(
-        FakeSSHDevice,
+        fake_devices.FakeSSHDevice,
         "get_supported_capabilities",
         return_value=mock_capabilities) as mock_get_capabilities:
       self.assertEqual(
@@ -1856,7 +1839,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     """Test that the call uses the correct device class."""
     caps = ["cap1", "cap2"]
     with mock.patch.object(
-        FakeSSHDevice, "has_capabilities",
+        fake_devices.FakeSSHDevice, "has_capabilities",
         return_value=True) as mock_has_capabilities:
       self.assertIs(
           manager.Manager.device_has_capabilities("sshdevice", caps), True)
@@ -1866,7 +1849,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     """Test underlying NestDeviceBase method is called on appropriate class."""
     mock_capability_flavors = set([str, dict])  # Set of some class objects
     with mock.patch.object(
-        FakeSSHDevice,
+        fake_devices.FakeSSHDevice,
         "get_supported_capability_flavors",
         return_value=mock_capability_flavors) as mock_method:
       self.assertEqual(

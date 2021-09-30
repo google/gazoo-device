@@ -20,7 +20,7 @@ import inspect
 import os
 import re
 import time
-from typing import List, Set, Type
+from typing import Any, List, Set, Type
 import weakref
 
 from gazoo_device import config
@@ -102,7 +102,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
                log_file_name=None,
                log_directory=None):
     self._log_object_lifecycle_event("__init__")
-    self.manager_weakref = weakref.ref(manager)
+    self._manager_weakref = weakref.ref(manager)
 
     # Create a dictionary to store "properties".  For now keep the
     # classification of "persistent" and "optional".
@@ -295,8 +295,8 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     """
     self.reset_all_capabilities()
 
-    if hasattr(self, "manager_weakref"):
-      manager_instance = self.manager_weakref()
+    if hasattr(self, "_manager_weakref"):
+      manager_instance = self._manager_weakref()
       if manager_instance is not None:
         if self.name in manager_instance._open_devices:
           self._log_object_lifecycle_event("close")
@@ -334,6 +334,18 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
       except errors.CapabilityNotReadyError:
         logger.info("{}'s device_power capability is not set up.".format(
             self.name))
+
+  def get_manager(self) -> Any:  # Returns a Manager instance.
+    """Returns the Manager instance if it is still alive.
+
+    Raises:
+      RuntimeError: If the Manager instance is no longer alive.
+    """
+    manager = self._manager_weakref()
+    if manager is None:
+      raise RuntimeError(f"{self.name}'s Manager is no longer alive. "
+                         "Has the device been closed?'")
+    return manager
 
   def get_dynamic_properties(self):
     """Returns a dictionary of prop, value for each dynamic property."""
@@ -862,7 +874,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
       return ""
 
   @decorators.CapabilityDecorator(switchboard.SwitchboardDefault)
-  def switchboard(self):
+  def switchboard(self) -> switchboard.SwitchboardDefault:
     """Instance for communicating with the device."""
     switchboard_name = self._get_private_capability_name(
         switchboard.SwitchboardDefault)
@@ -874,7 +886,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
       switchboard_kwargs["device_name"] = self.name
       switchboard_kwargs["event_parser"] = self.event_parser
       setattr(self, switchboard_name,
-              self.manager_weakref().create_switchboard(**switchboard_kwargs))
+              self.get_manager().create_switchboard(**switchboard_kwargs))
 
     return getattr(self, switchboard_name)
 

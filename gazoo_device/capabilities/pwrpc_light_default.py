@@ -13,21 +13,21 @@
 # limitations under the License.
 
 """Default implementation of the PwRPC (Pigweed RPC) lighting capability."""
-from typing import Any, Callable, Tuple
+import enum
+from typing import Any, Callable, Mapping
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import pwrpc_light_base
+from gazoo_device.protos import lighting_service_pb2
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
-try:
-  # pylint: disable=g-import-not-at-top
-  # pytype: disable=import-error
-  from lighting_service import lighting_service_pb2
-  # pytype: enable=import-error
-except ImportError:
-  lighting_service_pb2 = None
 
 logger = gdm_logger.get_logger()
+
+
+class LightingAction(enum.Enum):
+  ON = True
+  OFF = False
 
 
 class PwRPCLightDefault(pwrpc_light_base.PwRPCLightBase):
@@ -35,16 +35,26 @@ class PwRPCLightDefault(pwrpc_light_base.PwRPCLightBase):
 
   def __init__(self,
                device_name: str,
-               switchboard_call: Callable[..., Any]):
-    """Create an instance of the PwRPCLightDefault capability.
+               expect_lighting_regexes: Mapping[bool, str],
+               expect_timeout: int,
+               switchboard_call: Callable[..., Any],
+               switchboard_call_expect: Callable[..., Any]):
+    """Creates an instance of the PwRPCLightDefault capability.
 
     Args:
       device_name: Device name used for logging.
-      switchboard_call: The Switchboard.call method which calls to the endpoint.
-        See more examples in nrf_pigweed_lighting.py.
+      expect_lighting_regexes: Expected regexes for lighting on off, the
+      dict format: {LightingAction.ON: "<light on regex>", LightingAction.OFF:
+        "<light off regex>"}.
+      expect_timeout: Timeout (s) to wait for the expected regex.
+      switchboard_call: The switchboard.call method.
+      switchboard_call_expect: The switchboard.call_and_expect method.
     """
     super().__init__(device_name=device_name)
+    self._expect_lighting_regexes = expect_lighting_regexes
+    self._expect_timeout = expect_timeout
     self._switchboard_call = switchboard_call
+    self._switchboard_call_expect = switchboard_call_expect
 
   @decorators.CapabilityLogDecorator(logger)
   def on(self, no_wait: bool = False) -> None:
@@ -83,21 +93,35 @@ class PwRPCLightDefault(pwrpc_light_base.PwRPCLightBase):
       DeviceError: When the device does not transition to the appropriate
       state or if it remains off.
     """
-    state_in_bytes = self._get_state()
-    state = lighting_service_pb2.LightingState.FromString(state_in_bytes)
+    state = self._get_state()
     return state.on
 
   @decorators.DynamicProperty
-  def brightness(self) -> Tuple[int, int]:
+  def brightness(self) -> int:
     """The brightness level of the device.
 
+    The brightness level is between 0 and 255 inclusive,
+    see gazoo_device/protos/lighting_service.proto for more details.
+
     Returns:
-      Current brightness level and the maximal brightness level.
+      The current brightness level.
     """
-    state_in_bytes = self._get_state()
-    brightness = lighting_service_pb2.LightingBrightness.FromString(
-        state_in_bytes)
-    return brightness.level, brightness.max_level
+    state = self._get_state()
+    return state.level
+
+  @decorators.DynamicProperty
+  def color(self) -> lighting_service_pb2.LightingColor:
+    """The lighting color of the device.
+
+    The lighting color consists of hue and saturation, which are between 0x00
+    and 0xFE inclusive. See gazoo_device/protos/lighting_service.proto for more
+    details.
+
+    Returns:
+      The current lighting color.
+    """
+    state = self._get_state()
+    return state.color
 
   def _on_off(self, on: bool, no_wait: bool = False) -> None:
     """Turn on/off the light of the device.
@@ -110,12 +134,19 @@ class PwRPCLightDefault(pwrpc_light_base.PwRPCLightBase):
       DeviceError: When the device does not transition to the appropriate
       state or if it remains the same state.
     """
-    lighting_ack, _ = self._switchboard_call(
+    regex_type = LightingAction.ON if on else LightingAction.OFF
+    expect_regex = self._expect_lighting_regexes[regex_type]
+
+    _, (ack, _) = self._switchboard_call_expect(
         method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        pattern_list=[expect_regex],
+        timeout=self._expect_timeout,
         method_args=("Lighting", "Set"),
-        method_kwargs={"on": on})
+        method_kwargs={"on": on},
+        raise_for_timeout=True)
+
     action = "on" if on else "off"
-    if not lighting_ack:
+    if not ack:
       raise errors.DeviceError(
           f"Device {self._device_name} turning light {action} failed.")
     if not no_wait:
@@ -123,11 +154,11 @@ class PwRPCLightDefault(pwrpc_light_base.PwRPCLightBase):
         raise errors.DeviceError(
             f"Device {self._device_name} light didn't turn {action}.")
 
-  def _get_state(self) -> bytes:
-    """Returns the serialized lighting state of the device.
+  def _get_state(self) -> lighting_service_pb2.LightingState:
+    """Returns the lighting state of the device.
 
     Returns:
-      The serialized lighting state.
+      The lighting state.
 
     Raises:
       DeviceError: When the ack value is not true.
@@ -139,4 +170,5 @@ class PwRPCLightDefault(pwrpc_light_base.PwRPCLightBase):
     if not ack:
       raise errors.DeviceError(
           f"Device {self._device_name} getting light state failed.")
-    return state_in_bytes
+    state = lighting_service_pb2.LightingState.FromString(state_in_bytes)
+    return state

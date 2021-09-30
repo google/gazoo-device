@@ -20,7 +20,7 @@ from unittest import mock
 import gazoo_device
 from gazoo_device import errors
 from gazoo_device import mobly_controller
-from gazoo_device.tests.unit_tests.utils import fake_gazoo_device_base
+from gazoo_device.tests.unit_tests.utils import fake_devices
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from mobly import asserts
 from mobly import base_test
@@ -122,7 +122,7 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
   def test_get_info(self):
     expected_info = [{
         "name": "sshdevice-0000",
-        "device_type": None,
+        "device_type": "sshdevice",
         "model": "linux",
         "platform": "sshdevice",
         "serial_number": "00000000",
@@ -138,7 +138,7 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
     }]
 
     mock_manager = mock.Mock()
-    mock_device = fake_gazoo_device_base.FakeGazooDeviceBase(
+    mock_device = fake_devices.FakeSSHDevice(
         mock_manager, FAKE_CONFIGURATION, log_directory="/a/b/c")
     mocks = {
         "firmware_version": mock.PropertyMock(return_value="123"),

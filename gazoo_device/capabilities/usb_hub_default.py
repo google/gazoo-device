@@ -34,7 +34,7 @@ class UsbHubDefault(usb_hub_base.UsbHubBase):
 
   def __init__(self,
                device_name,
-               manager_weakref,
+               get_manager,
                hub_name,
                device_port,
                get_switchboard_if_initialized,
@@ -46,7 +46,7 @@ class UsbHubDefault(usb_hub_base.UsbHubBase):
     Args:
         device_name (str): name of the device this capability is attached
           to.
-        manager_weakref (weakref): Weakref to the Manager instance.
+        get_manager (method): A method which returns the Manager instance.
         hub_name (str): name of the hub this device is attached to.
         device_port (int): usb hub port number used by the device.
         get_switchboard_if_initialized (callable): function which returns
@@ -65,7 +65,7 @@ class UsbHubDefault(usb_hub_base.UsbHubBase):
     self._wait_for_bootup_complete_fn = wait_for_bootup_complete_fn
     self._usb_hub = None
     self._settable = settable
-    self._manager_weakref = manager_weakref
+    self._get_manager = get_manager
 
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
   def health_check(self):
@@ -92,12 +92,8 @@ class UsbHubDefault(usb_hub_base.UsbHubBase):
           " and ".join(unset_props)) + msg
       raise errors.CapabilityNotReadyError(
           msg=error_msg, device_name=self._device_name)
-    if not self._manager_weakref():
-      raise errors.CapabilityNotReadyError(
-          msg="Device class is closed. Unable to use capability",
-          device_name=self._device_name)
     try:
-      self._usb_hub = self._manager_weakref().create_device(self.name)
+      self._usb_hub = self._get_manager().create_device(self.name)
     except errors.DeviceError as err:
       raise errors.CapabilityNotReadyError(
           msg=str(err), device_name=self._device_name)

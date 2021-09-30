@@ -19,7 +19,7 @@ import inspect
 import os
 import re
 import time
-from typing import List, Set, Type
+from typing import Any, List, Set, Type
 import weakref
 
 from gazoo_device import config
@@ -80,7 +80,7 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
           the log file.
     """
     self._log_object_lifecycle_event("__init__")
-    self.manager_weakref = weakref.ref(manager)
+    self._manager_weakref = weakref.ref(manager)
 
     # Create a dictionary to store "properties".  For now keep the
     # classification of "persistent" and "optional".
@@ -249,8 +249,8 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
     """Releases all resources."""
     self.reset_all_capabilities()
 
-    if hasattr(self, "manager_weakref"):
-      manager_instance = self.manager_weakref()
+    if hasattr(self, "_manager_weakref"):
+      manager_instance = self._manager_weakref()
       if manager_instance is not None:
         # pylint: disable=protected-access
         if self.name in manager_instance._open_devices:
@@ -306,6 +306,18 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
           .format(self.name, capability_name, self.device_type))
     capability_property = getattr(type(self), capability_name)
     return list(capability_property.capability_classes)
+
+  def get_manager(self) -> Any:  # Returns a Manager instance.
+    """Returns the Manager instance if it is still alive.
+
+    Raises:
+      RuntimeError: If the Manager instance is no longer alive.
+    """
+    manager = self._manager_weakref()
+    if manager is None:
+      raise RuntimeError(f"{self.name}'s Manager is no longer alive. "
+                         "Has the device been closed?'")
+    return manager
 
   def get_dynamic_properties(self):
     """Returns a dictionary of prop, value for each dynamic property."""

@@ -14,6 +14,7 @@
 
 """Device Power Default Capability."""
 import time
+from typing import Any, Callable, Dict
 
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -21,63 +22,94 @@ from gazoo_device import gdm_logger
 
 from gazoo_device.capabilities.interfaces import device_power_base
 from gazoo_device.utility import deprecation_utils
+import immutabledict
 
 logger = gdm_logger.get_logger()
 
-SUPPORTED_HUB_TYPES = [
-    "cambrionix", "powerswitch", "unifi_switch", "ethernet_switch"
-]
+_HUB_TYPE_PROPERTY = "device_power_hub_type"
+_HUB_TYPE_CAMBRIONIX = "cambrionix"
+_HUB_TYPE_POWERSWITCH = "powerswitch"
+_HUB_TYPE_UNIFI_SWITCH = "unifi_switch"
+
+SUPPORTED_HUB_TYPES = (
+    _HUB_TYPE_CAMBRIONIX, _HUB_TYPE_POWERSWITCH, _HUB_TYPE_UNIFI_SWITCH,
+)
+
+_HUB_TYPE_PROPS = immutabledict.immutabledict({
+    _HUB_TYPE_CAMBRIONIX: ("device_usb_hub_name", "device_usb_port"),
+    _HUB_TYPE_POWERSWITCH: ("powerswitch_name", "powerswitch_port"),
+    _HUB_TYPE_UNIFI_SWITCH: ("unifi_switch_name", "unifi_switch_port"),
+})
 
 
 class DevicePowerDefault(device_power_base.DevicePowerBase):
   """Base class for device_power."""
 
   def __init__(self,
-               device_name,
-               create_device_func,
-               hub_type,
-               props,
-               settable,
-               hub_name_prop,
-               port_prop,
-               wait_for_bootup_complete_fn,
-               switchboard_inst,
-               change_triggers_reboot=False):
+               device_name: str,
+               create_device_func: Callable[..., Any],
+               default_hub_type: str,
+               props: Dict[str, Any],
+               usb_ports_discovered: bool,
+               wait_for_bootup_complete_fn: Callable[[], None],
+               switchboard_inst: Any,
+               change_triggers_reboot: bool = False,
+               usb_hub_name_prop: str = "device_usb_hub_name",
+               usb_port_prop: str = "device_usb_port"):
     """Create an instance of the device_power capability.
 
+    The power switch type can be changed by setting the 'device_power_hub_type'
+    property. The valid hub types are 'cambrionix', 'powerswitch', and
+    'unifi_switch'.
+
+    Each hub type also requires a corresponding hub_name and hub_port property
+    to be set.
+
+    Cambrionix requires 'device_usb_hub_name' and 'device_usb_port' to be set.
+      (These names can be changed by passing in the different property names)
+
+    Powerswitch requires 'powerswitch_name' and 'powerswitch_port' to be set.
+
+    Unifi_switch requires 'unifi_switch_name' and 'unifi_switch_port' to be set.
+
     Args:
-        device_name (str): name of the device this capability is attached
-          to.
-        create_device_func (func): create_device method.
-        hub_type (str): type of switch for power cycling.
-        props (dict): dictionary of device props from configuration file.
-        settable (bool): whether or not the properties are settable.
-        hub_name_prop (str):  name of the hub name property
-        port_prop (str): name of the hub port property
-        wait_for_bootup_complete_fn (func): a method that the capability can
-          call to wait for a reboot to complete if triggered by a change.
-        switchboard_inst (object): instance of switchboard capability
-        change_triggers_reboot (bool): set change_triggers_reboot to TRUE if
-          changing the power mode for the device causes a reboot.
+      device_name: Name of the device this capability is attached to.
+      create_device_func: A method to create device of hub_type.
+      default_hub_type: Type of switch for power cycling.
+      props: Dictionary of device props from configuration file.
+      usb_ports_discovered: True if the USB ports are discovered by gdm detect.
+      wait_for_bootup_complete_fn: A method that the capability can
+        call to wait for a reboot to complete if triggered by a change.
+      switchboard_inst: Instance of switchboard capability
+      change_triggers_reboot: Set change_triggers_reboot to TRUE if
+        changing the power mode for the device causes a reboot.
+      usb_hub_name_prop: Name of the hub name property.
+      usb_port_prop: Name of the hub port property.
 
     Raises:
-        ValueError: if hub type not a known type.
+      ValueError: If hub type is not a known type.
     """
     super().__init__(device_name=device_name)
 
     self._hub = None
     self._create_device_func = create_device_func
-    self._settable = settable
-    self._hub_name_prop = hub_name_prop
+    self._usb_ports_discovered = usb_ports_discovered
     self._props = props
-    self._port_prop = port_prop
+    hub_type = self._props["optional"].get(_HUB_TYPE_PROPERTY, default_hub_type)
     if hub_type not in SUPPORTED_HUB_TYPES:
-      raise ValueError("Hub Type {} not supported. Valid types: {}".format(
+      raise ValueError("Hub type {} is not supported. Valid types: {}".format(
           hub_type, SUPPORTED_HUB_TYPES))
     self._hub_type = hub_type
+    self._hub_name_prop, self._port_prop = _HUB_TYPE_PROPS[self._hub_type]
+    if self._hub_type == _HUB_TYPE_CAMBRIONIX:
+      self._hub_name_prop = usb_hub_name_prop
+      self._port_prop = usb_port_prop
 
-    # Set the properties
-    self._dict_name = "optional" if self._settable else "persistent_identifiers"
+    # Set where the hub/port propeties are in _props.
+    if self._hub_type == _HUB_TYPE_CAMBRIONIX and self._usb_ports_discovered:
+      self._dict_name = "persistent_identifiers"
+    else:
+      self._dict_name = "optional"
 
     self._wait_for_bootup_complete_fn = wait_for_bootup_complete_fn
     self._switchboard = switchboard_inst
@@ -88,8 +120,8 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
     """Checks that the capability is ready to use.
 
     Raises:
-        CapabilityNotReadyError: if unable to create auxiliary device for
-        power switching.
+      CapabilityNotReadyError: If expected properties are not set or
+        unable to create auxiliary device for power switching.
     """
     unset_props = []
     if self.hub_name is None:
@@ -97,12 +129,12 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
     if self.port_number is None:
       unset_props.append(self._port_prop)
     if unset_props:
-      if self._settable:
+      if self._hub_type == _HUB_TYPE_CAMBRIONIX and self._usb_ports_discovered:
         msg_format = ("If device is connected to {}, "
-                      "set them via 'gdm set-prop {} <property> <value>'")
+                      "set them via 'gdm redetect {}'")
       else:
         msg_format = ("If device is connected to {}, "
-                      "set them via 'gdm redetect {}")
+                      "set them via 'gdm set-prop {} <property> <value>'")
       msg = msg_format.format(self._hub_type, self._device_name)
       error_msg = "properties {} are unset. ".format(
           " and ".join(unset_props)) + msg
@@ -127,7 +159,7 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
     """Name of the hub the device is attached to."""
     return self._props[self._dict_name].get(self._hub_name_prop)
 
-  @decorators.PersistentProperty
+  @decorators.OptionalProperty
   def hub_type(self):
     """Device type of the hub."""
     return self._hub_type

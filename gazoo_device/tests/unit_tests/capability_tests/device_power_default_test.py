@@ -34,7 +34,7 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     self.port_num = 3
     self.add_time_mocks()
     self.props = {
-        "persistent": {
+        "persistent_identifiers": {
             "name": self.name
         },
         "optional": {
@@ -48,11 +48,9 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     self.uut = device_power_default.DevicePowerDefault(
         device_name=self.name,
         create_device_func=self.mock_manager.create_device,
-        hub_type="cambrionix",
+        default_hub_type="cambrionix",
         props=self.props,
-        settable=True,
-        hub_name_prop="device_usb_hub_name",
-        port_prop="device_usb_port",
+        usb_ports_discovered=False,
         wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
         switchboard_inst=self.mock_switchboard,
         change_triggers_reboot=False)
@@ -107,11 +105,9 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     self.uut = device_power_default.DevicePowerDefault(
         device_name=self.name,
         create_device_func=self.mock_manager.create_device,
-        hub_type="cambrionix",
+        default_hub_type="cambrionix",
         props=self.props,
-        settable=True,
-        hub_name_prop="device_usb_hub_name",
-        port_prop="device_usb_port",
+        usb_ports_discovered=False,
         wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
         switchboard_inst=self.mock_switchboard,
         change_triggers_reboot=False)
@@ -126,11 +122,9 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     self.uut = device_power_default.DevicePowerDefault(
         device_name=self.name,
         create_device_func=self.mock_manager.create_device,
-        hub_type="cambrionix",
+        default_hub_type="cambrionix",
         props=self.props,
-        settable=True,
-        hub_name_prop="device_usb_hub_name",
-        port_prop="device_usb_port",
+        usb_ports_discovered=False,
         wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
         switchboard_inst=self.mock_switchboard,
         change_triggers_reboot=False)
@@ -148,6 +142,35 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     self.mock_cambrionix.close.assert_not_called()
     self.uut.close()
     self.mock_cambrionix.close.assert_called_once()
+
+  def test_exception_raised_for_invalid_hub_type(self):
+    """Tests that a ValueError is raised for an invalid hub_type."""
+    self.props["optional"]["device_power_hub_type"] = "foo"
+    with self.assertRaisesRegex(ValueError, "Hub type foo is not supported"):
+      self.uut = device_power_default.DevicePowerDefault(
+          device_name=self.name,
+          create_device_func=self.mock_manager.create_device,
+          default_hub_type="cambrionix",
+          props=self.props,
+          usb_ports_discovered=True,
+          wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
+          switchboard_inst=self.mock_switchboard)
+
+  def test_usb_ports_detected_true_raises_with_redetect_message(self):
+    """Tests that the error message indicates to use gdm redetect."""
+    self.uut = device_power_default.DevicePowerDefault(
+        device_name=self.name,
+        create_device_func=self.mock_manager.create_device,
+        default_hub_type="cambrionix",
+        props=self.props,
+        usb_ports_discovered=True,
+        wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
+        switchboard_inst=self.mock_switchboard,
+        usb_hub_name_prop="different_usb_hub_name",
+        usb_port_prop="different_usb_port")
+    error_msg = f"set them via 'gdm redetect {self.name}'"
+    with self.assertRaisesRegex(errors.DeviceError, error_msg):
+      self.uut.health_check()
 
 
 if __name__ == "__main__":

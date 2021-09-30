@@ -14,14 +14,16 @@
 
 """Build Flasher capability interface."""
 import abc
+from typing import Any, Dict
 from gazoo_device.capabilities.interfaces import capability_base
+UNKNOWN = "Unknown"
 
 
 class FlashBuildBase(capability_base.CapabilityBase):
   """Abstract base class for the build_flasher capability."""
 
   @abc.abstractmethod
-  def download_build_file(self, remote_build_folder, local_folder):
+  def download_build_file(self, remote_build_folder, local_folder) -> None:
     """Retrieves the build file(s) from the remote location and puts them in the local folder.
 
     Args:
@@ -30,39 +32,7 @@ class FlashBuildBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def get_defaults(self):
-    """Returns a dictionary of default build arguments.
-
-    Returns:
-        dict: the default build arguments for the device.
-    """
-
-  @abc.abstractmethod
-  def get_firmware_version(self, build_args=None):
-    """Returns the firmware version based on the build arguments.
-
-    Args:
-        build_args (dict): dictionary of build arguments. If None, the
-          default build arguments are used.
-
-    Returns:
-        str: firmware version
-    """
-
-  @abc.abstractmethod
-  def get_remote_build_folder(self, build_args=None):
-    """Uses the build arguments to determine the remote build folder.
-
-    Args:
-        build_args (dict): dictionary of build arguments. If None, the
-          default build arguments are used.
-
-    Returns:
-        str: the remote build folder path.
-    """
-
-  @abc.abstractmethod
-  def extract_build_info(self, build_args=None):
+  def extract_build_info(self, build_args=None) -> Dict[str, str]:
     """Converts the provided build arguments into information about the build.
 
     Args:
@@ -95,6 +65,50 @@ class FlashBuildBase(capability_base.CapabilityBase):
 
     Note: The list of files and expected version will be used to do an over
         the wire upgrade for the device.
+    """
+
+  @abc.abstractmethod
+  def get_defaults(self) -> Dict[str, Any]:
+    """Returns a dictionary of default build arguments.
+
+    Returns:
+        dict: the default build arguments for the device.
+    """
+
+  @abc.abstractmethod
+  def get_firmware_type(self, build_args=None) -> str:
+    """Returns the firmware type of the requested build.
+
+    Args:
+        build_args (dict): dictionary of build arguments. If None, the
+          default build arguments are used.
+
+    Returns:
+        str: firmware type
+    """
+
+  @abc.abstractmethod
+  def get_firmware_version(self, build_args=None) -> str:
+    """Returns the firmware version based on the build arguments.
+
+    Args:
+        build_args (dict): dictionary of build arguments. If None, the
+          default build arguments are used.
+
+    Returns:
+        str: firmware version
+    """
+
+  @abc.abstractmethod
+  def get_remote_build_folder(self, build_args=None) -> str:
+    """Uses the build arguments to determine the remote build folder.
+
+    Args:
+        build_args (dict): dictionary of build arguments. If None, the
+          default build arguments are used.
+
+    Returns:
+        str: the remote build folder path.
     """
 
   @abc.abstractmethod

@@ -16,16 +16,10 @@
 from unittest import mock
 from gazoo_device import errors
 from gazoo_device.capabilities import pwrpc_common_default
+from gazoo_device.protos import device_service_pb2
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
-try:
-  # pylint: disable=g-import-not-at-top
-  from device_service import device_service_pb2
-except ImportError:
-  device_service_pb2 = None
 
 
-_DEVICE_SERVICE_PATH = (
-    "gazoo_device.capabilities.pwrpc_common_default.device_service_pb2")
 _FAKE_DEVICE_NAME = "matter_device"
 _FAKE_VENDOR_ID = 1234
 _FAKE_PRODUCT_ID = 5678
@@ -44,22 +38,11 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
         device_name=_FAKE_DEVICE_NAME,
         switchboard_call=self.switchboard_call_mock,
         switchboard_call_expect=self.switchboard_call_expect_mock)
-    if device_service_pb2 is not None:
-      fake_device_info = device_service_pb2.DeviceInfo(
-          vendor_id=_FAKE_VENDOR_ID,
-          product_id=_FAKE_PRODUCT_ID,
-          software_version=_FAKE_SOFTWARE_VERSION)
-      self.fake_device_info_in_bytes = fake_device_info.SerializeToString()
-    else:
-      self.fake_device_info_in_bytes = None
-      info_patcher = mock.patch(_DEVICE_SERVICE_PATH)
-      self.device_service = info_patcher.start()
-      self.addCleanup(info_patcher.stop)
-      self.device_service.DeviceInfo.FromString().vendor_id = _FAKE_VENDOR_ID
-      self.device_service.DeviceInfo.FromString().product_id = _FAKE_PRODUCT_ID
-      self.device_service.DeviceInfo.FromString().software_version = (
-          _FAKE_SOFTWARE_VERSION)
-      self.device_service.DeviceInfo.FromString().not_exist = None
+    fake_device_info = device_service_pb2.DeviceInfo(
+        vendor_id=_FAKE_VENDOR_ID,
+        product_id=_FAKE_PRODUCT_ID,
+        software_version=_FAKE_SOFTWARE_VERSION)
+    self.fake_device_info_in_bytes = fake_device_info.SerializeToString()
 
   def test_001_get_static_info(self):
     """Verifies getting device static info successfully."""
