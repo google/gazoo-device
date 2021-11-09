@@ -73,57 +73,17 @@ def visible_members(component, class_attrs=None, verbose=False):
       component, member_name, member, class_attrs=class_attrs, verbose=verbose)]
 
 
-def get_member(component, args):
-  """Returns a member (function, property, etc.) of a component by consuming CLI arguments.
-
-  Args:
-      component (object): the component from which to get the member.
-      args (list): arguments from which to consume in the search for the
-        member.
-
-  Returns:
-      tuple: (member, consumed_args, remaining_args)
-          member: the member that was found by consuming args.
-          consumed_args: the args that were consumed by getting this member.
-          remaining_args: the remaining args that haven't been consumed yet.
-
-  Raises:
-      FireError: if the provided arguments do not correspond to a component
-      member.
-
-  Note:
-      original behavior: component members are collected using
-      inspect.getmembers.
-      behavior with patch: component members are collected using
-      _safely_get_members.
-    """
-  arg = args[0]
-  arg_names = [
-      arg,
-      arg.replace('-', '_'),  # treat '-' as '_'.
-  ]
-
-  for arg_name in arg_names:
-    members = dict(_safely_get_members(component, member_names=[arg_name]))
-    if arg_name in members:
-      return members[arg_name], [arg], args[1:]
-
-  raise fire.core.FireError('Could not consume arg:', arg)
-
-
 def apply_patch():
   """Applies monkey patch by attaching custom functions to the Python Fire module."""
   fire.core.Display = display
-  fire.core._GetMember = get_member  # pylint: disable=protected-access
   fire.completion.VisibleMembers = visible_members
 
 
-def _safely_get_members(component, member_names=None):
+def _safely_get_members(component):
   """Gather stable members of a component.
 
   Args:
       component (object): The component from which to get the members from.
-      member_names (list): List of names of members to gather.
 
   Returns:
       list: of stable component members as tuples (member name, member
@@ -134,16 +94,12 @@ def _safely_get_members(component, member_names=None):
       devices when all
       device properties were previously accessed by inspect.getmembers.
   """
-  all_member_names = dir(component)
-  member_names = member_names or all_member_names
-
   members = []
-  for attr_name in member_names:
-    if attr_name in all_member_names:
-      try:
-        attribute = getattr(component, attr_name)
-        members.append((attr_name, attribute))
-      except Exception:
-        pass  # ignore members that raise exceptions
+  for attr_name in dir(component):
+    try:
+      attribute = getattr(component, attr_name)
+      members.append((attr_name, attribute))
+    except Exception:
+      pass  # ignore members that raise exceptions
 
   return members

@@ -15,34 +15,40 @@
 """Utility module for usb information."""
 import re
 import sys
+
+from typing import Dict, List, Optional, Union
+
+from gazoo_device import custom_types
 from gazoo_device.utility import usb_config
 from gazoo_device.utility import usb_info_linux
 from gazoo_device.utility import usb_info_mac
 
+import usb
 
-def find_matching_connections(match_criteria):
+
+def find_matching_connections(
+    match_criteria: custom_types.MatchCriteria) -> List[usb_config.UsbInfo]:
   """Returns usb_info instances for connections that match criteria.
 
+  Note that connections are first excluded and then included.
+  If there is no include regex, all instances that dont match exclude_regex
+  are included.
+
+  Dictionary entry: {"<key>": {
+                        "include_regex": "<regex>",
+                        "exclude_regex": "<regex>""}
+                    }
+
   Args:
-      match_criteria (dict): dictionary of match criteria.
+      match_criteria: Dictionary of match criteria.
 
   Returns:
-      list: list of UsbInfo instances that match criteria.
+      UsbInfo instances that match criteria.
 
   Raises:
-      ValueError: if match criteria contains bad key(s).
-
-  Note:
-    Connections first excluded and then included.
-    If there is no include regex, all instances that dont match exclude_regex
-    are included.
-
-    Dictionary entry: {"<key>": {
-                          "include_regex": "<regex>",
-                          "exclude_regex": "<regex>""}
-                      }
+      ValueError: If match criteria contains bad key(s).
   """
-  instances = get_address_to_usb_info_dict().values()
+  instances = list(get_address_to_usb_info_dict().values())
   allowed_keys = usb_config.UsbInfo.get_properties()
   bad_keys = [key for key in match_criteria.keys() if key not in allowed_keys]
   if bad_keys:
@@ -62,7 +68,7 @@ def find_matching_connections(match_criteria):
   return instances
 
 
-def get_address_to_usb_info_dict():
+def get_address_to_usb_info_dict() -> Dict[str, usb_config.UsbInfo]:
   """Gets a dictionary of usb devices with all relevent information."""
   if sys.platform == "darwin":
     module = usb_info_mac
@@ -71,7 +77,7 @@ def get_address_to_usb_info_dict():
   return module.get_address_to_usb_info_dict()
 
 
-def get_all_serial_connections():
+def get_all_serial_connections() -> List[str]:
   """Returns a list of all serial connections."""
   usb_info = get_address_to_usb_info_dict()
   return [
@@ -80,14 +86,14 @@ def get_all_serial_connections():
   ]
 
 
-def get_device_info(address):
+def get_device_info(address: str) -> usb_config.UsbInfo:
   """Gets the usb info of a specific device.
 
   Args:
-      address (str): serial path or adb serial.
+      address: Serial path or adb serial.
 
   Returns:
-      object: usb_info instance encoding information for that specific address.
+      UsbInfo instance encoding information for that specific address.
   """
   address_to_info_dict = get_address_to_usb_info_dict()
   if address in address_to_info_dict:
@@ -96,66 +102,66 @@ def get_device_info(address):
   return usb_config.UsbInfo()
 
 
-def get_vendor_number_from_path(address):
+def get_vendor_number_from_path(address: str) -> str:
   """Returns the vendor number for the address provided.
 
   Args:
-      address (str): address to find matching vendor id for.
+      address: Address to find matching vendor id for.
 
   Raises:
-      ValueError: if address not found.
+      ValueError: If address not found.
 
   Returns:
-      str: vendor number (e.g. "4012") from address.
+      Vendor number (e.g. "4012") from address.
   """
   usb_info_inst = get_device_info(address)
   return usb_info_inst.vendor_id
 
 
-def get_ftdi_interface_from_path(address):
+def get_ftdi_interface_from_path(address: str) -> str:
   """Returns the FTDI interface embedded in address provided.
 
   Args:
-      address (str): Address to extract interface from.
+      address: Address to extract interface from.
 
   Raises:
-      ValueError: if FTDI interface can't be obtained from address.
+      ValueError: If FTDI interface can't be obtained from address.
 
   Returns:
-      str: Interface (e.g. "if02") from address.
+      Interface (e.g. "if02") from address.
   """
   usb_info_inst = get_device_info(address)
   return usb_info_inst.ftdi_interface
 
 
-def get_product_name_from_path(address):
+def get_product_name_from_path(address: str) -> str:
   """Returns the product name for address provided.
 
   Args:
-      address (str): Address to extract FTDI name from.
+      address: Address to extract FTDI name from.
 
   Raises:
       ValueError: if product name can't be obtained from address.
 
   Returns:
-      str: product name from address.
+      Product name from address.
   """
   usb_info_inst = get_device_info(address)
   return usb_info_inst.product_name
 
 
-def get_other_ftdi_line(address, ftdi_interface):
+def get_other_ftdi_line(address: str, ftdi_interface: int) -> str:
   """Gets a path to the corresponding ftdi line for that address.
 
   Args:
-     address (str): address for an ftdi based serial.
-     ftdi_interface (int): number of the ftdi interface to switch to.
+     address: Address for an ftdi based serial.
+     ftdi_interface: Number of the ftdi interface to switch to.
 
   Returns:
-     str: address for other ftdi line.
+     Address for other ftdi line.
 
   Raises:
-      ValueError: if a matching ftdi line is not found.
+      ValueError: If a matching ftdi line is not found.
   """
   serial_number = get_serial_number_from_path(address)
   devices = find_matching_connections({
@@ -172,27 +178,60 @@ def get_other_ftdi_line(address, ftdi_interface):
       serial_number, ftdi_interface))
 
 
-def get_serial_number_from_path(address) -> str:
+def get_serial_number_from_path(address: str) -> str:
   """Returns the serial number embedded in address provided.
 
   Args:
-      address (str): Address to extract serial number from.
+      address: Address to extract serial number from.
 
   Raises:
-      ValueError: if FTDI serial number can't be obtained from address.
+      ValueError: If FTDI serial number can't be obtained from address.
   """
   usb_info_inst = get_device_info(address)
   return usb_info_inst.serial_number
 
 
-def get_usb_hub_info(device_address):
+def get_usb_devices_having_a_serial_number() -> List[usb.core.Device]:
+  """Gets a list of USB devices that have a serial number.
+
+  Devices are filtered by ones that have langids to provide a list of devices
+  which have descriptors and which are accessible with the current
+  permission level.
+  For more details see: https://github.com/pyusb/pyusb/issues/139
+
+  Returns:
+    Usb devices which have a serial number.
+  """
+  devices = usb.core.find(find_all=True)
+  return [d for d in devices if d.langids and d.serial_number]
+
+
+def get_usb_device_from_serial_number(
+    serial_number: str) -> Optional[usb.core.Device]:
+  """Gets a USB device with a specific serial number.
+
+  Devices are filtered by ones that have langids to provide a list of devices
+  which have descriptors and which are accessible with the current
+  permission level.
+  For more details see: https://github.com/pyusb/pyusb/issues/139
+
+  Args:
+    serial_number: Serial number of device to look for.
+  Returns:
+    Usb device with a matching serial number.
+  """
+  custom_match = lambda d: d.langids and d.serial_number == serial_number
+  return usb.core.find(custom_match=custom_match)
+
+
+def get_usb_hub_info(device_address: str) -> Dict[str, Union[None, int, str]]:
   """Gets the usb hub information for each communication address of the device.
 
   Args:
-      device_address (str): communication address for device.
+      device_address: Communication address for device.
 
   Returns:
-      dictionary: keys for usb hub name and port for usb connections.
+      Keys for usb hub name and port for usb connections.
   """
   usb_info = {}
   usb_info["device_usb_hub_name"] = get_usb_hub_address_from_address(
@@ -201,29 +240,27 @@ def get_usb_hub_info(device_address):
   return usb_info
 
 
-def get_usb_hub_address_from_address(address):
+def get_usb_hub_address_from_address(address: str) -> Optional[str]:
   """Returns the communication address for usb hub the device is connected to.
 
   Args:
-      address (str): communication address of device.
+      address: Communication address of device.
 
   Returns:
-      str: communication address of the usb hub.
-      None: if no associated usb hub.
+      Communication address of the usb hub or None if no associated usb hub.
   """
   usb_info_inst = get_device_info(address)
   return usb_info_inst.usb_hub_address
 
 
-def get_usb_hub_address_from_serial_number(serial_number):
+def get_usb_hub_address_from_serial_number(serial_number: str) -> Optional[str]:
   """Returns the communication address for usb hub the device is connected to.
 
   Args:
-      serial_number (str): device serial_number to associate with port number.
+      serial_number: Device serial_number to associate with port number.
 
   Returns:
-      str: communication address of the usb hub.
-      None: if no associated usb hub.
+      Communication address of the usb hub or None if no associated usb hub.
   """
   devices = find_matching_connections(
       {"serial_number": {
@@ -234,29 +271,29 @@ def get_usb_hub_address_from_serial_number(serial_number):
   return None
 
 
-def get_usb_hub_port_from_address(address):
+def get_usb_hub_port_from_address(address: str) -> Optional[int]:
   """Returns the usb hub port number associated with an address.
 
   Args:
-      address (str): communication Address to associate with port number.
+      address: Communication Address to associate with port number.
 
   Returns:
-      int: Port number of the usb hub the usb address is attached to.
-      None: if no associated port.
+      Port number of the usb hub the usb address is attached to
+      or None if no associated port.
   """
   usb_info_inst = get_device_info(address)
   return usb_info_inst.usb_hub_port
 
 
-def get_usb_hub_port_from_serial_number(serial_number):
+def get_usb_hub_port_from_serial_number(serial_number: str) -> Optional[int]:
   """Returns the usb hub port number associated with an address.
 
   Args:
-      serial_number (str): device serial_number to associate with port number.
+      serial_number: Device serial_number to associate with port number.
 
   Returns:
-      int: Port number of the usb hub the device is attached to.
-      None: if no associated port.
+      Port number of the usb hub the device is attached to or None if no
+      associated port.
   """
   devices = find_matching_connections(
       {"serial_number": {

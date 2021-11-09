@@ -94,9 +94,9 @@ class UsbHubDefault(usb_hub_base.UsbHubBase):
           msg=error_msg, device_name=self._device_name)
     try:
       self._usb_hub = self._get_manager().create_device(self.name)
-    except errors.DeviceError as err:
+    except (errors.DeviceError, RuntimeError) as err:
       raise errors.CapabilityNotReadyError(
-          msg=str(err), device_name=self._device_name)
+          msg=repr(err), device_name=self._device_name)
     self._healthy = True
 
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)

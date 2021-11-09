@@ -29,6 +29,7 @@ import gc
 import logging
 import sys
 import threading
+from typing import List
 
 SYNC_TIMEOUT = 0.25
 TERMINATE_TIMEOUT = 2
@@ -102,6 +103,11 @@ class LoggingThread(object):
     self._queue = queue
     self._thread = None
     self._synchonize_event = threading.Event()
+
+  @property
+  def handlers(self) -> List[logging.Handler]:
+    """Active logging handlers."""
+    return self._handlers
 
   def add_handler(self, handler):
     """Adds a logging handler to the LoggingThread.

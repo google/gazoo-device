@@ -71,20 +71,20 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
 
   @mock.patch.object(
       pwrpc_common_default.PwRPCCommonDefault, "_get_static_info")
-  def test_004_reboot_pass(self, mock_version):
-    """Verifies reboot passes with no_wait=False."""
+  def test_004_reboot_pass_with_verify(self, mock_version):
+    """Verifies reboot passes with verify=True."""
     self.switchboard_call_expect_mock.return_value = (None, (True, None))
-    self.uut.reboot(no_wait=False,
+    self.uut.reboot(verify=True,
                     rpc_timeout_s=_FAKE_TIMEOUT,
                     bootup_logline_regex="logs",
-                    bootup_timeout=_FAKE_TIMEOUT)
+                    bootup_timeout_s=_FAKE_TIMEOUT)
     self.switchboard_call_expect_mock.assert_called_once()
     self.assertEqual(1, mock_version.call_count)
 
-  def test_005_reboot_no_wait_pass(self):
-    """Verifies reboot passes with no_wait=True."""
+  def test_005_reboot_pass_without_verify(self):
+    """Verifies reboot passes with verify=False."""
     self.switchboard_call_mock.return_value = (True, None)
-    self.uut.reboot(no_wait=True, rpc_timeout_s=_FAKE_TIMEOUT)
+    self.uut.reboot(verify=False, rpc_timeout_s=_FAKE_TIMEOUT)
     self.switchboard_call_mock.assert_called_once()
 
   def test_006_reboot_ack_failed(self):
@@ -92,10 +92,10 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.switchboard_call_expect_mock.return_value = (None, (False, None))
     error_regex = r"triggering Reboot failed: The action did not succeed"
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
-      self.uut.reboot(no_wait=False,
+      self.uut.reboot(verify=True,
                       rpc_timeout_s=_FAKE_TIMEOUT,
                       bootup_logline_regex="logs",
-                      bootup_timeout=_FAKE_TIMEOUT)
+                      bootup_timeout_s=_FAKE_TIMEOUT)
     self.switchboard_call_expect_mock.assert_called_once()
 
   @mock.patch.object(
@@ -107,29 +107,29 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.switchboard_call_expect_mock.return_value = (None, (True, None))
     error_regex = f"Failed to boot up within {_FAKE_TIMEOUT}s"
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
-      self.uut.reboot(no_wait=False,
+      self.uut.reboot(verify=True,
                       rpc_timeout_s=_FAKE_TIMEOUT,
                       bootup_logline_regex="logs",
-                      bootup_timeout=_FAKE_TIMEOUT)
+                      bootup_timeout_s=_FAKE_TIMEOUT)
     self.switchboard_call_expect_mock.assert_called_once()
     self.assertEqual(10, mock_version.call_count)
 
   @mock.patch.object(
       pwrpc_common_default.PwRPCCommonDefault, "_get_static_info")
-  def test_008_factory_reset_pass(self, mock_version):
-    """Verifies factory reset passes with no_wait=False."""
+  def test_008_factory_reset_pass_with_verify(self, mock_version):
+    """Verifies factory reset passes with verify=True."""
     self.switchboard_call_expect_mock.return_value = (None, (True, None))
-    self.uut.factory_reset(no_wait=False,
+    self.uut.factory_reset(verify=True,
                            rpc_timeout_s=_FAKE_TIMEOUT,
                            bootup_logline_regex="logs",
-                           bootup_timeout=_FAKE_TIMEOUT)
+                           bootup_timeout_s=_FAKE_TIMEOUT)
     self.switchboard_call_expect_mock.assert_called_once()
     self.assertEqual(1, mock_version.call_count)
 
-  def test_009_factory_reset_no_wait_pass(self):
-    """Verifies factory reset passes with no_wait=True."""
+  def test_009_factory_reset_pass_without_verify(self):
+    """Verifies factory reset passes with verify=False."""
     self.switchboard_call_mock.return_value = (True, None)
-    self.uut.factory_reset(no_wait=True, rpc_timeout_s=_FAKE_TIMEOUT)
+    self.uut.factory_reset(verify=False, rpc_timeout_s=_FAKE_TIMEOUT)
     self.switchboard_call_mock.assert_called_once()
 
   def test_010_factory_reset_ack_failed(self):
@@ -137,10 +137,10 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.switchboard_call_expect_mock.return_value = (None, (False, None))
     error_regex = r"triggering FactoryReset failed: The action did not succeed"
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
-      self.uut.factory_reset(no_wait=False,
+      self.uut.factory_reset(verify=True,
                              rpc_timeout_s=_FAKE_TIMEOUT,
                              bootup_logline_regex="logs",
-                             bootup_timeout=_FAKE_TIMEOUT)
+                             bootup_timeout_s=_FAKE_TIMEOUT)
     self.switchboard_call_expect_mock.assert_called_once()
 
   @mock.patch.object(
@@ -152,10 +152,10 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.switchboard_call_expect_mock.return_value = (None, (True, None))
     error_regex = f"Failed to boot up within {_FAKE_TIMEOUT}s"
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
-      self.uut.factory_reset(no_wait=False,
+      self.uut.factory_reset(verify=True,
                              rpc_timeout_s=_FAKE_TIMEOUT,
                              bootup_logline_regex="",
-                             bootup_timeout=_FAKE_TIMEOUT)
+                             bootup_timeout_s=_FAKE_TIMEOUT)
     self.switchboard_call_expect_mock.assert_called_once()
     self.assertEqual(10, mock_version.call_count)
 

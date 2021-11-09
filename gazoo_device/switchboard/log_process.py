@@ -143,7 +143,6 @@ class LogFilterProcess(switchboard_process.SwitchboardProcess):
 
   def __init__(self,
                device_name,
-               mp_manager,
                exception_queue,
                command_queue,
                parser,
@@ -155,8 +154,6 @@ class LogFilterProcess(switchboard_process.SwitchboardProcess):
     Args:
         device_name (str): name of device used for process and error
           messages
-        mp_manager (multiprocessing.Manager): object to use for creating
-          Events
         exception_queue (Queue): to use for reporting exception traceback
           message from subprocess
         command_queue (Queue): to receive commands into
@@ -170,7 +167,6 @@ class LogFilterProcess(switchboard_process.SwitchboardProcess):
     super(LogFilterProcess, self).__init__(
         device_name,
         device_name + "-LogFilter",
-        mp_manager,
         exception_queue,
         command_queue,
         valid_commands=_VALID_FILTER_COMMANDS)
@@ -354,7 +350,6 @@ class LogWriterProcess(switchboard_process.SwitchboardProcess):
 
   def __init__(self,
                device_name,
-               mp_manager,
                exception_queue,
                command_queue,
                log_queue,
@@ -365,8 +360,6 @@ class LogWriterProcess(switchboard_process.SwitchboardProcess):
     Args:
         device_name (str): name of device used for process and error
           messages
-        mp_manager (multiprocessing.Manager): object to use for creating
-          Events
         exception_queue (Queue): to use for reporting exception traceback
           message from subprocess
         command_queue (Queue): to receive commands into
@@ -381,7 +374,6 @@ class LogWriterProcess(switchboard_process.SwitchboardProcess):
     super(LogWriterProcess, self).__init__(
         device_name,
         device_name + "-LogWriter",
-        mp_manager,
         exception_queue,
         command_queue,
         valid_commands=_VALID_WRITER_COMMANDS)

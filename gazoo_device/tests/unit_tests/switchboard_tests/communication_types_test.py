@@ -20,6 +20,7 @@ import gazoo_device
 from gazoo_device import data_types
 from gazoo_device import errors
 from gazoo_device import extensions
+from gazoo_device.protos import device_service_pb2
 from gazoo_device.switchboard import communication_types
 from gazoo_device.switchboard.transports import ssh_transport
 from gazoo_device.tests.unit_tests.utils import unit_test_case
@@ -28,6 +29,7 @@ from gazoo_device.utility import host_utils
 from gazoo_device.utility import usb_config
 from gazoo_device.utility import usb_utils
 import serial
+import usb
 
 _CAMBRIONIX_ADDRESS = "/dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_DJ00JMN0-if00-port0"
 _CAMBRIONIX_USB3_ADDRESS = "/dev/serial/by-id/usb-cambrionix_PS15-USB3_0000007567CE143A-if01"
@@ -37,6 +39,7 @@ _M5STACK_ADDRESS = (
     "usb-Silicon_Labs_CP2104_USB_to_UART_Bridge_Controller_01EDB69B-if00-port0")
 _DOCKER_ID = "123abcdefghij"
 _PTY_PROCESS_DIRECTORY = "/home/someuser/gazoo/gdm/pty_proc/some_device_dir"
+_BAUDRATE = 115200
 
 _MOCK_USB_MAP = {
     _CAMBRIONIX_ADDRESS:
@@ -107,10 +110,8 @@ class CommunicationTypeTests(unit_test_case.UnitTestCase):
   def setUp(self):
     super().setUp()
     self.mock_out_transports()
-    patch_usb_info = mock.patch.object(
-        usb_utils, "get_address_to_usb_info_dict", return_value=_MOCK_USB_MAP)
-    patch_usb_info.start()
-    self.addCleanup(patch_usb_info.stop)
+    self.enter_context(mock.patch.object(
+        usb_utils, "get_address_to_usb_info_dict", return_value=_MOCK_USB_MAP))
     self.manager = gazoo_device.manager.Manager()
 
   @mock.patch.object(serial, "Serial")
@@ -122,8 +123,8 @@ class CommunicationTypeTests(unit_test_case.UnitTestCase):
       if "Jlink" in comms_type:
         comms_address = _J_LINK_ADDRESS
       elif "PigweedSerial" in comms_type:
-        # TODO(b/181734752): Stop skipping PigweedSerialComms tests
-        continue
+        comms_kwargs["protobufs"] = (device_service_pb2,)
+        comms_kwargs["baudrate"] = _BAUDRATE
 
       self.logger.info("Creating Switchboard for %s", comms_type)
       switchboard_inst = self.manager.create_switchboard(
@@ -199,6 +200,22 @@ class CommunicationTypeTests(unit_test_case.UnitTestCase):
     with mock.patch.object(os, "access", return_value=False):
       addresses = communication_types.SerialComms.get_comms_addresses()
       self.assertFalse(addresses)
+
+  def test_020_usb_comms_addresses(self):
+    """Tests UsbComms communication type."""
+    fake_device = mock.create_autospec(spec=usb.core.Device)
+    fake_device.serial_number = "123"
+    with mock.patch.object(
+        usb_utils, "get_usb_devices_having_a_serial_number",
+        return_value=[fake_device]) as get_usb_devices:
+      addresses = communication_types.UsbComms.get_comms_addresses()
+      get_usb_devices.assert_called_once_with()
+      self.assertIn("123", addresses)
+
+  def test_021_usb_comms_transports(self):
+    """Tests UsbComms transport list."""
+    usb_comms = communication_types.UsbComms("123")
+    self.assertEmpty(usb_comms.get_transport_list())
 
 
 if __name__ == "__main__":

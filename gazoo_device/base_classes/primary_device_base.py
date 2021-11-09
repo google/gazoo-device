@@ -22,6 +22,7 @@ import abc
 from typing import Optional
 
 from gazoo_device import console_config
+from gazoo_device import data_types
 
 
 class PrimaryDeviceBase(abc.ABC):
@@ -159,7 +160,8 @@ class PrimaryDeviceBase(abc.ABC):
     """
 
   @abc.abstractmethod
-  def make_device_ready(self, setting: str = "on") -> None:
+  def make_device_ready(
+      self, setting: data_types.MAKE_DEVICE_READY_SETTING = "on") -> None:
     """Checks device readiness and attempts recovery if allowed.
 
     If setting is 'off': does nothing.

@@ -12,232 +12,140 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""This script performs unit tests on GDM's Parallel Utility library."""
-import multiprocessing
-import queue
+"""Unit and integration (multiprocessing) tests for parallel_utils."""
+import time
+from typing import NoReturn
 from unittest import mock
 
+from absl.testing import parameterized
 from gazoo_device import errors
-from gazoo_device import gdm_logger
-from gazoo_device.tests.unit_tests.utils import fake_devices
+from gazoo_device import manager
+from gazoo_device.base_classes import gazoo_device_base
+from gazoo_device.capabilities.interfaces import flash_build_base
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import parallel_utils
 
-QUEUE_MESSAGE = "Queue message for device {device_name}"
-GDM_LOGGER = gdm_logger.get_logger()
 
-# pylint: disable=unused-argument
+class ParallelUtilsUnitTests(unit_test_case.UnitTestCase):
+  """Unit tests for parallel_utils. Parallel processes are mocked."""
 
+  @parameterized.named_parameters(
+      ("factory_reset_success", parallel_utils.factory_reset, (), {}, False),
+      ("factory_reset_failure", parallel_utils.factory_reset, (), {}, True),
+      ("reboot_success", parallel_utils.reboot, (False,), {"method": "shell"},
+       False),
+      ("reboot_failure", parallel_utils.reboot, (False,), {"method": "shell"},
+       True),
+      ("upgrade_success", parallel_utils.upgrade, (),
+       {"build_file": "/some/file", "forced_upgrade": False}, False),
+      ("upgrade_failure", parallel_utils.upgrade, (),
+       {"build_file": "/some/file", "forced_upgrade": False}, True))
+  def test_convenience_parallel_function(
+      self, function, method_args, method_kwargs, raises):
+    """Tests one of the provided convenience parallel functions."""
+    mock_manager = mock.MagicMock(spec=manager.Manager)
+    mock_device = mock.MagicMock(spec=gazoo_device_base.GazooDeviceBase)
+    mock_device.flash_build = mock.MagicMock(flash_build_base.FlashBuildBase)
+    mock_device.name = "device-1234"
+    mock_manager.create_device.return_value = mock_device
 
-class MockProcess(object):
-  """Mock multiprocessing process object to track parallel methods in single process.
+    if function is parallel_utils.factory_reset:
+      device_method = mock_device.factory_reset
+    elif function is parallel_utils.reboot:
+      device_method = mock_device.reboot
+    else:
+      device_method = mock_device.flash_build.upgrade
 
-  https://docs.python.org/2/library/multiprocessing.html#multiprocessing.Process
-  """
+    if raises:
+      device_method.side_effect = errors.DeviceError("Failed")
+      with self.assertRaisesRegex(errors.DeviceError, "Failed"):
+        function(mock_manager, mock_device.name, *method_args, **method_kwargs)
+    else:
+      device_method.return_value = None
+      self.assertIsNone(
+          function(
+              mock_manager, mock_device.name, *method_args, **method_kwargs))
 
-  def __init__(self, target, args, kwargs):
-    self.target = target
-    self.args = args
-    self.kwargs = kwargs
-
-  def start(self):
-    """Start the process's activity."""
-    self.target(*self.args, **self.kwargs)
-
-  def is_alive(self):
-    """Return whether the process is alive."""
-    return True  # return True so terminate method will be called
-
-  def join(self, timeout=0):
-    """Wait for all processes to complete.
-
-    Args:
-        timeout (float): block at most timeout seconds.
-    """
-    pass  # running in single process, no action needed
-
-  def terminate(self):
-    """Terminate the process."""
-    pass  # running in single process, no action needed
-
-
-class MockQueue(object):
-  """Mock multiprocessing queue object to track a messaging queue in a single process.
-
-  https://docs.python.org/2/library/multiprocessing.html#multiprocessing.Queue
-  """
-
-  def __init__(self):
-    self.queue = []  # array representation of a queue
-
-  def cancel_join_thread(self):
-    """Prevent join_thread() from blocking."""
-    pass  # not using multiple threads, no action needed
-
-  def empty(self):
-    """Return whether or not the queue is empty."""
-    return not self.queue
-
-  def get(self, block=None, timeout=None):
-    """Remove an item from the queue.
-
-    Args:
-        block (bool): block if necessary until a free spot is available.
-        timeout (float): block at most timeout seconds.
-
-    Returns:
-        object: item removed from the queue.
-
-    Raises:
-        Queue.Empty: if queue is empty.
-    """
-    if timeout or not block:
-      if self.empty():
-        raise queue.Empty
-    return self.queue.pop()
-
-  def get_nowait(self):
-    """Remove an item from the queue."""
-    return self.get(False)
-
-  def put_nowait(self, msg):
-    """Put an item into the queue.
-
-    Args:
-        msg (object): item to insert into the queue.
-    """
-    self.queue.insert(0, msg)
+    mock_manager.create_device.assert_called_once_with(mock_device.name)
+    device_method.assert_called_once_with(*method_args, **method_kwargs)
+    mock_device.close.assert_called_once()
 
 
-class ParallelUtilsTests(unit_test_case.UnitTestCase):
-  """Unit tests for utility/parallel_utils.py."""
+def _test_function_with_return(
+    manager_inst: manager.Manager, some_arg: int) -> int:
+  """Returns some_arg."""
+  assert isinstance(manager_inst, manager.Manager)
+  return some_arg
 
-  def setUp(self):
-    super(ParallelUtilsTests, self).setUp()
 
-    # device mocks
-    self.devices = [
-        fake_devices.FakeSSHDevice(name="sshdevice-first"),
-        fake_devices.FakeSSHDevice(name="sshdevice-second"),
-        fake_devices.FakeSSHDevice(name="sshdevice-third")
-    ]
+def _test_function_no_return(manager_inst: manager.Manager) -> None:
+  """Function without a return statement."""
+  assert isinstance(manager_inst, manager.Manager)
 
-    # multiprocessing mocks
-    self.process_mock = mock.patch.object(
-        multiprocessing, "Process", side_effect=MockProcess)
-    self.queue_mock = mock.patch.object(
-        multiprocessing, "Queue", side_effect=MockQueue)
-    self.process_mock.start()
-    self.queue_mock.start()
 
-  def tearDown(self):
-    super(ParallelUtilsTests, self).tearDown()
-    self.process_mock.stop()
-    self.queue_mock.stop()
-    if hasattr(self, "uut"):
-      self.uut.close()
+_TEST_EXCEPTION = RuntimeError("Something went wrong.")
 
-  def test_000_get_messages_from_queue(self):
-    """Test retrieving messages from the multiprocessing queue."""
-    test_msgs = ["gobbly", "gook"]
-    mp_queue = multiprocessing.Queue()
-    for msg in test_msgs:
-      mp_queue.put_nowait(msg)
-    msgs = parallel_utils.get_messages_from_queue(mp_queue)
-    self.assertEqual(msgs, test_msgs)
 
-  def test_001_get_messages_from_queue_empty_queue(self):
-    """Test retrieving an empty list from an empty multiprocessing queue."""
-    mp_queue = multiprocessing.Queue()
-    msgs = parallel_utils.get_messages_from_queue(mp_queue)
-    self.assertEqual(msgs, [])
+def _test_function_raises_exception(manager_inst: manager.Manager) -> NoReturn:
+  """Function which raises an error."""
+  raise _TEST_EXCEPTION
 
-  def test_010_parallel_process_devices_not_list(self):
-    """Test parallel_process raising an exception if devices isn't a list."""
-    with self.assertRaisesRegex(RuntimeError, "Devices should be a list."):
-      non_list_devices = "non-list-devices"
-      parallel_utils.parallel_process("fake_action", self._mock_method,
-                                      non_list_devices)
 
-  def test_011_parallel_process_devices_missing_required_property(self):
-    """Test parallel_process raising an exception if devices are missing required props."""
-    with self.assertRaisesRegex(AttributeError,
-                                "Devices must have name property."):
-      string_list = ["", ""]
-      parallel_utils.parallel_process("fake_action", self._mock_method,
-                                      string_list)
+def _test_function_times_out(manager_inst: manager.Manager) -> None:
+  """Function which is designed to time out."""
+  assert isinstance(manager_inst, manager.Manager)
+  time.sleep(5)
 
-  def test_020_parallel_process_calls_method_returns_results(self):
-    """Test parallel_process calling a method for each device and interpreting the results."""
-    result = parallel_utils.parallel_process(
-        "mock_action", self._mock_method, self.devices, logger=GDM_LOGGER)
-    for device in self.devices:
-      self.assertIn(QUEUE_MESSAGE.format(device_name=device.name), result)
 
-  def test_021_parallel_process_calls_method_raises_exception(self):
-    """Test parallel_process calling a method for each device and raising an exception."""
-    # create parameter dict with the "raise_exception" argument
-    # this will be passed to _mock_method and an interpretable exception
-    # will be raised
-    args = {}
-    for device in self.devices:
-      args[device.DEVICE_TYPE] = {"raise_exception": True}
+_GOOD_CALL_SPECS = [
+    parallel_utils.CallSpec(_test_function_with_return, 5),
+    parallel_utils.CallSpec(_test_function_with_return, some_arg=10),
+    parallel_utils.CallSpec(_test_function_no_return),
+]
+_GOOD_CALL_RESULTS = [5, 10, None]
+_GOOD_CALL_ERRORS = [None, None, None]
+_BAD_CALL_SPECS = [
+    parallel_utils.CallSpec(_test_function_raises_exception),
+    parallel_utils.CallSpec(_test_function_times_out),
+]
+_BAD_CALL_RESULTS = [parallel_utils.NO_RESULT] * len(_BAD_CALL_SPECS)
+_BAD_CALL_ERRORS = [
+    (type(_TEST_EXCEPTION).__name__, str(_TEST_EXCEPTION)),
+    (errors.ResultNotReceivedError.__name__,
+     "Did not receive any results from the process."),
+]
 
-    error_recv = None
-    try:
-      parallel_utils.parallel_process(
-          "mock_action", self._mock_method, self.devices, parameter_dicts=args)
-    except RuntimeError as err:
-      error_recv = str(err)
 
-    for device in self.devices:
-      self.assertIn(QUEUE_MESSAGE.format(device_name=device.name), error_recv)
+class ParallelUtilsIntegrationTests(unit_test_case.UnitTestCase):
+  """Integration tests (with multiprocessing) for parallel_utils."""
 
-  def test_022_parallel_process_calls_method_in_parallel(self):
-    """Test parallel_process calling a method for each device in parallel."""
-    self.process_mock.stop()
-    self.queue_mock.stop()
+  def test_execute_concurrently_success(self):
+    """Tests execute_concurrently when all parallel processes succeed."""
+    results, call_errors = parallel_utils.execute_concurrently(
+        _GOOD_CALL_SPECS, timeout=1, raise_on_process_error=True)
+    self.assertEqual(results, _GOOD_CALL_RESULTS)
+    self.assertEqual(call_errors, _GOOD_CALL_ERRORS)
 
-    # note: no multiprocessing mocks are active here
-    # this will call _mock_method in a separate process for each device
-    result = parallel_utils.parallel_process("mock_action", self._mock_method,
-                                             self.devices)
-    for device in self.devices:
-      self.assertIn(QUEUE_MESSAGE.format(device_name=device.name), result)
+  def test_execute_concurrently_error_with_raise_on_process_error(self):
+    """Tests execute_concurrently with errors and raise_on_process_error set."""
+    regex = (r"Encountered errors in parallel processes: \[None, None, None, "
+             r"\('RuntimeError', 'Something went wrong.'\), "
+             r"\('ResultNotReceivedError', "
+             r"'Did not receive any results from the process.'\)\]")
+    with self.assertRaisesRegex(errors.ParallelUtilsError, regex):
+      parallel_utils.execute_concurrently(
+          _GOOD_CALL_SPECS + _BAD_CALL_SPECS,
+          timeout=1,
+          raise_on_process_error=True)
 
-    # restart multiprocessing mocks to avoid "stop called on unstarted patcher"
-    # error
-    self.process_mock.start()
-    self.queue_mock.start()
-
-  def test_030_issue_devices_parallel_calls_method_in_parallel(self):
-    """Test issue_devices_parallel calling device methods for each device."""
-    params = {"sshdevice": {"device_config": fake_devices._DEFAULT_CONFIG}}
-    result = parallel_utils.issue_devices_parallel("is_connected",
-                                                   self.devices,
-                                                   parameter_dicts=params)
-    self.assertEqual(result, [True] * len(self.devices))  # all connected
-
-  def _mock_method(self, device, logger=None, parameter_dict=None):
-    """Mock method that adds messages to a multiprocessing queue.
-
-    Args:
-        device (MockDevice): Mock Gazoo Device object.
-        logger (object): logger object.
-        parameter_dict (list): dictionary containing other arguments.
-
-    Returns:
-        str: message containing the device's name
-
-    Raises:
-        DeviceError: if exception exists in parameter_dict.
-
-    Note:
-        Designed to be passed to parallel_utils.parallel_process.
-    """
-    if parameter_dict and parameter_dict["raise_exception"]:
-      raise errors.DeviceError(QUEUE_MESSAGE.format(device_name=device.name))
-    return QUEUE_MESSAGE.format(device_name=device.name)
+  def test_execute_concurrently_error_without_raise_on_process_error(self):
+    """Tests execute_concurrently with errors and no raise_on_process_error."""
+    results, call_errors = parallel_utils.execute_concurrently(
+        _GOOD_CALL_SPECS + _BAD_CALL_SPECS,
+        timeout=1,
+        raise_on_process_error=False)
+    self.assertEqual(results, _GOOD_CALL_RESULTS + _BAD_CALL_RESULTS)
+    self.assertEqual(call_errors, _GOOD_CALL_ERRORS + _BAD_CALL_ERRORS)
 
 
 if __name__ == "__main__":

@@ -15,9 +15,7 @@
 """Common reusable utility functions."""
 import multiprocessing
 import os
-import time
 import weakref
-from gazoo_device import errors
 
 # Lists of callable functions with no arguments
 _run_before_fork_functions = []
@@ -58,101 +56,6 @@ class MethodWeakRef(object):
 class _Sentinel(object):
   """Empty object which supports weakrefs."""
   pass
-
-
-def _default_is_successful(_):
-  return True
-
-
-def not_func(val):
-  """Takes an input value and returns bool value after performing a negate operation.
-
-  Args:
-      val (object): any python object
-
-  Returns:
-      bool: True if bool(val) is False and False if bool(val) is True
-  """
-  return not bool(val)
-
-
-def is_true(val):
-  """Takes an input value and returns bool value.
-
-  Args:
-      val (object): any python object
-
-  Returns:
-      bool: bool(val)
-  """
-  return bool(val)
-
-
-def retry(func,
-          func_args=(),
-          func_kwargs=None,
-          is_successful=_default_is_successful,
-          timeout=10,
-          interval=1,
-          reraise=True,
-          exc_type=errors.CommunicationTimeoutError):
-  """Wait until either execution of func() succeeds or timeout is reached.
-
-  Success of execution of func() is determined by is_successful() function,
-  which should return True on successful execution of func().
-
-  Args:
-      func (function): function to execute
-      func_args (tuple): positional arguments to the function
-      func_kwargs (dict): keyword arguments to the function
-      is_successful (function): function which takes in the result of func()
-        and returns whether function execution should be considered
-        successful. To indicate success, return True. Defaults to always
-        returning True.
-      timeout (int): if no run of func() succeeds in this time period, raise
-        an error.
-      interval (float): how long to wait between retries of func().
-      reraise (bool): whether to re-raise exceptions in func() or not. If
-        True, will re-raise any exceptions from func(). If False, considers
-        execution of func() a failure if an Exception is raised.
-        is_successful() will NOT be called if an Exception occurs.
-      exc_type (class): type of exception to raise when timeout is reached.
-        Note that the class constructor will be called with just 1 argument.
-
-  Returns:
-      object: return value of first successful func() call.
-
-  Raises:
-      Exception: if timeout is reached. The default exception type is
-      errors.TimeoutError. OR if an Exception occurs in func() and reraise is
-      False.
-  """
-  if func_kwargs is None:
-    func_kwargs = {}
-
-  tried_times = 0
-  start_time = time.time()
-  end_time = start_time + timeout
-
-  while time.time() < end_time:
-    exception_occurred = False
-    tried_times += 1
-    try:
-      func_result = func(*func_args, **func_kwargs)
-    except Exception:  # pylint: disable=broad-except
-      if reraise:
-        raise
-      else:
-        exception_occurred = True
-
-    if not exception_occurred and is_successful(func_result):
-      return func_result
-
-    time.sleep(interval)
-
-  time_elapsed = time.time() - start_time
-  raise exc_type("Timeout in {}s. Tried calling {} {} times.".format(
-      time_elapsed, func.__name__, tried_times))
 
 
 def generate_name(_object):

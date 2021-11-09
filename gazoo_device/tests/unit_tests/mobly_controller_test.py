@@ -66,13 +66,9 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
   @mock.patch.object(
       mobly_controller.manager.Manager,
       "create_device",
-      return_value=mock.Mock(firmware_version="1"))
+      return_value=mock.Mock(firmware_version="1", close=mock.Mock(), spec=[]))
   @mock.patch.object(mobly_controller.manager.Manager, "set_prop")
-  @mock.patch.object(
-      mobly_controller.manager.Manager,
-      "get_device_configuration",
-      return_value=FAKE_CONFIGURATION)
-  def test_mobly_test(self, mock_config, mock_set, mock_create_device):
+  def test_mobly_test(self, mock_set, mock_create_device):
     """Use a fake mobly test to verify everything actually works as expected."""
 
     class FakeTest(base_test.BaseTestClass):

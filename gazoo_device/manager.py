@@ -18,37 +18,38 @@
   - get props and sets optional props
 """
 import atexit
+import collections
 import copy
 import datetime
 import difflib
-import fnmatch
 import inspect
 import json
 import logging
-import multiprocessing
 import os
 import queue
 import shutil
 import signal
 import time
-from typing import Dict, Optional, Union, Any
+from typing import Any, Dict, List, Mapping, Optional, Type, Union
 
 from gazoo_device import config
 from gazoo_device import custom_types
+from gazoo_device import data_types
 from gazoo_device import device_detector
 from gazoo_device import errors
 from gazoo_device import extensions
 from gazoo_device import gdm_logger
-
+from gazoo_device.base_classes import auxiliary_device
+from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.capabilities import event_parser_default
+from gazoo_device.capabilities.interfaces import capability_base
 from gazoo_device.capabilities.interfaces import event_parser_base
 from gazoo_device.log_parser import LogParser
 from gazoo_device.switchboard import switchboard
-
 from gazoo_device.usb_port_map import UsbPortMap
 from gazoo_device.utility import common_utils
 from gazoo_device.utility import host_utils
-from gazoo_device.utility import parallel_utils
+from gazoo_device.utility import multiprocessing_utils
 
 logger = gdm_logger.get_logger()
 _EXPECTED_FOLDER_PERMISSIONS = "755"
@@ -73,11 +74,7 @@ class Manager:
 
     self._open_devices = {}
     self.max_log_size = max_log_size
-    # b/141476623: exception queue must not share multiprocessing.Manager()
-    common_utils.run_before_fork()
-    self._exception_queue_manager = multiprocessing.Manager()
-    common_utils.run_after_fork_in_parent()
-    self._exception_queue = self._exception_queue_manager.Queue()
+    self._exception_queue = multiprocessing_utils.get_context().Queue()
 
     # Backwards compatibility for older debug_level=string style __init__
     if not isinstance(debug_level, int):
@@ -161,9 +158,6 @@ class Manager:
 
     if hasattr(self, "_exception_queue"):
       del self._exception_queue
-    if hasattr(self, "_exception_queue_manager"):
-      self._exception_queue_manager.shutdown()
-      del self._exception_queue_manager
 
   def close_open_devices(self):
     """Closes all open devices."""
@@ -190,16 +184,17 @@ class Manager:
     else:
       self._open_devices[device_name].close()
 
-  def create_device(self,
-                    identifier,
-                    new_alias=None,
-                    log_file_name=None,
-                    log_directory=None,
-                    log_to_stdout=None,
-                    skip_recover_device=False,
-                    make_device_ready="on",
-                    filters=None,
-                    log_name_prefix="") -> custom_types.Device:
+  def create_device(
+      self,
+      identifier,
+      new_alias=None,
+      log_file_name=None,
+      log_directory=None,
+      log_to_stdout=None,
+      skip_recover_device=False,
+      make_device_ready: data_types.MAKE_DEVICE_READY_SETTING = "on",
+      filters=None,
+      log_name_prefix="") -> custom_types.Device:
     """Returns created device object by identifier specified.
 
     Args:
@@ -284,15 +279,16 @@ class Manager:
       raise
     return device_inst
 
-  def create_device_sim(self,
-                        device_type,
-                        log_file_name=None,
-                        log_directory=None,
-                        skip_recover_device=False,
-                        make_device_ready="off",
-                        filters=None,
-                        log_name_prefix="",
-                        build_info_kwargs=None):
+  def create_device_sim(
+      self,
+      device_type,
+      log_file_name=None,
+      log_directory=None,
+      skip_recover_device=False,
+      make_device_ready: data_types.MAKE_DEVICE_READY_SETTING = "off",
+      filters=None,
+      log_name_prefix="",
+      build_info_kwargs=None):
     """Returns created simulated object by device_type specified.
 
     Args:
@@ -326,13 +322,14 @@ class Manager:
                                               log_directory, build_info_kwargs)
     return device_class
 
-  def create_devices(self,
-                     device_list=None,
-                     device_type=None,
-                     log_to_stdout=None,
-                     category="gazoo",
-                     make_device_ready="on",
-                     log_name_prefix=""):
+  def create_devices(
+      self,
+      device_list=None,
+      device_type=None,
+      log_to_stdout=None,
+      category="gazoo",
+      make_device_ready: data_types.MAKE_DEVICE_READY_SETTING = "on",
+      log_name_prefix=""):
     """Returns list of created device objects from device_list or connected devices.
 
     Args:
@@ -612,49 +609,53 @@ class Manager:
       host_utils.verify_key(key_info)
 
   @classmethod
-  def get_all_supported_capabilities(cls):
-    """Returns a map of all capability names supported by GDM.
+  def get_all_supported_capabilities(cls) -> Mapping[str, str]:
+    """Returns all supported capabilities in alphabetic order.
 
     Returns:
-        dict: map from capability name (str) to capability interface name
-        (str).
-              Example: {"file_transfer": "filetransferbase"}.
+      Mapping from capability name to capability interface name.
+      Example: {"file_transfer": "filetransferbase"}.
     """
-    return copy.copy(extensions.capabilities)
+    return collections.OrderedDict(
+        sorted(extensions.capabilities.items(),
+               key=lambda capability_and_if_names: capability_and_if_names[0]))
 
   @classmethod
-  def get_all_supported_capability_interfaces(cls):
-    """Returns a map of all capability interface classes supported by GDM.
+  def get_all_supported_capability_interfaces(
+      cls) -> Mapping[str, Type[capability_base.CapabilityBase]]:
+    """Returns all supported capability interfaces in alphabetic order.
 
     Returns:
-        dict: map from interface name (str) to capability interface class
-        (type).
-              Example: {"filetransferbase": <class FileTransferBase>}.
+      Mapping from interface name to capability interface class.
+      Example: {"filetransferbase": <class FileTransferBase>}.
     """
-    return copy.copy(extensions.capability_interfaces)
+    return collections.OrderedDict(
+        sorted(extensions.capability_interfaces.items(),
+               key=lambda interface_name_and_cls: interface_name_and_cls[0]))
 
   @classmethod
-  def get_all_supported_capability_flavors(cls):
-    """Returns a map of all capability flavor classes supported by GDM.
+  def get_all_supported_capability_flavors(
+      cls) -> Mapping[str, Type[capability_base.CapabilityBase]]:
+    """Returns all supported capability flavors in alphabetic order.
 
     Returns:
-        dict: map from flavor name (str) to capability flavor class (type).
-              Example: {"filetransferscp": <class FileTransferScp>}.
+      Mapping from flavor name to capability flavor class.
+      Example: {"filetransferscp": <class FileTransferScp>}.
     """
-    return copy.copy(extensions.capability_flavors)
+    return collections.OrderedDict(
+        sorted(extensions.capability_flavors.items(),
+               key=lambda flavor_name_and_cls: flavor_name_and_cls[0]))
 
   @classmethod
-  def get_all_supported_device_classes(cls):
-    """Returns a list of all supported primary, sim, and auxiliary devices.
+  def get_all_supported_device_classes(cls) -> List[Type[custom_types.Device]]:
+    """Returns all supported device classes sorted by the class path.
 
     Returns:
-      list: All supported device types. Returns just categories asked for if
-      requested.
+      All supported auxiliary, primary, and virtual device classes.
     """
-    all_classes = copy.copy(extensions.auxiliary_devices)
-    all_classes += copy.copy(extensions.primary_devices)
-    all_classes += copy.copy(extensions.virtual_devices)
-    return all_classes
+    return sorted(extensions.auxiliary_devices + extensions.primary_devices
+                  + extensions.virtual_devices,
+                  key=lambda a_cls: a_cls.__module__ + "." + a_cls.__name__)
 
   def get_connected_devices(self, category="gazoo"):
     """Retrieve a list of connected devices for the category specified.
@@ -748,62 +749,67 @@ class Manager:
       return self._get_device_prop(device_name, prop)
 
   @classmethod
-  def get_supported_auxiliary_device_classes(cls):
-    return copy.copy(extensions.auxiliary_devices)
+  def get_supported_auxiliary_device_classes(
+      cls) -> List[Type[auxiliary_device.AuxiliaryDevice]]:
+    """Returns all supported auxiliary device classes sorted by class path."""
+    return sorted(extensions.auxiliary_devices,
+                  key=lambda a_cls: a_cls.__module__ + "." + a_cls.__name__)
 
   @classmethod
   def get_supported_auxiliary_device_types(cls):
-    return [
-        a_cls.DEVICE_TYPE
-        for a_cls in cls.get_supported_auxiliary_device_classes()
-    ]
+    """Returns all supported auxiliary device types in alphabetic order."""
+    return sorted(a_cls.DEVICE_TYPE
+                  for a_cls in cls.get_supported_auxiliary_device_classes())
 
   @classmethod
-  def get_supported_device_capabilities(cls, device_type):
+  def get_supported_device_capabilities(cls, device_type: str) -> List[str]:
     """Returns a list of names of capabilities supported by the device type.
 
-    This is a wrapper around GazooDeviceBase.get_supported_capabilities() to
+    This is a wrapper around <device_class>.get_supported_capabilities() to
     allow specifying device_type as a string.
 
     Args:
-        device_type (str): device type to query for supported capabilities.
+      device_type: Device type to query for supported capabilities.
 
     Returns:
-        list: list of capability names supported by this device type.
-              For example, (["file_transfer", "usb_hub"]).
+      Capability names supported by this device type.
+      For example, (["file_transfer", "usb_hub"]).
     """
     device_class = cls.get_supported_device_class(device_type)
     return device_class.get_supported_capabilities()
 
   @classmethod
-  def get_supported_device_capability_flavors(cls, device_type):
-    """Returns a set of all capability flavor classes supported by the device type.
+  def get_supported_device_capability_flavors(
+      cls, device_type: str) -> List[Type[capability_base.CapabilityBase]]:
+    """Returns capability flavor classes supported by the device type.
 
-    This is a wrapper around GazooDeviceBase.get_supported_capability_flavors()
+    This is a wrapper around <device_class>.get_supported_capability_flavors()
     to allow specifying device_type as a string.
 
     Args:
-      device_type (str): device type to query for supported capability flavors.
+      device_type: Device type to query for supported capability flavors.
 
     Returns:
-      set: capability flavor classes supported by this device type.
-      Example: {<class 'DevicePowerDefault'>, <class 'FileTransferScp'>}.
+      Capability flavor classes supported by this device type sorted by the
+      class path. For example, [
+        <class 'gazoo_device.capabilities.file_transfer_scp.FileTransferScp'>,
+        <class 'gazoo_device.switchboard.switchboard.SwitchboardDefault'>,
+      ]
     """
     device_class = cls.get_supported_device_class(device_type)
-    return device_class.get_supported_capability_flavors()
+    return sorted(device_class.get_supported_capability_flavors(),
+                  key=lambda a_cls: a_cls.__module__ + "." + a_cls.__name__)
 
   @classmethod
-  def get_supported_device_class(cls, device_type):
-    """Converts device type to device class.
+  def get_supported_device_class(
+      cls, device_type: str) -> Type[custom_types.Device]:
+    """Returns the device class corresponding to the device type.
 
     Args:
-      device_type (str): device type.
-
-    Returns:
-       class: GazooDeviceBase-based class.
+      device_type: Device type.
 
     Raises:
-      DeviceError: if unknown type.
+      DeviceError: If the provided device type is unknown.
     """
     classes = [
         device_class for device_class in cls.get_all_supported_device_classes()
@@ -819,37 +825,35 @@ class Manager:
               device_type, ", ".join(close_matches)))
 
   @classmethod
-  def get_supported_device_types(cls):
-    """Returns a list of all supported device types.
-
-    Returns:
-      list: All supported device types.
-    """
-    return [
-        a_cls.DEVICE_TYPE for a_cls in cls.get_all_supported_device_classes()
-    ]
+  def get_supported_device_types(cls) -> List[str]:
+    """Returns all supported device types in alphabetic order."""
+    return sorted(a_cls.DEVICE_TYPE
+                  for a_cls in cls.get_all_supported_device_classes())
 
   @classmethod
-  def get_supported_primary_device_classes(cls):
-    return copy.copy(extensions.primary_devices)
+  def get_supported_primary_device_classes(
+      cls) -> List[Type[gazoo_device_base.GazooDeviceBase]]:
+    """Returns all supported primary device classes sorted by the class path."""
+    return sorted(extensions.primary_devices,
+                  key=lambda a_cls: a_cls.__module__ + "." + a_cls.__name__)
 
   @classmethod
   def get_supported_primary_device_types(cls):
-    return [
-        a_cls.DEVICE_TYPE
-        for a_cls in cls.get_supported_primary_device_classes()
-    ]
+    """Returns all supported primary device types in alphabetic order."""
+    return sorted(a_cls.DEVICE_TYPE
+                  for a_cls in cls.get_supported_primary_device_classes())
 
   @classmethod
   def get_supported_virtual_device_classes(cls):
-    return copy.copy(extensions.virtual_devices)
+    """Returns all supported virtual device classes sorted by the class path."""
+    return sorted(extensions.virtual_devices,
+                  key=lambda a_cls: a_cls.__module__ + "." + a_cls.__name__)
 
   @classmethod
   def get_supported_virtual_device_types(cls):
-    return [
-        a_cls.DEVICE_TYPE
-        for a_cls in cls.get_supported_virtual_device_classes()
-    ]
+    """Returns all supported virtual device types in alphabetic order."""
+    return sorted(a_cls.DEVICE_TYPE
+                  for a_cls in cls.get_supported_virtual_device_classes())
 
   def is_device_connected(self, identifier, category="all"):
     """Determine if device match identifier provided is connected for the category specified.
@@ -922,79 +926,6 @@ class Manager:
     """Prints the USB Port Map."""
     usb_port_map = UsbPortMap(self)
     usb_port_map.print_port_map()
-
-  def issue_devices(self,
-                    devices,
-                    method_name,
-                    timeout=parallel_utils.TIMEOUT_PROCESS,
-                    **kwargs):
-    """Execute a device method in parallel for multiple devices.
-
-    Args:
-        devices (list): list of device identifiers.
-        method_name (str): name of device method to execute in parallel.
-        timeout (int): maximum amount of seconds to allow parallel methods to
-          complete.
-        **kwargs (dict): arguments to pass to device method.
-
-    Returns:
-        list: list of results from parallel calls.
-    """
-    if isinstance(devices, str):
-      devices = devices.split(",")
-
-    return self._issue_devices(devices, method_name, timeout, **kwargs)
-
-  def issue_devices_all(self,
-                        method_name,
-                        timeout=parallel_utils.TIMEOUT_PROCESS,
-                        **kwargs):
-    """Execute a device method in parallel for all connected devices.
-
-    Args:
-        method_name (str): name of device method to execute in parallel.
-        timeout (int): maximum amount of seconds to allow parallel methods to
-          complete.
-        **kwargs (dict): arguments to pass to device method.
-
-    Returns:
-        list: list of results from parallel calls.
-
-    Raises:
-        DeviceError: if no devices are connected.
-    """
-    devices = self.get_connected_devices()
-    if not devices:
-      raise errors.DeviceError("No devices are connected.")
-
-    return self._issue_devices(devices, method_name, timeout, **kwargs)
-
-  def issue_devices_match(self,
-                          match,
-                          method_name,
-                          timeout=parallel_utils.TIMEOUT_PROCESS,
-                          **kwargs):
-    """Execute a device method in parallel for connected devices that match a given string.
-
-    Args:
-      match (str): wildcard-supported string to match against device names, i.e.
-        "raspberrypi*" will call provided method on all connected Raspberry Pis.
-      method_name (str): name of device method to execute in parallel.
-      timeout (int): maximum amount of seconds to allow parallel methods to
-        complete.
-      **kwargs (dict): arguments to pass to device method.
-
-    Returns:
-      list: results from parallel calls.
-
-    Raises:
-      DeviceError: if provided wildcard does not match any connected devices.
-    """
-    devices = fnmatch.filter(self.get_connected_devices(), match)
-    if not devices:
-      raise errors.DeviceError('No devices match "{}".'.format(match))
-
-    return self._issue_devices(devices, method_name, timeout, **kwargs)
 
   def redetect(self, device_name, log_directory=None):
     """Delete a device from the device configuration and then do a detect to find it again.
@@ -1247,8 +1178,8 @@ class Manager:
   def device_has_capabilities(cls, device_type, capability_names):
     """Check whether a device type supports all of the given capabilities.
 
-    This is a wrapper around GazooDeviceBase.has_capabilities() to allow
-        specifying device_type as a string.
+    This is a wrapper around <device_class>.has_capabilities() to allow
+    specifying device_type as a string.
 
     Args:
         device_type (str): device type to query for supported capabilities.
@@ -1514,61 +1445,6 @@ class Manager:
     self._open_devices[device.name] = device
     return device
 
-  def _issue_devices(self,
-                     devices,
-                     method_name,
-                     timeout=parallel_utils.TIMEOUT_PROCESS,
-                     **kwargs):
-    """Execute a device method in parallel for multiple devices.
-
-    Args:
-        devices (list): list of device identifiers.
-        method_name (str): name of device method to execute in parallel.
-        timeout (int): maximum amount of seconds to allow parallel methods to
-          complete.
-        **kwargs (dict): arguments to pass to device method.
-
-    Returns:
-        list: list of results from parallel calls, if any.
-
-    Raises:
-        DeviceError: if a provided device does not have a method with name
-        method_name.
-    """
-    device_names = []
-    parameter_dicts = {}
-    for device_id in devices:
-
-      # collect names of devices that support method
-      device_name = self._get_device_name(device_id, raise_error=True)
-      device_type = self.get_device_configuration(
-          device_name)["persistent"]["device_type"]
-      device_class = self.get_supported_device_class(device_type)
-      if not hasattr(device_class, method_name):
-        raise errors.DeviceError("Device {} does not support method {}".format(
-            device_id, method_name))
-      else:
-        device_names.append(device_name)
-        parameter_dicts[device_type] = kwargs
-
-    # create device instances
-    device_instances = [
-        self.create_device(device_name, make_device_ready="off")
-        for device_name in device_names
-    ]
-
-    # execute device methods in parallel using parallel_utils
-    try:
-      results = parallel_utils.issue_devices_parallel(method_name,
-                                                      device_instances,
-                                                      parameter_dicts, timeout)
-    finally:
-      for device in device_instances:
-        device.close()
-
-    if results:
-      return results
-
   def _load_configuration(self,
                           device_file_name=None,
                           device_options_file_name=None,
@@ -1787,7 +1663,7 @@ class Manager:
     Args:
       category (str): 'gazoo' or 'other'.
     """
-    format_line = "{:26} {:15} {:20} {:20} {:10}"
+    format_line = "{:30} {:15} {:24} {:20} {:10}"
     if category == "gazoo":
       device_dict = self._devices
       title = "Device"
@@ -1801,7 +1677,7 @@ class Manager:
     logger.info(
         format_line.format(title, "Alias", "Type", "Model", connected_title))
     logger.info(
-        format_line.format("-" * 26, "-" * 15, "-" * 20, "-" * 20, "-" * 10))
+        format_line.format("-" * 30, "-" * 15, "-" * 24, "-" * 20, "-" * 10))
     for name in sorted(device_dict.keys()):
       device_config = device_dict[name]
       device_type = device_config["persistent"]["device_type"]
@@ -1829,7 +1705,6 @@ class Manager:
 
     try:
       exception_message = self._exception_queue.get_nowait()
-      self._exception_queue.task_done()
     except (queue.Empty, ValueError):
       exception_message = "Exception queue missing exception message on SIGUSR1"
     except AttributeError:

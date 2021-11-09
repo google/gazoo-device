@@ -21,25 +21,25 @@ class PwRPCLockBase(capability_base.CapabilityBase):
   """Pigweed RPC locking capability for devices communicating over PwRPC."""
 
   @abc.abstractmethod
-  def lock(self, no_wait: bool = False) -> None:
+  def lock(self, verify: bool = True) -> None:
     """Locks the device.
 
     Args:
-      no_wait: If true, returns before verifying the locked state.
+      verify: If true, verifies the lock configurations before returning.
     """
 
   @abc.abstractmethod
-  def unlock(self, no_wait: bool = False) -> None:
+  def unlock(self, verify: bool = True) -> None:
     """Unlocks the device.
 
     Args:
-      no_wait: If true, returns before verifying the locked state.
+      verify: If true, verifies the lock configurations before returning.
     """
 
   @property
   @abc.abstractmethod
   def state(self) -> bool:
-    """The lock state of the device.
+    """The locked state of the device.
 
     Returns:
       True if the device is locked, false if it's unlocked.

@@ -15,7 +15,6 @@
 """Unit tests for nrf52840 module."""
 from unittest import mock
 
-from gazoo_device import errors
 from gazoo_device.auxiliary_devices import nrf52840
 from gazoo_device.base_classes import nrf_connect_sdk_device
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
@@ -53,11 +52,6 @@ class NRF52840DeviceTests(fake_device_test_case.FakeDeviceTestCase):
     self._test_get_detection_info(_FAKE_DEVICE_ADDRESS,
                                   nrf52840.NRF52840,
                                   _NRF_CONNECT_PERSISTENT_PROPERTIES)
-
-  def test_002_switchboard(self):
-    """Verifies the deactive switchboard in nrf52840."""
-    with self.assertRaises(errors.DeviceError):
-      self.uut.switchboard.send()
 
   def test_003_jlink_flash_capability(self):
     """Verifies the initialization of j_link_flash capability."""

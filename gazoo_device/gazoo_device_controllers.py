@@ -13,8 +13,6 @@
 # limitations under the License.
 
 """Device controllers and capabilities built into GDM."""
-import os.path
-import shutil
 from typing import Any, Dict
 
 from gazoo_device import _version
@@ -25,12 +23,9 @@ from gazoo_device import gdm_logger
 from gazoo_device.auxiliary_devices import cambrionix
 from gazoo_device.auxiliary_devices import dli_powerswitch
 from gazoo_device.auxiliary_devices import efr32
-from gazoo_device.auxiliary_devices import efr32_pigweed_lighting
 from gazoo_device.auxiliary_devices import esp32
 from gazoo_device.auxiliary_devices import esp32_pigweed_echo
-from gazoo_device.auxiliary_devices import esp32_pigweed_locking
 from gazoo_device.auxiliary_devices import nrf52840
-from gazoo_device.auxiliary_devices import nrf_pigweed_lighting
 from gazoo_device.auxiliary_devices import raspberry_pi
 from gazoo_device.auxiliary_devices import unifi_poe_switch
 from gazoo_device.auxiliary_devices import yepkit
@@ -74,6 +69,10 @@ from gazoo_device.capabilities.interfaces import shell_base
 from gazoo_device.capabilities.interfaces import switch_power_base
 from gazoo_device.capabilities.interfaces import switchboard_base
 from gazoo_device.capabilities.interfaces import usb_hub_base
+from gazoo_device.primary_devices import efr32_matter_lighting
+from gazoo_device.primary_devices import esp32_matter_allclusters
+from gazoo_device.primary_devices import esp32_matter_locking
+from gazoo_device.primary_devices import nrf_matter_lighting
 from gazoo_device.switchboard import communication_types
 from gazoo_device.switchboard import switchboard
 
@@ -108,17 +107,19 @@ def download_key(key_info: data_types.KeyInfo, local_key_path: str) -> None:
 def export_extensions() -> Dict[str, Any]:
   """Exports built-in device controllers, capabilities, communication types."""
   return {
-      "primary_devices": [],
+      "primary_devices": [
+          esp32_matter_allclusters.Esp32MatterAllclusters,
+          esp32_matter_locking.Esp32MatterLocking,
+          efr32_matter_lighting.Efr32MatterLighting,
+          nrf_matter_lighting.NrfMatterLighting,
+      ],
       "auxiliary_devices": [
           cambrionix.Cambrionix,
           dli_powerswitch.DliPowerSwitch,
           efr32.EFR32,
-          efr32_pigweed_lighting.EFR32PigweedLighting,
           esp32.ESP32,
           esp32_pigweed_echo.ESP32PigweedEcho,
-          esp32_pigweed_locking.ESP32PigweedLocking,
           nrf52840.NRF52840,
-          nrf_pigweed_lighting.NRFPigweedLighting,
           raspberry_pi.RaspberryPi,
           unifi_poe_switch.UnifiPoeSwitch,
           yepkit.Yepkit,
@@ -128,11 +129,12 @@ def export_extensions() -> Dict[str, Any]:
           communication_types.AdbComms,
           communication_types.DockerComms,
           communication_types.JlinkSerialComms,
+          communication_types.PigweedSerialComms,
           communication_types.PtyProcessComms,
           communication_types.SshComms,
           communication_types.SerialComms,
+          communication_types.UsbComms,
           communication_types.YepkitComms,
-          communication_types.PigweedSerialComms,
       ],
       "detect_criteria":
           detect_criteria.DETECT_CRITERIA,

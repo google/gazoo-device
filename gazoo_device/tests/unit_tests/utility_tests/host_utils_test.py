@@ -14,6 +14,7 @@
 
 """Unit tests for gazoo_device.utility.host_utils.py."""
 import os
+import subprocess
 from unittest import mock
 
 from gazoo_device import config

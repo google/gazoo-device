@@ -457,10 +457,11 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
         adb_path=ADB_CMD_PATH,
         allow_downgrade=True,
         allow_test_apk=True,
-        reinstall=True)
+        reinstall=True,
+        all_permissions=True)
     mock_path_exists.assert_called_once_with(fake_package_path)
     mock_adb_command.assert_called_once_with(
-        ("install", "-d", "-r", "-t", fake_package_path),
+        ("install", "-d", "-g", "-r", "-t", fake_package_path),
         adb_serial=DEVICE_ADB_SERIAL,
         adb_path=ADB_CMD_PATH)
 

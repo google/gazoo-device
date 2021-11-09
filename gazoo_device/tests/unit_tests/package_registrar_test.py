@@ -38,7 +38,8 @@ from gazoo_device.tests.unit_tests.utils import unit_test_case
 import immutabledict
 
 logger = gdm_logger.get_logger()
-_TEST_PACKAGE_NAME = "foo_package"
+_TEST_PACKAGE_NAME = "my_extension_package"
+_TEST_PACKAGE_IMPORT_PATH = "parent_package." + _TEST_PACKAGE_NAME
 
 
 class GoodCapabilityBase(capability_base.CapabilityBase):
@@ -258,7 +259,7 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
     super().setUp()
     self.mock_package = mock.MagicMock(
         spec=["__name__", "__version__", "export_extensions", "download_key"])
-    self.mock_package.__name__ = _TEST_PACKAGE_NAME
+    self.mock_package.__name__ = _TEST_PACKAGE_IMPORT_PATH
     self.mock_package.__version__ = "0.0.1"
     self.mock_package.export_extensions.return_value = {}
 
@@ -285,11 +286,12 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
               immutabledict.immutabledict({
                   "version": "0.0.1",
                   "key_download_function": lambda: None,
+                  "import_path": _TEST_PACKAGE_IMPORT_PATH,
               })
       })
   def test_register_already_known_package(self):
     """Test registering package which has already been registered."""
-    error_regex = r"Package 'foo_package' has already been registered"
+    error_regex = r"Package 'my_extension_package' has already been registered"
     with self.assertRaisesRegex(errors.PackageRegistrationError, error_regex):
       package_registrar.register(self.mock_package)
 
@@ -371,11 +373,10 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
 
   def test_register_nonconformant_device_class(self):
     """Test registering a device class which fails conformance checks."""
-    err_template = (r"Failed to register package 'foo_package' with GDM "
-                    r"architecture\. The following device class\(es\) are "
-                    r"incompliant with GDM architecture:\n"
-                    r"{cls}\n"
-                    r"\t{err}")
+    err_template = (
+        r"Failed to register package 'my_extension_package' with GDM "
+        r"architecture\. The following device class\(es\) are incompliant with "
+        r"GDM architecture:\n{cls}\n\t{err}")
     test_cases = (
         (BadPrimaryDeviceNoLogDecorator,
          (r"Public methods without return values must be decorated with "
@@ -605,7 +606,7 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
         "keys": [BadKeyMismatchingPackage]
     }
     regex = (r"KeyInfo\.package attribute must match the name of the package "
-             r"\('foo_package'\)")
+             r"\('my_extension_package'\)")
     with self.assertRaisesRegex(errors.PackageRegistrationError, regex):
       package_registrar.register(self.mock_package)
 
@@ -681,10 +682,11 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
     package_registrar.register(self.mock_package)
     self.assertEqual(
         extensions.package_info, {
-            self.mock_package.__name__:
+            _TEST_PACKAGE_NAME:
                 immutabledict.immutabledict({
                     "version": self.mock_package.__version__,
                     "key_download_function": self.mock_package.download_key,
+                    "import_path": _TEST_PACKAGE_IMPORT_PATH,
                 })
         })
     self.assertEqual(extensions.auxiliary_devices, [GoodAuxiliaryDevice])
@@ -708,7 +710,7 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
 
     # Test registering a different package which extends detect criteria for
     # communication type registered by the first package.
-    self.mock_package.__name__ = "bar_package"
+    self.mock_package.__name__ = "some_parent_package.another_extension_package"
     self.mock_package.export_extensions.return_value = {
         "detect_criteria": {
             GoodCommunicationType.__name__:
@@ -720,6 +722,8 @@ class PackageRegistrarTests(unit_test_case.UnitTestCase):
     }
     package_registrar.register(self.mock_package)
 
+    self.assertIn(_TEST_PACKAGE_NAME, extensions.package_info)
+    self.assertIn("another_extension_package", extensions.package_info)
     self.assertEqual(
         extensions.detect_criteria, {
             GoodCommunicationType.__name__: {

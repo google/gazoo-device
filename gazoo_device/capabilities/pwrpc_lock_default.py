@@ -13,8 +13,7 @@
 # limitations under the License.
 
 """Default implementation of the PwRPC (Pigweed RPC) locking capability."""
-import enum
-from typing import Any, Callable, Dict
+from typing import Any, Callable
 
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -27,54 +26,38 @@ from gazoo_device.switchboard.transports import pigweed_rpc_transport
 logger = gdm_logger.get_logger()
 
 
-class LockedState(enum.Enum):
-  LOCKED = True
-  UNLOCKED = False
-
-
 class PwRPCLockDefault(pwrpc_lock_base.PwRPCLockBase):
   """Pigweed RPC locking capability for devices communicating over PwRPC."""
 
   def __init__(self,
                device_name: str,
-               expect_locking_regexes: Dict[bool, str],
-               expect_timeout: int,
-               switchboard_call: Callable[..., Any],
-               switchboard_call_expect: Callable[..., Any]):
+               switchboard_call: Callable[..., Any]):
     """Initializes an instance of the PwRPCLockDefault capability.
 
     Args:
       device_name: Device name used for logging.
-      expect_locking_regexes: Expected regexes for locking and unlocking, the
-      dict format: {LockedState.LOCKED: "<locked regex>", LockedState.UNLOCKED:
-        "<unlocked regex>"}.
-      expect_timeout: Timeout (s) to wait for the expected regex.
       switchboard_call: The switchboard.call method.
-      switchboard_call_expect: The switchboard.call_and_expect method.
     """
     super().__init__(device_name=device_name)
-    self._expect_locking_regexes = expect_locking_regexes
-    self._expect_timeout = expect_timeout
     self._switchboard_call = switchboard_call
-    self._switchboard_call_expect = switchboard_call_expect
 
   @decorators.CapabilityLogDecorator(logger)
-  def lock(self, no_wait: bool = False) -> None:
+  def lock(self, verify: bool = True) -> None:
     """Locks the device.
 
     Args:
-      no_wait: Returns before verifying the locked state if true.
+      verify: If true, verifies the lock configurations before returning.
     """
-    self._lock_unlock(True, no_wait)
+    self._lock_unlock(True, verify)
 
   @decorators.CapabilityLogDecorator(logger)
-  def unlock(self, no_wait: bool = False) -> None:
+  def unlock(self, verify: bool = True) -> None:
     """Unlocks the device.
 
     Args:
-      no_wait: Returns before verifying the locked state if true.
+      verify: If true, verifies the lock configurations before returning.
     """
-    self._lock_unlock(False, no_wait)
+    self._lock_unlock(False, verify)
 
   @decorators.DynamicProperty
   def state(self) -> bool:
@@ -99,34 +82,29 @@ class PwRPCLockDefault(pwrpc_lock_base.PwRPCLockBase):
     state = locking_service_pb2.LockingState.FromString(state_in_bytes)
     return state.locked
 
-  def _lock_unlock(self, locked: bool, no_wait: bool = False) -> None:
+  def _lock_unlock(self, locked: bool, verify: bool = True) -> None:
     """Locks or unlocks the device.
 
     Args:
       locked: Locks the device if true, unlocks the device if false.
-      no_wait: Returns before verifying the locked state if true.
+      verify: If true, verifies the lock configurations before returning.
 
     Raises:
       DeviceError: Ack value is false or the device does not transition to the
       appropriate state.
     """
-    regex_type = LockedState.LOCKED if locked else LockedState.UNLOCKED
-    expect_regex = self._expect_locking_regexes[regex_type]
-
-    _, (ack, _) = self._switchboard_call_expect(
+    ack, _ = self._switchboard_call(
         method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-        pattern_list=[expect_regex],
-        timeout=self._expect_timeout,
         method_args=("Locking", "Set"),
-        method_kwargs={"locked": locked},
-        raise_for_timeout=True)
+        method_kwargs={"locked": locked})
 
     action = "Locking" if locked else "Unlocking"
     error_mesg = f"{action} device {self._device_name} failed: "
     if not ack:
       raise errors.DeviceError(
           error_mesg + "device did not acknowledge the RPC.")
-    if not no_wait:
+
+    if verify:
       if locked != self.state:  # pylint: disable=comparison-with-callable
         raise errors.DeviceError(
             error_mesg + f"device's locked state remains {self.state}.")

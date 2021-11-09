@@ -19,6 +19,7 @@ from gazoo_device import gdm_logger
 from gazoo_device.base_classes import espressif_esp32_device
 from gazoo_device.capabilities import pwrpc_echo_default
 from gazoo_device.protos import echo_service_pb2
+from gazoo_device.switchboard import switchboard
 from gazoo_device.utility import pwrpc_utils
 
 
@@ -55,3 +56,18 @@ class ESP32PigweedEcho(espressif_esp32_device.EspressifESP32Device):
     return self.lazy_init(pwrpc_echo_default.PwRPCEchoDefault,
                           device_name=self.name,
                           switchboard_call=self.switchboard.call)
+
+  @decorators.CapabilityDecorator(switchboard.SwitchboardDefault)
+  def switchboard(self):
+    """Instance for communicating with the device."""
+    name = self._get_private_capability_name(switchboard.SwitchboardDefault)
+    if not hasattr(self, name):
+      kwargs = self._COMMUNICATION_KWARGS.copy()
+      kwargs.update({
+          "communication_address": self.communication_address,
+          "communication_type": self.COMMUNICATION_TYPE,
+          "log_path": self.log_file_name,
+          "device_name": self.name,
+          "event_parser": None})
+      setattr(self, name, self.get_manager().create_switchboard(**kwargs))
+    return getattr(self, name)

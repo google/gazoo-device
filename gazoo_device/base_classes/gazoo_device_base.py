@@ -14,6 +14,7 @@
 
 """Base class for all primary and virtual device classes."""
 # pylint: disable=comparison-with-callable
+import atexit
 import difflib
 import functools
 import inspect
@@ -24,6 +25,7 @@ from typing import Any, List, Set, Type
 import weakref
 
 from gazoo_device import config
+from gazoo_device import data_types
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import extensions
@@ -33,6 +35,7 @@ from gazoo_device.capabilities import event_parser_default
 from gazoo_device.capabilities.interfaces import capability_base
 from gazoo_device.switchboard import log_process
 from gazoo_device.switchboard import switchboard
+from gazoo_device.utility import common_utils
 from gazoo_device.utility import deprecation_utils
 
 logger = gdm_logger.get_logger()
@@ -149,6 +152,10 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
       self._log_file_name = get_log_filename(
           log_directory, self.name, name_prefix=log_name_prefix)
     self._update_event_filename_and_symlinks()
+
+    # b/201669630: Ensure the device instance is closed (again) if it's
+    # continued to be used after an explicit <device>.close() call.
+    atexit.register(common_utils.MethodWeakRef(self.close))
 
   @decorators.OptionalProperty
   def alias(self):
@@ -478,7 +485,8 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     return bool(self.serial_number)
 
   @decorators.LogDecorator(logger, decorators.DEBUG)
-  def make_device_ready(self, setting: str = "on") -> None:
+  def make_device_ready(
+      self, setting: data_types.MAKE_DEVICE_READY_SETTING = "on") -> None:
     """Checks device readiness and attempts recovery if allowed.
 
     If setting is 'off': does nothing.
@@ -642,14 +650,15 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     return sorted(names)
 
   @classmethod
-  def get_supported_capabilities(cls):
-    """Returns a list of names of capabilities supported by this device class."""
-    # Deduplicate names: there may be several flavors which share the same interface
+  def get_supported_capabilities(cls) -> List[str]:
+    """Returns names of capabilities supported by this device class."""
+    # Deduplicate names: there may be several flavors which share the same
+    # interface.
     capability_names = {
         capability_class.get_capability_name()
         for capability_class in cls.get_supported_capability_flavors()
     }
-    return sorted(list(capability_names))
+    return sorted(capability_names)
 
   @classmethod
   def get_supported_capability_flavors(

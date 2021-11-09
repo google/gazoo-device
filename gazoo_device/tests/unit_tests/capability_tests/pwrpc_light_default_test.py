@@ -36,28 +36,32 @@ class PwRPCLightDefaultTest(fake_device_test_case.FakeDeviceTestCase):
   def setUp(self):
     super().setUp()
     self.switchboard_call_mock = mock.Mock()
-    self.switchboard_call_expect_mock = mock.Mock()
-    fake_expect_regexes = {
-        pwrpc_light_default.LightingAction.ON: "on",
-        pwrpc_light_default.LightingAction.OFF: "off"}
     self.uut = pwrpc_light_default.PwRPCLightDefault(
         device_name=_FAKE_DEVICE_NAME,
-        expect_lighting_regexes=fake_expect_regexes,
-        expect_timeout=_FAKE_TIMEOUT,
-        switchboard_call=self.switchboard_call_mock,
-        switchboard_call_expect=self.switchboard_call_expect_mock)
+        switchboard_call=self.switchboard_call_mock)
 
   @mock.patch.object(pwrpc_light_default.PwRPCLightDefault, "_on_off")
   def test_001_light_on(self, mock_on_off):
     """Verifies turning light on."""
-    self.uut.on()
-    mock_on_off.assert_called_once_with(True, False)
+    fake_color = lighting_service_pb2.LightingColor(
+        hue=_FAKE_HUE, saturation=_FAKE_SATURATION)
+
+    self.uut.on(level=_FAKE_BRIGHTNESS_LEVEL,
+                hue=_FAKE_HUE,
+                saturation=_FAKE_SATURATION,
+                verify=True)
+
+    mock_on_off.assert_called_once_with(
+        on=True,
+        level=_FAKE_BRIGHTNESS_LEVEL,
+        color=fake_color,
+        verify=True)
 
   @mock.patch.object(pwrpc_light_default.PwRPCLightDefault, "_on_off")
   def test_002_light_off(self, mock_on_off):
     """Verifies turning light off."""
     self.uut.off()
-    mock_on_off.assert_called_once_with(False, False)
+    mock_on_off.assert_called_once_with(on=False, verify=True)
 
   @mock.patch.object(pwrpc_light_default.PwRPCLightDefault, "_get_state")
   def test_003_get_light_state(self, mock_get_state):
@@ -82,40 +86,94 @@ class PwRPCLightDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.assertEqual(_FAKE_SATURATION, self.uut.color.saturation)
 
   @mock.patch.object(_PWRPC_LIGHT_MODULE,
+                     "color", new_callable=mock.PropertyMock)
+  @mock.patch.object(_PWRPC_LIGHT_MODULE,
+                     "brightness", new_callable=mock.PropertyMock)
+  @mock.patch.object(_PWRPC_LIGHT_MODULE,
                      "state", new_callable=mock.PropertyMock)
-  def test_006_on_off_with_success(self, mock_state):
+  def test_006_on_off_with_success(
+      self, mock_state, mock_brightness, mock_color):
     """Verifies _on_off method on success."""
-    self.switchboard_call_expect_mock.return_value = None, (True, None)
+    fake_color = lighting_service_pb2.LightingColor(
+        hue=_FAKE_HUE, saturation=_FAKE_SATURATION)
+    self.switchboard_call_mock.return_value = True, None
     mock_state.return_value = True
+    mock_brightness.return_value = _FAKE_BRIGHTNESS_LEVEL
+    mock_color.return_value = fake_color
 
-    self.uut._on_off(on=True, no_wait=False)
+    self.uut._on_off(on=True,
+                     level=_FAKE_BRIGHTNESS_LEVEL,
+                     color=fake_color,
+                     verify=True)
 
-    self.switchboard_call_expect_mock.assert_called_once()
+    self.switchboard_call_mock.assert_called_once()
     mock_state.assert_called_once()
+    mock_brightness.assert_called_once()
+    mock_color.assert_called_once()
 
   def test_006_on_off_failure_false_ack(self):
     """Verifies _on_off method on failure with false ack value."""
-    self.switchboard_call_expect_mock.return_value = None, (False, None)
-    error_regex = f"Device {_FAKE_DEVICE_NAME} turning light on failed."
+    self.switchboard_call_mock.return_value = False, None
+    error_regex = f"Device {_FAKE_DEVICE_NAME} turning light off failed."
 
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
-      self.uut.on()
+      self.uut._on_off(on=False)
 
-    self.switchboard_call_expect_mock.assert_called_once()
+    self.switchboard_call_mock.assert_called_once()
 
   @mock.patch.object(_PWRPC_LIGHT_MODULE,
                      "state", new_callable=mock.PropertyMock)
   def test_006_on_off_failure_incorrect_state(self, mock_state):
     """Verifies _on_off method on failure with incorrect state."""
-    self.switchboard_call_expect_mock.return_value = None, (True, None)
-    mock_state.return_value = False
-    error_regex = f"Device {_FAKE_DEVICE_NAME} light didn't turn on."
+    self.switchboard_call_mock.return_value = True, None
+    mock_state.return_value = True
+    error_regex = f"Device {_FAKE_DEVICE_NAME} light didn't turn off."
 
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
-      self.uut.on()
+      self.uut._on_off(on=False)
 
-    self.switchboard_call_expect_mock.assert_called_once()
+    self.switchboard_call_mock.assert_called_once()
     mock_state.assert_called_once()
+
+  @mock.patch.object(_PWRPC_LIGHT_MODULE,
+                     "brightness", new_callable=mock.PropertyMock)
+  @mock.patch.object(_PWRPC_LIGHT_MODULE,
+                     "state", new_callable=mock.PropertyMock)
+  def test_006_on_off_failure_incorrect_brightness(
+      self, mock_state, mock_brightness):
+    """Verifies _on_off method on failure with incorrect brightness."""
+    fake_color = lighting_service_pb2.LightingColor(
+        hue=_FAKE_HUE, saturation=_FAKE_SATURATION)
+    self.switchboard_call_mock.return_value = True, None
+    mock_state.return_value = True
+    mock_brightness.return_value = 0
+    err_msg = (f"Device {_FAKE_DEVICE_NAME} brightness level didn't change"
+               f" to {_FAKE_BRIGHTNESS_LEVEL}.")
+
+    with self.assertRaisesRegex(errors.DeviceError, err_msg):
+      self.uut._on_off(on=True, level=_FAKE_BRIGHTNESS_LEVEL, color=fake_color)
+
+  @mock.patch.object(_PWRPC_LIGHT_MODULE,
+                     "color", new_callable=mock.PropertyMock)
+  @mock.patch.object(_PWRPC_LIGHT_MODULE,
+                     "brightness", new_callable=mock.PropertyMock)
+  @mock.patch.object(_PWRPC_LIGHT_MODULE,
+                     "state", new_callable=mock.PropertyMock)
+  def test_006_on_off_failure_incorrect_color(
+      self, mock_state, mock_brightness, mock_color):
+    """Verifies _on_off method on failure with incorrect color."""
+    fake_color = lighting_service_pb2.LightingColor(
+        hue=_FAKE_HUE, saturation=_FAKE_SATURATION)
+    incorrect_color = lighting_service_pb2.LightingColor(hue=0, saturation=0)
+    self.switchboard_call_mock.return_value = True, None
+    mock_state.return_value = True
+    mock_brightness.return_value = _FAKE_BRIGHTNESS_LEVEL
+    mock_color.return_value = incorrect_color
+    err_msg = (f"Device {_FAKE_DEVICE_NAME} lighting color didn't change to "
+               f"{fake_color}.")
+
+    with self.assertRaisesRegex(errors.DeviceError, err_msg):
+      self.uut._on_off(on=True, level=_FAKE_BRIGHTNESS_LEVEL, color=fake_color)
 
   def test_007_get_state_with_success(self):
     """Verifies _get_state method on success."""

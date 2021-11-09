@@ -24,7 +24,9 @@ from gazoo_device.switchboard.transports import pigweed_rpc_transport
 
 
 logger = gdm_logger.get_logger()
-_RPC_TIMEOUT = 10
+_RPC_TIMEOUT = 10  # seconds
+_POLL_INTERVAL_SEC = 0.5  # seconds
+_DEFAULT_BOOTUP_TIMEOUT = 10  # seconds
 
 
 class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
@@ -63,60 +65,82 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
 
   @decorators.CapabilityLogDecorator(logger)
   def reboot(self,
-             no_wait: bool = False,
+             verify: bool = True,
              rpc_timeout_s: int = _RPC_TIMEOUT,
              bootup_logline_regex: Optional[str] = None,
-             bootup_timeout: Optional[int] = None):
+             bootup_timeout_s: int = _DEFAULT_BOOTUP_TIMEOUT) -> None:
     """Reboots the device.
 
     Args:
-      no_wait: Return before reboot completes.
+      verify: If true, waits for device bootup completes before returning.
       rpc_timeout_s: Timeout (s) for RPC call.
-      bootup_logline_regex: Device logline indicating booting up, not applicable
-        if no_wait is True.
-      bootup_timeout: Timeout (s) to wait for the bootup message, not applicable
-        if no_wait is True.
+      bootup_logline_regex: Device logline indicating booting up.
+      bootup_timeout_s: Timeout (s) to wait for the device to boot up.
     """
-    if no_wait:
+    if bootup_logline_regex is None:
       self._trigger_device_action(action="Reboot",
                                   rpc_timeout_s=rpc_timeout_s)
     else:
       self._trigger_device_action(action="Reboot",
                                   rpc_timeout_s=rpc_timeout_s,
                                   expect_regex=bootup_logline_regex,
-                                  expect_timeout_s=bootup_timeout)
-      self._wait_for_bootup_complete(bootup_timeout)
+                                  expect_timeout_s=bootup_timeout_s)
+    if verify:
+      self.wait_for_bootup_complete(bootup_timeout_s)
 
   @decorators.CapabilityLogDecorator(logger)
   def factory_reset(self,
-                    no_wait: bool = False,
+                    verify: bool = True,
                     rpc_timeout_s: int = _RPC_TIMEOUT,
                     bootup_logline_regex: Optional[str] = None,
-                    bootup_timeout: Optional[int] = None):
+                    bootup_timeout_s: int = _DEFAULT_BOOTUP_TIMEOUT) -> None:
     """Factory resets the device.
 
     Args:
-      no_wait: Return before factory-reset completes.
+      verify: If true, waits for device bootup completes before returning.
       rpc_timeout_s: Timeout (s) for RPC call.
-      bootup_logline_regex: Device logline indicating booting up, not applicable
-      if no_wait is True.
-      bootup_timeout: Timeout (s) to wait for the bootup message, not applicable
-      if no_wait is True.
+      bootup_logline_regex: Device logline indicating booting up.
+      bootup_timeout_s: Timeout (s) to wait for the device to boot up.
     """
-    if no_wait:
+    if bootup_logline_regex is None:
       self._trigger_device_action(action="FactoryReset",
                                   rpc_timeout_s=rpc_timeout_s)
     else:
       self._trigger_device_action(action="FactoryReset",
                                   rpc_timeout_s=rpc_timeout_s,
                                   expect_regex=bootup_logline_regex,
-                                  expect_timeout_s=bootup_timeout)
-      self._wait_for_bootup_complete(bootup_timeout)
+                                  expect_timeout_s=bootup_timeout_s)
+    if verify:
+      self.wait_for_bootup_complete(bootup_timeout_s)
 
   @decorators.CapabilityLogDecorator(logger)
-  def ota(self):
+  def ota(self) -> None:
     """Triggers OTA to the device."""
     self._trigger_device_action("TriggerOta")
+
+  @decorators.CapabilityLogDecorator(logger)
+  def wait_for_bootup_complete(self, bootup_timeout: int) -> None:
+    """Waits for device to boot up.
+
+    Args:
+      bootup_timeout: Max time to wait for bootup to complete (in seconds).
+
+    Raises:
+      DeviceError: If device did not boot up successfully in given timeout.
+    """
+    start_time = time.time()
+    bootup_time = start_time + bootup_timeout
+    while time.time() < bootup_time:
+      try:
+        logger.debug(f"{self._device_name} responded to the RPC call: "
+                     f"{self.software_version}")
+        logger.info(f"{self._device_name} booted up in "
+                    f"{time.time() - start_time}s")
+        return
+      except errors.DeviceError:
+        logger.debug(f"{self._device_name} hasn't booted up yet.")
+      time.sleep(_POLL_INTERVAL_SEC)
+    raise errors.DeviceError(f"Failed to boot up within {bootup_timeout}s.")
 
   def _get_static_info(self, property_name: str) -> str:
     """Returns device static information.
@@ -179,26 +203,3 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     if not ack:
       raise errors.DeviceError(f"{self._device_name} triggering {action} failed"
                                ": The action did not succeed")
-
-  def _wait_for_bootup_complete(self, bootup_timeout: int):
-    """Waits for device to boot up.
-
-    Args:
-      bootup_timeout: Max time to wait for bootup to complete (in seconds).
-
-    Raises:
-      DeviceError: If device did not boot up successfully in given timeout.
-    """
-    start_time = time.time()
-    bootup_time = start_time + bootup_timeout
-    while time.time() < bootup_time:
-      try:
-        logger.debug(f"{self._device_name} responded to the RPC call: "
-                     f"{self.software_version}")
-        logger.info(f"{self._device_name} booted up in "
-                    f"{time.time() - start_time}s")
-        return
-      except errors.DeviceError:
-        logger.debug(f"{self._device_name} hasn't booted up yet.")
-      time.sleep(0.5)
-    raise errors.DeviceError(f"Failed to boot up within {bootup_timeout}s.")

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Tests the switchboard.py module."""
 import os
 import pty
@@ -34,8 +33,10 @@ from gazoo_device.switchboard.transports import tcp_transport
 from gazoo_device.tests.unit_tests.utils import fake_responder
 from gazoo_device.tests.unit_tests.utils import fake_transport
 from gazoo_device.tests.unit_tests.utils import unit_test_case
-from gazoo_device.utility import common_utils
+from gazoo_device.utility import retry
 from gazoo_device.utility import usb_utils
+
+get_queue_size = unit_test_case.get_queue_size
 
 _DEVICE_COMMAND = "command"
 _DEVICE_COMMAND_NEWLINE = "command\n"
@@ -43,6 +44,9 @@ _DEVICE_WRITE_TIMEOUT = 1
 _EXPECT_TIMEOUT = 1.0
 _LOG_MESSAGE = "Special log message to write to file"
 _LOG_WRITE_TIMEOUT = 1
+_MD5SUM_BAD = "bad7070257998981a0c7b7ec003b9bad"
+_MD5SUM_GOOD = "4c57070257998981a0c7b7ec003b9d5c"
+_FILE_ON_TRANSPORT_PATH = "/some/path/file.json"
 
 _DEFAULT_FAKE_TRANSPORT_READS = ["a"] * 24 + ["b", "c", "d", "e"]
 
@@ -62,6 +66,37 @@ def get_file_size(file_path, size=0, timeout=_LOG_WRITE_TIMEOUT):
     time.sleep(0.001)
     filesize = os.path.getsize(file_path)
   return os.path.getsize(file_path)
+
+
+def _write_read_for_echo_file_to_transport(data):
+  responses = []
+  responses.append(data)
+  return responses
+
+
+def _write_read_for_verify_file_on_transport_bad_checksum(data):
+  responses = []
+  if "md5sum" in data:
+    responses.append("md5sum " + _FILE_ON_TRANSPORT_PATH + "\n")
+    responses.append(_MD5SUM_BAD + "  " + _FILE_ON_TRANSPORT_PATH + "\n")
+  return responses
+
+
+def _write_read_for_verify_file_on_transport_good_checksum(data):
+  responses = []
+  if "md5sum" in data:
+    responses.append("md5sum " + _FILE_ON_TRANSPORT_PATH + "\n")
+    responses.append(_MD5SUM_GOOD + "  " + _FILE_ON_TRANSPORT_PATH + "\n")
+  return responses
+
+
+def _write_read_for_verify_file_on_transport_missing_file(data):
+  responses = []
+  if "md5sum" in data:
+    responses.append("md5sum " + _FILE_ON_TRANSPORT_PATH + "\n")
+    responses.append("md5sum: can't open '" + _FILE_ON_TRANSPORT_PATH + "': "
+                     "No such file or directory\n")
+  return responses
 
 
 class NumberCruncher:
@@ -115,7 +150,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_002_switchboard_close_with_one_transport(self):
     """Test switchboard close with one transport."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -124,8 +159,8 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
   def test_003_switchboard_close_with_two_transports(self):
     """Test switchboard close with two transports."""
     transport_list = [
-        fake_transport.FakeTransport(self.manager),
-        fake_transport.FakeTransport(self.manager)
+        fake_transport.FakeTransport(),
+        fake_transport.FakeTransport()
     ]
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
@@ -176,7 +211,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_007_switchboard_multiple_close_with_one_transport(self):
     """Test switchboard multiple close with one transport."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -291,8 +326,8 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
   def test_016_switchboard_rotate_log_file(self):
     """Test switchboard rotates to new log file."""
     transport_list = []
-    header = (log_process.LOG_LINE_HEADER_LENGTH
-              + log_process.HOST_TIMESTAMP_LENGTH)
+    header = (
+        log_process.LOG_LINE_HEADER_LENGTH + log_process.HOST_TIMESTAMP_LENGTH)
     max_log_size = header + len("Note: ") + len(_LOG_MESSAGE)
     old_log_path = os.path.join(self.artifacts_directory, self._testMethodName,
                                 "fake-device.txt")
@@ -372,7 +407,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_020_switchboard_send_raises_error(self):
     """Test switchboard send method raises error for invalid port."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -390,7 +425,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_021_switchboard_send_to_default_port(self):
     """Test send method sends command and writes port number to log file."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -409,8 +444,8 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
   def test_022_switchboard_send_to_specified_port(self):
     """Test switchboard send method writes specified port to log file."""
     transport_list = [
-        fake_transport.FakeTransport(self.manager),
-        fake_transport.FakeTransport(self.manager)
+        fake_transport.FakeTransport(),
+        fake_transport.FakeTransport()
     ]
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
@@ -430,7 +465,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_0230_switchboard_send_adds_newline_if_not_found(self):
     """Test send method adds a newline to command if it doesn't end with one."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -449,7 +484,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_0231_switchboard_send_doesnt_add_newline_if_found(self):
     """Test send doesn't add a newline to command if it is ends with one."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -465,7 +500,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_024_switchboard_send_slow(self):
     """Test switchboard send sends one byte at a time when slow=True."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -488,7 +523,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_025_switchboard_send_force_slow(self):
     """Test switchboard send sends one byte at a time when force_slow=True."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault(
         "test_device",
         self.exception_queue, [self.fake_transport],
@@ -513,7 +548,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
   def test_030_switchboard_do_and_expect_non_callable_raises_error(self):
     """Test do_and_expect with non callable function raises an error."""
 
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -595,16 +630,6 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     self.uut.do_and_expect(
         self.uut.close, [], {}, target_patterns, timeout=_EXPECT_TIMEOUT)
 
-  def test_036_switchboard_do_and_expect_mp_shutdown(self):
-    """Test switchboard do_and_expect calls switchboard mp shutdown."""
-    self._setup_expect_test()
-    target_patterns = ["a"]
-
-    self.uut.do_and_expect(
-        self.uut._mp_manager.shutdown, [], {},
-        target_patterns,
-        timeout=_EXPECT_TIMEOUT)
-
   def test_037_switchboard_do_and_expect_nested_expect(self):
     """Test switchboard do_and_expect calls switchboard expect."""
     self._setup_expect_test(_DEFAULT_FAKE_TRANSPORT_READS
@@ -653,7 +678,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
   def test_040_switchboard_expect_raises_errors(self):
     """Test switchboard expect raises errors for bad arguments."""
 
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -899,7 +924,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
         "Expected length of lines shown is {} found {}".format(
             0, len(expect_response.before)))
 
-  def test_51_switchboard_sent_and_expect_with_raise_for_timeout_set(self):
+  def test_051_switchboard_sent_and_expect_with_raise_for_timeout_set(self):
     """Test send_and_expect with raise_for_timeout=True."""
     identifier = line_identifier.AllLogIdentifier()
     self._setup_expect_test(
@@ -916,7 +941,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_060_switchboard_click_raises_errors_no_button_list(self):
     """Test switchboard click method raises errors with no button list."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -928,7 +953,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_061_switchboard_click_raises_errors_bad_args(self):
     """Test switchboard click method raises errors with bad arguments."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     buttons = mock.MagicMock(spec=ftdi_buttons.FtdiButtons)
     buttons.valid_buttons.return_value = ["reset_btn", "boot_btn", "button_btn"]
     self.uut = switchboard.SwitchboardDefault(
@@ -965,7 +990,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_062_switchboard_click_works(self):
     """Test switchboard click method works."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     buttons = mock.MagicMock(spec=ftdi_buttons.FtdiButtons)
     self.uut = switchboard.SwitchboardDefault(
         "test_device",
@@ -1032,7 +1057,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_070_switchboard_press_raises_errors_no_button_list(self):
     """Test switchboard press method raises errors with no button list."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -1044,7 +1069,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_071_switchboard_press_raises_errors_bad_args(self):
     """Test switchboard press method raises errors with bad arguments."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     buttons = mock.MagicMock(spec=ftdi_buttons.FtdiButtons)
     buttons.valid_buttons.return_value = ["reset_btn", "boot_btn", "button_btn"]
     self.uut = switchboard.SwitchboardDefault(
@@ -1082,7 +1107,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_072_switchboard_press_works(self):
     """Test switchboard press method works."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     buttons = mock.MagicMock(spec=ftdi_buttons.FtdiButtons)
     self.uut = switchboard.SwitchboardDefault(
         "test_device",
@@ -1136,7 +1161,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_080_switchboard_release_raises_errors_no_button_list(self):
     """Test switchboard release method raises errors with no button list."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -1148,7 +1173,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_081_switchboard_release_raises_errors_bad_args(self):
     """Test switchboard release method raises errors with bad arguments."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     buttons = mock.MagicMock(spec=ftdi_buttons.FtdiButtons)
     buttons.valid_buttons.return_value = ["reset_btn", "boot_btn", "button_btn"]
     self.uut = switchboard.SwitchboardDefault(
@@ -1177,7 +1202,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_082_switchboard_release_works(self):
     """Test switchboard release method works."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     buttons = mock.MagicMock(spec=ftdi_buttons.FtdiButtons)
     self.uut = switchboard.SwitchboardDefault(
         "test_device",
@@ -1229,7 +1254,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_090_switchboard_close_transport_raises_error(self):
     """Test switchboard close_transport method raises error for invalid port."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -1245,7 +1270,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_091_switchboard_close_transport_to_default_port(self):
     """Test close_transport method closes transport and logs message."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -1260,8 +1285,8 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
   def test_092_switchboard_close_transport_to_specified_port(self):
     """Test close_transport method closes transport and logs message."""
     transport_list = [
-        fake_transport.FakeTransport(self.manager),
-        fake_transport.FakeTransport(self.manager)
+        fake_transport.FakeTransport(),
+        fake_transport.FakeTransport()
     ]
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
@@ -1278,8 +1303,8 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
   def test_093_switchboard_close_transport_with_buttons(self):
     """Test close_transport method closes transport and logs message."""
     transport_list = [
-        fake_transport.FakeTransport(self.manager),
-        fake_transport.FakeTransport(self.manager)
+        fake_transport.FakeTransport(),
+        fake_transport.FakeTransport()
     ]
     buttons = mock.MagicMock(spec=ftdi_buttons.FtdiButtons)
     self.uut = switchboard.SwitchboardDefault(
@@ -1300,8 +1325,8 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
   def test_094_switchboard_close_transport_with_buttons_invalid_port(self):
     """Test close_transport method closes transport and logs message."""
     transport_list = [
-        fake_transport.FakeTransport(self.manager),
-        fake_transport.FakeTransport(self.manager)
+        fake_transport.FakeTransport(),
+        fake_transport.FakeTransport()
     ]
     buttons = mock.MagicMock(spec=ftdi_buttons.FtdiButtons)
     self.uut = switchboard.SwitchboardDefault(
@@ -1321,7 +1346,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_095_switchboard_open_transport_raises_error(self):
     """Test switchboard open_transport method raises error for invalid port."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -1338,7 +1363,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_096_switchboard_open_transport_to_default_port(self):
     """Test open_transport method closes transport and logs message."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -1353,8 +1378,8 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
   def test_097_switchboard_open_transport_to_specified_port(self):
     """Test open_transport method opens transport and logs message."""
     transport_list = [
-        fake_transport.FakeTransport(self.manager),
-        fake_transport.FakeTransport(self.manager)
+        fake_transport.FakeTransport(),
+        fake_transport.FakeTransport()
     ]
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
@@ -1371,8 +1396,8 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
   def test_098_close_all_transports_works(self):
     """Ensure device closes all transport lists."""
     transport_list = [
-        fake_transport.FakeTransport(self.manager),
-        fake_transport.FakeTransport(self.manager)
+        fake_transport.FakeTransport(),
+        fake_transport.FakeTransport()
     ]
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
@@ -1387,8 +1412,8 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
   def test_099_open_all_transports_works(self):
     """Ensure device opens all transports."""
     transport_list = [
-        fake_transport.FakeTransport(self.manager),
-        fake_transport.FakeTransport(self.manager)
+        fake_transport.FakeTransport(),
+        fake_transport.FakeTransport()
     ]
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
@@ -1402,7 +1427,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     """Test switchboard xmodem_file_to_transport method raises errors."""
     if "linux" not in sys.platform:
       self.skipTest("Doesn't work on mac")
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -1487,7 +1512,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     """Test switchboard echo_file_to_transport method raises errors."""
     if "linux" not in sys.platform:
       self.skipTest("Doesn't work on mac")
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -1544,10 +1569,8 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     with open(source_file, "wb") as out_file:
       out_file.write(source_data)
 
-    self._destination_path = "/some/path/file.json"
     self.fake_transport = fake_transport.FakeTransport(
-        self.manager,
-        write_read_func=self._write_read_for_echo_file_to_transport)
+        write_read_func=_write_read_for_echo_file_to_transport)
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -1555,10 +1578,10 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
     bytes_per_echo = 1
     self.uut.echo_file_to_transport(
-        source_file, self._destination_path, bytes_per_echo=bytes_per_echo)
+        source_file, _FILE_ON_TRANSPORT_PATH, bytes_per_echo=bytes_per_echo)
     command1 = self._get_command(self.fake_transport)
     self.assertEqual(
-        "echo -ne > " + self._destination_path + "\n", command1,
+        "echo -ne > " + _FILE_ON_TRANSPORT_PATH + "\n", command1,
         "Expected 'echo -ne > /some/path/...' found {}".format(command1))
 
     count = 0
@@ -1572,16 +1595,17 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
         expected_count, count,
         "Expected {} echo commands found {} commands".format(
             expected_count, count))
-    self.assertTrue(
-        self.fake_transport.writes.empty(),
-        "Expected no more commands but found {} more commands".format(
-            self.fake_transport.writes.qsize()))
+    remaining_commands = get_queue_size(self.fake_transport.writes)
+    self.assertFalse(
+        remaining_commands,
+        f"Expected no more commands but found {remaining_commands} more "
+        "commands")
 
   def test_120_switchboard_verify_file_on_transport_raises_errors(self):
     """Test switchboard verify_file_on_transport method raises errors."""
     if "linux" not in sys.platform:
       self.skipTest("Doesn't work on mac")
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -1632,32 +1656,29 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     source_file = os.path.join(self.artifacts_directory,
                                self._testMethodName + ".json")
     source_data = b"The quick brown fox jumps over lazy dogs."
-    self._md5sum = "bad7070257998981a0c7b7ec003b9bad"
 
     # Create source_file
     with open(source_file, "wb") as out_file:
       out_file.write(source_data)
 
-    self._destination_path = "/some/path/file.json"
     self.fake_transport = fake_transport.FakeTransport(
-        self.manager,
-        write_read_func=self._write_read_for_verify_file_on_transport)
+        write_read_func=_write_read_for_verify_file_on_transport_bad_checksum)
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
                                               self.log_path)
 
     result = self.uut.verify_file_on_transport(source_file,
-                                               self._destination_path)
+                                               _FILE_ON_TRANSPORT_PATH)
     self.assertFalse(result,
                      "Expected verify file on transport to return False")
     command = self._get_command(self.fake_transport)
-    self.assertEqual("md5sum " + self._destination_path + "\n", command,
+    self.assertEqual("md5sum " + _FILE_ON_TRANSPORT_PATH + "\n", command,
                      "Expected 'md5sum ...' found {}".format(command))
     self.assertTrue(
         self.fake_transport.writes.empty(),
         "Expected no more commands but found {} more commands".format(
-            self.fake_transport.writes.qsize()))
+            get_queue_size(self.fake_transport.writes)))
 
   def test_122_switchboard_verify_file_on_transport_missing(self):
     """Test verify_file_on_transport method fails on missing file."""
@@ -1669,26 +1690,24 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     with open(source_file, "wb") as out_file:
       out_file.write(source_data)
 
-    self._destination_path = "/some/path/file.json"
-    write_read_fn = self._write_read_for_verify_file_on_transport_missing
     self.fake_transport = fake_transport.FakeTransport(
-        self.manager, write_read_func=write_read_fn)
+        write_read_func=_write_read_for_verify_file_on_transport_missing_file)
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
                                               self.log_path)
 
     result = self.uut.verify_file_on_transport(source_file,
-                                               self._destination_path)
+                                               _FILE_ON_TRANSPORT_PATH)
     self.assertFalse(result,
                      "Expected verify file on transport to return False")
     command = self._get_command(self.fake_transport)
-    self.assertEqual("md5sum " + self._destination_path + "\n", command,
+    self.assertEqual("md5sum " + _FILE_ON_TRANSPORT_PATH + "\n", command,
                      "Expected 'md5sum ...' found {}".format(command))
     self.assertTrue(
         self.fake_transport.writes.empty(),
         "Expected no more commands but found {} more commands".format(
-            self.fake_transport.writes.qsize()))
+            get_queue_size(self.fake_transport.writes)))
 
   def test_123_switchboard_verify_file_on_transport_success(self):
     """Test switchboard verify_file_on_transport method succeeds."""
@@ -1697,31 +1716,28 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     source_file = os.path.join(self.artifacts_directory,
                                self._testMethodName + ".json")
     source_data = b"The quick brown fox jumps over lazy dogs."
-    self._md5sum = "4c57070257998981a0c7b7ec003b9d5c"
 
     # Create source_file
     with open(source_file, "wb") as out_file:
       out_file.write(source_data)
 
-    self._destination_path = "/some/path/file.json"
     self.fake_transport = fake_transport.FakeTransport(
-        self.manager,
-        write_read_func=self._write_read_for_verify_file_on_transport)
+        write_read_func=_write_read_for_verify_file_on_transport_good_checksum)
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
                                               self.log_path)
 
     result = self.uut.verify_file_on_transport(source_file,
-                                               self._destination_path)
+                                               _FILE_ON_TRANSPORT_PATH)
     self.assertTrue(result, "Expected verify file on transport to return True")
     command = self._get_command(self.fake_transport)
-    self.assertEqual("md5sum " + self._destination_path + "\n", command,
+    self.assertEqual("md5sum " + _FILE_ON_TRANSPORT_PATH + "\n", command,
                      "Expected 'md5sum ...' found {}".format(command))
     self.assertTrue(
         self.fake_transport.writes.empty(),
         "Expected no more commands but found {} more commands".format(
-            self.fake_transport.writes.qsize()))
+            get_queue_size(self.fake_transport.writes)))
 
   def test_124_switchboard_add_new_filter_raises_error(self):
     """Test add_new_filter if given bad path or without _log_filter_process."""
@@ -1771,7 +1787,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
     file_creation_timeout = 5
     try:
-      common_utils.retry(
+      retry.retry(
           os.path.exists, (event_file_path,),
           is_successful=bool,
           timeout=file_creation_timeout,
@@ -1819,7 +1835,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_130_call_success(self):
     """Test a successful Switchboard.call() transport method call."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -1831,7 +1847,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_131a_call_error(self):
     """Test a Switchboard.call() transport method call which raises an error."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -1847,7 +1863,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_131b_call_error_mismatching_transport(self):
     """Test a Switchboard.call() when transport type is not matching."""
-    self.fake_transport = fake_transport.FakeTransport(self.manager)
+    self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
@@ -1904,8 +1920,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_143_switchboard_call_and_expect(self):
     """Test switchboard call_and_expect method."""
-    self._setup_expect_test(
-        ["a"] * 24 + ["e", "d", "c", "b", "c", "d", "e"])
+    self._setup_expect_test(["a"] * 24 + ["e", "d", "c", "b", "c", "d", "e"])
     target_patterns = ["e"]
     expect_response, func_response = self.uut.call_and_expect(
         method=fake_transport.FakeTransport.test_method,
@@ -1955,7 +1970,6 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
         if wait_for_write:
           self._wait_for_transport_write(transport)
         command += transport.writes.get_nowait()
-        transport.writes.task_done()
       except queue.Empty:
         break
     return command
@@ -2070,7 +2084,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
       patterns = _DEFAULT_FAKE_TRANSPORT_READS
 
     self.fake_transport = fake_transport.FakeTransport(
-        self.manager, read_only_if_raw_data_queue_enabled=True)
+        read_only_if_raw_data_queue_enabled=True)
 
     # Important: it's only possible to bind raw_data_enabled method in
     # FakeTransport before transport process is started.
@@ -2116,28 +2130,6 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     end_time = time.time() + timeout
     while transport.writes.empty() and time.time() < end_time:
       time.sleep(0.001)
-
-  def _write_read_for_echo_file_to_transport(self, data):
-    responses = []
-    responses.append(data.encode())
-    return responses
-
-  def _write_read_for_verify_file_on_transport(self, data):
-    responses = []
-    if "md5sum" in data:
-      responses.append(("md5sum " + self._destination_path + "\n").encode())
-      responses.append(
-          (self._md5sum + "  " + self._destination_path + "\n").encode())
-    return responses
-
-  def _write_read_for_verify_file_on_transport_missing(self, data):
-    responses = []
-    if "md5sum" in data:
-      responses.append(("md5sum " + self._destination_path + "\n").encode())
-      resp = ("md5sum: can't open '" + self._destination_path + "': "
-              "No such file or directory\n")
-      responses.append(resp.encode())
-    return responses
 
   def _verify_log_file_and_lines(self, count, log_path=None):
     if log_path is None:

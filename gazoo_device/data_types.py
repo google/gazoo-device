@@ -16,6 +16,10 @@
 import dataclasses
 import enum
 
+from typing_extensions import Literal
+
+MAKE_DEVICE_READY_SETTING = Literal["on", "off", "check_only", "flash_build"]
+
 
 @enum.unique
 class KeyType(enum.Enum):

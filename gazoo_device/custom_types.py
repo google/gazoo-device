@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Common types used across the gazoo_device module and externally."""
-from typing import Dict, Union
+from typing import Dict, Mapping, Union
 
 from gazoo_device.base_classes import auxiliary_device
 from gazoo_device.base_classes import gazoo_device_base
@@ -37,6 +37,7 @@ OptionalConfigsDict = Dict[
 # Such entries are present in Manager._devices and Manager.other_devices.
 ManagerDeviceConfigDict = Dict[Literal["persistent", "options"],
                                DeviceConfig]
+MatchCriteria = Mapping[str, Mapping[str, str]]
 # Returned by <device_instance>.props.
 DeviceClassConfigDict = Dict[Literal["persistent_identifiers", "optional"],
                              DeviceConfig]

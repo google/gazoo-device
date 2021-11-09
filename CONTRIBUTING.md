@@ -228,7 +228,7 @@ Health check execution can be triggered through 3 different ways:
 1.  During device detection.
 2.  During device creation (optional: `make_device_ready` can be set to `off`).
 3.  On-demand via `<device>.make_device_ready()` or through `FireManager`
-    `make_devices_ready` and `health_check` methods.
+    `health_check` method.
 
 There are 4 modes (settings) in which health checks (`make_device_ready`) can
 run:

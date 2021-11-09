@@ -19,6 +19,7 @@ Built to work with Python Fire: https://github.com/google/python-fire.
 """
 import codecs
 import enum
+import fnmatch
 import inspect
 import json
 import logging
@@ -28,7 +29,7 @@ import re
 import sys
 import textwrap
 import time
-from typing import Any, Collection, Optional, Type
+from typing import Any, Collection, List, Mapping, Optional, Sequence, Tuple, Type
 
 from gazoo_device import config
 from gazoo_device import console
@@ -37,7 +38,6 @@ from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device import manager
 from gazoo_device import package_registrar
-from gazoo_device import testbed
 from gazoo_device.utility import parallel_utils
 from gazoo_device.utility import usb_utils
 
@@ -56,14 +56,6 @@ class AttributeClassification(enum.Enum):
   CLASS_PROPERTY = "class property"
   PUBLIC_METHOD = "public method"
 
-
-HEALTHY_DEVICE_HEALTH = {
-    "is_healthy": True,
-    "unhealthy_reason": "",
-    "err_type": "",
-    "checks_passed": [],
-    "properties": {}
-}
 MAX_TIME_TO_WAIT_FOR_INITATION = 5
 
 _DOC_INDENT_SIZE = 4
@@ -97,6 +89,23 @@ def _log_man_warning_for_multiple_flavors(
       f"{len(flavors)} flavors ({flavors}) of capability {capability_name!r} "
       f"are available for {device_type}.\n"
       f"Showing documentation for flavor {capability_class}.\n")
+
+
+def _run_device_action(
+    manager_inst: manager.Manager, device_name: str, full_attribute_name: str,
+    method_args: Tuple[Any, ...], method_kwargs: Mapping[str, Any]) -> Any:
+  """Returns the result of a device method call or a property."""
+  device = manager_inst.create_device(device_name)
+  attribute = device
+  try:
+    for attribute_name in full_attribute_name.split("."):
+      attribute = getattr(attribute, attribute_name)
+    if callable(attribute):  # It's a method.
+      return attribute(*method_args, **method_kwargs)
+    else:  # It's a property.
+      return attribute
+  finally:
+    device.close()
 
 
 class FireManager(manager.Manager):
@@ -328,7 +337,7 @@ class FireManager(manager.Manager):
         "log_file_name" (str) -- a string log file name to use for log
         results. "log_directory" (str) -- a directory path to use for storing
         log file. "make_device_ready" (str) -- health check setting ("on",
-        "check_only", "off").
+        "check_only", "off", "flash_build").
 
     Returns:
       Object: The device found and created by the identifier specified.
@@ -338,6 +347,91 @@ class FireManager(manager.Manager):
         log_file_name=kwargs.get("log_file_name"),
         log_directory=kwargs.get("log_directory"),
         make_device_ready=kwargs.get("make_device_ready", "on"))
+
+  def issue_devices(self,
+                    devices: Sequence[str],
+                    attribute_name: str,
+                    *method_args: Any,
+                    timeout: float = parallel_utils.TIMEOUT_PROCESS,
+                    **method_kwargs: Any) -> List[Any]:
+    """Executes a device method or property in parallel for multiple devices.
+
+    For example: 'gdm issue-devices device-1234,device-3456 reboot'.
+
+    Args:
+      devices: Device identifiers.
+      attribute_name: Name of device method or property to execute in parallel.
+        Can be nested. For example: "shell", "wifi.ssid".
+      *method_args: Positional arguments to the device method.
+      timeout: Maximum amount of seconds to allow parallel methods to complete.
+      **method_kwargs: Keyword arguments to the device method.
+
+    Returns:
+      Results from parallel calls.
+    """
+    if isinstance(devices, str):
+      devices = devices.split(",")
+    return self._issue_devices(
+        devices, attribute_name, timeout, method_args, method_kwargs)
+
+  def issue_devices_all(self,
+                        attribute_name: str,
+                        *method_args: Any,
+                        timeout: float = parallel_utils.TIMEOUT_PROCESS,
+                        **method_kwargs: Any) -> List[Any]:
+    """Executes a device method or property in parallel for connected devices.
+
+    For example: 'gdm issue-devices-all reboot --no_wait=True'.
+
+    Args:
+      attribute_name: Name of device method or property to execute in parallel.
+        Can be nested. For example: "shell", "wifi.ssid".
+      *method_args: Positional arguments to the device method.
+      timeout: Maximum amount of seconds to allow parallel methods to complete.
+      **method_kwargs: Keyword arguments to the device method.
+
+    Returns:
+      Results from parallel calls.
+
+    Raises:
+      DeviceError: if no devices are connected.
+    """
+    devices = self.get_connected_devices()
+    if not devices:
+      raise errors.DeviceError("No devices are connected.")
+    return self._issue_devices(
+        devices, attribute_name, timeout, method_args, method_kwargs)
+
+  def issue_devices_match(self,
+                          match: str,
+                          attribute_name: str,
+                          *method_args: Any,
+                          timeout: float = parallel_utils.TIMEOUT_PROCESS,
+                          **method_kwargs: Any) -> List[Any]:
+    """Executes a device method or property in parallel for matching devices.
+
+    For example: 'gdm issue-devices-match raspberrypi* reboot --no_wait=True'.
+
+    Args:
+      match: Wildcard-supported string to match against device names, i.e.
+        "raspberrypi*" will call provided method on all connected Raspberry Pis.
+      attribute_name: Name of device method or property to execute in parallel.
+        Can be nested. For example: "shell", "wifi.ssid".
+      *method_args: Positional arguments to the device method.
+      timeout: Maximum amount of seconds to allow parallel methods to complete.
+      **method_kwargs: Keyword arguments to the device method.
+
+    Returns:
+      Results from parallel calls.
+
+    Raises:
+      DeviceError: if provided wildcard does not match any connected devices.
+    """
+    devices = fnmatch.filter(self.get_connected_devices(), match)
+    if not devices:
+      raise errors.DeviceError(f"No devices match {match!r}.")
+    return self._issue_devices(
+        devices, attribute_name, timeout, method_args, method_kwargs)
 
   def log(self, device_name, log_file_name=None, duration=2000):
     """Streams device logs to stdout.
@@ -387,84 +481,6 @@ class FireManager(manager.Manager):
     finally:
       sys.stdout.flush()
       device.close()
-
-  def make_devices_ready(self, devices, testing_props=None, aggressive=False):
-    """Makes one or more devices ready and returns a json response.
-
-    Args:
-      devices (list): Devices identifiers to make ready.
-      testing_props (dict): Properties of the testbed used for testing.
-      aggressive (bool): Re-flash the device with a valid build if recovery
-        fails.
-
-    Returns:
-      str: json formatted device health, e.g.
-        {
-          'device-1234': {
-            'is_healthy': true or false if the device is healthy or not,
-            'unhealthy_reason': error message if device is unhealthy,
-            'err_type': type of exception raised, if any
-          },
-          'device-5678': {
-            'is_healthy': ...,
-            'unhealthy_reason': ...,
-            'err_type': ...
-          },
-          ...
-        }
-    """
-    logger.setLevel(logging.ERROR)  # silence logging to reduce CLI output
-    combined_results = {}
-    if isinstance(devices, str):
-      devices = devices.split(",")
-
-    # create device instances and construct parameter dicts
-    device_instances = []
-    parameter_dicts = {}
-    for device_name in devices:
-      try:
-        device = self.create_device(device_name, make_device_ready="off")
-      except errors.DeviceError as err:
-        combined_results[
-            device_name] = self._construct_health_dict_from_exception(err)
-      else:
-        device_instances.append(device)
-
-        # pass make_device_ready setting to support aggressive recovery
-        setting = "flash_build" if aggressive else "on"
-        parameter_dicts[device.DEVICE_TYPE] = {"setting": setting}
-
-    # execute manager method with each device instance in parallel
-    if device_instances:
-      results = parallel_utils.parallel_process(
-          action_name="make_device_ready",
-          fcn=self._make_devices_ready_single_device,
-          devices=device_instances,
-          parameter_dicts=parameter_dicts)
-
-      # combine results of parallel calls
-      for result in results:
-        if isinstance(result, dict):
-          combined_results.update(result)
-        else:
-          logger.info(result)
-
-    # execute testbed health checks if testing props contain property keys that
-    # exist in Testbed.PROP_TO_HEALTH_CHECK
-    if testing_props:
-      try:
-        testbed.Testbed(device_instances, testing_props).make_testbed_ready()
-      except errors.DeviceError as err:
-        combined_results[
-            "testbed"] = self._construct_health_dict_from_exception(err)
-      else:
-        combined_results["testbed"] = HEALTHY_DEVICE_HEALTH
-
-    # device instances no longer needed
-    for device in device_instances:
-      device.close()
-
-    return json.dumps(combined_results)
 
   @classmethod
   def man(cls,
@@ -604,10 +620,12 @@ class FireManager(manager.Manager):
     If no version is specified then GDM will be updated to the latest
     version available otherwise the version specified will be installed instead.
     """
-    logger.info(textwrap.dedent("""
+    launcher_path = os.path.join(
+        os.path.expanduser("~"), "gazoo", "bin", "gdm")
+    logger.info(textwrap.dedent(f"""
       Unable to update Gazoo Device Manager using this tool.
       If you want to update GDM call the GDM launcher script directly like this:
-      /usr/local/bin/gdm update-gdm [version]
+      {launcher_path} update-gdm [version]
 
       If after doing the above you see this message again, then you probably did a
       'sudo pip install gazoo-device' and overwrote the GDM launcher script. Please
@@ -638,67 +656,37 @@ class FireManager(manager.Manager):
       return AttributeClassification.PUBLIC_METHOD
     return AttributeClassification.OTHER
 
-  def _construct_health_dict_from_exception(self, exc):
-    """Constructs a dict containing info about an unhealthy device's issues.
-
-    Args:
-      exc (Exception): the exception raised that is causing the device's issues
-
-    Returns:
-      str: json formatted device health, e.g.
-        {
-          device-1234: {
-            'is_healthy': true,
-            'unhealthy_reason': "",
-            'err_type': "",
-            'checks_passed': [],
-            'properties': {}
-          }
-        }
-    """
-    device_health = {}
-    device_health["is_healthy"] = False
-    device_health["unhealthy_reason"] = str(exc)
-    device_health["err_type"] = type(exc).__name__
-    device_health["checks_passed"] = getattr(exc, "checks_passed", [])
-    device_health["properties"] = getattr(exc, "properties", {})
-    return device_health
-
   @classmethod
   def _indent_doc_lines(cls, doc_lines, indent=_DOC_INDENT_SIZE):
     """Indents docstring lines."""
     indent_str = " " * indent
     return "\n".join(indent_str + line for line in doc_lines)
 
-  def _make_devices_ready_single_device(self, device, parameter_dict):
-    """Execute make_device_ready for a single device.
+  def _issue_devices(self,
+                     devices: Sequence[str],
+                     attribute_name: str,
+                     timeout: float,
+                     method_args: Tuple[Any, ...],
+                     method_kwargs: Mapping[str, Any]) -> List[Any]:
+    """Executes a device method in parallel on multiple devices.
 
     Args:
-      device (GazooDeviceBase or AuxiliaryDeviceBase): device to execute
-        make_device_ready on
-      parameter_dict (dict): dictionary storing the setting to pass to
-        make_device_ready.
+      devices: Device identifiers to execute the method on.
+      attribute_name: Name of device method or property to execute in parallel.
+      timeout: Maximum amount of seconds to allow parallel methods to complete.
+      method_args: Positional arguments to the method.
+      method_kwargs: Keyword arguments to the method.
 
     Returns:
-      dict: device health, e.g.
-        'device-1234': {
-          'is_healthy': true or false if the device is healthy or not,
-          'unhealthy_reason': error message if device is unhealthy,
-          'err_type': type of exception raised, if any
-        }
-
-    Note:
-      Intended to be executed in parallel by parallel_utils, triggered by
-      the make_devices_ready method.
+      Results from the parallel method calls.
     """
-    device_health = HEALTHY_DEVICE_HEALTH
-    try:
-      device.make_device_ready(setting=parameter_dict.get("setting"))
-    except errors.DeviceError as err:
-      device_health = self._construct_health_dict_from_exception(err)
-
-    device_health["logs"] = device.log_file_name
-    return {device.name: device_health}
+    call_specs = [
+        parallel_utils.CallSpec(_run_device_action, device, attribute_name,
+                                method_args, method_kwargs)
+        for device in devices]
+    results, _ = parallel_utils.execute_concurrently(
+        call_specs=call_specs, timeout=timeout, raise_on_process_error=True)
+    return results
 
   @classmethod
   def _man_capability_attribute(cls,

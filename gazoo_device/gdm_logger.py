@@ -12,21 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Module for GDM logger."""
+"""Module for GDM logger.
+
+By default, GDM logger handles only a single (main) process.
+
+GDM logger can handle multiple processes: to change to multiprocessing mode,
+call switch_to_multiprocess_logging() and call
+initialize_child_process_logging(<main process GDM logger queue>) in each child
+process that needs to send GDM logs to the main process. The main process's
+logger queue (obtained through get_logging_queue()) must be sent as an argument
+to child processes.
+"""
 import atexit
 import logging
 import logging.handlers
-import multiprocessing as mp
 import os
-import re
 import sys
 import types
+from typing import List
 
 from gazoo_device import config
 from gazoo_device import multiprocess_logging
+from gazoo_device.utility import common_utils
+from gazoo_device.utility import multiprocessing_utils
 
 # Making this global enables user control of stdout streaming (indirectly)
 _stdout_handler = None
+# Logging queue to put messages into. Child processes will send their logs to
+# this queue.
+_logging_queue = None
+# Logging thread consumes messages from the logging queue in the main process.
+_logging_thread = None
 
 # Log formats for debug
 FMT = ('%(asctime)s.%(msecs)03d %(levelname).1s %(process)5d '
@@ -50,30 +66,29 @@ def add_handler(handler):
   Args:
       handler (logging.handler): A logging handler
   """
-  logger = get_logger()
-  logger.logging_thread.add_handler(handler)  # pytype: disable=attribute-error
-
-
-def create_queue_handler(log_level):
-  """Adds a QueueHandler to the top-level 'gazoo_device_manager' logger.
-
-  Should be used once per process, and will be the only handler on a GDM
-  logger object in a given process. Destination handlers are added instead to
-  the LoggingThread object via add_handler().
-
-  Args:
-      log_level (int): Integer log level, e.g. logging.DEBUG (value is 10)
-  """
-  logger = get_logger()
-  handler = multiprocess_logging.QueueHandler(
-      logger.logging_queue)  # pytype: disable=attribute-error
-  handler.setLevel(log_level)
-  logger.handlers = [handler]
+  if _logging_thread:
+    _logging_thread.add_handler(handler)
+  else:
+    get_logger().addHandler(handler)
 
 
 def flush_queue_messages():
-  """Wait until all messages currently in the logger queue are flushed."""
-  get_logger().logging_thread.sync()  # pytype: disable=attribute-error
+  """Waits until all messages currently in the logger queue are flushed."""
+  if _logging_thread:
+    _logging_thread.sync()
+
+
+def get_handlers() -> List[logging.Handler]:
+  """Returns the list of active logging handlers."""
+  if is_multiprocess_logging_enabled():
+    return _logging_thread.handlers
+  else:
+    return get_logger().handlers
+
+
+def get_logging_queue():
+  """Returns the logging queue used by the GDM logger."""
+  return _logging_queue
 
 
 def get_logger(component_name=None):
@@ -112,20 +127,13 @@ def initialize_logger():
   Configures it to begin logging to stdout and to the default log destination
   (config.DEFAULT_LOG_FILE).
   """
-  # Set up multiprocess logging thread
-  logging_queue = mp.Queue(-1)
-  logging_queue.cancel_join_thread()
-  logging_thread = multiprocess_logging.LoggingThread(logging_queue)
-  atexit.register(logging_thread.stop)
-
-  # Set up core GDM logger
   logger = get_logger()
   logger.setLevel(logging.DEBUG)
-  logger.logging_queue = logging_queue
-  logger.logging_thread = logging_thread
 
-  # Create handler for core GDM logger in main process
-  create_queue_handler(logging.DEBUG)
+  # Ensure no handlers remain during shutdown. GDM logger can log during __del__
+  # calls for some objects. This can happen during shutdown. Logging during
+  # shutdown can cause crashes in some environments.
+  atexit.register(logger.handlers.clear)
 
   # Configure a handler that writes to GDM logfile
   filepath = config.DEFAULT_LOG_FILE
@@ -134,21 +142,67 @@ def initialize_logger():
   logfile_handler.setLevel(logging.DEBUG)
   logfile_formatter = logging.Formatter(FMT, datefmt=DATEFMT)
   logfile_handler.setFormatter(logfile_formatter)
-  add_handler(logfile_handler)
+  logger.addHandler(logfile_handler)
 
   # Configure a handler that writes INFO logs to stdout
   stdout_handler = logging.StreamHandler(sys.stdout)
   stdout_handler.setLevel(logging.INFO)
   stdout_formatter = logging.Formatter('%(message)s')
   stdout_handler.setFormatter(stdout_formatter)
-  add_handler(stdout_handler)
+  logger.addHandler(stdout_handler)
 
   # Keep global copy of stdout_handler created and added above to allow for
   # changing the log level later for that handler.
   global _stdout_handler
   _stdout_handler = stdout_handler
 
-  logging_thread.start()
+
+def is_multiprocess_logging_enabled() -> bool:
+  """Returns whether multiprocess logging is enabled."""
+  return bool(_logging_queue or _logging_thread)
+
+
+def switch_to_multiprocess_logging() -> None:
+  """Initializes multiprocessing logging in the main process."""
+  if is_multiprocess_logging_enabled():
+    return
+
+  global _logging_queue
+  global _logging_thread
+  _logging_queue = multiprocessing_utils.get_context().Queue()
+  _logging_queue.cancel_join_thread()
+  _logging_thread = multiprocess_logging.LoggingThread(_logging_queue)
+  queue_handler = multiprocess_logging.QueueHandler(_logging_queue)
+  queue_handler.setLevel(logging.DEBUG)
+
+  logger = get_logger()
+  for handler in logger.handlers:  # Transfer log handlers to queue handler.
+    _logging_thread.add_handler(handler)
+  logger.handlers = [queue_handler]
+
+  _logging_thread.start()
+  atexit.register(common_utils.MethodWeakRef(_logging_thread.stop))
+
+
+def initialize_child_process_logging(logging_queue):
+  """Initializes multiprocessing logging in a child process.
+
+  Used only by GDM child processes (created by Switchboard or parallel_utils),
+  which need to use the logging queue sent over by the parent for logging.
+  The child's only log handler sends all log messages to the logging queue to be
+  logged by the parent.
+
+  Args:
+      logging_queue (Queue): multiprocessing queue to put log messages into.
+  """
+  global _logging_queue
+  global _stdout_handler
+  _logging_queue = logging_queue
+  queue_handler = multiprocess_logging.QueueHandler(logging_queue)
+  queue_handler.setLevel(logging.DEBUG)
+  logger = get_logger()
+  logger.handlers = [queue_handler]
+  _stdout_handler = None
 
 
 def reenable_progress_messages():
@@ -169,8 +223,10 @@ def remove_handler(handler):
       handler (logging.handler): A logging handler that was added earlier
         using add_handler
   """
-  logger = get_logger()
-  logger.logging_thread.remove_handler(handler)
+  if _logging_thread:
+    _logging_thread.remove_handler(handler)
+  else:
+    get_logger().removeHandler(handler)
 
 
 def set_component_log_level(component_name, log_level):
@@ -216,31 +272,3 @@ def _brace_format_log(self,
   new_kwargs = dict(exc_info=exc_info, extra=extra)
 
   self._original_log(level, formatted_msg, (), **new_kwargs)
-
-
-class LogData(object):
-  """Stores data to be added to log lines and automatically formatted."""
-
-  key_pattern = re.compile(r'\W')
-
-  def __init__(self, **items):
-    self.items = items
-
-  def __str__(self):
-    r"""Formats data items into the form '##\tkey1=value1\tkey2=value2'.
-
-    In keys, strips non-alphanumeric characters.
-    In values, replaces escape char / and delimiters \t, = with /0, /1, /2.
-
-    Returns:
-      str: data as string.
-    """
-    strings = ['##']
-
-    for k, v in self.items.items():
-      key = self.key_pattern.sub('', str(k))
-      val = str(v).replace('/', '/0').replace('\t', '/1').replace('=', '/2')
-      key_val_string = '='.join([key, val])
-      strings.append(key_val_string)
-
-    return '\t'.join(strings)

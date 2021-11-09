@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Base class for all auxiliary devices."""
+import atexit
 import difflib
 import functools
 import inspect
@@ -32,6 +33,7 @@ from gazoo_device.capabilities.interfaces import capability_base
 from gazoo_device.switchboard import log_process
 from gazoo_device.utility import common_utils
 from gazoo_device.utility import deprecation_utils
+from gazoo_device.utility import retry
 
 logger = gdm_logger.get_logger()
 
@@ -103,6 +105,10 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
     self.device_type = self.DEVICE_TYPE
     self._user_count = 1  # Successive create_device calls just increment the
     # user count and reuse the same instance.
+
+    # b/201669630: Ensure the device instance is closed (again) if it's
+    # continued to be used after an explicit <device>.close() call.
+    atexit.register(common_utils.MethodWeakRef(self.close), force=True)
 
   @decorators.OptionalProperty
   def alias(self):
@@ -271,7 +277,7 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
     """
     device_config = {"persistent": self.props["persistent_identifiers"]}
     try:
-      common_utils.retry(
+      retry.retry(
           func=self.is_connected,
           func_args=(device_config,),
           is_successful=bool,
@@ -390,14 +396,15 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
     return self._get_properties(names)
 
   @classmethod
-  def get_supported_capabilities(cls):
-    """Returns a list of names of capabilities supported by this device class."""
-    # Deduplicate names: there may be several flavors which share the same interface
+  def get_supported_capabilities(cls) -> List[str]:
+    """Returns names of capabilities supported by this device class."""
+    # Deduplicate names: there may be several flavors which share the same
+    # interface.
     capability_names = {
         capability_class.get_capability_name()
         for capability_class in cls.get_supported_capability_flavors()
     }
-    return sorted(list(capability_names))
+    return sorted(capability_names)
 
   @classmethod
   def get_supported_capability_flavors(
@@ -722,7 +729,7 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
         DeviceNotResponsiveError: if no response to ping before the timeout.
     """
     try:
-      common_utils.retry(
+      retry.retry(
           self._ping,
           is_successful=bool,
           timeout=self._PING_TIMEOUT,

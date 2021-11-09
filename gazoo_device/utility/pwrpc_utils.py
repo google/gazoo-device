@@ -14,8 +14,9 @@
 
 """Utility module for interaction with PwRPC (Pigweed RPC)."""
 import enum
+import importlib
 import os
-from typing import Callable
+from typing import Callable, Generic, TypeVar
 
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -32,6 +33,39 @@ _PWRPC_PROTOS = (button_service_pb2,
                  echo_service_pb2,
                  lighting_service_pb2,
                  locking_service_pb2)
+_ProtobufType = TypeVar("_ProtobufType")
+
+
+class PigweedProtoState(Generic[_ProtobufType]):
+  """Pigweed proto state interface.
+
+  The RPC can accept proto type objects as parameters, however, protobufs aren't
+  picklable, so we'll need this class interface to store the encoded protobuf
+  object (bytes) and decode it back to the protobuf type.
+  """
+
+  def __init__(self, proto_inst: _ProtobufType, decoder_path: str) -> None:
+    """Constructor of the PigweedProtoState.
+
+    Args:
+      proto_inst: Protobuf instance.
+        (ex: lighting_service_pb2.LightingColor(hue=0, saturation=0))
+      decoder_path: The import path of the protobuf class.
+        (ex: gazoo_device.protos.lighting_service_pb2.LightingColor)
+    """
+    self._bytes = proto_inst.SerializeToString()
+    self._decoder_path = decoder_path
+
+  def _get_decoder(self) -> Callable[[bytes], _ProtobufType]:
+    """Gets decoder method from decoder path."""
+    module, proto_class = self._decoder_path.rsplit(".", 1)
+    mod = importlib.import_module(module)
+    return getattr(mod, proto_class).FromString
+
+  def decode(self) -> _ProtobufType:
+    """Decodes the encoded proto instance."""
+    decoder = self._get_decoder()
+    return decoder(self._bytes)
 
 
 class PigweedAppType(enum.Enum):

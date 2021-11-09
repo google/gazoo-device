@@ -17,6 +17,7 @@
 Does a sanity check on the device controllers, capabilities, communication
 types, and detect criteria exported by the gazoo_device_controllers module.
 """
+from gazoo_device import data_types
 from gazoo_device import gazoo_device_controllers
 from gazoo_device.capabilities.interfaces import capability_base
 from gazoo_device.tests.unit_tests.utils import unit_test_case
@@ -169,6 +170,15 @@ class GazooDeviceControllersTests(unit_test_case.UnitTestCase):
           self.assertTrue(_EXTENSIONS["detect_criteria"][comm_type])
         else:
           self.assertFalse(_EXTENSIONS["detect_criteria"][comm_type])
+
+  def test_download_key(self):
+    """Tests the download_key function."""
+    mock_key_info = data_types.KeyInfo(
+        "my_ssh_key", data_types.KeyType.SSH, "gazoo_device_controllers")
+    regex = r"GDM doesn't come with built-in SSH key.*my_ssh_key"
+    with self.assertRaisesRegex(RuntimeError, regex):
+      gazoo_device_controllers.download_key(
+          mock_key_info, self.artifacts_directory)
 
   def _verify_expected_names_are_present(self, names, expected_names):
     for expected_name in expected_names:

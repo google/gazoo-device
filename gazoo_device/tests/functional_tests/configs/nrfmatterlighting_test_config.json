@@ -1,0 +1,10 @@
+{
+  "known_logline": [],
+  "shell_cmd": "",
+  "expect": [""],
+  "do_not_run_tests": [
+    "SwitchboardTestSuite.test_send_and_expect"
+  ],
+  "slow_tests": [],
+  "volatile_tests": []
+}

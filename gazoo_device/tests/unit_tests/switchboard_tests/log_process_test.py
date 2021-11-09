@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Tests the log_process.py module."""
 import datetime
 import os
@@ -24,6 +23,7 @@ from gazoo_device.capabilities import event_parser_default
 from gazoo_device.switchboard import log_process
 from gazoo_device.switchboard import switchboard_process
 from gazoo_device.tests.unit_tests.utils import unit_test_case
+from gazoo_device.utility import multiprocessing_utils
 
 _NEW_LOG_FILE_MESSAGE = "<2017-07-01 12:23:43.123456> GDM-0: {}".format(
     log_process.NEW_LOG_FILE_MESSAGE)
@@ -39,6 +39,8 @@ _EVENT_LINE_RETURN_LOG_MESSAGE = (
     "<2017-07-01 12:23:43.123456> GDM-0: \r[APPL] "
     "Some non-existent message with extra line return chars\r")
 _WRITE_TIMEOUT = 1
+
+wait_for_queue_writes = switchboard_process.wait_for_queue_writes
 
 
 def get_file_size(file_path, size=0, timeout=_WRITE_TIMEOUT):
@@ -59,25 +61,25 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
 
     self.mock_parser = mock.MagicMock(
         spec=event_parser_default.EventParserDefault)
+    self.command_queue = multiprocessing_utils.get_context().Queue()
 
   def tearDown(self):
     if hasattr(self, "uut"):
       self.uut._post_run_hook()  # close any open files
       del self.uut
-
+    del self.command_queue  # Release shared memory file descriptors.
     super().tearDown()
 
   def test_000_log_filter_construct_destruct(self):
     """Test LogFilterProcess constructing and destructing raises no errors."""
-    command_queue = self.manager.Queue()
     filters = []
     parser_obj = event_parser_default.EventParserDefault(
         filters, event_file_path="/foo.txt", device_name="device-1234")
     log_file_name = self._testMethodName + ".txt"
     log_path = os.path.join(self.artifacts_directory, log_file_name)
-    self.uut = log_process.LogFilterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            parser_obj, log_path)
+    self.uut = log_process.LogFilterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, parser_obj,
+                                            log_path)
     self.assertFalse(self.uut.is_started(),
                      "Expected process not started, found started")
     self.assertFalse(self.uut.is_running(),
@@ -85,16 +87,15 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_001_log_filter_cant_open_log_file(self):
     """Test log filter unable to open log file."""
-    command_queue = self.manager.Queue()
     filters = []
     parser_obj = event_parser_default.EventParserDefault(
         filters, event_file_path="/foo.txt", device_name="device-1234")
     log_file_name = self._testMethodName + ".txt"
     log_path = os.path.join(self.artifacts_directory, log_file_name)
     event_path = log_process.get_event_filename(log_path)
-    self.uut = log_process.LogFilterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            parser_obj, log_path)
+    self.uut = log_process.LogFilterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, parser_obj,
+                                            log_path)
     self.uut._pre_run_hook()
     self.uut._do_work()
     self.uut._post_run_hook()
@@ -104,7 +105,6 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_002_log_filter_creates_event_file(self):
     """Test log filter creates event file after opening log file."""
-    command_queue = self.manager.Queue()
     filter_file = os.path.join(self.TEST_FILTER_DIR,
                                "optional_description.json")
     parser_obj = event_parser_default.EventParserDefault(
@@ -112,9 +112,9 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
     log_file_name = self._testMethodName + ".txt"
     log_path = os.path.join(self.artifacts_directory, log_file_name)
     event_path = log_process.get_event_filename(log_path)
-    self.uut = log_process.LogFilterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            parser_obj, log_path)
+    self.uut = log_process.LogFilterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, parser_obj,
+                                            log_path)
     self._append_to_log_file(log_path)
     self.uut._pre_run_hook()
     self.uut._do_work()  # opens log file
@@ -131,7 +131,6 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_003_log_filter_tails_log_file(self):
     """Test log filter tails log file for new lines added."""
-    command_queue = self.manager.Queue()
     filter_file = os.path.join(self.TEST_FILTER_DIR,
                                "optional_description.json")
 
@@ -141,9 +140,9 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
     event_path = log_process.get_event_filename(log_path)
     parser_obj = event_parser_default.EventParserDefault(
         [filter_file], event_file_path=event_path, device_name="device-1234")
-    self.uut = log_process.LogFilterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            parser_obj, log_path)
+    self.uut = log_process.LogFilterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, parser_obj,
+                                            log_path)
 
     self._append_to_log_file(log_path)
     self.uut._pre_run_hook()
@@ -166,7 +165,6 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_004_log_filter_handles_line_return_chars(self):
     """Test log filter tails log file for new lines added."""
-    command_queue = self.manager.Queue()
     filter_file = os.path.join(self.TEST_FILTER_DIR,
                                "optional_description.json")
 
@@ -175,9 +173,9 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
     event_path = log_process.get_event_filename(log_path)
     parser_obj = event_parser_default.EventParserDefault(
         [filter_file], event_file_path=event_path, device_name="device-1234")
-    self.uut = log_process.LogFilterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            parser_obj, log_path)
+    self.uut = log_process.LogFilterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, parser_obj,
+                                            log_path)
     self._append_to_log_file(log_path, log_line=_EVENT_LINE_RETURN_LOG_MESSAGE)
     self.uut._pre_run_hook()
     self.uut._do_work()  # opens log file
@@ -202,17 +200,17 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_100_log_filter_rejects_invalid_command(self):
     """Test LogFilterProcess rejects invalid command."""
-    command_queue = self.manager.Queue()
     filters = []
     parser_obj = event_parser_default.EventParserDefault(
         filters, event_file_path="/foo.txt", device_name="device-1234")
     log_file_name = self._testMethodName + ".txt"
     log_path = os.path.join(self.artifacts_directory, log_file_name)
-    self.uut = log_process.LogFilterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            parser_obj, log_path)
+    self.uut = log_process.LogFilterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, parser_obj,
+                                            log_path)
 
-    command_queue.put(("invalid cmd", None))
+    self.command_queue.put(("invalid cmd", None))
+    wait_for_queue_writes(self.command_queue)
     self.uut._pre_run_hook()
     with self.assertRaisesRegex(RuntimeError, "received an unknown command"):
       self.uut._do_work()
@@ -220,35 +218,35 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_101_log_filter_accepts_valid_common_commands(self):
     """Test LogFilterProcess send_command accepts valid common commands."""
-    command_queue = self.manager.Queue()
     filters = []
     parser_obj = event_parser_default.EventParserDefault(
         filters, event_file_path="/foo.txt", device_name="device-1234")
     log_file_name = self._testMethodName + ".txt"
     log_path = os.path.join(self.artifacts_directory, log_file_name)
-    self.uut = log_process.LogFilterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            parser_obj, log_path)
+    self.uut = log_process.LogFilterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, parser_obj,
+                                            log_path)
 
     for command in log_process._VALID_COMMON_COMMANDS:
       self.uut.send_command(command)
+      wait_for_queue_writes(self.command_queue)
       self.assertFalse(
-          command_queue.empty(),
-          "Expected command queue {} to not be empty".format(command_queue))
-      command_message = command_queue.get()
+          self.command_queue.empty(),
+          "Expected command queue {} to not be empty".format(
+              self.command_queue))
+      command_message = self.command_queue.get()
       self.assertEqual(
           command, command_message[0],
           "Expected command {} found {}".format(command, command_message[0]))
 
   def test_120_load_filter_file_returns_error(self):
     """Verifies ParserError seen by method _do_work."""
-    command_queue = self.manager.Queue()
     filter_file = os.path.join(self.TEST_FILTER_DIR,
                                "optional_description.json")
     log_file_name = self._testMethodName + ".txt"
     log_path = os.path.join(self.artifacts_directory, log_file_name)
-    self.uut = log_process.LogFilterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
+    self.uut = log_process.LogFilterProcess("fake_device", self.exception_queue,
+                                            self.command_queue,
                                             self.mock_parser, log_path)
     self._append_to_log_file(log_path)
     self.mock_parser.load_filter_file.side_effect = errors.ParserError(
@@ -256,28 +254,28 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
     with self.assertRaisesRegex(errors.ParserError, "Adding new filter failed"):
       self.uut._pre_run_hook()
       self.uut.send_command(log_process.CMD_ADD_NEW_FILTER, filter_file)
+      wait_for_queue_writes(self.command_queue)
       self.uut._do_work()  # loads filter file
 
   def test_121_load_filter_file_adds_new_filter(self):
     """Verifies can add new filter file."""
-    command_queue = self.manager.Queue()
     filter_file = os.path.join(self.TEST_FILTER_DIR,
                                "optional_description.json")
     log_file_name = self._testMethodName + ".txt"
     log_path = os.path.join(self.artifacts_directory, log_file_name)
-    self.uut = log_process.LogFilterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
+    self.uut = log_process.LogFilterProcess("fake_device", self.exception_queue,
+                                            self.command_queue,
                                             self.mock_parser, log_path)
     self._append_to_log_file(log_path)
     self.uut._pre_run_hook()
     self.uut.send_command(log_process.CMD_ADD_NEW_FILTER, filter_file)
+    wait_for_queue_writes(self.command_queue)
     self.uut._do_work()  # loads filter file
     self.uut._post_run_hook()
     self.mock_parser.load_filter_file.assert_called_once_with(filter_file)
 
   def test_200_log_filter_uses_new_log_file(self):
     """Test switching LogFilterProcess to use new log file specified."""
-    command_queue = self.manager.Queue()
     filters = []
     parser_obj = event_parser_default.EventParserDefault(
         filters, event_file_path="/foo.txt", device_name="device-1234")
@@ -287,9 +285,9 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
                                 "fake-device-new.txt")
     old_event_path = log_process.get_event_filename(old_log_path)
     new_event_path = log_process.get_event_filename(new_log_path)
-    self.uut = log_process.LogFilterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            parser_obj, old_log_path)
+    self.uut = log_process.LogFilterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, parser_obj,
+                                            old_log_path)
 
     self._append_to_log_file(old_log_path)
     self._append_to_log_file(new_log_path)
@@ -297,7 +295,8 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
     self.uut._do_work(
     )  # Opens old log and event files and processes first line
     switchboard_process.put_message(
-        command_queue, (log_process.CMD_NEW_LOG_FILE, new_log_path))
+        self.command_queue, (log_process.CMD_NEW_LOG_FILE, new_log_path))
+    wait_for_queue_writes(self.command_queue)
     self._append_to_log_file(old_log_path, log_line=_NEW_LOG_FILE_MESSAGE)
     self.uut._do_work()  # Process next line in old log file and closes it
     self.assertTrue(
@@ -317,7 +316,6 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_201_log_filter_ignores_extra_new_log_file_message(self):
     """Test LogFilterProcess ignores spurious new log file message."""
-    command_queue = self.manager.Queue()
     filters = []
     parser_obj = event_parser_default.EventParserDefault(
         filters, event_file_path="/foo.txt", device_name="device-1234")
@@ -327,9 +325,9 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
                                 "fake-device-new.txt")
     old_event_path = log_process.get_event_filename(old_log_path)
     new_event_path = log_process.get_event_filename(new_log_path)
-    self.uut = log_process.LogFilterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            parser_obj, old_log_path)
+    self.uut = log_process.LogFilterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, parser_obj,
+                                            old_log_path)
 
     self._append_to_log_file(old_log_path)
     self._append_to_log_file(new_log_path)
@@ -345,7 +343,8 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
         os.path.exists(new_event_path),
         "Expected {} to not exist".format(new_event_path))
     switchboard_process.put_message(
-        command_queue, (log_process.CMD_NEW_LOG_FILE, new_log_path))
+        self.command_queue, (log_process.CMD_NEW_LOG_FILE, new_log_path))
+    wait_for_queue_writes(self.command_queue)
     self._append_to_log_file(old_log_path, log_line=_NEW_LOG_FILE_MESSAGE)
     self.uut._do_work()  # Process next line in old log file and closes it
     self.uut._do_work(
@@ -360,7 +359,6 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_210_log_filter_rotates_log_file_only(self):
     """Test LogFilterProcess rotates to next log file only."""
-    command_queue = self.manager.Queue()
     filters = []
     parser_obj = event_parser_default.EventParserDefault(
         filters, event_file_path="/foo.txt", device_name="device-1234")
@@ -370,9 +368,9 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
                                  "fake-device.00001.txt")
     old_event_path = log_process.get_event_filename(old_log_path)
     next_event_path = log_process.get_event_filename(next_log_path)
-    self.uut = log_process.LogFilterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            parser_obj, old_log_path)
+    self.uut = log_process.LogFilterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, parser_obj,
+                                            old_log_path)
 
     self._append_to_log_file(old_log_path)
     self._append_to_log_file(next_log_path)
@@ -399,7 +397,6 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_211_log_filter_new_log_message_doesnt_trigger_rotate(self):
     """Test rotate log message appears after new log file command."""
-    command_queue = self.manager.Queue()
     filters = []
     parser_obj = event_parser_default.EventParserDefault(
         filters, event_file_path="/foo.txt", device_name="device-1234")
@@ -417,9 +414,9 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
                                   self._testMethodName,
                                   "fake-device-new.00001.txt")
     next_event_path2 = log_process.get_event_filename(next_log_path2)
-    self.uut = log_process.LogFilterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            parser_obj, old_log_path)
+    self.uut = log_process.LogFilterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, parser_obj,
+                                            old_log_path)
 
     self._append_to_log_file(old_log_path)
     self._append_to_log_file(next_log_path1)
@@ -428,7 +425,8 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
     self.uut._do_work(
     )  # Opens old log and event files and processes first line
     switchboard_process.put_message(
-        command_queue, (log_process.CMD_NEW_LOG_FILE, new_log_path))
+        self.command_queue, (log_process.CMD_NEW_LOG_FILE, new_log_path))
+    wait_for_queue_writes(self.command_queue)
     self._append_to_log_file(old_log_path, log_line=_ROTATE_LOG_MESSAGE)
     self.uut._do_work(
     )  # Process next line in old log file and rotates log file
@@ -484,21 +482,26 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
 
 class LogWriterProcessTests(unit_test_case.MultiprocessingTestCase):
 
+  def setUp(self):
+    super().setUp()
+
+    self.command_queue = multiprocessing_utils.get_context().Queue()
+    self.log_queue = multiprocessing_utils.get_context().Queue()
+
   def tearDown(self):
     if hasattr(self, "uut"):
       del self.uut
-
+    del self.command_queue  # Release shared memory file descriptors.
+    del self.log_queue
     super().tearDown()
 
   def test_000_log_writer_construct_destruct(self):
     """Test LogWriterProcess constructing and destructing raises no errors."""
-    command_queue = self.manager.Queue()
-    log_queue = self.manager.Queue()
     log_file_name = self._testMethodName + ".txt"
     log_path = os.path.join(self.artifacts_directory, log_file_name)
-    self.uut = log_process.LogWriterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            log_queue, log_path)
+    self.uut = log_process.LogWriterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, self.log_queue,
+                                            log_path)
     self.assertFalse(self.uut.is_started(),
                      "Expected process not started, found started")
     self.assertFalse(self.uut.is_running(),
@@ -506,11 +509,11 @@ class LogWriterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_001_log_message_adds_log_timestamp(self):
     """Test log_message method adds host system timestamp."""
-    log_queue = self.manager.Queue()
     port = 0
     raw_log_line = "my log line"
-    log_process.log_message(log_queue, raw_log_line, port)
-    log_line = log_queue.get()
+    log_process.log_message(self.log_queue, raw_log_line, port)
+    wait_for_queue_writes(self.log_queue)
+    log_line = self.log_queue.get()
 
     # Log line format check
     self.assertIsInstance(
@@ -530,8 +533,7 @@ class LogWriterProcessTests(unit_test_case.MultiprocessingTestCase):
     match = re.search(log_process.LOG_LINE_HEADER_FORMAT,
                       log_line_without_timestamp)
     self.assertIsNotNone(
-        match,
-        "Expected log line header format {} to match {}".format(
+        match, "Expected log line header format {} to match {}".format(
             log_process.LOG_LINE_HEADER_FORMAT, log_line_without_timestamp))
     self.assertEqual(
         str(port), match.group(1),
@@ -570,14 +572,13 @@ class LogWriterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_010_log_writer_writes_full_log_line(self):
     """Test writing full log line to file."""
-    command_queue = self.manager.Queue()
-    log_queue = self.manager.Queue()
     log_file_name = self._testMethodName + ".txt"
     log_path = os.path.join(self.artifacts_directory, log_file_name)
-    self.uut = log_process.LogWriterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            log_queue, log_path)
-    switchboard_process.put_message(log_queue, _FULL_LOG_MESSAGE)
+    self.uut = log_process.LogWriterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, self.log_queue,
+                                            log_path)
+    switchboard_process.put_message(self.log_queue, _FULL_LOG_MESSAGE)
+    wait_for_queue_writes(self.log_queue)
     self.uut._pre_run_hook()
     self.uut._do_work()
     self.uut._post_run_hook()
@@ -585,14 +586,13 @@ class LogWriterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_011_log_writer_writes_partial_log_line(self):
     """Test writing partial log lines with unicode characters to file."""
-    command_queue = self.manager.Queue()
-    log_queue = self.manager.Queue()
     log_file_name = self._testMethodName + ".txt"
     log_path = os.path.join(self.artifacts_directory, log_file_name)
-    self.uut = log_process.LogWriterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            log_queue, log_path)
-    switchboard_process.put_message(log_queue, _PARTIAL_LOG_MESSAGE)
+    self.uut = log_process.LogWriterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, self.log_queue,
+                                            log_path)
+    switchboard_process.put_message(self.log_queue, _PARTIAL_LOG_MESSAGE)
+    wait_for_queue_writes(self.log_queue)
     self.uut._pre_run_hook()
     self.uut._do_work()
     self.uut._post_run_hook()
@@ -604,15 +604,14 @@ class LogWriterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_012_log_writer_writes_partial_and_full_log_lines(self):
     """Test writing partial and full log lines with unicode characters."""
-    command_queue = self.manager.Queue()
-    log_queue = self.manager.Queue()
     log_file_name = self._testMethodName + ".txt"
     log_path = os.path.join(self.artifacts_directory, log_file_name)
-    self.uut = log_process.LogWriterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            log_queue, log_path)
-    switchboard_process.put_message(log_queue, _PARTIAL_LOG_MESSAGE)
-    switchboard_process.put_message(log_queue, _FULL_LOG_MESSAGE)
+    self.uut = log_process.LogWriterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, self.log_queue,
+                                            log_path)
+    switchboard_process.put_message(self.log_queue, _PARTIAL_LOG_MESSAGE)
+    switchboard_process.put_message(self.log_queue, _FULL_LOG_MESSAGE)
+    wait_for_queue_writes(self.log_queue)
     self.uut._pre_run_hook()
     self.uut._do_work()
     self.uut._do_work()
@@ -621,15 +620,14 @@ class LogWriterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_100_log_writer_rejects_invalid_command(self):
     """Test LogWriterProcess rejects invalid command."""
-    command_queue = self.manager.Queue()
-    log_queue = self.manager.Queue()
     log_file_name = self._testMethodName + ".txt"
     log_path = os.path.join(self.artifacts_directory, log_file_name)
-    self.uut = log_process.LogWriterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            log_queue, log_path)
+    self.uut = log_process.LogWriterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, self.log_queue,
+                                            log_path)
 
-    command_queue.put(("invalid cmd", None))
+    self.command_queue.put(("invalid cmd", None))
+    wait_for_queue_writes(self.command_queue)
     self.uut._pre_run_hook()
     with self.assertRaisesRegex(RuntimeError, "received an unknown command"):
       self.uut._do_work()
@@ -637,40 +635,38 @@ class LogWriterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_101_log_writer_accepts_valid_common_commands(self):
     """Test LogWriterProcess send_command accepts valid common commands."""
-    command_queue = self.manager.Queue()
-    log_queue = self.manager.Queue()
     log_file_name = self._testMethodName + ".txt"
     log_path = os.path.join(self.artifacts_directory, log_file_name)
-    self.uut = log_process.LogWriterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            log_queue, log_path)
+    self.uut = log_process.LogWriterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, self.log_queue,
+                                            log_path)
 
     for command in log_process._VALID_WRITER_COMMANDS:
       self.uut.send_command(command)
-      self.assertFalse(
-          command_queue.empty(),
-          "Expected command queue to not be empty")
-      command_message = command_queue.get()
+      wait_for_queue_writes(self.command_queue)
+      self.assertFalse(self.command_queue.empty(),
+                       "Expected command queue to not be empty")
+      command_message = self.command_queue.get()
       self.assertEqual(
           command, command_message[0],
           "Expected command {} found {}".format(command, command_message[0]))
 
   def test_200_log_writer_uses_new_log_file(self):
     """Test switching LogWriterProcess to use new log file specified."""
-    command_queue = self.manager.Queue()
-    log_queue = self.manager.Queue()
     old_log_path = os.path.join(self.artifacts_directory, self._testMethodName,
                                 "fake-device-old.txt")
     new_log_path = os.path.join(self.artifacts_directory, self._testMethodName,
                                 "fake-device-new.txt")
-    self.uut = log_process.LogWriterProcess("fake_device", self.manager,
-                                            self.exception_queue, command_queue,
-                                            log_queue, old_log_path)
+    self.uut = log_process.LogWriterProcess("fake_device", self.exception_queue,
+                                            self.command_queue, self.log_queue,
+                                            old_log_path)
     switchboard_process.put_message(
-        command_queue, (log_process.CMD_NEW_LOG_FILE, new_log_path))
+        self.command_queue, (log_process.CMD_NEW_LOG_FILE, new_log_path))
+    wait_for_queue_writes(self.command_queue)
     self.uut._pre_run_hook()  # Open old log file
     self.uut._do_work()  # Process new log file command and opens new log file
-    switchboard_process.put_message(log_queue, _FULL_LOG_MESSAGE)
+    switchboard_process.put_message(self.log_queue, _FULL_LOG_MESSAGE)
+    wait_for_queue_writes(self.log_queue)
     self.uut._do_work()  # Writes full log message to new log file
     self.uut._post_run_hook()
     old_lines = self._verify_log_file_and_lines(old_log_path, 1)
@@ -680,8 +676,6 @@ class LogWriterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_210_log_writer_rotates_log_file(self):
     """Test LogWriterProcess rotating to new log file."""
-    command_queue = self.manager.Queue()
-    log_queue = self.manager.Queue()
     max_log_size = len(_FULL_LOG_MESSAGE)
     old_log_path = os.path.join(self.artifacts_directory, self._testMethodName,
                                 "fake-device.txt")
@@ -691,16 +685,17 @@ class LogWriterProcessTests(unit_test_case.MultiprocessingTestCase):
                                  "fake-device.00002.txt")
     self.uut = log_process.LogWriterProcess(
         "fake_device",
-        self.manager,
         self.exception_queue,
-        command_queue,
-        log_queue,
+        self.command_queue,
+        self.log_queue,
         old_log_path,
         max_log_size=max_log_size)
-    switchboard_process.put_message(log_queue, _FULL_LOG_MESSAGE)
+    switchboard_process.put_message(self.log_queue, _FULL_LOG_MESSAGE)
+    wait_for_queue_writes(self.log_queue)
     self.uut._pre_run_hook()
     self.uut._do_work()
-    switchboard_process.put_message(log_queue, _SHORT_LOG_MESSAGE)
+    switchboard_process.put_message(self.log_queue, _SHORT_LOG_MESSAGE)
+    wait_for_queue_writes(self.log_queue)
     self.uut._do_work()
     self.uut._post_run_hook()
     old_lines = self._verify_log_file_and_lines(old_log_path, 2)
@@ -718,8 +713,6 @@ class LogWriterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_211_log_writer_new_log_command_handled_before_log_rotate(self):
     """Test new log message could but doesn't trigger rotate log."""
-    command_queue = self.manager.Queue()
-    log_queue = self.manager.Queue()
     max_log_size = len(_NEW_LOG_FILE_MESSAGE)
     old_log_path = os.path.join(self.artifacts_directory, self._testMethodName,
                                 "fake-device-old.txt")
@@ -733,14 +726,14 @@ class LogWriterProcessTests(unit_test_case.MultiprocessingTestCase):
                                   "fake-device-new.00001.txt")
     self.uut = log_process.LogWriterProcess(
         "fake_device",
-        self.manager,
         self.exception_queue,
-        command_queue,
-        log_queue,
+        self.command_queue,
+        self.log_queue,
         old_log_path,
         max_log_size=max_log_size)
     switchboard_process.put_message(
-        command_queue, (log_process.CMD_NEW_LOG_FILE, new_log_path))
+        self.command_queue, (log_process.CMD_NEW_LOG_FILE, new_log_path))
+    wait_for_queue_writes(self.command_queue)
     self.uut._pre_run_hook()  # Opens old log file
     self.uut._do_work()  # Process new log file command and opens new log file
     self.uut._do_work()  # Allows for possible log rotation issue
@@ -763,8 +756,6 @@ class LogWriterProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_212_log_writer_can_change_max_log_size(self):
     """Test LogWriterProcess can change max_log_size."""
-    command_queue = self.manager.Queue()
-    log_queue = self.manager.Queue()
     max_log_size = 0
     old_log_path = os.path.join(self.artifacts_directory, self._testMethodName,
                                 "fake-device-old.txt")
@@ -772,17 +763,18 @@ class LogWriterProcessTests(unit_test_case.MultiprocessingTestCase):
                                  "fake-device-old.00001.txt")
     self.uut = log_process.LogWriterProcess(
         "fake_device",
-        self.manager,
         self.exception_queue,
-        command_queue,
-        log_queue,
+        self.command_queue,
+        self.log_queue,
         old_log_path,
         max_log_size=len(_FULL_LOG_MESSAGE))
     switchboard_process.put_message(
-        command_queue, (log_process.CMD_MAX_LOG_SIZE, max_log_size))
+        self.command_queue, (log_process.CMD_MAX_LOG_SIZE, max_log_size))
+    wait_for_queue_writes(self.command_queue)
     self.uut._pre_run_hook()  # Opens old log file
     self.uut._do_work()  # Process max_log_size command and opens new log file
-    switchboard_process.put_message(log_queue, _FULL_LOG_MESSAGE)
+    switchboard_process.put_message(self.log_queue, _FULL_LOG_MESSAGE)
+    wait_for_queue_writes(self.log_queue)
     self.uut._do_work()  # Allows for possible log rotation issue
     self.uut._post_run_hook()
     old_lines = self._verify_log_file_and_lines(old_log_path, 2)

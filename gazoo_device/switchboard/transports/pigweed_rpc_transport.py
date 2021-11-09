@@ -14,71 +14,69 @@
 
 """Pigweed RPC transport class."""
 import fcntl
+import importlib
 import queue
 import select
 import threading
-import types
 from typing import Any, Collection, Dict, Optional, Tuple
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.switchboard.transports import transport_base
+from gazoo_device.utility import pwrpc_utils
 import serial
 
-# TODO(b/181734752): Remove conditional imports of Pigweed
+# TODO(b/205665429): Consolidate Pigweed import paths.
 try:
   # pylint: disable=g-import-not-at-top
   # pytype: disable=import-error
-  import pw_rpc
+  from pigweed.pw_rpc import client
+  from pigweed.pw_rpc import callback_client
+  from pigweed.pw_hdlc import rpc
+  from pigweed.pw_hdlc import decode
+  from pigweed.pw_protobuf_compiler import python_protos
+  # pytype: enable=import-error
+except ImportError:
+  # pylint: disable=g-import-not-at-top
+  # pytype: disable=import-error
+  # PyPI Pigweed import paths.
+  from pw_rpc import client
   from pw_rpc import callback_client
   from pw_hdlc import rpc
   from pw_hdlc import decode
   from pw_protobuf_compiler import python_protos
   # pytype: enable=import-error
-  PIGWEED_IMPORT = True
-except ImportError:
-  pw_rpc = None
-  callback_client = None
-  rpc = None
-  decode = None
-  python_protos = None
-  PIGWEED_IMPORT = False
 
 _STDOUT_ADDRESS = 1
 _DEFAULT_ADDRESS = ord("R")
 _JOIN_TIMEOUT_SEC = 1  # seconds
 _SELECT_TIMEOUT_SEC = 0.1  # seconds
+_SERIAL_TIMEOUT_SEC = 0.01  # seconds
+_RPC_CALLBACK_TIMEOUT_SEC = 1  # seconds
 logger = gdm_logger.get_logger()
 
 
 class PwHdlcRpcClient:
   """Pigweed HDLC RPC Client.
 
-  Adapted from https://pigweed.googlesource.com/pigweed/pigweed/+/refs/heads/master/pw_hdlc/py/pw_hdlc/rpc.py. # pylint: disable=line-too-long
+  Adapted from
+  https://pigweed.googlesource.com/pigweed/pigweed/+/refs/heads/master/pw_hdlc/py/pw_hdlc/rpc.py.
   """
 
   def __init__(self,
                serial_instance: serial.Serial,
-               protobufs: Collection[types.ModuleType]):
+               protobuf_import_paths: Collection[str]):
     """Creates an RPC client configured to communicate using HDLC.
 
     Args:
       serial_instance: Serial interface instance.
-      protobufs: Proto modules.
+      protobuf_import_paths: Import paths of the RPC proto modules.
     """
-    if not PIGWEED_IMPORT:
-      raise errors.DependencyUnavailableError(
-          "Pigweed python packages are not available in this environment.")
-
-    protos = python_protos.Library.from_paths(protobufs)
-    client_impl = callback_client.Impl()
-    channels = rpc.default_channels(serial_instance.write)
-    self._client = pw_rpc.Client.from_modules(client_impl,
-                                              channels,
-                                              protos.modules())
     self._serial = serial_instance
-    self._stop_event = threading.Event()
+    self._protobuf_import_paths = protobuf_import_paths
+    self._client = None
+    self._stop_event = None
     self._worker = None
-    self.log_queue = queue.Queue()
+    self.log_queue = None
 
   def is_alive(self) -> bool:
     """Returns true if the worker thread has started."""
@@ -86,22 +84,37 @@ class PwHdlcRpcClient:
 
   def start(self) -> None:
     """Creates and starts the worker thread if it hasn't been created."""
-    if self._stop_event.is_set():
-      self._stop_event.clear()
     if self._worker is None:
+      self._stop_event = threading.Event()
+      self.log_queue = queue.Queue()
+      proto_modules = [importlib.import_module(import_path)
+                       for import_path in self._protobuf_import_paths]
+      # Load compiled proto modules instead of the raw protos to avoid a
+      # "protoc" dependency.
+      protos = python_protos.Library.from_paths(proto_modules)
+      client_impl = callback_client.Impl(
+          default_unary_timeout_s=_RPC_CALLBACK_TIMEOUT_SEC,
+          default_stream_timeout_s=_RPC_CALLBACK_TIMEOUT_SEC)
+      channels = rpc.default_channels(self._serial.write)
+      self._client = client.Client.from_modules(client_impl,
+                                                channels,
+                                                protos.modules())
       self._worker = threading.Thread(target=self.read_and_process_data)
       self._worker.start()
 
   def close(self) -> None:
     """Sets the threading event and joins the worker thread."""
-    self._stop_event.set()
     if self._worker is not None:
+      self._stop_event.set()
       self._worker.join(timeout=_JOIN_TIMEOUT_SEC)
       if self._worker.is_alive():
         raise errors.DeviceError(
             f"The child thread failed to join after {_JOIN_TIMEOUT_SEC} seconds"
             )
       self._worker = None
+      self._client = None
+      self._stop_event = None
+      self.log_queue = None
 
   def rpcs(self, channel_id: Optional[int] = None) -> Any:
     """Returns object for accessing services on the specified channel.
@@ -173,20 +186,35 @@ class PigweedRPCTransport(transport_base.TransportBase):
 
   def __init__(self,
                comms_address: str,
-               protobufs: Collection[types.ModuleType],
+               protobuf_import_paths: Collection[str],
                baudrate: int,
                auto_reopen: bool = True,
                open_on_start: bool = True):
+    """Initializes a PigweedRPCTransport instance.
+
+    Args:
+      comms_address: Serial port path on the host.
+      protobuf_import_paths: Module import paths of the compiled device
+        communication protobufs. For example,
+        ["gazoo_device.protos.device_service_pb2"].
+        Proto module objects are not serializable, so their import paths are
+        stored instead. Transport processes import the proto modules from these
+        paths.
+      baudrate: Serial baud rate.
+      auto_reopen: Whether to automatically reopen the transport if it closes
+        unexpectedly.
+      open_on_start: Whether to open the transport during TransportProcess
+        start.
+    """
     super().__init__(
         auto_reopen=auto_reopen,
         open_on_start=open_on_start)
     self.comms_address = comms_address
-    self._protobufs = protobufs
     self._serial = serial.Serial()
     self._serial.port = comms_address
     self._serial.baudrate = baudrate
-    self._serial.timeout = 0.01
-    self._hdlc_client = PwHdlcRpcClient(self._serial, protobufs)
+    self._serial.timeout = _SERIAL_TIMEOUT_SEC
+    self._hdlc_client = PwHdlcRpcClient(self._serial, protobuf_import_paths)
 
   def is_open(self) -> bool:
     """Returns True if the PwRPC transport is connected to the target.
@@ -258,6 +286,10 @@ class PigweedRPCTransport(transport_base.TransportBase):
     client_channel = self._hdlc_client.rpcs().chip.rpc
     service = getattr(client_channel, service_name)
     event = getattr(service, event_name)
+    kwargs = {
+        param_name:
+        param.decode() if isinstance(param, pwrpc_utils.PigweedProtoState)
+        else param for param_name, param in kwargs.items()}
     ack, payload = event(**kwargs)
     return ack.ok(), payload.SerializeToString()
 

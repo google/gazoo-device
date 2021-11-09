@@ -36,8 +36,10 @@ communication_types = {}  # Communication type name -> communication type class
 detect_criteria = {}
 primary_devices = []  # List of device classes
 virtual_devices = []  # List of device classes
-# "package_info" is a mapping of Package name ->
-# immutabledict({"version": Version, "key_download_function": function})
+# "package_info" is a mapping of Package name -> immutabledict({
+#   "version": package version (str),
+#   "key_download_function": package key download function,
+#   "import_path": package import path (str)})
 package_info = {}
 keys = []  # List of data_types.KeyInfo instances
 manager_cli_mixins = []  # List of class objects inheriting from FireManager

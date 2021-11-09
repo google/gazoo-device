@@ -43,9 +43,10 @@ setuptools.setup(
     },
     install_requires=[
         "absl-py>=0.12.0",
-        "immutabledict>=1.2.0",
+        "immutabledict>=2.0.0",
         "intelhex>=2.2.1",
         "mobly>=1.10.1",
+        "pigweed>=0.0.3",
         "prompt-toolkit>=3.0.19",
         "protobuf>=3.17.3",
         "psutil>=5.0.1",

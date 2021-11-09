@@ -20,7 +20,7 @@ from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
 _FAKE_DEVICE_NAME = "button_device"
 _FAKE_BUTTON_ID = 0
-_FAKE_BUTTON_REGEXES = {_FAKE_BUTTON_ID: f"button {_FAKE_BUTTON_ID} is pressed"}
+_FAKE_VALID_BUTTON_IDS = (0, 1)
 _FAKE_TIMEOUT = 3
 
 
@@ -32,22 +32,21 @@ class PwRPCButtonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.switchboard_call_mock = mock.Mock()
     self.uut = pwrpc_button_default.PwRPCButtonDefault(
         device_name=_FAKE_DEVICE_NAME,
-        expect_button_regexes=_FAKE_BUTTON_REGEXES,
-        expect_timeout=_FAKE_TIMEOUT,
-        switchboard_call_expect=self.switchboard_call_mock)
+        valid_button_ids=_FAKE_VALID_BUTTON_IDS,
+        switchboard_call=self.switchboard_call_mock)
 
   def test_001_button_push_pass(self):
     """Verifies button push success."""
-    self.switchboard_call_mock.return_value = (None, (True, None))
+    self.switchboard_call_mock.return_value = (True, None)
     self.uut.push(_FAKE_BUTTON_ID)
     self.switchboard_call_mock.assert_called_once()
 
   def test_002_button_push_fail_invalid_id(self):
     """Verifies button push fails with invalid button id."""
-    invalid_button_id = 1
+    invalid_button_id = 2
     error_regex = (f"Invalid button id {invalid_button_id}. Possible valid "
-                   f"ids: {set(_FAKE_BUTTON_REGEXES.keys())}.")
-    with self.assertRaisesRegex(errors.DeviceError, error_regex):
+                   f"ids: {_FAKE_VALID_BUTTON_IDS}.")
+    with self.assertRaisesWithLiteralMatch(errors.DeviceError, error_regex):
       self.uut.push(invalid_button_id)
     self.switchboard_call_mock.assert_not_called()
 

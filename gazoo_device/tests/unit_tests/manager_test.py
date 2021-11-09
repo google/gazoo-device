@@ -20,7 +20,6 @@ import datetime
 import gc
 import json
 import logging
-import multiprocessing
 import os
 import shutil
 import signal
@@ -44,6 +43,7 @@ from gazoo_device.tests.unit_tests.utils import fake_transport
 from gazoo_device.tests.unit_tests.utils import gc_test_utils
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import host_utils
+from gazoo_device.utility import multiprocessing_utils
 from gazoo_device.utility import usb_config
 
 logger = gdm_logger.get_logger()
@@ -430,7 +430,8 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       self.assertTrue(self.uut.get_open_device_names())
       self.uut.close()
       self.assertFalse(self.uut.get_open_device_names())
-      with mock.patch.object(fake_devices.FakeSSHDevice, "close") as mock_close:
+      with mock.patch.object(fake_devices.FakeSSHDevice, "close",
+                             autospec=True) as mock_close:
         self.uut.close()
         mock_close.assert_not_called()
 
@@ -959,7 +960,8 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     """Ensures create switchboard and make_device_ready errors get handled."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
-      with mock.patch.object(fake_devices.FakeSSHDevice, "close"):
+      with mock.patch.object(fake_devices.FakeSSHDevice, "close",
+                             autospec=True):
         with mock.patch.object(
             fake_devices.FakeSSHDevice,
             "make_device_ready",
@@ -1167,7 +1169,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     self.assertIn("sshdevice", all_types)
     self.assertNotIn("sshdevice", other_types)
     self.assertIn("sshdevice", primary_types)
-    self.assertEqual(
+    self.assertCountEqual(
         other_types + primary_types + virtual_types, all_types,
         "Not all device types are in list. Expecting {}. Found {}".format(
             all_types, primary_types + other_types + virtual_types))
@@ -1612,8 +1614,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
   def test_770_log_handlers_no_stdout_logging(self):
     """Verify stdout log handler is disabled when stdout_logging = False."""
     gc.collect()  # remove_handler can also get called by Manager.__del__
-    with mock.patch.object(logger.logging_thread,
-                           "remove_handler") as mock_remove_handler:
+    with mock.patch.object(gdm_logger, "remove_handler") as mock_remove_handler:
       self.uut = self._create_manager_object(stdout_logging=False)
       mock_remove_handler.assert_called_once_with(gdm_logger._stdout_handler)
 
@@ -1661,7 +1662,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     device_switchboard = switchboard.SwitchboardDefault(
         "test_device", device_manager._exception_queue, [], log_path)
     transport = fake_transport.FakeTransport(
-        device_switchboard._mp_manager, fail_open=True, open_on_start=False)
+        fail_open=True, open_on_start=False)
     transport_num = device_switchboard.add_transport_process(transport)
     device_switchboard.start_transport_process(transport_num)
     with self.assertRaisesRegex(errors.DeviceError,
@@ -1682,90 +1683,6 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     interfaces_dict["foo"] = "bar"
     self.assertNotIn("foo",
                      manager.Manager.get_all_supported_capability_interfaces())
-
-  def test_920_issue_devices_executes_device_method(self):
-    """Test issue_devices method executing device methods in parallel."""
-    test_error_message = "make_device_ready failed"
-    self.uut = self._create_manager_object()
-    with MockOutDevices():
-      test_error = errors.DeviceError(test_error_message)
-      # confirm method was called by raising an exception
-      with mock.patch.object(
-          fake_devices.FakeSSHDevice,
-          "make_device_ready",
-          side_effect=iter([None, None, test_error, test_error])):
-        with self.assertRaisesRegexp(RuntimeError, test_error_message):
-          device_ids = ["sshdevice-0000",
-                        "sshdevice-0001"]  # call on specific devices
-          self.uut.issue_devices(device_ids, "make_device_ready", setting="off")
-
-  def test_921_issue_devices_match_exclusive_device_type(self):
-    """Test issue_devices_match executing device methods for device type."""
-    test_error_message = "make_device_ready failed"
-    self.uut = self._create_manager_object()
-    with MockOutDevices():
-      test_error = errors.DeviceError(test_error_message)
-      # confirm method was called by raising an exception
-      with mock.patch.object(
-          fake_devices.FakeSSHDevice,
-          "make_device_ready",
-          side_effect=iter([None, None, test_error, test_error])):
-        with self.assertRaisesRegexp(RuntimeError, test_error_message):
-          device_ids = "sshdevice-*"  # device type wildcard match
-          self.uut.issue_devices_match(
-              device_ids, "make_device_ready", setting="off")
-
-  def test_922_issue_devices_match_no_matches_raises_exception(self):
-    """Test issue_devices_match raising an exception if no devices match."""
-    self.uut = self._create_manager_object()
-    with MockOutDevices():
-      with self.assertRaisesRegex(errors.DeviceError, "No devices match"):
-        self.uut.issue_devices_match(
-            "sshdevice-1", "make_device_ready", setting="off")
-
-  def test_923_issue_devices_all_open_devices(self):
-    """Test issue_devices_all executing parallel methods for open devices."""
-    test_error_message = "make_device_ready failed"
-    self.uut = self._create_manager_object()
-    with MockOutDevices():
-      test_error = errors.DeviceError(test_error_message)
-      # confirm method was called by raising an exception
-      with mock.patch.object(
-          fake_devices.FakeSSHDevice,
-          "make_device_ready",
-          side_effect=iter([None, None, test_error, test_error])):
-        with self.assertRaisesRegexp(RuntimeError, test_error_message):
-          self.uut.issue_devices_all("make_device_ready", setting="off")
-
-  @mock.patch.object(manager.Manager, "get_connected_devices", return_value=[])
-  def test_924_issue_devices_all_open_devices_raises_exception(
-      self, mock_connected_devices):
-    """Test issue_devices_all raising an exception if no devices connected."""
-    self.uut = self._create_manager_object()
-    with self.assertRaisesRegex(errors.DeviceError, "No devices are connected"):
-      self.uut.issue_devices_all("make_device_ready", setting="off")
-    mock_connected_devices.assert_called()
-
-  def test_925_issue_devices_method_does_not_exist_exception(self):
-    """Test issue_devices failing when the provided method does not exist."""
-    test_method = "i_dont_exist"
-    self.uut = self._create_manager_object()
-    with MockOutDevices():
-      with self.assertRaisesRegex(
-          errors.DeviceError, "does not support method {}".format(test_method)):
-        self.uut.issue_devices(",".join([self.first_name, self.second_name]),
-                               test_method)
-
-  def test_926_issue_devices_closes_open_devices_after_exception(self):
-    """Test _issue_devices closing all open devices once method completes."""
-    test_method = "check_device_ready"
-    self.uut = self._create_manager_object()
-    with MockOutDevices():
-      connected_devices = self.uut.get_connected_devices()
-      open_devices = self.uut.get_open_devices()
-      self.uut._issue_devices(connected_devices, test_method)
-      self.assertTrue(connected_devices)
-      self.assertFalse(open_devices)
 
   def test_930_no_reference_loops(self):
     """Test deleting last reference to object triggers garbage collection."""
@@ -1854,7 +1771,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         return_value=mock_capability_flavors) as mock_method:
       self.assertEqual(
           manager.Manager.get_supported_device_capability_flavors("sshdevice"),
-          mock_capability_flavors)
+          [dict, str])
       mock_method.assert_called_once()
 
   def test_950_process_exceptions_missing_queue(self):
@@ -1890,7 +1807,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
                                                 stdout_logging=True):
     if gdm_log_file is None:
       gdm_log_file = self._create_log_path()
-    with mock.patch.object(multiprocessing, "Manager"):
+    with mock.patch.object(multiprocessing_utils.get_context(), "Queue"):
       man_instance = manager.Manager(
           device_file_name=self.files["device_file_name"],
           device_options_file_name=self.files["device_options_file_name"],

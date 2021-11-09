@@ -19,10 +19,8 @@ from typing import Dict, Tuple
 from gazoo_device import console_config
 from gazoo_device import custom_types
 from gazoo_device import decorators
-from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import auxiliary_device
-from gazoo_device.switchboard import switchboard
 from gazoo_device.utility import usb_utils
 
 logger = gdm_logger.get_logger()
@@ -69,21 +67,3 @@ class EspressifESP32Device(auxiliary_device.AuxiliaryDevice):
   @decorators.PersistentProperty
   def platform(self) -> str:
     return "ESP32"
-
-  @decorators.CapabilityDecorator(switchboard.SwitchboardDefault)
-  def switchboard(self):
-    """Instance for communicating with the device."""
-    if self._COMMUNICATION_KWARGS.get("protobufs") is None:
-      raise errors.DeviceError(
-          "Calling switchboard from a non Pigweed device {}".format(self.name))
-    name = self._get_private_capability_name(switchboard.SwitchboardDefault)
-    if not hasattr(self, name):
-      kwargs = self._COMMUNICATION_KWARGS.copy()
-      kwargs.update({
-          "communication_address": self.communication_address,
-          "communication_type": self.COMMUNICATION_TYPE,
-          "log_path": self.log_file_name,
-          "device_name": self.name,
-          "event_parser": None})
-      setattr(self, name, self.get_manager().create_switchboard(**kwargs))
-    return getattr(self, name)

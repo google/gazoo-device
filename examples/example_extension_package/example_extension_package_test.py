@@ -13,12 +13,8 @@
 # limitations under the License.
 
 """Tests for example_extension_package."""
-
-import unittest
-
+from absl.testing import absltest
 import gazoo_device
-from gazoo_device import errors
-from gazoo_device import manager
 
 import example_extension_package
 
@@ -27,30 +23,25 @@ _EXAMPLE_CONTROLLER_DEVICE_TYPE = (
     .DEVICE_TYPE)
 
 
-class ExampleExtensionPackageTest(unittest.TestCase):
+class ExampleExtensionPackageTest(absltest.TestCase):
   """Unit tests for the example extension package."""
 
   def test_registration(self):
     """Test that the extension package can be registered with gazoo_device."""
     self.assertNotIn(
         _EXAMPLE_CONTROLLER_DEVICE_TYPE,
-        manager.Manager.get_supported_device_types(),
+        gazoo_device.Manager.get_supported_device_types(),
         f"{_EXAMPLE_CONTROLLER_DEVICE_TYPE!r} should not be known by Manager "
         "before the package is registered")
 
-    try:
-      gazoo_device.register(example_extension_package)
-    except errors.PackageRegistrationError as err:
-      self.fail(
-          f"Unable to register example_extension_package with gazoo_device. "
-          f"Error: {err!r}")
+    gazoo_device.register(example_extension_package)
 
     self.assertIn(
         _EXAMPLE_CONTROLLER_DEVICE_TYPE,
-        manager.Manager.get_supported_device_types(),
+        gazoo_device.Manager.get_supported_device_types(),
         f"{_EXAMPLE_CONTROLLER_DEVICE_TYPE!r} should be known by Manager "
         "after the package is registered")
 
 
 if __name__ == "__main__":
-  unittest.main()
+  absltest.main()

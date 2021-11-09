@@ -73,6 +73,13 @@ class GenericQuery(QueryEnum):
   always_true = "always_true"
 
 
+class PigweedQuery(QueryEnum):
+  """Query names for detection for PigweedSerialComms Devices."""
+  app_type = "app_type"
+  product_name = "usb info product_name"
+  manufacturer_name = "usb info manufacturer_name"
+
+
 class PtyProcessQuery(QueryEnum):
   product_name = "product_name"
 
@@ -88,11 +95,9 @@ class SshQuery(QueryEnum):
   is_unifi = "is_unifi_switch"
 
 
-class PigweedQuery(QueryEnum):
-  """Query names for detection for PigweedSerialComms Devices."""
-  app_type = "app_type"
-  product_name = "usb info product_name"
-  manufacturer_name = "usb info manufacturer_name"
+class UsbQuery(QueryEnum):
+  vendor_product_id = "VENDOR_ID:PRODUCT_ID"
+  serial_number = "serial_number"
 
 
 def _docker_product_name_query(
@@ -220,6 +225,67 @@ def usb_product_name_query(
   return product_name
 
 
+def _usb_vendor_product_id_query(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> str:
+  """Returns USB vendor and product ID from serial number.
+
+  Args:
+    address: Serial number of the device. USB devices are addressed by their
+      serial number.
+    detect_logger: The logger of device interactions.
+    create_switchboard_func: Method to create the switchboard.
+
+  Returns:
+    Vendor and product ID string of the USB device that has a matching
+    serial number.
+    Format of the string is VENDOR_ID:PRODUCT_ID in hex. E.g. '0ab1:fe23'.
+    Returns empty string if address is not found.
+  """
+  del create_switchboard_func  # Unused by usb_vendor_product_id_query
+  # Address contains serial number for USB devices
+  device = usb_utils.get_usb_device_from_serial_number(address)
+  if device:
+    return_value = f"{device.idVendor:04x}:{device.idProduct:04x}"
+  else:
+    return_value = ""
+  detect_logger.info(
+      "_usb_vendor_product_id_query device: %r\nresponse: %s",
+      device, return_value)
+  return return_value
+
+
+def _usb_serial_number(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> str:
+  """Returns the serial number from a USB device.
+
+  This detection criteria should be used in conjunction with
+  _usb_vendor_product_id_query to narrow down a match.
+
+  This function is particularly useful to matching FTDI manufacturer IDs
+  which should be consistent between products that use FTDI chipsets. The
+  manufacturer's ID is the first two characters in the serial number.
+  See:
+  https://www.ftdichip.com/Support/Knowledgebase/howistheautomaticserialnu.htm
+
+  Args:
+    address: Serial number of the device. USB devices are addressed by their
+      serial number.
+    detect_logger: The logger of device interactions.
+    create_switchboard_func: Method to create the switchboard.
+  Returns:
+    Serial number.
+  """
+  del create_switchboard_func  # Unused by _usb_serial_number
+  detect_logger.info("_usb_serial_number response: %s", address)
+  return address
+
+
 def _manufacturer_name_query(
     address: str,
     detect_logger: logging.Logger,
@@ -268,6 +334,12 @@ DOCKER_QUERY_DICT = immutabledict.immutabledict({
     DockerQuery.product_name: _docker_product_name_query,
 })
 
+PIGWEED_QUERY_DICT = immutabledict.immutabledict({
+    PigweedQuery.app_type: _pigweed_application_query,
+    PigweedQuery.product_name: usb_product_name_query,
+    PigweedQuery.manufacturer_name: _manufacturer_name_query,
+})
+
 PTY_PROCESS_QUERY_DICT = immutabledict.immutabledict({
     PtyProcessQuery.product_name: _pty_process_name_query,
 })
@@ -282,21 +354,21 @@ SSH_QUERY_DICT = immutabledict.immutabledict({
     SshQuery.is_unifi: _is_unifi_query,
 })
 
-PIGWEED_QUERY_DICT = immutabledict.immutabledict({
-    PigweedQuery.app_type: _pigweed_application_query,
-    PigweedQuery.product_name: usb_product_name_query,
-    PigweedQuery.manufacturer_name: _manufacturer_name_query,
+USB_QUERY_DICT = immutabledict.immutabledict({
+    UsbQuery.serial_number: _usb_serial_number,
+    UsbQuery.vendor_product_id: _usb_vendor_product_id_query,
 })
 
 DETECT_CRITERIA = immutabledict.immutabledict({
     "AdbComms": ADB_QUERY_DICT,
     "DockerComms": DOCKER_QUERY_DICT,
     "JlinkSerialComms": SERIAL_QUERY_DICT,
+    "PigweedSerialComms": PIGWEED_QUERY_DICT,
     "PtyProcessComms": PTY_PROCESS_QUERY_DICT,
     "SerialComms": SERIAL_QUERY_DICT,
     "SshComms": SSH_QUERY_DICT,
+    "UsbComms": USB_QUERY_DICT,
     "YepkitComms": GENERIC_QUERY_DICT,
-    "PigweedSerialComms": PIGWEED_QUERY_DICT,
 })
 
 

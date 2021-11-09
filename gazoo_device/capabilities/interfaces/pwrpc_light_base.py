@@ -18,31 +18,30 @@ from gazoo_device.capabilities.interfaces import capability_base
 from gazoo_device.protos import lighting_service_pb2
 
 
+MAX_BRIGHTNESS_LEVEL = 255
+
+
 class PwRPCLightBase(capability_base.CapabilityBase):
   """Pigweed RPC lighting capability for devices communicating over PwRPC."""
 
   @abc.abstractmethod
-  def on(self, no_wait: bool = False) -> None:
+  def on(self, level: int = MAX_BRIGHTNESS_LEVEL, hue: int = 0,
+         saturation: int = 0, verify: bool = True) -> None:
     """Turns on the light state of the device.
 
     Args:
-      no_wait: If True, returns before verifying the light state.
-
-    Raises:
-      DeviceError: When the device does not transition to the appropriate
-      state or if it remains off.
+      level: Brightness level to be set.
+      hue: Hue of lighting color to be set.
+      saturation: Saturation of lighting color to be set.
+      verify: If True, returns after verifying the light configurations.
     """
 
   @abc.abstractmethod
-  def off(self, no_wait: bool = False) -> None:
+  def off(self, verify: bool = True) -> None:
     """Turns off the light state of the device.
 
     Args:
-      no_wait: If True, returns before verifying the light state.
-
-    Raises:
-      DeviceError: When the device does not transition to the appropriate
-      state or if it remains on.
+      verify: If true, verifies the light configurations before returning.
     """
 
   @property

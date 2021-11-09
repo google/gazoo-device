@@ -16,7 +16,6 @@
 import os
 from unittest import mock
 
-from gazoo_device import errors
 from gazoo_device.auxiliary_devices import efr32
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
@@ -54,11 +53,6 @@ class EFR32DeviceTests(fake_device_test_case.FakeDeviceTestCase):
     self._test_get_detection_info(_FAKE_DEVICE_ADDRESS,
                                   efr32.EFR32,
                                   _EFR32_PERSISTENT_PROPERTIES)
-
-  def test_002_switchboard(self):
-    """Verifies the deactive switchboard in efr32."""
-    with self.assertRaises(errors.DeviceError):
-      self.uut.switchboard.send()
 
   def test_003_jlink_flash_capability(self):
     """Verifies the initialization of flash_build capability."""

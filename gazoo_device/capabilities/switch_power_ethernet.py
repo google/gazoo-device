@@ -17,7 +17,7 @@ from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import switch_power_base
-from gazoo_device.utility import common_utils
+from gazoo_device.utility import retry
 
 logger = gdm_logger.get_logger()
 
@@ -105,11 +105,11 @@ class SwitchPowerEthernet(switch_power_base.SwitchPowerBase):
     else:
       self._turn_off_port_func(port)
     try:
-      common_utils.retry(
+      retry.retry(
           func=self._verify_mode_change,
           func_args=[port, mode],
           timeout=TIMEOUTS["STATE_CHANGE"],
-          is_successful=common_utils.is_true,
+          is_successful=retry.is_true,
           interval=1,
           reraise=False)
     except errors.CommunicationTimeoutError:

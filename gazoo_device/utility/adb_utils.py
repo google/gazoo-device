@@ -798,12 +798,13 @@ def _fastboot_command(command,
   return output
 
 
-def install_package_on_device(package_path,
-                              adb_serial=None,
-                              adb_path=None,
-                              allow_downgrade=False,
-                              allow_test_apk=False,
-                              reinstall=False):
+def install_package_on_device(package_path: str,
+                              adb_serial: Optional[str] = None,
+                              adb_path: Optional[str] = None,
+                              allow_downgrade: bool = False,
+                              allow_test_apk: bool = False,
+                              reinstall: bool = False,
+                              all_permissions: bool = False) -> None:
   """Installs an apk on a target device.
 
   Use adb install command to install a package to the system.
@@ -811,12 +812,13 @@ def install_package_on_device(package_path,
   https://developer.android.com/studio/command-line/adb#shellcommands
 
   Args:
-      package_path (str): the path to the package on host machine.
-      adb_serial (str): the device serial, optional.
-      adb_path (str): optional alternative path to adb executable.
-      allow_downgrade (bool): allows version code downgrade.
-      allow_test_apk (bool): allows test APKs to be installed.
-      reinstall (bool): reinstalls an existing app and keeps its data.
+      package_path: The path to the package on host machine.
+      adb_serial: The device serial, optional.
+      adb_path: An optional alternative path to adb executable.
+      allow_downgrade: Allows version code downgrade.
+      allow_test_apk: Allows test APKs to be installed.
+      reinstall: Reinstalls an existing app and keeps its data.
+      all_permissions: Grants all runtime permission to the app.
 
   Raises:
       ValueError: when pacakge_path is not valid.
@@ -827,7 +829,12 @@ def install_package_on_device(package_path,
         "install_package_on_device received invalid package_path: {}".format(
             package_path))
 
-  flags_map = {"-d": allow_downgrade, "-t": allow_test_apk, "-r": reinstall}
+  flags_map = {
+      "-d": allow_downgrade,
+      "-t": allow_test_apk,
+      "-r": reinstall,
+      "-g": all_permissions,
+  }
   command_list = ["install"]
   flags = sorted([flag for flag, value in flags_map.items() if value])
   command_list.extend(flags)

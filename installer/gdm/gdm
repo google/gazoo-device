@@ -1,37 +1,12 @@
 #!/bin/sh
 # This is the launcher script for GDM.
 # It allows updating or downgrading GDM CLI through "gdm update-gdm <version>".
-LAUNCHER_VERSION="1.1"
+LAUNCHER_VERSION="1.3"
 
 GDM_BASE="${HOME}/gazoo/gdm"
 GDM_VIRTUAL_ENV="$GDM_BASE/virtual_env"
 VE_GDM="$GDM_VIRTUAL_ENV/bin/gdm"
 VE_PIP="$GDM_VIRTUAL_ENV/bin/pip3"
-PIGWEED_WHEELS="button_service-0.0.1-py3-none-any.whl
-device_service-0.0.1-py3-none-any.whl
-lighting_app-0.0.1-py3-none-any.whl
-lighting_service-0.0.1-py3-none-any.whl
-pw_cli-0.0.1-py3-none-any.whl
-pw_protobuf-0.0.1-py3-none-any.whl
-pw_protobuf_compiler-0.0.1-py3-none-any.whl
-pw_protobuf_protos-0.0.1-py3-none-any.whl
-pw_rpc-0.0.1-py3-none-any.whl
-pw_status-0.0.1-py3-none-any.whl
-pw_hdlc-0.0.1-py3-none-any.whl"
-
-
-# TODO(b/181734752) Remove this once Pigweed packages are available on PyPI.
-install_pigweed_wheels()
-{
-    for wheel in $PIGWEED_WHEELS; do
-      url="https://github.com/google/gazoo-device/releases/latest/download/$wheel"
-      local_file="/tmp/$wheel"
-      echo "Downloading and installing $url"
-      curl -L "$url" -o "$local_file"
-      $VE_PIP install "$local_file"
-      rm "$local_file"
-    done
-}
 
 
 make_ve_if_not_exist()
@@ -52,8 +27,6 @@ install_or_update_gdm()
   else
     "$VE_PIP" install --no-input -U gazoo-device
   fi
-
-  install_pigweed_wheels
 }
 
 case $1 in

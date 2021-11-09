@@ -156,6 +156,7 @@ def register(package: types.ModuleType) -> None:
   try:
     _register(new_extensions, package_name,
               package.__version__,  # pytype: disable=attribute-error
+              package.__name__,
               package.download_key)
   except errors.PackageRegistrationError:
     # Registration failed: revert all changes to the extensions to avoid
@@ -260,6 +261,7 @@ def _register(
     new_extensions: Mapping[str, Any],
     package_name: str,
     package_version: str,
+    package_import_path: str,
     download_key: Callable[[data_types.KeyInfo, str], None]) -> None:
   """Registers the given extensions with GDM architecture.
 
@@ -268,6 +270,7 @@ def _register(
       register() docstring for format details.
     package_name: Name of the package being registered.
     package_version: Version of the package being registered.
+    package_import_path: Import path of the package.
     download_key: download_key function of the package.
 
   Raises:
@@ -339,6 +342,7 @@ def _register(
   extensions.package_info[package_name] = immutabledict.immutabledict({
       "version": package_version,
       "key_download_function": download_key,
+      "import_path": package_import_path,
   })
 
 

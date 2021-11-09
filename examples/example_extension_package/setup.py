@@ -62,6 +62,7 @@ setuptools.setup(
 
     # runtime dependencies that are installed by pip during install
     install_requires=[
+        "absl-py>=0.12.0",
         "gazoo-device>=1.0.0",
-        "immutabledict>=1.2.0",
+        "immutabledict>=2.0.0",
     ])

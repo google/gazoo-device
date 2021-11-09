@@ -14,11 +14,11 @@
 
 """Fake transport for testing Switchboard."""
 import copy
-import multiprocessing
 import time
 
 from gazoo_device.switchboard import switchboard_process
 from gazoo_device.switchboard import transport_properties
+from gazoo_device.utility import multiprocessing_utils
 
 EXCEPTION_MESSAGE = "Something bad happened during read"
 
@@ -54,7 +54,6 @@ class FakeTransport:
   """Mock Switchboard transport class for testing."""
 
   def __init__(self,
-               manager,
                baudrate=115200,
                generate_lines=False,
                generate_raw_log_lines=None,
@@ -65,22 +64,22 @@ class FakeTransport:
                open_on_start=True,
                read_only_if_raw_data_queue_enabled=False):
     self.comms_address = "/some/serial/path"
-    self.bytes_per_second = manager.Value("f", 0.0)
-    self.is_open_count = manager.Value("i", 0)
-    self.open_count = manager.Value("i", 0)
-    self.close_count = manager.Value("i", 0)
-    self.read_size = manager.Value("i", 0)
-    self.reads = manager.Queue()
-    self.writes = manager.Queue()
+    self.bytes_per_second = multiprocessing_utils.get_context().Value("f", 0.0)
+    self.is_open_count = multiprocessing_utils.get_context().Value("i", 0)
+    self.open_count = multiprocessing_utils.get_context().Value("i", 0)
+    self.close_count = multiprocessing_utils.get_context().Value("i", 0)
+    self.read_size = multiprocessing_utils.get_context().Value("i", 0)
+    self.reads = multiprocessing_utils.get_context().Queue()
+    self.writes = multiprocessing_utils.get_context().Queue()
     self._baudrate = baudrate
-    self._exit_flag = manager.Event()
+    self._exit_flag = multiprocessing_utils.get_context().Event()
     self._fail_open = fail_open
     self._fail_read = fail_read
     self._generate_lines = generate_lines
     self._generate_raw_log_lines = generate_raw_log_lines
-    self._properties = manager.dict()
+    self._properties = {}
     self._failure_message = failure_message
-    self._transport_open = manager.Event()
+    self._transport_open = multiprocessing_utils.get_context().Event()
     self._write_read_func = write_read_func
     self._properties[transport_properties.OPEN_ON_START] = open_on_start
     # Note: if using read_only_if_raw_data_queue_enabled flag, your test must
@@ -174,7 +173,7 @@ class FakeTransport:
   def set_open(self):
     self._transport_open.set()
     if self._generate_lines:
-      self._generator = multiprocessing.Process(
+      self._generator = multiprocessing_utils.get_context().Process(
           target=_produce_data,
           args=(self._baudrate / 10, self.bytes_per_second, self._exit_flag,
                 self._generate_raw_log_lines, self.reads))

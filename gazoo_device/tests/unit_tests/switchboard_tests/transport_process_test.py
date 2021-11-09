@@ -23,16 +23,33 @@ from gazoo_device.switchboard import transport_process
 from gazoo_device.switchboard import transport_properties
 from gazoo_device.tests.unit_tests.utils import fake_transport
 from gazoo_device.tests.unit_tests.utils import unit_test_case
+from gazoo_device.utility import multiprocessing_utils
 
 _EXCEPTION_TIMEOUT = 3
 _LOG_MESSAGE_TIMEOUT = 1
 
+get_queue_size = unit_test_case.get_queue_size
+wait_for_queue_writes = switchboard_process.wait_for_queue_writes
+
 
 class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
+
+  def setUp(self):
+    super().setUp()
+
+    self.command_queue = multiprocessing_utils.get_context().Queue()
+    self.log_queue = multiprocessing_utils.get_context().Queue()
+    self.raw_data_queue = multiprocessing_utils.get_context().Queue()
+    self.call_result_queue = multiprocessing_utils.get_context().Queue()
 
   def tearDown(self):
     if hasattr(self, "uut"):
       del self.uut
+    # Release shared memory file descriptors used by queues.
+    del self.command_queue
+    del self.log_queue
+    del self.raw_data_queue
+    del self.call_result_queue
     super().tearDown()
 
   def test_000_transport_construct_destruct(self):
@@ -40,12 +57,11 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
     transport = None
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        self.manager.Queue(),  # command queue
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue())
+        call_result_queue=self.call_result_queue)
     self.assertFalse(self.uut.is_started(),
                      "Expected process not started, found started")
     self.assertFalse(self.uut.is_running(),
@@ -53,36 +69,37 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_001_transport_enqueue_command_writes_below_split(self):
     """Test _enqueue_command_writes can split commands below max write limit."""
-    write_queue = self.manager.Queue()
+    write_queue = multiprocessing_utils.get_context().Queue()
     command = "short command"
     transport_process._enqueue_command_writes(write_queue, command)
+    wait_for_queue_writes(write_queue)
     self._verify_command_split(command, write_queue)
 
   def test_002_transport_enqueue_command_writes_above_split(self):
     """Test _enqueue_command_writes splits commands below max write limit."""
-    write_queue = self.manager.Queue()
+    write_queue = multiprocessing_utils.get_context().Queue()
     command = ("this will be a really long command that exceeds the 32 byte "
                "limit")
     transport_process._enqueue_command_writes(write_queue, command)
+    wait_for_queue_writes(write_queue)
     self._verify_command_split(command, write_queue)
 
   def test_100_transport_accepts_valid_transport_commands(self):
     """Test send_command accepts valid transport commands."""
-    command_queue = self.manager.Queue()
-    log_queue = self.manager.Queue()
-    call_result_queue = self.manager.Queue()
     transport = None
-    self.uut = transport_process.TransportProcess("fake_transport",
-                                                  self.manager,
-                                                  self.exception_queue,
-                                                  command_queue, log_queue,
-                                                  transport,
-                                                  call_result_queue)
+    self.uut = transport_process.TransportProcess(
+        "fake_transport",
+        self.exception_queue,
+        self.command_queue,
+        self.log_queue,
+        transport,
+        call_result_queue=self.call_result_queue)
     for command in transport_process._ALL_VALID_COMMANDS:
       self.uut.send_command(command)
-      self.assertFalse(command_queue.empty(),
+      wait_for_queue_writes(self.command_queue)
+      self.assertFalse(self.command_queue.empty(),
                        "Expected command queue to not be empty")
-      command_message = command_queue.get()
+      command_message = self.command_queue.get()
       self.assertEqual(
           command, command_message[0],
           "Expected command {} found {}".format(command, command_message[0]))
@@ -92,28 +109,25 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
     transport = None
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        self.manager.Queue(),  # command queue
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue())
+        call_result_queue=self.call_result_queue)
     with self.assertRaisesRegex(RuntimeError, r"No queue provided"):
       self.uut.toggle_raw_data()
 
   def test_111_transport_toggle_raw_data_toggles(self):
     """Test toggle_raw_data toggles raw_data_enable."""
     transport = None
-    raw_data_queue = self.manager.Queue()
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        self.manager.Queue(),  # command queue
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue(),
-        raw_data_queue=raw_data_queue)
+        call_result_queue=self.call_result_queue,
+        raw_data_queue=self.raw_data_queue)
     self.assertFalse(self.uut.raw_data_enabled(),
                      "Expected raw_data streaming to be disabled")
     self.uut.toggle_raw_data()
@@ -128,26 +142,24 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
     transport = None
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        self.manager.Queue(),  # command queue
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue())
+        call_result_queue=self.call_result_queue)
     with self.assertRaisesRegex(RuntimeError, r"No queue provided"):
       self.uut.get_raw_data()
 
   def test_200_transport_opens_and_closes_transport(self):
     """Test transport process calls transport open and close."""
-    transport = fake_transport.FakeTransport(self.manager)
+    transport = fake_transport.FakeTransport()
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        self.manager.Queue(),  # command queue
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue())
+        call_result_queue=self.call_result_queue)
     self.uut.start()
     self.uut.stop()
     self.assertEqual(
@@ -161,18 +173,17 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_201_transport_closes_transport_on_command(self):
     """Test transport closes transport on command."""
-    command_queue = self.manager.Queue()
     transport = mock.MagicMock(spec=fake_transport.FakeTransport)
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        command_queue,
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue())
+        call_result_queue=self.call_result_queue)
 
-    command_queue.put((transport_process.CMD_TRANSPORT_CLOSE, None))
+    self.command_queue.put((transport_process.CMD_TRANSPORT_CLOSE, None))
+    wait_for_queue_writes(self.command_queue)
     self.uut._pre_run_hook()
     self.assertTrue(self.uut.is_open(),
                     "Expected transport process to be opened, found closed")
@@ -188,18 +199,17 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_202_transport_opens_transport_on_command(self):
     """Test transport opens transport on command."""
-    command_queue = self.manager.Queue()
     transport = mock.MagicMock(spec=fake_transport.FakeTransport)
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        command_queue,
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue())
+        call_result_queue=self.call_result_queue)
 
-    command_queue.put((transport_process.CMD_TRANSPORT_OPEN, None))
+    self.command_queue.put((transport_process.CMD_TRANSPORT_OPEN, None))
+    wait_for_queue_writes(self.command_queue)
     self.uut._pre_run_hook()
     self.assertTrue(self.uut.is_open(),
                     "Expected transport process to be opened, found closed")
@@ -215,16 +225,15 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_203_transport_skips_opens_on_start(self):
     """Test transport process calls transport open and close."""
-    transport = fake_transport.FakeTransport(self.manager)
+    transport = fake_transport.FakeTransport()
     transport.set_property(transport_properties.OPEN_ON_START, False)
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        self.manager.Queue(),  # command queue
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue())
+        call_result_queue=self.call_result_queue)
     self.uut.start()
     self.uut.stop()
     self.assertEqual(
@@ -238,25 +247,25 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_204_transport_auto_reopen_with_close(self):
     """Transport process shouldn't reopen after being closed via close()."""
-    command_queue = self.manager.Queue()
     transport = mock.MagicMock(spec=fake_transport.FakeTransport)
     transport._properties = {}
     transport._properties[transport_properties.AUTO_REOPEN] = True
-    transport._transport_open = mock.MagicMock(spec=self.manager.Event)
+    transport._transport_open = mock.MagicMock(
+        spec=multiprocessing_utils.get_context().Event())
     transport.is_open.side_effect = iter([False, False])
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        command_queue,
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue())
+        call_result_queue=self.call_result_queue)
 
     self.uut._pre_run_hook()
     transport.open.assert_called_once()
 
-    command_queue.put((transport_process.CMD_TRANSPORT_CLOSE, None))
+    self.command_queue.put((transport_process.CMD_TRANSPORT_CLOSE, None))
+    wait_for_queue_writes(self.command_queue)
     self.uut._do_work()
     transport.close.assert_called()
 
@@ -270,16 +279,16 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
     transport = mock.MagicMock(spec=fake_transport.FakeTransport)
     transport._properties = {}
     transport._properties[transport_properties.AUTO_REOPEN] = True
-    transport._transport_open = mock.MagicMock(spec=self.manager.Event)
+    transport._transport_open = mock.MagicMock(
+        spec=multiprocessing_utils.get_context().Event())
     transport.is_open.side_effect = iter([False])
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        self.manager.Queue(),  # command queue
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue())
+        call_result_queue=self.call_result_queue)
 
     self.uut._pre_run_hook()
     transport.open.assert_called_once()
@@ -298,18 +307,17 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_210_transport_rejects_invalid_command(self):
     """Test transport rejects invalid command."""
-    command_queue = self.manager.Queue()
-    transport = fake_transport.FakeTransport(self.manager)
+    transport = fake_transport.FakeTransport()
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        command_queue,
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue())
+        call_result_queue=self.call_result_queue)
 
-    command_queue.put(("invalid cmd", None))
+    self.command_queue.put(("invalid cmd", None))
+    wait_for_queue_writes(self.command_queue)
     self.uut._pre_run_hook()
     with self.assertRaisesRegex(RuntimeError, r"received an unknown command"):
       self.uut._do_work()
@@ -323,16 +331,16 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
 
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        self.manager.Queue(),  # command queue
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue())
+        call_result_queue=self.call_result_queue)
 
     self.uut._pre_run_hook()
     long_command = "this will be a really long command that will be split"
     self.uut.send_command(transport_process.CMD_TRANSPORT_WRITE, long_command)
+    wait_for_queue_writes(self.command_queue)
     self.uut._do_work()
     self.uut._do_work()
     self.uut._post_run_hook()
@@ -344,22 +352,19 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_220_transport_can_disable_raw_data_queue(self):
     """Test transport can disable raw_data_queue."""
-    log_queue = self.manager.Queue()
     device_data1 = b"some device message\n"
     device_data2 = b"other device message\n"
     transport = mock.MagicMock(spec=fake_transport.FakeTransport)
     transport.read.side_effect = iter([device_data1, device_data2])
-    raw_data_queue = self.manager.Queue()
     raw_data_id = 1
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        self.manager.Queue(),  # command queue
-        log_queue,
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue(),
-        raw_data_queue=raw_data_queue,
+        call_result_queue=self.call_result_queue,
+        raw_data_queue=self.raw_data_queue,
         raw_data_id=raw_data_id)
 
     self.uut._pre_run_hook()
@@ -371,12 +376,13 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
     self.uut._post_run_hook()
 
     self.assertEqual(
-        1, raw_data_queue.qsize(),
+        1, self.raw_data_queue.qsize(),
         "Expected 1 entry in raw_data_queue found {}".format(
-            raw_data_queue.qsize()))
+            self.raw_data_queue.qsize()))
     self.assertEqual(
-        2, log_queue.qsize(),
-        "Expected 2 entries in log_queue found {}".format(log_queue.qsize()))
+        2, self.log_queue.qsize(),
+        "Expected 2 entries in log_queue found {}".format(
+            self.log_queue.qsize()))
 
     data_id, raw_data = self.uut.get_raw_data()
     self.assertIsInstance(
@@ -392,18 +398,17 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_230_transport_invalid_command_raises_error(self):
     """Test transport raises exception on invalid command."""
-    command_queue = self.manager.Queue()
-    transport = fake_transport.FakeTransport(self.manager)
+    transport = fake_transport.FakeTransport()
 
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        command_queue,
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue())
-    command_queue.put(("Invalid command", None))
+        call_result_queue=self.call_result_queue)
+    self.command_queue.put(("Invalid command", None))
+    wait_for_queue_writes(self.command_queue)
     self.uut.start()
     end_time = time.time() + _EXCEPTION_TIMEOUT
     while self.uut.is_running() and time.time() < end_time:
@@ -431,16 +436,15 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
 
   def test_231_transport_read_error_raises_error(self):
     """Test transport raises error on read exception."""
-    transport = fake_transport.FakeTransport(self.manager, fail_read=True)
+    transport = fake_transport.FakeTransport(fail_read=True)
 
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        self.manager.Queue(),  # command queue
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue())
+        call_result_queue=self.call_result_queue)
     self.uut.start()
     end_time = time.time() + _EXCEPTION_TIMEOUT
     while self.uut.is_running() and time.time() < end_time:
@@ -471,25 +475,25 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
   @unittest.skip("Skipping test_232_transport_read_retains_partial_lines")
   def test_232_transport_read_retains_partial_lines(self):
     """Test transport read can retain partial log lines."""
-    log_queue = self.manager.Queue()
-    transport = fake_transport.FakeTransport(self.manager)
+    transport = fake_transport.FakeTransport()
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        self.manager.Queue(),  # command queue
-        log_queue,
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue())
+        call_result_queue=self.call_result_queue)
 
     device_data1 = "partial log line\r"
     transport.reads.put(device_data1)
+    wait_for_queue_writes(transport.reads)
     self.uut._pre_run_hook()
     self.uut._do_work()
-    self.assertTrue(log_queue.empty(), "Expected log queue to be empty")
+    self.assertTrue(self.log_queue.empty(), "Expected log queue to be empty")
     time.sleep(_LOG_MESSAGE_TIMEOUT)
     self.uut._do_work()
-    self.assertFalse(log_queue.empty(), "Expected log queue to not be empty")
+    self.assertFalse(self.log_queue.empty(),
+                     "Expected log queue to not be empty")
     self.uut._post_run_hook()
 
   @unittest.skip(
@@ -500,8 +504,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
     See NEP-3223 which is a bug in the interaction of TransportProcess and
     LogFramer.
     """
-    log_queue = self.manager.Queue()
-    transport = fake_transport.FakeTransport(self.manager)
+    transport = fake_transport.FakeTransport()
     response_start = u"response start"
     response_end = u" end"
     response_full = response_start + response_end
@@ -510,30 +513,30 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
     framer = data_framer.InterwovenLogFramer(log_regex)
     uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        self.manager.Queue(),  # command queue
-        log_queue,
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue(),
+        call_result_queue=self.call_result_queue,
         framer=framer)
 
     device_data1 = response_start + log_line + response_end
     transport.reads.put(device_data1)
+    wait_for_queue_writes(transport.reads)
     uut._pre_run_hook()
     uut._do_work()
-    line1 = log_queue.get()
+    line1 = self.log_queue.get()
     self.assertIn(
         log_line, line1,
         "Expected {!r} in line but found {!r}".format(log_line, line1))
-    self.assertTrue(log_queue.empty(), "Expected log queue to be empty")
+    self.assertTrue(self.log_queue.empty(), "Expected log queue to be empty")
     time.sleep(_LOG_MESSAGE_TIMEOUT)
     uut._do_work()
-    line2 = log_queue.get()
+    line2 = self.log_queue.get()
     self.assertIn(
         response_full, line2,
         "Expected {!r} in line but found {!r}".format(response_full, line2))
-    self.assertTrue(log_queue.empty(), "Expected log queue to be empty")
+    self.assertTrue(self.log_queue.empty(), "Expected log queue to be empty")
     uut._post_run_hook()
 
   def test_234_transport_read_orders_lines_correctly(self):
@@ -542,7 +545,6 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
     See NEP-3223 which is a bug in the interaction of TransportProcess and
     LogFramer.
     """
-    log_queue = self.manager.Queue()
     response_start = u"response start"
     response_end = u" end\n"
     response_full = response_start + response_end
@@ -554,45 +556,44 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
     framer = data_framer.InterwovenLogFramer(log_regex)
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        self.manager.Queue(),  # command queue
-        log_queue,
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue(),
+        call_result_queue=self.call_result_queue,
         framer=framer)
 
     self.uut._pre_run_hook()
     self.uut._do_work()
-    line1 = log_queue.get()
+    line1 = self.log_queue.get()
     self.assertIn(
         log_line, line1,
         "Expected {!r} in line but found {!r}".format(log_line, line1))
-    line2 = log_queue.get()
+    line2 = self.log_queue.get()
     self.assertIn(
         response_full, line2,
         "Expected {!r} in line but found {!r}".format(response_full, line2))
-    self.assertTrue(log_queue.empty(), "Expected log queue to be empty")
+    self.assertTrue(self.log_queue.empty(), "Expected log queue to be empty")
     self.uut._post_run_hook()
 
   @unittest.skip("Skipping test_240_transport_sleeps_if_not_open")
   def test_240_transport_sleeps_if_not_open(self):
     """Test transport read can retain partial log lines."""
-    transport = fake_transport.FakeTransport(self.manager)
+    transport = fake_transport.FakeTransport()
     transport.set_property(transport_properties.OPEN_ON_START, False)
     read_timeout = 0.03
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        self.manager.Queue(),  # command queue
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue(),
+        call_result_queue=self.call_result_queue,
         read_timeout=read_timeout)
 
     device_data1 = "partial log line\r"
     transport.reads.put(device_data1)
+    wait_for_queue_writes(transport.reads)
     self.uut._pre_run_hook()
     start_time = time.time()
     self.uut._do_work()
@@ -613,18 +614,16 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
 
     baudrate = 115200 * 10
     minimum_bytes_per_second = 115200 * 8 / 10
-    raw_data_queue = self.manager.Queue()
     transport = fake_transport.FakeTransport(
-        self.manager, baudrate=baudrate, generate_lines=True)
+        baudrate=baudrate, generate_lines=True)
     self.uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
         self.exception_queue,
-        self.manager.Queue(),  # command queue
-        self.manager.Queue(),  # log queue
+        self.command_queue,
+        self.log_queue,
         transport,
-        call_result_queue=self.manager.Queue(),
-        raw_data_queue=raw_data_queue)
+        call_result_queue=self.call_result_queue,
+        raw_data_queue=self.raw_data_queue)
     self.uut.toggle_raw_data()
     start_time = time.time()
     end_time = start_time + 5.0
@@ -641,10 +640,9 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
                                                 generated_bytes_per_second))
     bytes_received = 0
     expected_count = 0
-    while not raw_data_queue.empty():
+    while not self.raw_data_queue.empty():
       expected_count += 1
-      _, raw_data = raw_data_queue.get()
-      raw_data_queue.task_done()
+      _, raw_data = self.raw_data_queue.get()
       actual_count = int(raw_data[:8])
       self.assertEqual(
           expected_count, actual_count,
@@ -662,12 +660,11 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
     transport = mock.Mock()
     uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
-        exception_queue=self.exception_queue,
-        command_queue=self.manager.Queue(),
-        log_queue=self.manager.Queue(),
+        self.exception_queue,
+        self.command_queue,
+        self.log_queue,
         transport=transport,
-        call_result_queue=self.manager.Queue())
+        call_result_queue=self.call_result_queue)
 
     test_data = [
         ((transport_process.CMD_TRANSPORT_CLOSE, None), transport.close),
@@ -685,12 +682,11 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
     transport = mock.Mock()
     uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
-        exception_queue=self.exception_queue,
-        command_queue=self.manager.Queue(),
-        log_queue=self.manager.Queue(),
+        self.exception_queue,
+        self.command_queue,
+        self.log_queue,
         transport=transport,
-        call_result_queue=self.manager.Queue())
+        call_result_queue=self.call_result_queue)
 
     with mock.patch.object(transport_process,
                            "_enqueue_command_writes") as mock_write:
@@ -702,15 +698,13 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
   def test_312_transport_process_call_command(self):
     """Verify transport process processes CALL command correctly."""
     transport = mock.Mock()
-    call_result_queue = self.manager.Queue()
     uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
-        exception_queue=self.exception_queue,
-        command_queue=self.manager.Queue(),
-        log_queue=self.manager.Queue(),
+        self.exception_queue,
+        self.command_queue,
+        self.log_queue,
         transport=transport,
-        call_result_queue=call_result_queue)
+        call_result_queue=self.call_result_queue)
 
     transport.some_method.return_value = 123
     uut._process_command_message((
@@ -719,22 +713,20 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
          ("a", "b"),
          {"foo": "bar"})))
     transport.some_method.assert_called_once_with("a", "b", foo="bar")
-    success, return_value = call_result_queue.get(block=True, timeout=0.1)
+    success, return_value = self.call_result_queue.get(block=True, timeout=0.1)
     self.assertTrue(success)
     self.assertEqual(return_value, 123)
 
   def test_313_transport_process_call_command_error_handling(self):
     """Verify exceptions in transport methods are put into the result queue."""
     transport = mock.Mock()
-    call_result_queue = self.manager.Queue()
     uut = transport_process.TransportProcess(
         "fake_transport",
-        self.manager,
-        exception_queue=self.exception_queue,
-        command_queue=self.manager.Queue(),
-        log_queue=self.manager.Queue(),
+        self.exception_queue,
+        self.command_queue,
+        self.log_queue,
         transport=transport,
-        call_result_queue=call_result_queue)
+        call_result_queue=self.call_result_queue)
 
     transport.some_method.side_effect = RuntimeError("Something failed")
     uut._process_command_message((
@@ -743,16 +735,17 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
          ("a", "b"),
          {"foo": "bar"})))
     transport.some_method.assert_called_once_with("a", "b", foo="bar")
-    success, error_traceback = call_result_queue.get(block=True, timeout=0.1)
+    success, error_traceback = self.call_result_queue.get(
+        block=True, timeout=0.1)
     self.assertFalse(success)
     self.assertIn("RuntimeError: Something failed", error_traceback)
 
-  def _verify_command_split(self, original_command, queue):
+  def _verify_command_split(self, original_command, a_queue):
     count = 0
     command = ""
-    while not queue.empty():
+    while not a_queue.empty():
       count += 1
-      partial_command = switchboard_process.get_message(queue)
+      partial_command = switchboard_process.get_message(a_queue)
       self.assertIsInstance(partial_command, str)
       partial_command_len = len(partial_command)
       self.assertLessEqual(

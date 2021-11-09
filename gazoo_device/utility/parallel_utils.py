@@ -12,105 +12,223 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Reusable utility functions for executing methods in parallel.
+"""Utilities for interacting with devices in parallel.
 
-This will create multiple processes to execute device operations on multiple
-devices. Device
-interactions will be logged to the provided logger. Errors can optionally be
-raised if device
-methods fail.
+Usage example:
 
-Example usage:
-    sample_function_results = parallel_utils.parallel_process(
-        "sample_function",
-        self._sample_function,
-        device_instances)
+  def my_custom_hello_world_function(manager_inst: manager.Manager,
+                                     device_name: str, some_arg: int) -> str:
+    '''Example function which executes a custom action on a device.
 
-    for result in sample_function_results:
-        do_something(result)
+    Args:
+      manager_inst: A Manager instance which can be used for device creation.
+        A Manager instance is always provided. You do not need to pass one as an
+        argument to the function in the CallSpec.
+      device_name: Name of the device to use. Must be specified in the CallSpec.
+      some_arg: An example of an argument. Must be specified in the CallSpec.
+    '''
+    device = manager_inst.create_device(device_name)
+    try:
+      shell_response = device.shell(f"echo 'Hello world {some_arg}'")
+    finally:
+      device.close()
+    return shell_response
+
+  call_specs = [
+      parallel_utils.CallSpec(parallel_utils.reboot, "device-1234"),
+      parallel_utils.CallSpec(parallel_utils.reboot, "device-2345",
+                              no_wait=True, method="shell"),
+      parallel_utils.CallSpec(parallel_utils.factory_reset, "device-3456"),
+      parallel_utils.CallSpec(parallel_utils.upgrade, "device-4567",
+                              build_number=1234, build_branch="1.0"),
+      parallel_utils.CallSpec(parallel_utils.upgrade, "device-5678",
+                              build_file="/some/file/path.zip"),
+      parallel_utils.CallSpec(my_custom_hello_world_function, "device-6789",
+                              1),
+      parallel_utils.CallSpec(my_custom_hello_world_function, "device-7890",
+                              some_arg=2),
+  ]
+
+  results, _ = parallel_utils.execute_concurrently(
+      call_specs, timeout=300, raise_on_process_error=True)
+
+Results are returned in the same order as call specs. For the hypothetical
+example above, results would be
+  [None, None, None, None, None, "Hello world 1", "Hello world 2"].
+
+If you need more granular control over exceptions raised in parallel processes,
+set raise_on_process_error to False. For example:
+
+  def custom_function_raises(
+      manager_inst: manager.Manager, some_arg: int) -> NoReturn:
+    raise RuntimeError(f"Demo of exception handling {some_arg}")
+
+  results, errors = parallel_utils.execute_concurrently(
+      call_specs = [
+          parallel_utils.CallSpec(custom_function_raises, 1),
+          parallel_utils.CallSpec(custom_function_raises, 2),
+      ],
+      timeout=15,
+      raise_on_process_error=False)
+
+In this case results will be ["< No result received >",
+                              "< No result received >"].
+Errors will be [("RuntimeError", "Demo of exception handling 1"),
+                ("RuntimeError", "Demo of exception handling 2")].
+
+Logging behavior:
+  Parallel process GDM logger logs are sent to the main process.
+  Device logs (from device instances created in parallel processes) are stored
+  in new individual device log files.
 """
+import dataclasses
 import multiprocessing
+import os
+import queue
 import time
+from typing import Any, Callable, List, Optional, Sequence, Tuple
 
+from gazoo_device import errors
 from gazoo_device import gdm_logger
+from gazoo_device import manager
 from gazoo_device.utility import common_utils
-from six.moves import queue
+from gazoo_device.utility import multiprocessing_utils
+import immutabledict
 
-logger_gdm = gdm_logger.get_logger()
-
+NO_RESULT = "< No result received >"
 TIMEOUT_PROCESS = 600.0
-TIMEOUT_TERMINATE_PROCESS = 5
-REQUIRED_PROPS = ["name", "DEVICE_TYPE"]
+_TIMEOUT_TERMINATE_PROCESS = 3
+_QUEUE_READ_TIMEOUT = 1
+_AnySerializable = Any
 
 
-def parallel_process(action_name,
-                     fcn,
-                     devices,
-                     logger=None,
-                     parameter_dicts=None,
-                     timeout=TIMEOUT_PROCESS):
-  """Concurrently apply function to each device.
+@dataclasses.dataclass(init=False)
+class CallSpec:
+  """Specifies a call to be executed in a parallel process.
 
-  TODO(b/152442892): Increase the flexibility of this function.
+  The function will be called in a parallel process as follows:
+    return_value = function(<ManagerInstance>, *args, **kwargs)
+
+  A Manager instance is always provided as the first argument to the function,
+  followed by *args and **kwargs. The Manager instance will be closed
+  automatically after the function returns.
+
+  If the function is performing a device action, it is expected to create a
+  device instance using the provided Manager instance (the device name to create
+  should be included in the function's arguments), use the device instance to
+  perform some action (possibly parameterized by args and kwargs), and close the
+  device instance before returning. The return_value of the function will be
+  returned to the main process.
+
+  Attributes:
+    function: Function to call in the parallel process. The function and its
+      return value must be serializable. Prefer module-level functions. In
+      particular, lambdas and inner (nested) functions are not serializable.
+      Other limitations:
+      - For devices communicating over UART or serial: ensure that access to
+        device communication is mutually exclusive. In particular, make sure
+        that device communication (`<device>.switchboard`) is closed in the main
+        process before issuing a parallel action on it and do not execute
+        simultaneous parallel actions on the same device.
+        `<device>.reset_capability("switchboard")` can be used to close device
+        communication, and it will be automatically reopened on the next access.
+      - Do not modify GDM device configs (detection, set-prop) in parallel. This
+        can result in a race condition.
+    args: Positional arguments to the function. Must be serializable. In
+      particular, Manager and device instances as well their instance methods
+      are not serializable.
+    kwargs: Keyword arguments to the function. Must be serializable.
+  """
+  function: Callable[..., _AnySerializable]
+  args: Tuple[_AnySerializable, ...]
+  kwargs: immutabledict.immutabledict[str, _AnySerializable]
+
+  def __init__(self, function: Callable[..., _AnySerializable],
+               *args: _AnySerializable, **kwargs: _AnySerializable):
+    self.function = function
+    self.args = args
+    self.kwargs = immutabledict.immutabledict(kwargs)
+
+
+def _process_wrapper(
+    return_queue: multiprocessing.Queue,
+    error_queue: multiprocessing.Queue,
+    logging_queue: multiprocessing.Queue,
+    process_id: str,
+    call_spec: CallSpec) -> None:
+  """Executes the provided function in a parallel process."""
+  gdm_logger.initialize_child_process_logging(logging_queue)
+  short_description = f"{call_spec.function.__name__} in process {os.getpid()}"
+  full_description = f"{call_spec} in process {os.getpid()}"
+  logger = gdm_logger.get_logger()
+  logger.debug(f"Starting execution of {full_description}...")
+  manager_inst = manager.Manager()
+  try:
+    return_value = call_spec.function(
+        manager_inst, *call_spec.args, **call_spec.kwargs)
+    return_queue.put((process_id, return_value))
+    logger.debug(f"Execution of {short_description} succeeded.")
+  except Exception as e:  # pylint: disable=broad-except
+    error_queue.put((process_id, (type(e).__name__, str(e))))
+    logger.warning(f"Execution of {short_description} raised an error: {e!r}.")
+  finally:
+    manager_inst.close()
+
+
+def _read_all_from_queue(queue_inst: multiprocessing.Queue) -> List[Any]:
+  """Reads and returns everything currently present in the queue."""
+  queue_contents = []
+  while True:
+    try:
+      queue_contents.append(
+          queue_inst.get(block=True, timeout=_QUEUE_READ_TIMEOUT))
+    except queue.Empty:
+      break
+  return queue_contents
+
+
+def execute_concurrently(
+    call_specs: Sequence[CallSpec],
+    timeout=TIMEOUT_PROCESS,
+    raise_on_process_error=True
+) -> Tuple[List[Any], List[Optional[Tuple[str, str]]]]:
+  """Concurrently executes function calls in parallel processes.
 
   Args:
-      action_name (str): terse description of the function
-      fcn (function): function to execute in parallel
-      devices (list): list of device objects
-      logger (logger): logger object that will be passed to fcn
-      parameter_dicts (dict): of arguments to send to the fcn by device_type
-      timeout (int): seconds before terminating all the parallel processes
+    call_specs: Specifications for each of the parallel executions.
+    timeout: Time to wait before terminating all of the parallel processes.
+    raise_on_process_error: If True, raise an error if any of the parallel
+      processes encounters an error. If False, return a list of errors which
+      occurred in the parallel processes along with the received results.
 
   Returns:
-      list: results from parallel functions if return_results flag is
-      specified. this will be
-          a list of either an exception raised while running the function or
-          data added
-          manually to the multiprocessing queue.
+    A tuple of (parallel_process_return_values, parallel_process_errors).
+    The order of return values and errors corresponds to the order of provided
+    call_specs. parallel_process_return_values will contain return values of the
+    functions executed in parallel. If a parallel process fails, the
+    corresponding entry in the return value list will be NO_RESULT.
+    Errors are only returned if raise_on_process_error is False.
+    Each error is specified as a tuple of (error_type, error_message).
+    If a parallel process succeeds (there's no error), the corresponding entry
+    in the error list will be None.
 
   Raises:
-      RuntimeError: if any of the parallel functions raise error or timeouts
-      and return_results flag is not true
-      AttributeError: if provided devices are missing required props.
+    ParallelUtilsError: If raise_on_process_error is True and any of the
+      parallel processes encounters an error.
   """
-  if not parameter_dicts:
-    parameter_dicts = {}
+  return_queue = multiprocessing_utils.get_context().Queue()
+  error_queue = multiprocessing_utils.get_context().Queue()
+  gdm_logger.switch_to_multiprocess_logging()
+  logging_queue = gdm_logger.get_logging_queue()
 
-  # verify list of devices was recieved
-  if not isinstance(devices, list):
-    raise RuntimeError(
-        "Devices should be a list. Instead its a {}. Devices: {}".format(
-            type(devices), devices))
-
-  # verify devices have required properties
-  for prop in REQUIRED_PROPS:
-    if not all(hasattr(device, prop) for device in devices):
-      raise AttributeError("Devices must have {} property. Devices: {}".format(
-          prop, devices))
-
-  device_names = [device.name for device in devices]
-  logger_gdm.info("Executing {} concurrently for {}s on devices {}".format(
-      action_name, timeout, ",".join(device_names)))
-
-  # create queues to manage parallel processes
-  return_queue = multiprocessing.Queue()
-  error_queue = multiprocessing.Queue()
   processes = []
+  for proc_id, call_spec in enumerate(call_specs):
+    processes.append(
+        multiprocessing_utils.get_context().Process(
+            target=_process_wrapper,
+            args=(return_queue, error_queue, logging_queue, proc_id, call_spec),
+            ))
 
-  # initiate new process for each device with provided arguments
-  for device in devices:
-    device_type = device.DEVICE_TYPE
-    args = (fcn, return_queue, error_queue)
-    kwargs = {"device": device}
-    if logger:
-      kwargs["logger"] = logger
-    if device_type in parameter_dicts:
-      kwargs["parameter_dict"] = parameter_dicts[device_type]
-    process = multiprocessing.Process(
-        target=_sub_process, args=args, kwargs=kwargs)
-    processes.append(process)
-
-  # run each process in parallel
   deadline = time.time() + timeout
   for process in processes:
     common_utils.run_before_fork()
@@ -122,90 +240,58 @@ def parallel_process(action_name,
     process.join(timeout=remaining_timeout)
     if process.is_alive():
       process.terminate()
-      process.join(timeout=TIMEOUT_TERMINATE_PROCESS)
+      process.join(timeout=_TIMEOUT_TERMINATE_PROCESS)
+      if process.is_alive():
+        process.kill()
+        process.join(timeout=_TIMEOUT_TERMINATE_PROCESS)
 
-  # handle results from queue
-  errors = get_messages_from_queue(error_queue)
-  if errors:
-    raise RuntimeError(", ".join(errors))
-  return get_messages_from_queue(return_queue)
+  proc_results = [NO_RESULT] * len(call_specs)
+  for proc_id, result in _read_all_from_queue(return_queue):
+    proc_results[proc_id] = result
 
+  proc_errors = [None] * len(call_specs)
+  for proc_id, error_type_and_message in _read_all_from_queue(error_queue):
+    proc_errors[proc_id] = error_type_and_message
 
-def issue_devices_parallel(method_name,
-                           devices,
-                           parameter_dicts=None,
-                           timeout=TIMEOUT_PROCESS):
-  """Concurrently issue a device command to multiple devices.
+  # We might not receive any results from a process if it times out or dies
+  # unexpectedly. Mark such cases as errors.
+  for proc_id in range(len(call_specs)):
+    if proc_results[proc_id] == NO_RESULT and proc_errors[proc_id] is None:
+      proc_errors[proc_id] = (
+          errors.ResultNotReceivedError.__name__,
+          "Did not receive any results from the process.")
 
-  Args:
-      method_name (str): device method to call in parallel.
-      devices (list): list of device objects.
-      parameter_dicts (dict): of arguments to send to the method by
-        device_type.
-      timeout (int): seconds before terminating all the parallel processes.
+  if raise_on_process_error and any(proc_errors):
+    raise errors.ParallelUtilsError(
+        f"Encountered errors in parallel processes: {proc_errors}")
 
-  Returns:
-      list: results of parallel method calls.
-
-  Note:
-      The nested function _issue_devices_parallel will be the function
-      executed in separate
-      processes for each device.
-  """
-
-  def _issue_devices_parallel(device, parameter_dict=None):
-    """Execute device method."""
-    parameter_dict = parameter_dict or {}
-    method = getattr(device, method_name)
-    return method(**parameter_dict)
-
-  return parallel_process(
-      method_name,
-      _issue_devices_parallel,
-      devices,
-      parameter_dicts=parameter_dicts,
-      timeout=timeout)
+  return proc_results, proc_errors
 
 
-def get_messages_from_queue(mp_queue, timeout=0.01):
-  """Safely get all messages from a multiprocessing queue.
-
-  Args:
-      mp_queue (queue): a multiprocess Queue instance
-      timeout (float): seconds to block other processes out from the queue
-
-  Returns:
-      list: List of messages or an empty list if there weren't any
-  """
-  msgs = []
-  # According to the python docs https://docs.python.org/2/library/multiprocessing.html
-  # after putting an object on an empty queue there may be an
-  #  infinitesimal delay before the queue's empty() method returns False
-  #
-  # We've actually run into this (SPT-1354) so we'll first kick the
-  # tires with a get() and then see if there are more using empty()
+def factory_reset(manager_inst: manager.Manager, device_name: str) -> None:
+  """Convenience function for factory resetting devices in parallel."""
+  device = manager_inst.create_device(device_name)
   try:
-    msgs.append(mp_queue.get(True, timeout))
-  except queue.Empty:
-    pass
-  else:
-    while not mp_queue.empty():
-      msgs.append(mp_queue.get_nowait())
-  return msgs
+    device.factory_reset()
+  finally:
+    device.close()
 
 
-def _sub_process(fcn, return_queue, error_queue, **kwargs):
-  """Helper function for calling methods in parallel.
-
-  Args:
-      fcn (function): function to execute
-      return_queue (queue): a multiprocess Queue instance for results
-      error_queue (queue): a multiprocess Queue instance for exceptions
-      **kwargs (dict): other keyworded arguments to pass to the function
-  """
+def reboot(manager_inst: manager.Manager, device_name: str,
+           *reboot_args: Any, **reboot_kwargs: Any) -> None:
+  """Convenience function for rebooting devices in parallel."""
+  device = manager_inst.create_device(device_name)
   try:
-    result = fcn(**kwargs)
-    if result is not None:
-      return_queue.put_nowait(result)
-  except Exception as err:
-    error_queue.put_nowait(repr(err))
+    device.reboot(*reboot_args, **reboot_kwargs)
+  finally:
+    device.close()
+
+
+def upgrade(manager_inst: manager.Manager, device_name: str,
+            *upgrade_args: Any, **upgrade_kwargs: Any) -> None:
+  """Convenience function for upgrading devices in parallel."""
+  device = manager_inst.create_device(device_name)
+  try:
+    device.flash_build.upgrade(*upgrade_args, **upgrade_kwargs)
+  finally:
+    device.close()

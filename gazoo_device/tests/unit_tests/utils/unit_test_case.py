@@ -1,3 +1,17 @@
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Base class for unit tests.
 
 Sets up common unit tests components:
@@ -16,6 +30,7 @@ import itertools
 import logging
 import multiprocessing
 import os
+import queue
 import re
 import shutil
 import signal
@@ -40,6 +55,7 @@ from gazoo_device.switchboard.transports import tcp_transport
 from gazoo_device.tests.unit_tests import utils
 from gazoo_device.utility import adb_utils
 from gazoo_device.utility import host_utils
+from gazoo_device.utility import multiprocessing_utils
 from gazoo_device.utility import usb_utils
 import pyudev
 
@@ -284,6 +300,32 @@ class UnitTestCase(parameterized.TestCase):
     super().tearDownClass()
 
 
+def get_queue_size(
+    a_queue: multiprocessing.Queue, timeout: float = 0.25) -> int:
+  """Return the size of the queue by reading everything from it.
+
+  The built-in Queue.qsize() method is not implemented on Macs and is not
+  reliable:
+  docs.python.org/3.7/library/multiprocessing.html#multiprocessing.Queue.qsize
+
+  Args:
+    a_queue: Queue to return the size of.
+    timeout: Seconds before timing out.
+
+  Returns:
+    Size of queue.
+  """
+  size = 0
+  deadline = time.time() + timeout
+  while time.time() < deadline:
+    try:
+      a_queue.get_nowait()
+      size += 1
+    except queue.Empty:
+      time.sleep(0.01)
+  return size
+
+
 class MultiprocessingTestCase(UnitTestCase):
   """Base class for multiprocessing tests.
 
@@ -295,16 +337,20 @@ class MultiprocessingTestCase(UnitTestCase):
     """Performs one-time setup before FD leak check starts."""
     # Create the ABSL error log file before any test starts.
     gdm_logger.get_logger().error("Starting a log file")
+    # Creating the first multiprocessing.Value instance initializes some shared
+    # memory structure (and thus opens a new file descriptor).
+    multiprocessing_utils.get_context().Value("l", 0)
+    # Switching to multiprocess logging creates several multiprocessing objects
+    # and opens some shared file descriptors. (Only the first call; subsequent
+    # calls are no-ops.) Switch to multiprocess logging before setUp and
+    # tearDown start keeping track of opened file descriptors.
+    gdm_logger.switch_to_multiprocess_logging()
     super().setUpClass()
 
   def setUp(self):
     super().setUp()
 
-    self.manager = multiprocessing.Manager()
-    # b/141476623: exception queue must not share multiprocessing.Manager()
-    # with anyone
-    self.exception_queue_manager = multiprocessing.Manager()
-    self.exception_queue = self.exception_queue_manager.Queue()
+    self.exception_queue = multiprocessing_utils.get_context().Queue()
     self.exception = None
 
     self._orig_usr1_handler = signal.getsignal(signal.SIGUSR1)
@@ -314,11 +360,7 @@ class MultiprocessingTestCase(UnitTestCase):
     self.starting_fds = self.get_open_fds()
 
   def tearDown(self):
-    del self.exception_queue
-    self.exception_queue_manager.shutdown()
-    del self.exception_queue_manager
-    self.manager.shutdown()
-    del self.manager
+    del self.exception_queue  # Release shared memory file descriptors.
     gc.collect()
 
     signal.signal(signal.SIGUSR1, self._orig_usr1_handler)

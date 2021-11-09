@@ -35,7 +35,6 @@ the transport class provided and according to the following assumptions:
     * Custom log messages received as commands will only be added to the log
       queue between full device log messages.
 """
-import multiprocessing
 import queue
 import time
 import traceback
@@ -45,6 +44,7 @@ from gazoo_device.switchboard import data_framer
 from gazoo_device.switchboard import log_process
 from gazoo_device.switchboard import switchboard_process
 from gazoo_device.switchboard import transport_properties as props
+from gazoo_device.utility import multiprocessing_utils
 
 CMD_TRANSPORT_CALL = "TRANSPORT_CALL"
 CMD_TRANSPORT_CLOSE = "TRANSPORT_CLOSE"
@@ -94,7 +94,6 @@ class TransportProcess(switchboard_process.SwitchboardProcess):
 
   def __init__(self,
                device_name,
-               mp_manager,
                exception_queue,
                command_queue,
                log_queue,
@@ -111,8 +110,6 @@ class TransportProcess(switchboard_process.SwitchboardProcess):
 
     Args:
       device_name (str): name of device using this transport
-      mp_manager (multiprocessing.Manager): object to use for creating
-        Events
       exception_queue (Queue): to use for reporting exception traceback
         message from subprocess
       command_queue (Queue): to receive commands into
@@ -137,7 +134,6 @@ class TransportProcess(switchboard_process.SwitchboardProcess):
     super(TransportProcess, self).__init__(
         device_name,
         process_name,
-        mp_manager,
         exception_queue,
         command_queue,
         valid_commands=_ALL_VALID_COMMANDS)
@@ -149,12 +145,12 @@ class TransportProcess(switchboard_process.SwitchboardProcess):
     self._partial_line_timeout = partial_line_timeout
     self._partial_log_time = time.time()
     self._pending_writes = None
-    self._raw_data_enabled = multiprocessing.Event()
+    self._raw_data_enabled = multiprocessing_utils.get_context().Event()
     self._call_result_queue = call_result_queue
     self._raw_data_id = raw_data_id
     self._raw_data_queue = raw_data_queue
     self._read_timeout = read_timeout
-    self._transport_open = multiprocessing.Event()
+    self._transport_open = multiprocessing_utils.get_context().Event()
     self.transport = transport
 
   def get_raw_data(self, timeout=None):

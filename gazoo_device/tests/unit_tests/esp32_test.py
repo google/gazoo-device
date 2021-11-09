@@ -15,7 +15,6 @@
 """Unit tests for esp32 module."""
 from unittest import mock
 
-from gazoo_device import errors
 from gazoo_device.auxiliary_devices import esp32
 from gazoo_device.base_classes import espressif_esp32_device
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
@@ -49,11 +48,6 @@ class ESP32DeviceTests(fake_device_test_case.FakeDeviceTestCase):
     self._test_get_detection_info(_FAKE_DEVICE_ADDRESS,
                                   esp32.ESP32,
                                   _ESP32_PERSISTENT_PROPERTIES)
-
-  def test_002_switchboard(self):
-    """Verifies the inactive switchboard in esp32."""
-    with self.assertRaises(errors.DeviceError):
-      self.uut.switchboard.send()
 
   @mock.patch.object(espressif_esp32_device.os.path, "exists")
   def test_003_is_connected_true(self, mock_exists):

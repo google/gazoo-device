@@ -22,7 +22,8 @@
 # Do not run gdm-cleanup.sh as root.
 
 LINUX_PACKAGES="libftdi-dev libffi-dev lrzsz python3-dev android-sdk-platform-tools"
-MAC_PACKAGES="libftdi coreutils android-platform-tools"
+declare -a MAC_PACKAGES
+MAC_PACKAGES=("libftdi" "coreutils" "android-platform-tools")
 GAZOO_DIR="$HOME/gazoo/"
 UDEV_SRC_PATH="rules.d"
 
@@ -60,9 +61,12 @@ remove_homebrew_packages()
   # Avoid quoting $dirs as it contains a list of strings.
   sudo chown -R "$(whoami)" $dirs
 
-  echo "Uninstalling brew packages $MAC_PACKAGES"
-  # Avoid quoting $MAC_PACKAGES as it contains a list of strings.
-  HOMEBREW_NO_AUTO_UPDATE=1 brew uninstall $MAC_PACKAGES
+  echo "Uninstalling Brew packages" "${MAC_PACKAGES[@]}"
+  for brew_package in "${MAC_PACKAGES[@]}"
+  do
+    HOMEBREW_NO_AUTO_UPDATE=1 brew uninstall "$brew_package"
+  done
+  echo "Brew uninstalls completed"
 }
 
 cleanup_unsupported()

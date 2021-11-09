@@ -97,6 +97,7 @@ class SwitchboardTestSuite(gdm_test_base.GDMTestBase):
     expected_message = "Special message to trigger at least one log rotation"
     max_log_size = len(expected_message) * 10
     self.device.switchboard.set_max_log_size(max_log_size)
+    time.sleep(.5)  # Allow time for set_max_log_size to complete.
 
     try:
       for _ in range(20):

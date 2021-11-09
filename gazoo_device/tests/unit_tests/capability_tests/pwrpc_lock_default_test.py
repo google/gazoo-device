@@ -25,9 +25,6 @@ from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 _PWRPC_LOCK_CLASS = (
     gazoo_device.capabilities.pwrpc_lock_default.PwRPCLockDefault)
 _FAKE_DEVICE_NAME = "lock_device"
-_FAKE_LOCK_REGEXES = {pwrpc_lock_default.LockedState.LOCKED: "locked",
-                      pwrpc_lock_default.LockedState.UNLOCKED: "unlocked"}
-_FAKE_TIMEOUT = 3
 
 
 class PwRPCLockDefaultTest(fake_device_test_case.FakeDeviceTestCase):
@@ -38,10 +35,7 @@ class PwRPCLockDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.switchboard_call_mock = mock.Mock()
     self.uut = pwrpc_lock_default.PwRPCLockDefault(
         device_name=_FAKE_DEVICE_NAME,
-        expect_locking_regexes=_FAKE_LOCK_REGEXES,
-        expect_timeout=_FAKE_TIMEOUT,
-        switchboard_call=self.switchboard_call_mock,
-        switchboard_call_expect=self.switchboard_call_mock)
+        switchboard_call=self.switchboard_call_mock)
     fake_locked_state = locking_service_pb2.LockingState(locked=True)
     fake_unlocked_state = locking_service_pb2.LockingState(locked=False)
     self.locked_state_in_bytes = fake_locked_state.SerializeToString()
@@ -51,29 +45,35 @@ class PwRPCLockDefaultTest(fake_device_test_case.FakeDeviceTestCase):
                      "state", new_callable=mock.PropertyMock)
   def test_001_lock_on_success(self, mock_state):
     """Verifies locking device on success."""
-    self.switchboard_call_mock.return_value = (None, (True, None))
+    self.switchboard_call_mock.return_value = (True, None)
     mock_state.return_value = True
+
     self.uut.lock()
+
     self.switchboard_call_mock.assert_called_once()
-    self.assertEqual(1, mock_state.call_count)
+    mock_state.assert_called_once()
 
   def test_001_lock_on_failure_false_ack(self):
     """Verifies locking device on failure with false ack value."""
-    self.switchboard_call_mock.return_value = (None, (False, None))
+    self.switchboard_call_mock.return_value = (False, None)
     error_regex = f"Locking device {_FAKE_DEVICE_NAME} failed."
+
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
       self.uut.lock()
+
     self.switchboard_call_mock.assert_called_once()
 
   @mock.patch.object(_PWRPC_LOCK_CLASS,
                      "state", new_callable=mock.PropertyMock)
   def test_001_lock_on_failure_incorrect_state(self, mock_state):
     """Verifies locking device on failure with incorrect state."""
-    self.switchboard_call_mock.return_value = (None, (True, None))
+    self.switchboard_call_mock.return_value = (True, None)
     mock_state.return_value = False
     error_regex = f"Locking device {_FAKE_DEVICE_NAME} failed."
+
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
       self.uut.lock()
+
     self.switchboard_call_mock.assert_called_once()
     self.assertEqual(2, mock_state.call_count)
 
@@ -81,29 +81,35 @@ class PwRPCLockDefaultTest(fake_device_test_case.FakeDeviceTestCase):
                      "state", new_callable=mock.PropertyMock)
   def test_002_unlock_on_success(self, mock_state):
     """Verifies unlocking device on success."""
-    self.switchboard_call_mock.return_value = (None, (True, None))
+    self.switchboard_call_mock.return_value = (True, None)
     mock_state.return_value = False
+
     self.uut.unlock()
+
     self.switchboard_call_mock.assert_called_once()
     self.assertEqual(1, mock_state.call_count)
 
   def test_002_unlock_on_failure_false_ack(self):
     """Verifies unlocking device on failure with false ack value."""
-    self.switchboard_call_mock.return_value = (None, (False, None))
+    self.switchboard_call_mock.return_value = (False, None)
     error_regex = f"Unlocking device {_FAKE_DEVICE_NAME} failed."
+
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
       self.uut.unlock()
+
     self.switchboard_call_mock.assert_called_once()
 
   @mock.patch.object(_PWRPC_LOCK_CLASS,
                      "state", new_callable=mock.PropertyMock)
   def test_002_unlock_on_failure_incorrect_state(self, mock_state):
     """Verifies unlocking device on failure with incorrect state."""
-    self.switchboard_call_mock.return_value = (None, (True, None))
+    self.switchboard_call_mock.return_value = (True, None)
     mock_state.return_value = True
     error_regex = f"Unlocking device {_FAKE_DEVICE_NAME} failed."
+
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
       self.uut.unlock()
+
     self.switchboard_call_mock.assert_called_once()
     self.assertEqual(2, mock_state.call_count)
 

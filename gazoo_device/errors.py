@@ -32,7 +32,7 @@ from gazoo_device import gdm_logger
 logger = gdm_logger.get_logger()
 
 
-def _get_version_string() -> str:
+def get_version_string() -> str:
   """Returns version of GDM and of all registered extension packages."""
   return " GDM Version: {}. Registered extension packages: {}.".format(
       _version.version, extensions.get_registered_package_info())
@@ -74,6 +74,19 @@ class PackageRegistrationError(Exception):
   def __init__(self, msg: str, package_name: str):
     super().__init__("Failed to register package {!r} with GDM architecture. {}"
                      .format(package_name, msg))
+
+
+class ParallelUtilsError(Exception):
+  """Raised when an error occurs in a process created by parallel_utils."""
+  err_code = 7
+
+
+class ResultNotReceivedError(ParallelUtilsError):
+  """Raised when no result is received from a parallel_utils process.
+
+  This means the process timed out or was terminated unexpectedly.
+  """
+  err_code = 8
 
 
 class CommunicationTimeoutError(DeviceError):
@@ -118,7 +131,7 @@ class CheckDeviceReadyError(DeviceError):
       error_str += " Details: {}.".format(details)
     if recovery:
       error_str += " Recovery: {}.".format(recovery)
-    error_str += _get_version_string()
+    error_str += get_version_string()
 
     self.properties = {}  # persistent properties of the device
     self.checks_passed = [
@@ -547,53 +560,6 @@ class DeviceServiceNotYetStartedError(CheckDeviceReadyError):
   err_code = 57
 
 
-class CheckTestbedReadyError(DeviceError):
-  """DeviceError variant used in testbed readiness checks."""
-  err_code = 58
-
-  def __init__(self, msg, details=None, recovery=None):
-    """Inits a CheckTestbedReadyError exception.
-
-    Args:
-        msg (str): An error message string of the form <error_message>
-          <details>.
-        details (str): An optional message string describing error details.
-        recovery (str): An optional message string describing further
-          recovery options if attempted recover does not work.
-    """
-    error_str = "testbed {}.".format(msg)
-    if details:
-      error_str += " Details: {}.".format(details)
-    if recovery:
-      error_str += " Recovery: {}.".format(recovery)
-    error_str += _get_version_string()
-
-    self.properties = {}  # testing properties of the testbed
-    self.checks_passed = [
-    ]  # names of health check methods that passed prior to the failure
-
-    super(CheckTestbedReadyError, self).__init__(error_str)
-
-
-class TestbedWifiNotAvailableError(CheckTestbedReadyError):
-  """Raised when a the SSID of a wifi network is not available to the testbed."""
-  err_code = 59
-
-  def __init__(self, ssid, available_networks, details=None, recovery=None):
-    """Inits a TestbedWifiNotAvailableError exception.
-
-    Args:
-        ssid (str): SSID of wifi network.
-        available_networks (list): List of available wifi network SSIDs.
-        details (str): An optional message string describing error details.
-        recovery (str): An optional message string describing further
-          recovery options if attempted recover does not work.
-    """
-    msg = "unable to find available wifi network with ssid {!r}.".format(ssid)
-    msg += " Available networks: {}".format(available_networks or "none")
-    super(TestbedWifiNotAvailableError, self).__init__(msg, details, recovery)
-
-
 class ProcessNotRunningError(CheckDeviceReadyError):
   """Raised when an expected process is not running on the device."""
   err_code = 60
@@ -635,23 +601,6 @@ class DownloadKeyError(DeviceError):
         key_info, ", ".join(repr(err) for err in download_errors)))
 
 
-class TestbedMissingExternalStorageError(CheckTestbedReadyError):
-  """Raised when devices in the testbed are missing external storage."""
-  err_code = 65
-
-  def __init__(self, device_names, details=None, recovery=None):
-    """Initializes a TestbedMissingExternalStorageError exception.
-
-    Args:
-        device_names (list): names of devices missing external storage.
-        details (str): An optional message string describing error details.
-        recovery (str): An optional message string describing further
-          recovery options if attempted recovery does not work.
-    """
-    msg = "devices missing external storage: {}".format(device_names)
-    super().__init__(msg, details, recovery)
-
-
 class CapabilityNotReadyError(CheckDeviceReadyError):
   """Raised when capability not ready."""
   err_code = 66
@@ -660,18 +609,3 @@ class CapabilityNotReadyError(CheckDeviceReadyError):
 class DependencyUnavailableError(DeviceError):
   """Exception raised when a dependency is not available."""
   err_code = 67
-
-
-class TestbedFailedToEnsureBuildsError(CheckTestbedReadyError):
-  """Raised when upgrade to expected build fails in a testbed."""
-  err_code = 68
-
-  def __init__(self, device_upgrade_exceptions):
-    msg = "upgrade failed on devices: {}".format(
-        ", ".join(device_upgrade_exceptions.keys()))
-    details = ". ".join([
-        f"{device}: {repr(exception)}"
-        for device, exception in device_upgrade_exceptions.items()
-    ])
-    recovery = "reflash devices"
-    super().__init__(msg, details, recovery)

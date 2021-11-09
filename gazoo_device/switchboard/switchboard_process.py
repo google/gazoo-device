@@ -18,14 +18,14 @@ import multiprocessing
 import os
 import signal
 import socket
+import time
 import traceback
 
 from gazoo_device import gdm_logger
 from gazoo_device.utility import common_utils
+from gazoo_device.utility import multiprocessing_utils
 import psutil
 import six.moves.queue
-
-logger = gdm_logger.get_logger()
 
 
 def get_message(queue, timeout=None):
@@ -42,14 +42,12 @@ def get_message(queue, timeout=None):
       object: The message data or None if no messages were available or
               retrieved within timeout specified.
   """
-  if queue is None or not hasattr(queue, "get") or not hasattr(
-      queue, "task_done"):
+  if queue is None or not hasattr(queue, "get"):
     raise ValueError("Invalid queue of {} provided".format(type(queue)))
 
   message = None
   try:
     message = queue.get(block=True, timeout=timeout)
-    queue.task_done()
     # manager shutdown or queue empty
   except (IOError, six.moves.queue.Empty, ValueError, socket.error):
     pass
@@ -79,8 +77,28 @@ def put_message(queue, message, timeout=None):
     pass
 
 
+def wait_for_queue_writes(
+    queue: multiprocessing.Queue, timeout: float = 1) -> None:
+  """Wait until the queue background thread writes all pending queue messages.
+
+  Args:
+    queue: Queue to wait on.
+    timeout: Max seconds to wait for the queue buffer to become empty.
+
+  Raises:
+    RuntimeError: If the queue buffer did not become empty in the given time.
+  """
+  queue_buffer = queue._buffer  # pylint: disable=protected-access  # pytype:disable=attribute-error
+  deadline = time.time() + timeout
+  while time.time() < deadline and queue_buffer:
+    time.sleep(0.01)
+  if queue_buffer:
+    raise RuntimeError(
+        f"Buffer of queue {queue} didn't get flushed in {timeout}s.")
+
+
 @contextlib.contextmanager
-def _child_process_wrapper(parent_proc, process_name, device_name,
+def _child_process_wrapper(parent_pid, process_name, device_name,
                            exception_queue):
   """Wrapper to ignore interrupts in child processes; the main process handles cleanup."""
   signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -95,34 +113,37 @@ def _child_process_wrapper(parent_proc, process_name, device_name,
       exception_queue.put_nowait("Device {} raised exception in {}. "
                                  "{}".format(device_name, process_name,
                                              stack_trace))
-      os.kill(parent_proc.pid, signal.SIGUSR1)
+      # Wait until the queue background thread has sent the message before
+      # notifying the parent process.
+      wait_for_queue_writes(exception_queue)
+      os.kill(parent_pid, signal.SIGUSR1)
     except (IOError, OSError):  # queue or parent process doesn't exist anymore
       pass
 
 
-def _parent_is_alive(parent_proc):
+def _parent_is_alive(parent_pid):
   status = False
   try:
-    status = parent_proc.status() != psutil.STATUS_ZOMBIE
+    status = psutil.Process(parent_pid).status() != psutil.STATUS_ZOMBIE
   except psutil.NoSuchProcess:  # parent process doesn't exist anymore
     pass
   return status
 
 
-def _process_loop(cls, parent_proc):
+def _process_loop(cls, parent_pid):
   """Child process loop which handles start/stop events and exceptions."""
-  with _child_process_wrapper(parent_proc, cls.process_name, cls.device_name,
+  with _child_process_wrapper(parent_pid, cls.process_name, cls.device_name,
                               cls._exception_queue):
+    gdm_logger.initialize_child_process_logging(cls.logging_queue)
     try:
       cls._start_event.set()
     except Exception as err:
       stack_trace = traceback.format_exc()
-      logger.info("Device {} Process {} error {!r} "
-                  "start event error. {}".format(cls.device_name,
-                                                 cls.process_name, err,
-                                                 stack_trace))
+      gdm_logger.get_logger().info(
+          "Device {} Process {} error {!r} start event error. {}".format(
+              cls.device_name, cls.process_name, err, stack_trace))
     running = cls._pre_run_hook()
-    while running and _parent_is_alive(parent_proc):
+    while running and _parent_is_alive(parent_pid):
       try:
         if cls._terminate_event.is_set():
           cls._terminate_event.clear()
@@ -154,7 +175,6 @@ class SwitchboardProcess(object):
   def __init__(self,
                device_name,
                process_name,
-               mp_manager,
                exception_queue,
                command_queue,
                valid_commands=None):
@@ -164,8 +184,6 @@ class SwitchboardProcess(object):
         device_name (str): of the device for exception error messages
         process_name (str): to use for process name and exception error
           messages
-        mp_manager (multiprocessing.Manager): object to use for creating
-          Events
         exception_queue (Queue): to use for reporting exception traceback
           message from subprocess
         command_queue (Queue): to receive commands into
@@ -175,9 +193,11 @@ class SwitchboardProcess(object):
     self.process_name = process_name
     self._command_queue = command_queue
     self._exception_queue = exception_queue
-    self._start_event = mp_manager.Event()
-    self._stop_event = mp_manager.Event()
-    self._terminate_event = mp_manager.Event()
+    gdm_logger.switch_to_multiprocess_logging()
+    self.logging_queue = gdm_logger.get_logging_queue()
+    self._start_event = multiprocessing_utils.get_context().Event()
+    self._stop_event = multiprocessing_utils.get_context().Event()
+    self._terminate_event = multiprocessing_utils.get_context().Event()
     self._valid_commands = valid_commands or ()
 
   def __del__(self):
@@ -195,13 +215,13 @@ class SwitchboardProcess(object):
         process was previously started to prevent raising an error.
     """
     if not self.is_started():
-      parent_proc = psutil.Process(os.getpid())
       self._start_event.clear()
       self._stop_event.clear()
-      process = multiprocessing.Process(
+      parent_pid = os.getpid()
+      process = multiprocessing_utils.get_context().Process(
           name=self.process_name,
           target=_process_loop,
-          args=(self, parent_proc))
+          args=(self, parent_pid))
       common_utils.run_before_fork()
       process.start()
       common_utils.run_after_fork_in_parent()
@@ -278,7 +298,7 @@ class SwitchboardProcess(object):
           msg = ("Device {} failed to stop child process {}. "
                  "Stop event was not set.").format(self.device_name,
                                                    self.process_name)
-          logger.error(msg)
+          gdm_logger.get_logger().error(msg)
           raise IOError(msg)
       except (IOError, ValueError):  # manager shutdown failed
         pass
@@ -289,14 +309,17 @@ class SwitchboardProcess(object):
     else:
       msg = ("Device {} failed to stop child process {}. Child process is not "
              "currently running.").format(self.device_name, self.process_name)
-      logger.error(msg)
+      gdm_logger.get_logger().error(msg)
       raise RuntimeError(msg)
 
-  def is_command_done(self):
+  def is_command_consumed(self):
     """Returns True if command queue is empty, false otherwise.
 
+    This does not guarantee that the command processing is complete, only that
+    it has started.
+
     Returns:
-        bool: True if command queue is empty
+      bool: True if command queue is empty.
     """
     return self._command_queue.empty()
 

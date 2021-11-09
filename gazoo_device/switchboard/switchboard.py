@@ -22,7 +22,6 @@ By separating these standardized APIs we can more easily test the logic and
 eventually unit test device classes independent of hardware.
 """
 import io
-import multiprocessing
 import os
 import queue
 import re
@@ -31,8 +30,6 @@ import subprocess
 import time
 import types
 from typing import Any, Dict, List, Optional, Tuple
-
-import xmodem
 
 from gazoo_device import config
 from gazoo_device import decorators
@@ -49,8 +46,9 @@ from gazoo_device.switchboard.transports import jlink_transport
 from gazoo_device.switchboard.transports import serial_transport
 from gazoo_device.switchboard.transports import tcp_transport
 from gazoo_device.switchboard.transports import transport_base
-from gazoo_device.utility import common_utils
+from gazoo_device.utility import multiprocessing_utils
 from gazoo_device.utility import usb_utils
+import xmodem
 
 logger = gdm_logger.get_logger("core")
 
@@ -241,13 +239,10 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     self._force_slow = force_slow
     self._identifier = identifier or line_identifier.AllUnknownIdentifier()
     time.sleep(.1)
-    common_utils.run_before_fork()
-    self._mp_manager = multiprocessing.Manager()
-    common_utils.run_after_fork_in_parent()
     self._transport_processes = []
-    self._log_queue = self._mp_manager.Queue()
-    self._call_result_queue = self._mp_manager.Queue()
-    self._raw_data_queue = self._mp_manager.Queue()
+    self._log_queue = multiprocessing_utils.get_context().Queue()
+    self._call_result_queue = multiprocessing_utils.get_context().Queue()
+    self._raw_data_queue = multiprocessing_utils.get_context().Queue()
     self._raw_data_queue_users = 0
     self._transport_process_id = 0
     self._exception_queue = exception_queue
@@ -300,7 +295,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     self._log_filter_process.send_command(log_process.CMD_ADD_NEW_FILTER,
                                           filter_path)
     while (self._log_filter_process.is_running() and
-           not self._log_filter_process.is_command_done()):
+           not self._log_filter_process.is_command_consumed()):
       time.sleep(0.001)
 
   def call(self,
@@ -495,14 +490,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
 
   @decorators.CapabilityLogDecorator(logger, level=None)
   def close(self):
-    """Shuts down the subprocesses and closes the transports.
-
-    NOTE:
-        The current implementation relies on queues being garbage collected.
-        Instead of explicitly closing the queues, all queue references MUST
-        be deleted to
-        release the queues and prevent a memory leak!
-    """
+    """Shuts down child processes and closes the transports."""
     comms_addresses = [
         proc.transport.comms_address for proc in self._transport_processes
     ]
@@ -511,6 +499,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       for button in self.button_list:
         button.close()
       self.button_list = []
+    # Delete queues to release shared memory file descriptors.
     if hasattr(self, "_call_result_queue") and self._call_result_queue:
       delattr(self, "_call_result_queue")
     if hasattr(self, "_raw_data_queue") and self._raw_data_queue:
@@ -519,9 +508,6 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       delattr(self, "_log_queue")
     if hasattr(self, "_exception_queue") and self._exception_queue:
       delattr(self, "_exception_queue")
-    if hasattr(self, "_mp_manager") and self._mp_manager:
-      self._mp_manager.shutdown()
-      delattr(self, "_mp_manager")
     self.ensure_serial_paths_unlocked(comms_addresses)
     super().close()
 
@@ -1159,7 +1145,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     self._log_writer_process.send_command(log_process.CMD_MAX_LOG_SIZE,
                                           max_log_size)
     while (self._log_writer_process.is_running() and
-           not self._log_writer_process.is_command_done()):
+           not self._log_writer_process.is_command_consumed()):
       time.sleep(0.001)
 
   @decorators.CapabilityLogDecorator(logger)
@@ -1181,13 +1167,13 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       self._log_filter_process.send_command(log_process.CMD_NEW_LOG_FILE,
                                             log_path)
       while (self._log_filter_process.is_running() and
-             not self._log_filter_process.is_command_done()):
+             not self._log_filter_process.is_command_consumed()):
         time.sleep(0.001)
 
     self._log_writer_process.send_command(log_process.CMD_NEW_LOG_FILE,
                                           log_path)
     while (self._log_writer_process.is_running() and
-           not self._log_writer_process.is_command_done()):
+           not self._log_writer_process.is_command_consumed()):
       time.sleep(0.001)
 
     # Wait for new log file to appear
@@ -1418,9 +1404,8 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     self._transport_processes.append(
         transport_process.TransportProcess(
             self._device_name,
-            self._mp_manager,
             self._exception_queue,
-            self._mp_manager.Queue(),
+            multiprocessing_utils.get_context().Queue(),
             self._log_queue,
             transport,
             call_result_queue=self._call_result_queue,
@@ -1452,9 +1437,8 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
   def _add_log_writer_process(self, log_path, max_log_size):
     self._log_writer_process = log_process.LogWriterProcess(
         self._device_name,
-        self._mp_manager,
         self._exception_queue,
-        self._mp_manager.Queue(),
+        multiprocessing_utils.get_context().Queue(),
         self._log_queue,
         log_path,
         max_log_size=max_log_size)
@@ -1462,8 +1446,11 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
   def _add_log_filter_process(self, parser, log_path):
     if parser is not None:
       self._log_filter_process = log_process.LogFilterProcess(
-          self._device_name, self._mp_manager, self._exception_queue,
-          self._mp_manager.Queue(), parser, log_path)
+          self._device_name,
+          self._exception_queue,
+          multiprocessing_utils.get_context().Queue(),
+          parser,
+          log_path)
 
   def _check_button_args(self, func_name, button, port, duration=0.0, wait=0.0):
     """Checks that button arguments are valid.
@@ -1742,7 +1729,6 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     try:
       while not self._raw_data_queue.empty():
         self._raw_data_queue.get_nowait()
-        self._raw_data_queue.task_done()
     except (AttributeError, IOError, queue.Empty):
       # manager shutdown or close called or queue empty
       pass

@@ -21,7 +21,7 @@ from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import fastboot_base
 from gazoo_device.utility import adb_utils
-from gazoo_device.utility import common_utils
+from gazoo_device.utility import retry
 
 logger = gdm_logger.get_logger()
 
@@ -120,7 +120,7 @@ class FastbootDefault(fastboot_base.FastbootBase):
     timeout = timeout or 0.1
 
     try:
-      common_utils.retry(
+      retry.retry(
           adb_utils.is_fastboot_mode,
           func_args=(self._fastboot_serial,),
           is_successful=bool,

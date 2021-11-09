@@ -23,7 +23,8 @@
 
 LINUX_PACKAGES="libftdi-dev libffi-dev lrzsz python3-dev python3-pip android-sdk-platform-tools udisks2 curl wget unzip"
 # udisks2 to get udisksctl
-MAC_PACKAGES="libftdi coreutils android-platform-tools"
+declare -a MAC_PACKAGES
+MAC_PACKAGES=("libftdi" "coreutils" "android-platform-tools")
 
 GAZOO_DIR="$HOME/gazoo"
 GAZOO_BIN_DIR="$GAZOO_DIR/bin"
@@ -90,9 +91,12 @@ install_for_mac()
   xcode-select -p > /dev/null
   exit_if_non_zero $? "'xcode-select' CLI is missing. Please install it: 'xcode-select --install'"
 
-  echo "Installing brew packages $MAC_PACKAGES"
-  # Avoid quoting $MAC_PACKAGES as it contains a list of strings.
-  HOMEBREW_NO_AUTO_UPDATE=1 brew install $MAC_PACKAGES
+  echo "Installing Brew packages" "${MAC_PACKAGES[@]}"
+  for brew_package in "${MAC_PACKAGES[@]}"
+  do
+    HOMEBREW_NO_AUTO_UPDATE=1 brew install "$brew_package"
+  done
+  echo "Brew installs completed"
 
   install_common
 }

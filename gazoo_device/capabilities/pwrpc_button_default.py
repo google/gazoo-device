@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Default implementation of the PwRPC (Pigweed RPC) button capability."""
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Tuple
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -28,21 +28,18 @@ class PwRPCButtonDefault(pwrpc_button_base.PwRPCButtonBase):
 
   def __init__(self,
                device_name: str,
-               expect_button_regexes: Dict[int, str],
-               expect_timeout: int,
-               switchboard_call_expect: Callable[..., Any]):
+               valid_button_ids: Tuple[int, ...],
+               switchboard_call: Callable[..., Any]):
     """Creates an instance of the PwRPCButtonDefault capability.
 
     Args:
       device_name: Device name used for logging.
-      expect_button_regexes: Dict of expected regexes for each button id.
-      expect_timeout: Timeout (s) to wait for the expected regex.
-      switchboard_call_expect: The switchboard.call_and_expect method.
+      valid_button_ids: Button numbers as present on a device.
+      switchboard_call: The switchboard.call method.
     """
     super().__init__(device_name=device_name)
-    self._expect_button_regexes = expect_button_regexes
-    self._expect_timeout = expect_timeout
-    self._switchboard_call_expect = switchboard_call_expect
+    self._valid_button_ids = valid_button_ids
+    self._switchboard_call = switchboard_call
 
   @decorators.CapabilityLogDecorator(logger)
   def push(self, button_id: int) -> None:
@@ -54,19 +51,14 @@ class PwRPCButtonDefault(pwrpc_button_base.PwRPCButtonBase):
     Raises:
       DeviceError: When button_id is invalid or RPC ack value is not True.
     """
-    if button_id not in self._expect_button_regexes:
-      valid_ids = set(self._expect_button_regexes.keys())
+    if button_id not in self._valid_button_ids:
       raise errors.DeviceError(f"Invalid button id {button_id}. Possible valid "
-                               f"ids: {valid_ids}.")
+                               f"ids: {self._valid_button_ids}.")
 
-    expect_regex = self._expect_button_regexes[button_id]
-    _, (ack, _) = self._switchboard_call_expect(
+    ack, _ = self._switchboard_call(
         method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-        pattern_list=[expect_regex],
-        timeout=self._expect_timeout,
         method_args=("Button", "Event"),
-        method_kwargs={"idx": button_id, "pushed": True},
-        raise_for_timeout=True)
+        method_kwargs={"idx": button_id, "pushed": True})
 
     if not ack:
       raise errors.DeviceError(f"Device {self._device_name} button {button_id} "
