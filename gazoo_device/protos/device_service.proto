@@ -16,10 +16,9 @@
 // The source of truth of this proto can be found at https://github.com/project-chip/connectedhomeip/tree/master/examples/common/pigweed/protos
 syntax = "proto3";
 
-package chip.rpc;
+import "third_party/py/gazoo_device/protos/common.proto";
 
-message DeviceEmpty {
-}
+package chip.rpc;
 
 // type lengths defined in chip spec 8.2.3.1
 message DeviceInfo {
@@ -31,15 +30,14 @@ message DeviceInfo {
 
 service Device {
   // To factory reset the device.
-  rpc FactoryReset(DeviceEmpty) returns (DeviceEmpty){}
+  rpc FactoryReset(pw.protobuf.Empty) returns (pw.protobuf.Empty){}
 
   // To reboot the device.
-  rpc Reboot(DeviceEmpty) returns (DeviceEmpty){}
+  rpc Reboot(pw.protobuf.Empty) returns (pw.protobuf.Empty){}
 
   // To trigger the device OTA.
-  rpc TriggerOta(DeviceEmpty) returns (DeviceEmpty){}
+  rpc TriggerOta(pw.protobuf.Empty) returns (pw.protobuf.Empty){}
 
   // To get the device information.
-  rpc GetDeviceInfo(DeviceEmpty) returns (DeviceInfo){}
+  rpc GetDeviceInfo(pw.protobuf.Empty) returns (pw.protobuf.Empty){}
 }
-

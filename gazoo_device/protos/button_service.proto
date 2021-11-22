@@ -16,10 +16,9 @@
 // The source of truth of this proto can be found at https://github.com/project-chip/connectedhomeip/tree/master/examples/common/pigweed/protos
 syntax = "proto3";
 
-package chip.rpc;
+import "third_party/py/gazoo_device/protos/common.proto";
 
-message ButtonEmpty {
-}
+package chip.rpc;
 
 message ButtonEvent {
   uint32 idx = 1;
@@ -28,6 +27,5 @@ message ButtonEvent {
 
 service Button {
   // Activate button event to push the speicifc button id.
-  rpc Event(ButtonEvent) returns (ButtonEmpty){}
+  rpc Event(ButtonEvent) returns (pw.protobuf.Empty){}
 }
-

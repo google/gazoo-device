@@ -292,22 +292,3 @@ class PigweedRPCTransport(transport_base.TransportBase):
         else param for param_name, param in kwargs.items()}
     ack, payload = event(**kwargs)
     return ack.ok(), payload.SerializeToString()
-
-  def echo_rpc(self, msg: str) -> Tuple[bool, str]:
-    """Calls the Echo RPC endpoint.
-
-    Sends a message to the echo endpoint and returns the response back. Uses a
-    different namespace (pw.rpc) than the rest of Matter endpoints (chip.rpc).
-    Only used by the Pigweed Echo example app:
-    https://github.com/project-chip/connectedhomeip/tree/master/examples/pigweed-app/esp32#chip-esp32-pigweed-example-application
-
-    Args:
-      msg: Echo message to send.
-
-    Returns:
-      (RPC ack value, Echo message)
-    """
-    client_channel = self._hdlc_client.rpcs().pw.rpc
-    echo_service = client_channel.EchoService
-    ack, payload = echo_service.Echo(msg=msg)
-    return ack.ok(), payload.msg

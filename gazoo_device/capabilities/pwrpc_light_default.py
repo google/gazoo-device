@@ -31,15 +31,18 @@ class PwRPCLightDefault(pwrpc_light_base.PwRPCLightBase):
 
   def __init__(self,
                device_name: str,
-               switchboard_call: Callable[..., Any]):
+               switchboard_call: Callable[..., Any],
+               rpc_timeout_s: int):
     """Creates an instance of the PwRPCLightDefault capability.
 
     Args:
       device_name: Device name used for logging.
       switchboard_call: The switchboard.call method.
+      rpc_timeout_s: Timeout (s) for RPC call.
     """
     super().__init__(device_name=device_name)
     self._switchboard_call = switchboard_call
+    self._rpc_timeout_s = rpc_timeout_s
 
   @decorators.CapabilityLogDecorator(logger)
   def on(self, level: int = pwrpc_light_base.MAX_BRIGHTNESS_LEVEL,
@@ -127,7 +130,7 @@ class PwRPCLightDefault(pwrpc_light_base.PwRPCLightBase):
       DeviceError: When the device does not transition to the appropriate
       lighting configuration.
     """
-    set_onoff_kwargs = {"on": on}
+    set_onoff_kwargs = {"on": on, "pw_rpc_timeout_s": self._rpc_timeout_s}
     if on:
       color_proto_state = pwrpc_utils.PigweedProtoState(
           color, _LIGHTING_COLOR_PROTO_CLASS)
@@ -169,7 +172,7 @@ class PwRPCLightDefault(pwrpc_light_base.PwRPCLightBase):
     ack, state_in_bytes = self._switchboard_call(
         method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
         method_args=("Lighting", "Get"),
-        method_kwargs={})
+        method_kwargs={"pw_rpc_timeout_s": self._rpc_timeout_s})
     if not ack:
       raise errors.DeviceError(
           f"Device {self._device_name} getting light state failed.")

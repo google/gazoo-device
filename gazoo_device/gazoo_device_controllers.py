@@ -24,7 +24,6 @@ from gazoo_device.auxiliary_devices import cambrionix
 from gazoo_device.auxiliary_devices import dli_powerswitch
 from gazoo_device.auxiliary_devices import efr32
 from gazoo_device.auxiliary_devices import esp32
-from gazoo_device.auxiliary_devices import esp32_pigweed_echo
 from gazoo_device.auxiliary_devices import nrf52840
 from gazoo_device.auxiliary_devices import raspberry_pi
 from gazoo_device.auxiliary_devices import unifi_poe_switch
@@ -42,7 +41,6 @@ from gazoo_device.capabilities import flash_build_jlink
 from gazoo_device.capabilities import package_management_android
 from gazoo_device.capabilities import pwrpc_button_default
 from gazoo_device.capabilities import pwrpc_common_default
-from gazoo_device.capabilities import pwrpc_echo_default
 from gazoo_device.capabilities import pwrpc_light_default
 from gazoo_device.capabilities import pwrpc_lock_default
 from gazoo_device.capabilities import shell_ssh
@@ -62,7 +60,6 @@ from gazoo_device.capabilities.interfaces import flash_build_base
 from gazoo_device.capabilities.interfaces import package_management_base
 from gazoo_device.capabilities.interfaces import pwrpc_button_base
 from gazoo_device.capabilities.interfaces import pwrpc_common_base
-from gazoo_device.capabilities.interfaces import pwrpc_echo_base
 from gazoo_device.capabilities.interfaces import pwrpc_light_base
 from gazoo_device.capabilities.interfaces import pwrpc_lock_base
 from gazoo_device.capabilities.interfaces import shell_base
@@ -118,7 +115,6 @@ def export_extensions() -> Dict[str, Any]:
           dli_powerswitch.DliPowerSwitch,
           efr32.EFR32,
           esp32.ESP32,
-          esp32_pigweed_echo.ESP32PigweedEcho,
           nrf52840.NRF52840,
           raspberry_pi.RaspberryPi,
           unifi_poe_switch.UnifiPoeSwitch,
@@ -149,7 +145,6 @@ def export_extensions() -> Dict[str, Any]:
           package_management_base.PackageManagementBase,
           pwrpc_button_base.PwRPCButtonBase,
           pwrpc_common_base.PwRPCCommonBase,
-          pwrpc_echo_base.PwRPCEchoBase,
           pwrpc_light_base.PwRPCLightBase,
           pwrpc_lock_base.PwRPCLockBase,
           shell_base.ShellBase,
@@ -171,7 +166,6 @@ def export_extensions() -> Dict[str, Any]:
           package_management_android.PackageManagementAndroid,
           pwrpc_button_default.PwRPCButtonDefault,
           pwrpc_common_default.PwRPCCommonDefault,
-          pwrpc_echo_default.PwRPCEchoDefault,
           pwrpc_light_default.PwRPCLightDefault,
           pwrpc_lock_default.PwRPCLockDefault,
           shell_ssh.ShellSSH,

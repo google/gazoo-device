@@ -58,7 +58,12 @@ def load_tests(loader, standard_tests, unused_pattern):
   unit_tests = loader.discover(
       _UNIT_TEST_DIR, top_level_dir=_UNIT_TEST_DIR, pattern=pattern_match)
   if not _has_any_tests(unit_tests):
-    raise RuntimeError("Did not find any tests to run.")
+    # If we are running a single test file with sharding enabled, there may be
+    # more shards than test cases. Don't raise an error in such cases if the
+    # current shard has nothing to run.
+    if not(flags.FLAGS.file and
+           int(os.environ.get("TEST_TOTAL_SHARDS", 1)) > 1):
+      raise RuntimeError("Did not find any tests to run.")
   standard_tests.addTests(unit_tests)
 
   return standard_tests

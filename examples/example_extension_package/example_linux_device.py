@@ -88,10 +88,10 @@ class ExampleLinuxDevice(ssh_device.SshDevice):
       # connect via SSH and you want to use a controller-specific key.
       # "key_info": SSH_KEY_INFO,
   }
-  _DEFAULT_FILTERS = [
+  _DEFAULT_FILTERS = (
       os.path.join(_LOG_EVENT_FILTER_DIR, "basic.json"),
       os.path.join(_LOG_EVENT_FILTER_DIR, "crashes.json"),
-  ]
+  )
   _OWNER_EMAIL = "gdm-authors@google.com"
 
   def __init__(self,

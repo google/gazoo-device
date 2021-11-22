@@ -13,17 +13,33 @@
 # limitations under the License.
 
 """Unit and integration (multiprocessing) tests for parallel_utils."""
+import importlib
 import time
 from typing import NoReturn
+import unittest
 from unittest import mock
 
+from absl import flags
 from absl.testing import parameterized
 from gazoo_device import errors
+from gazoo_device import gdm_logger
 from gazoo_device import manager
+from gazoo_device import package_registrar
 from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.capabilities.interfaces import flash_build_base
 from gazoo_device.tests.unit_tests.utils import unit_test_case
+from gazoo_device.utility import multiprocessing_utils
 from gazoo_device.utility import parallel_utils
+
+
+def load_tests(loader, standard_tests, pattern):
+  """Skips ParallelUtilsIntegrationTests if '-s' flag is provided."""
+  del standard_tests, pattern  # Unused.
+  suite = unittest.TestSuite(
+      loader.loadTestsFromTestCase(ParallelUtilsUnitTests))
+  if not flags.FLAGS.skip_slow:
+    suite.addTests(loader.loadTestsFromTestCase(ParallelUtilsIntegrationTests))
+  return suite
 
 
 class ParallelUtilsUnitTests(unit_test_case.UnitTestCase):
@@ -70,6 +86,93 @@ class ParallelUtilsUnitTests(unit_test_case.UnitTestCase):
     device_method.assert_called_once_with(*method_args, **method_kwargs)
     mock_device.close.assert_called_once()
 
+  @mock.patch.object(gdm_logger, "initialize_child_process_logging")
+  @mock.patch.object(gdm_logger, "get_logger")
+  @mock.patch.object(package_registrar, "register")
+  @mock.patch.object(importlib, "import_module")
+  @mock.patch.object(manager, "Manager")
+  def test_process_wrapper_successful_call(
+      self, mock_manager_class, mock_import, mock_register, mock_get_logger,
+      mock_initialize_logging):
+    """Tests _process_wrapper for a process where there are no errors."""
+    mock_manager = mock_manager_class.return_value
+    mock_logger = mock_get_logger.return_value
+    multiprocessing_queue = multiprocessing_utils.get_context().Queue()
+    return_queue = mock.MagicMock(spec=multiprocessing_queue)
+    error_queue = mock.MagicMock(spec=multiprocessing_queue)
+    logging_queue = mock.MagicMock(spec=multiprocessing_queue)
+    process_id = "1"
+    mock_function = mock.MagicMock()
+    mock_function.__name__ = "mock_function"
+    args = (1, 2)
+    kwargs = {"foo": "bar"}
+    parallel_utils._process_wrapper(
+        return_queue=return_queue,
+        error_queue=error_queue,
+        logging_queue=logging_queue,
+        process_id=process_id,
+        extension_package_import_paths=["foo.package", "bar.package"],
+        call_spec=parallel_utils.CallSpec(mock_function, *args, **kwargs))
+
+    mock_initialize_logging.assert_called_once_with(logging_queue)
+    mock_get_logger.assert_called_once()
+    mock_logger.debug.assert_called()
+    mock_import.assert_has_calls(
+        [mock.call("foo.package"), mock.call("bar.package")])
+    self.assertEqual(mock_register.call_count, 2)
+    mock_manager_class.assert_called_once()
+    mock_function.assert_called_once_with(mock_manager, *args, **kwargs)
+    return_queue.put.assert_called_once_with(
+        (process_id, mock_function.return_value))
+    error_queue.put.assert_not_called()
+    mock_manager.close.assert_called_once()
+
+  @mock.patch.object(gdm_logger, "initialize_child_process_logging")
+  @mock.patch.object(gdm_logger, "get_logger")
+  @mock.patch.object(
+      package_registrar,
+      "register",
+      side_effect=errors.PackageRegistrationError(
+          "Registration failed", "foo.package"))
+  @mock.patch.object(importlib, "import_module", side_effect=[
+      None, ImportError("Importing bar.package failed")])
+  @mock.patch.object(manager, "Manager")
+  def test_process_wrapper_exception_call(
+      self, mock_manager_class, mock_import, mock_register, mock_get_logger,
+      mock_initialize_logging):
+    """Tests _process_wrapper for a process where function raises an error."""
+    mock_manager = mock_manager_class.return_value
+    mock_logger = mock_get_logger.return_value
+    multiprocessing_queue = multiprocessing_utils.get_context().Queue()
+    return_queue = mock.MagicMock(spec=multiprocessing_queue)
+    error_queue = mock.MagicMock(spec=multiprocessing_queue)
+    process_id = "1"
+    mock_function = mock.MagicMock()
+    mock_function.__name__ = "mock_function"
+    mock_function.side_effect = RuntimeError("Something went wrong")
+    args = (1, 2)
+    kwargs = {"foo": "bar"}
+    parallel_utils._process_wrapper(
+        return_queue=return_queue,
+        error_queue=error_queue,
+        logging_queue=mock.MagicMock(spec=multiprocessing_queue),
+        process_id=process_id,
+        # "foo.package" imports but fails registration.
+        # "bar.package" fails to import.
+        extension_package_import_paths=["foo.package", "bar.package"],
+        call_spec=parallel_utils.CallSpec(mock_function, *args, **kwargs))
+
+    mock_import.assert_has_calls(
+        [mock.call("foo.package"), mock.call("bar.package")])
+    mock_register.assert_called_once()
+    mock_manager_class.assert_called_once()
+    mock_function.assert_called_once_with(mock_manager, *args, **kwargs)
+    mock_logger.warning.assert_called()
+    return_queue.put.assert_not_called()
+    error_queue.put.assert_called_once_with(
+        (process_id, (RuntimeError.__name__, "Something went wrong")))
+    mock_manager.close.assert_called_once()
+
 
 def _test_function_with_return(
     manager_inst: manager.Manager, some_arg: int) -> int:
@@ -94,7 +197,7 @@ def _test_function_raises_exception(manager_inst: manager.Manager) -> NoReturn:
 def _test_function_times_out(manager_inst: manager.Manager) -> None:
   """Function which is designed to time out."""
   assert isinstance(manager_inst, manager.Manager)
-  time.sleep(5)
+  time.sleep(15)
 
 
 _GOOD_CALL_SPECS = [
@@ -122,7 +225,7 @@ class ParallelUtilsIntegrationTests(unit_test_case.UnitTestCase):
   def test_execute_concurrently_success(self):
     """Tests execute_concurrently when all parallel processes succeed."""
     results, call_errors = parallel_utils.execute_concurrently(
-        _GOOD_CALL_SPECS, timeout=1, raise_on_process_error=True)
+        _GOOD_CALL_SPECS, timeout=6, raise_on_process_error=True)
     self.assertEqual(results, _GOOD_CALL_RESULTS)
     self.assertEqual(call_errors, _GOOD_CALL_ERRORS)
 
@@ -135,14 +238,14 @@ class ParallelUtilsIntegrationTests(unit_test_case.UnitTestCase):
     with self.assertRaisesRegex(errors.ParallelUtilsError, regex):
       parallel_utils.execute_concurrently(
           _GOOD_CALL_SPECS + _BAD_CALL_SPECS,
-          timeout=1,
+          timeout=10,
           raise_on_process_error=True)
 
   def test_execute_concurrently_error_without_raise_on_process_error(self):
     """Tests execute_concurrently with errors and no raise_on_process_error."""
     results, call_errors = parallel_utils.execute_concurrently(
         _GOOD_CALL_SPECS + _BAD_CALL_SPECS,
-        timeout=1,
+        timeout=10,
         raise_on_process_error=False)
     self.assertEqual(results, _GOOD_CALL_RESULTS + _BAD_CALL_RESULTS)
     self.assertEqual(call_errors, _GOOD_CALL_ERRORS + _BAD_CALL_ERRORS)

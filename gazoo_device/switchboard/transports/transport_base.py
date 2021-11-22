@@ -25,7 +25,10 @@ from gazoo_device.switchboard import transport_properties
 
 
 class TransportBase(abc.ABC):
-  """Interface for transport classes."""
+  """Interface for transport classes.
+
+  Transport class instances must be serializable until they're opened.
+  """
 
   def __init__(self,
                auto_reopen: bool = False,

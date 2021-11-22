@@ -26,6 +26,8 @@ from gazoo_device.utility import pwrpc_utils
 
 logger = gdm_logger.get_logger()
 _VALID_BUTTON_IDS = (0, 1, 2)
+_BUTTON_RPC_TIMEOUT = 5  # seconds
+_LIGHTING_RPC_TIMEOUT = 5  # seconds
 
 
 class Esp32MatterAllclusters(esp32_matter_device.Esp32MatterDevice):
@@ -51,14 +53,6 @@ class Esp32MatterAllclusters(esp32_matter_device.Esp32MatterDevice):
                                          device_service_pb2),
                            "baudrate": esp32_matter_device.BAUDRATE}
 
-  @decorators.CapabilityDecorator(pwrpc_light_default.PwRPCLightDefault)
-  def pw_rpc_light(self):
-    """PwRPCLight capability to send RPC commands."""
-    return self.lazy_init(
-        pwrpc_light_default.PwRPCLightDefault,
-        device_name=self.name,
-        switchboard_call=self.switchboard.call)
-
   @decorators.CapabilityDecorator(pwrpc_button_default.PwRPCButtonDefault)
   def pw_rpc_button(self):
     """Returns PwRPCButton capability to press buttons.
@@ -72,4 +66,14 @@ class Esp32MatterAllclusters(esp32_matter_device.Esp32MatterDevice):
         pwrpc_button_default.PwRPCButtonDefault,
         device_name=self.name,
         valid_button_ids=_VALID_BUTTON_IDS,
-        switchboard_call=self.switchboard.call)
+        switchboard_call=self.switchboard.call,
+        rpc_timeout_s=_BUTTON_RPC_TIMEOUT)
+
+  @decorators.CapabilityDecorator(pwrpc_light_default.PwRPCLightDefault)
+  def pw_rpc_light(self):
+    """PwRPCLight capability to send RPC commands."""
+    return self.lazy_init(
+        pwrpc_light_default.PwRPCLightDefault,
+        device_name=self.name,
+        switchboard_call=self.switchboard.call,
+        rpc_timeout_s=_LIGHTING_RPC_TIMEOUT)

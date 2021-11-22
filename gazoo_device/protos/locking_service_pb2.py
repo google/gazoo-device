@@ -12,6 +12,7 @@ from google.protobuf import symbol_database as _symbol_database
 _sym_db = _symbol_database.Default()
 
 
+from gazoo_device.protos import common_pb2 as common__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
@@ -20,35 +21,11 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x15locking_service.proto\x12\x08\x63hip.rpc\"\x07\n\x05\x45mpty\"\x1e\n\x0cLockingState\x12\x0e\n\x06locked\x18\x01 \x01(\x08\x32m\n\x07Locking\x12\x30\n\x03Set\x12\x16.chip.rpc.LockingState\x1a\x0f.chip.rpc.Empty\"\x00\x12\x30\n\x03Get\x12\x0f.chip.rpc.Empty\x1a\x16.chip.rpc.LockingState\"\x00\x62\x06proto3'
-)
+  serialized_pb=b'\n\x15locking_service.proto\x12\x08\x63hip.rpc\x1a\x0c\x63ommon.proto\"\x1e\n\x0cLockingState\x12\x0e\n\x06locked\x18\x01 \x01(\x08\x32s\n\x07Locking\x12\x33\n\x03Set\x12\x16.chip.rpc.LockingState\x1a\x12.pw.protobuf.Empty\"\x00\x12\x33\n\x03Get\x12\x12.pw.protobuf.Empty\x1a\x16.chip.rpc.LockingState\"\x00\x62\x06proto3'
+  ,
+  dependencies=[common__pb2.DESCRIPTOR,])
 
 
-
-
-_EMPTY = _descriptor.Descriptor(
-  name='Empty',
-  full_name='chip.rpc.Empty',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=35,
-  serialized_end=42,
-)
 
 
 _LOCKINGSTATE = _descriptor.Descriptor(
@@ -78,20 +55,12 @@ _LOCKINGSTATE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=44,
-  serialized_end=74,
+  serialized_start=49,
+  serialized_end=79,
 )
 
-DESCRIPTOR.message_types_by_name['Empty'] = _EMPTY
 DESCRIPTOR.message_types_by_name['LockingState'] = _LOCKINGSTATE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
-
-Empty = _reflection.GeneratedProtocolMessageType('Empty', (_message.Message,), {
-  'DESCRIPTOR' : _EMPTY,
-  '__module__' : 'locking_service_pb2'
-  # @@protoc_insertion_point(class_scope:chip.rpc.Empty)
-  })
-_sym_db.RegisterMessage(Empty)
 
 LockingState = _reflection.GeneratedProtocolMessageType('LockingState', (_message.Message,), {
   'DESCRIPTOR' : _LOCKINGSTATE,
@@ -109,8 +78,8 @@ _LOCKING = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=76,
-  serialized_end=185,
+  serialized_start=81,
+  serialized_end=196,
   methods=[
   _descriptor.MethodDescriptor(
     name='Set',
@@ -118,7 +87,7 @@ _LOCKING = _descriptor.ServiceDescriptor(
     index=0,
     containing_service=None,
     input_type=_LOCKINGSTATE,
-    output_type=_EMPTY,
+    output_type=common__pb2._EMPTY,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),
@@ -127,7 +96,7 @@ _LOCKING = _descriptor.ServiceDescriptor(
     full_name='chip.rpc.Locking.Get',
     index=1,
     containing_service=None,
-    input_type=_EMPTY,
+    input_type=common__pb2._EMPTY,
     output_type=_LOCKINGSTATE,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,

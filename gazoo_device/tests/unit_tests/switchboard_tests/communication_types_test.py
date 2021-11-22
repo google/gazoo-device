@@ -29,7 +29,6 @@ from gazoo_device.utility import host_utils
 from gazoo_device.utility import usb_config
 from gazoo_device.utility import usb_utils
 import serial
-import usb
 
 _CAMBRIONIX_ADDRESS = "/dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_DJ00JMN0-if00-port0"
 _CAMBRIONIX_USB3_ADDRESS = "/dev/serial/by-id/usb-cambrionix_PS15-USB3_0000007567CE143A-if01"
@@ -40,6 +39,7 @@ _M5STACK_ADDRESS = (
 _DOCKER_ID = "123abcdefghij"
 _PTY_PROCESS_DIRECTORY = "/home/someuser/gazoo/gdm/pty_proc/some_device_dir"
 _BAUDRATE = 115200
+_USB_SERIAL_NUMBER = "123789"
 
 _MOCK_USB_MAP = {
     _CAMBRIONIX_ADDRESS:
@@ -100,6 +100,7 @@ CONNECTIONS_DICT = {
     "SerialComms": [_CAMBRIONIX_ADDRESS, _CAMBRIONIX_USB3_ADDRESS,
                     _M5STACK_ADDRESS],
     "SshComms": STATIC_IPS,
+    "UsbComms": [_USB_SERIAL_NUMBER],
     "YepkitComms": [],
 }
 
@@ -110,6 +111,7 @@ class CommunicationTypeTests(unit_test_case.UnitTestCase):
   def setUp(self):
     super().setUp()
     self.mock_out_transports()
+    self.mock_out_usb_utils_methods()
     self.enter_context(mock.patch.object(
         usb_utils, "get_address_to_usb_info_dict", return_value=_MOCK_USB_MAP))
     self.manager = gazoo_device.manager.Manager()
@@ -203,14 +205,8 @@ class CommunicationTypeTests(unit_test_case.UnitTestCase):
 
   def test_020_usb_comms_addresses(self):
     """Tests UsbComms communication type."""
-    fake_device = mock.create_autospec(spec=usb.core.Device)
-    fake_device.serial_number = "123"
-    with mock.patch.object(
-        usb_utils, "get_usb_devices_having_a_serial_number",
-        return_value=[fake_device]) as get_usb_devices:
-      addresses = communication_types.UsbComms.get_comms_addresses()
-      get_usb_devices.assert_called_once_with()
-      self.assertIn("123", addresses)
+    addresses = communication_types.UsbComms.get_comms_addresses()
+    self.assertIn(_USB_SERIAL_NUMBER, addresses)
 
   def test_021_usb_comms_transports(self):
     """Tests UsbComms transport list."""

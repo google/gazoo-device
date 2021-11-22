@@ -12,6 +12,7 @@ from google.protobuf import symbol_database as _symbol_database
 _sym_db = _symbol_database.Default()
 
 
+from gazoo_device.protos import common_pb2 as common__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
@@ -20,35 +21,11 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x14\x64\x65vice_service.proto\x12\x08\x63hip.rpc\"\r\n\x0b\x44\x65viceEmpty\"d\n\nDeviceInfo\x12\x11\n\tvendor_id\x18\x01 \x01(\r\x12\x12\n\nproduct_id\x18\x02 \x01(\r\x12\x18\n\x10software_version\x18\x03 \x01(\r\x12\x15\n\rserial_number\x18\x04 \x01(\t2\x80\x02\n\x06\x44\x65vice\x12>\n\x0c\x46\x61\x63toryReset\x12\x15.chip.rpc.DeviceEmpty\x1a\x15.chip.rpc.DeviceEmpty\"\x00\x12\x38\n\x06Reboot\x12\x15.chip.rpc.DeviceEmpty\x1a\x15.chip.rpc.DeviceEmpty\"\x00\x12<\n\nTriggerOta\x12\x15.chip.rpc.DeviceEmpty\x1a\x15.chip.rpc.DeviceEmpty\"\x00\x12>\n\rGetDeviceInfo\x12\x15.chip.rpc.DeviceEmpty\x1a\x14.chip.rpc.DeviceInfo\"\x00\x62\x06proto3'
-)
+  serialized_pb=b'\n\x14\x64\x65vice_service.proto\x12\x08\x63hip.rpc\x1a\x0c\x63ommon.proto\"d\n\nDeviceInfo\x12\x11\n\tvendor_id\x18\x01 \x01(\r\x12\x12\n\nproduct_id\x18\x02 \x01(\r\x12\x18\n\x10software_version\x18\x03 \x01(\r\x12\x15\n\rserial_number\x18\x04 \x01(\t2\xe9\x01\n\x06\x44\x65vice\x12\x38\n\x0c\x46\x61\x63toryReset\x12\x12.pw.protobuf.Empty\x1a\x12.pw.protobuf.Empty\"\x00\x12\x32\n\x06Reboot\x12\x12.pw.protobuf.Empty\x1a\x12.pw.protobuf.Empty\"\x00\x12\x36\n\nTriggerOta\x12\x12.pw.protobuf.Empty\x1a\x12.pw.protobuf.Empty\"\x00\x12\x39\n\rGetDeviceInfo\x12\x12.pw.protobuf.Empty\x1a\x12.pw.protobuf.Empty\"\x00\x62\x06proto3'
+  ,
+  dependencies=[common__pb2.DESCRIPTOR,])
 
 
-
-
-_DEVICEEMPTY = _descriptor.Descriptor(
-  name='DeviceEmpty',
-  full_name='chip.rpc.DeviceEmpty',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=34,
-  serialized_end=47,
-)
 
 
 _DEVICEINFO = _descriptor.Descriptor(
@@ -99,20 +76,12 @@ _DEVICEINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=49,
-  serialized_end=149,
+  serialized_start=48,
+  serialized_end=148,
 )
 
-DESCRIPTOR.message_types_by_name['DeviceEmpty'] = _DEVICEEMPTY
 DESCRIPTOR.message_types_by_name['DeviceInfo'] = _DEVICEINFO
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
-
-DeviceEmpty = _reflection.GeneratedProtocolMessageType('DeviceEmpty', (_message.Message,), {
-  'DESCRIPTOR' : _DEVICEEMPTY,
-  '__module__' : 'device_service_pb2'
-  # @@protoc_insertion_point(class_scope:chip.rpc.DeviceEmpty)
-  })
-_sym_db.RegisterMessage(DeviceEmpty)
 
 DeviceInfo = _reflection.GeneratedProtocolMessageType('DeviceInfo', (_message.Message,), {
   'DESCRIPTOR' : _DEVICEINFO,
@@ -130,16 +99,16 @@ _DEVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=152,
-  serialized_end=408,
+  serialized_start=151,
+  serialized_end=384,
   methods=[
   _descriptor.MethodDescriptor(
     name='FactoryReset',
     full_name='chip.rpc.Device.FactoryReset',
     index=0,
     containing_service=None,
-    input_type=_DEVICEEMPTY,
-    output_type=_DEVICEEMPTY,
+    input_type=common__pb2._EMPTY,
+    output_type=common__pb2._EMPTY,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),
@@ -148,8 +117,8 @@ _DEVICE = _descriptor.ServiceDescriptor(
     full_name='chip.rpc.Device.Reboot',
     index=1,
     containing_service=None,
-    input_type=_DEVICEEMPTY,
-    output_type=_DEVICEEMPTY,
+    input_type=common__pb2._EMPTY,
+    output_type=common__pb2._EMPTY,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),
@@ -158,8 +127,8 @@ _DEVICE = _descriptor.ServiceDescriptor(
     full_name='chip.rpc.Device.TriggerOta',
     index=2,
     containing_service=None,
-    input_type=_DEVICEEMPTY,
-    output_type=_DEVICEEMPTY,
+    input_type=common__pb2._EMPTY,
+    output_type=common__pb2._EMPTY,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),
@@ -168,8 +137,8 @@ _DEVICE = _descriptor.ServiceDescriptor(
     full_name='chip.rpc.Device.GetDeviceInfo',
     index=3,
     containing_service=None,
-    input_type=_DEVICEEMPTY,
-    output_type=_DEVICEINFO,
+    input_type=common__pb2._EMPTY,
+    output_type=common__pb2._EMPTY,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),

@@ -47,7 +47,7 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
   @classmethod
   def required_test_config_variables(cls) -> Tuple[str, ...]:
     """Returns keys required to be present in the functional test config."""
-    return ("shell_cmd", "expect", "known_logline")
+    return ("shell_cmd", "known_logline")
 
   def test_01_factory_reset(self):
     """Tests factory resetting the device and verifies it's online after.

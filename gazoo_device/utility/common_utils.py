@@ -13,20 +13,7 @@
 # limitations under the License.
 
 """Common reusable utility functions."""
-import multiprocessing
-import os
 import weakref
-
-# Lists of callable functions with no arguments
-_run_before_fork_functions = []
-_run_after_fork_in_parent_functions = []
-
-# _Sentinel objects used by multiprocessing.util.register_after_fork. This list keeps the objects
-# alive by keeping a strong reference to them. multiprocessing.util stores these in a
-# weakref.WeakValueDictionary, so if a strong reference is not stored somewhere, the sentinel
-# will be destroyed, removing the function registered with it from the list of "after fork"
-# functions (b/154659535).
-_register_after_fork_sentinels = []
 
 
 class MethodWeakRef(object):
@@ -51,11 +38,6 @@ class MethodWeakRef(object):
     instance = self._instance_weakref()
     if instance is not None:
       self._func(instance, *args, **kwargs)
-
-
-class _Sentinel(object):
-  """Empty object which supports weakrefs."""
-  pass
 
 
 def generate_name(_object):
@@ -122,65 +104,6 @@ def get_value_from_json(json_data, key_sequence, raise_if_absent=True):
         return None
     key_text += "['{}']".format(key)
   return current_dict
-
-
-def register_at_fork(before=None, after_in_parent=None, after_in_child=None):
-  """Workaround to simulate os.register_at_fork() behavior in all Python versions.
-
-  Args:
-      before (func): function to call prior to os.fork() call.
-      after_in_parent (func): function to call after os.fork() returns in the
-        parent process.
-      after_in_child (func): function to call after os.fork() returns in the
-        child process.
-
-  Note: For Python >= 3.7, this delegates to os.register_at_fork(). For Python
-    < 3.7, the functions need to be run manually via
-    common_utils.run_before_fork() prior to os.fork() and
-    common_utils.run_after_fork_in_parent() after os.fork() returns in the
-    parent process.
-      Note that os.fork() is used internally by the "multiprocessing" library:
-        multiprocessing.Process().start() and multiprocessing.Manager() both
-        use os.fork().
-  """
-  if hasattr(os, "register_at_fork"):
-    os.register_at_fork(
-        before=before,
-        after_in_parent=after_in_parent,
-        after_in_child=after_in_child)
-  else:
-    global _run_before_fork_functions
-    global _run_after_fork_in_parent_functions
-    global _register_after_fork_sentinels
-
-    if callable(before):
-      _run_before_fork_functions.append(before)
-    if callable(after_in_parent):
-      _run_after_fork_in_parent_functions.append(after_in_parent)
-    if callable(after_in_child):
-
-      def _consume_sentinel_wrapper(_):
-        """Consumes the sentinel argument passed into the function."""
-        after_in_child()
-
-      sentinel = _Sentinel()
-      _register_after_fork_sentinels.append(sentinel)
-      # pytype: disable=module-attr
-      multiprocessing.util.register_after_fork(sentinel,
-                                               _consume_sentinel_wrapper)
-      # pytype: enable=module-attr
-
-
-def run_after_fork_in_parent():
-  """Run functions registered to run in parent after os.fork() calls."""
-  for func in _run_after_fork_in_parent_functions:
-    func()
-
-
-def run_before_fork():
-  """Run functions registered to run before os.fork() calls."""
-  for func in _run_before_fork_functions:
-    func()
 
 
 def title_to_snake_case(s):

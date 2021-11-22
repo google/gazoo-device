@@ -16,10 +16,9 @@
 // The source of truth of this proto can be found at https://github.com/project-chip/connectedhomeip/tree/master/examples/common/pigweed/protos
 syntax = "proto3";
 
-package chip.rpc;
+import "third_party/py/gazoo_device/protos/common.proto";
 
-message Empty {
-}
+package chip.rpc;
 
 message LockingState {
   bool locked = 1;
@@ -29,10 +28,10 @@ service Locking {
   // Set will return OK if all supported fields are successfully applied, any
   // unsupported fields will be ignored.
   // Get can be used to determine which fields are supported.
-  rpc Set(LockingState) returns (Empty){}
+  rpc Set(LockingState) returns (pw.protobuf.Empty){}
 
   // Get will populate all of the supported locking state fields with the
   // current values. This can be used to discover the devices supported
   // locking features.
-  rpc Get(Empty) returns (LockingState){}
+  rpc Get(pw.protobuf.Empty) returns (LockingState){}
 }

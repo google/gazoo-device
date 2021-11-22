@@ -28,7 +28,6 @@ from absl.testing import xml_reporter
 from gazoo_device import custom_types
 from gazoo_device import errors
 from gazoo_device import manager
-from gazoo_device.utility import host_utils
 import immutabledict
 from gazoo_device.tests import functional_tests
 from gazoo_device.tests.functional_tests.utils import gazootest
@@ -68,6 +67,7 @@ flags.DEFINE_string(
 class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
   """Base class for GDM functional test suites."""
   device_config = None
+  device_type = ""
   test_config = None
   testing_properties = None
 
@@ -152,10 +152,9 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
         time.sleep(_TIMEOUTS["CREATION_FAILURE"])
 
   @classmethod
-  def get_test_config(cls) -> Dict[str, Any]:
+  def get_test_config(cls, device_type: str) -> Dict[str, Any]:
     """Returns the functional test config for the device in the testbed."""
-    config_file_name = _TEST_CONFIG_TEMPLATE.format(
-        device_type=cls.device_config.device_type)
+    config_file_name = _TEST_CONFIG_TEMPLATE.format(device_type=device_type)
     config_path = os.path.join(
         os.path.abspath(os.path.dirname(functional_tests.__file__)),
         "configs", config_file_name)
@@ -177,7 +176,8 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
     super().setUpClass()
     cls.testing_properties = cls.get_testbed().testing_properties
     cls.device_config = cls.get_testbed().devices[0]
-    cls.test_config = cls.get_test_config()
+    cls.device_type = cls.device_config.name.rsplit("-", maxsplit=1)[0]
+    cls.test_config = cls.get_test_config(cls.device_type)
 
   def setUp(self) -> None:
     """Creates the first device listed in the testbed config.
@@ -209,6 +209,7 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
         self.wait_for_device()
       finally:
         self.device.close()
+
     super().tearDown()
 
   def run(
@@ -242,7 +243,7 @@ class GDMTestBase(gazootest.TestCase, metaclass=abc.ABCMeta):
       # Rerun the test.
       self.logger.info(
           f"Test {self._testMethodName} failed the first attempt and is known "
-          f"to be flaky on {self.device_config.device_type}. "
+          f"to be flaky on {self.device_type}. "
           f"RETRYING in {_TEST_RETRY_INTERVAL}s.")
       time.sleep(_TEST_RETRY_INTERVAL)
       result = super().run(result)

@@ -38,11 +38,12 @@ class TestYepkit(fake_device_test_case.FakeDeviceTestCase):
     super().setUp()
     self.setup_fake_device_requirements("yepkit-2345")
     self.device_config["persistent"]["console_port_name"] = "YK12345"
-    yepkit.yepkit_enabled = True
-    self.uut = yepkit.Yepkit(
-        self.mock_manager,
-        self.device_config,
-        log_directory=self.artifacts_directory)
+
+    with mock.patch.object(host_utils, "has_command", return_value=True):
+      self.uut = yepkit.Yepkit(
+          self.mock_manager,
+          self.device_config,
+          log_directory=self.artifacts_directory)
 
   @mock.patch.object(
       host_utils, "get_all_yepkit_serials", return_value="fake serial number")
@@ -59,11 +60,11 @@ class TestYepkit(fake_device_test_case.FakeDeviceTestCase):
     with self.assertRaisesRegex(errors.CheckDeviceReadyError, err_msg):
       self.uut.recover(errors.CheckDeviceReadyError(self.uut.name, err_msg))
 
-  def test_21_get_detection_with_bad_serial_number(self):
+  @mock.patch.object(host_utils, "has_command", return_value=True)
+  def test_21_get_detection_with_bad_serial_number(self, mock_has_command):
     """Verify runtime error is thrown when serial number is too short."""
     self.device_config["persistent"]["console_port_name"] = "YK2"
     self.device_config["persistent"]["serial_number"] = "YK2"
-    yepkit.yepkit_enabled = True
     with self.assertRaisesRegex(errors.DeviceError,
                                 "serial number YK2 is too short"):
       self.uut = yepkit.Yepkit(
@@ -72,28 +73,24 @@ class TestYepkit(fake_device_test_case.FakeDeviceTestCase):
           log_directory=self.artifacts_directory)
       self.uut.get_detection_info()
 
-  def test_22_yepkit_not_enabled(self):
+  @mock.patch.object(host_utils, "has_command", return_value=False)
+  def test_22_yepkit_not_enabled(self, mock_has_command):
     """Verify runtime error is thrown when yepkit is not enabled."""
     del self.uut
-    yepkit.yepkit_enabled = False
-    with self.assertRaisesRegex(RuntimeError, "yepkit is not enabled"):
+    with self.assertRaisesRegex(errors.DependencyUnavailableError,
+                                "'ykushcmd' is not installed"):
       self.uut = yepkit.Yepkit(
           self.mock_manager,
           self.device_config,
           log_directory=self.artifacts_directory)
 
-  def test_23_get_detection_info(self):
+  @mock.patch.object(host_utils, "has_command", return_value=True)
+  def test_23_get_detection_info(self, mock_has_command):
     """Verify get_detection_info is successful using valid input."""
     self._test_get_detection_info(
         self.device_config["persistent"]["console_port_name"],
         device_class=yepkit.Yepkit,
         persistent_properties=_PERSISTENT_PROPERTIES)
-
-  def test_24_get_detection_info_yepkit_not_enabled(self):
-    """Verify get_detection_info raises an error if yepkit is not enabled."""
-    yepkit.yepkit_enabled = False
-    with self.assertRaisesRegex(errors.DeviceError, "yepkit is not enabled"):
-      self.uut.get_detection_info()
 
   @mock.patch.object(subprocess, "check_output", return_value=b"OFF")
   def test_26_is_port_off(self, mock_check_output):

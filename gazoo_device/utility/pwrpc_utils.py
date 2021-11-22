@@ -23,14 +23,12 @@ from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import switchboard_base
 from gazoo_device.protos import button_service_pb2
 from gazoo_device.protos import device_service_pb2
-from gazoo_device.protos import echo_service_pb2
 from gazoo_device.protos import lighting_service_pb2
 from gazoo_device.protos import locking_service_pb2
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
 
 _PWRPC_PROTOS = (button_service_pb2,
                  device_service_pb2,
-                 echo_service_pb2,
                  lighting_service_pb2,
                  locking_service_pb2)
 _ProtobufType = TypeVar("_ProtobufType")
@@ -71,7 +69,6 @@ class PigweedProtoState(Generic[_ProtobufType]):
 class PigweedAppType(enum.Enum):
   NON_PIGWEED = "nonpigweed"
   LIGHTING = "lighting"
-  ECHO = "echo"
   LOCKING = "locking"
 
 logger = gdm_logger.get_logger()
@@ -84,7 +81,6 @@ logger = gdm_logger.get_logger()
 # application_type is the Pigweed device type in string.
 _PIGWEED_APP_ENDPOINTS = (
     (("Lighting", "Get"), {}, PigweedAppType.LIGHTING),
-    (("msg",), {}, PigweedAppType.ECHO),
     (("Locking", "Get"), {}, PigweedAppType.LOCKING)
 )
 
@@ -112,10 +108,7 @@ def get_application_type(
   try:
     for method_args, method_kwargs, app_type in _PIGWEED_APP_ENDPOINTS:
       try:
-        if app_type == PigweedAppType.ECHO:
-          method = pigweed_rpc_transport.PigweedRPCTransport.echo_rpc
-        else:
-          method = pigweed_rpc_transport.PigweedRPCTransport.rpc
+        method = pigweed_rpc_transport.PigweedRPCTransport.rpc
         switchboard.call(method=method,
                          method_args=method_args,
                          method_kwargs=method_kwargs)

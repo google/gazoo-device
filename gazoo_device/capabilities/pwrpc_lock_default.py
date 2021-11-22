@@ -31,15 +31,18 @@ class PwRPCLockDefault(pwrpc_lock_base.PwRPCLockBase):
 
   def __init__(self,
                device_name: str,
-               switchboard_call: Callable[..., Any]):
+               switchboard_call: Callable[..., Any],
+               rpc_timeout_s: int):
     """Initializes an instance of the PwRPCLockDefault capability.
 
     Args:
       device_name: Device name used for logging.
       switchboard_call: The switchboard.call method.
+      rpc_timeout_s: Timeout (s) for RPC call.
     """
     super().__init__(device_name=device_name)
     self._switchboard_call = switchboard_call
+    self._rpc_timeout_s = rpc_timeout_s
 
   @decorators.CapabilityLogDecorator(logger)
   def lock(self, verify: bool = True) -> None:
@@ -72,7 +75,7 @@ class PwRPCLockDefault(pwrpc_lock_base.PwRPCLockBase):
     ack, state_in_bytes = self._switchboard_call(
         method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
         method_args=("Locking", "Get"),
-        method_kwargs={})
+        method_kwargs={"pw_rpc_timeout_s": self._rpc_timeout_s})
 
     if not ack:
       raise errors.DeviceError(
@@ -96,7 +99,8 @@ class PwRPCLockDefault(pwrpc_lock_base.PwRPCLockBase):
     ack, _ = self._switchboard_call(
         method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
         method_args=("Locking", "Set"),
-        method_kwargs={"locked": locked})
+        method_kwargs={
+            "locked": locked, "pw_rpc_timeout_s": self._rpc_timeout_s})
 
     action = "Locking" if locked else "Unlocking"
     error_mesg = f"{action} device {self._device_name} failed: "

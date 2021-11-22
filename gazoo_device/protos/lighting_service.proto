@@ -16,10 +16,9 @@
 // The source of truth of this proto can be found at https://github.com/project-chip/connectedhomeip/tree/master/examples/common/pigweed/protos
 syntax = "proto3";
 
-package chip.rpc;
+import "third_party/py/gazoo_device/protos/common.proto";
 
-message LightingEmpty {
-}
+package chip.rpc;
 
 message LightingColor {
   // Values are between 0x00 and 0xFE inclusive
@@ -39,10 +38,10 @@ service Lighting {
   // Set will return OK if all supported fields are successfully applied, any
   // unsupported fields will be ignored.
   // Get can be used to determine which fields are supported.
-  rpc Set(LightingState) returns (LightingEmpty){}
+  rpc Set(LightingState) returns (pw.protobuf.Empty){}
 
   // Get will populate all of the supported lighting state fields with the
   // current values. This can be used to discover the devices supported
   // lighting features.
-  rpc Get(LightingEmpty) returns (LightingState){}
+  rpc Get(pw.protobuf.Empty) returns (LightingState){}
 }

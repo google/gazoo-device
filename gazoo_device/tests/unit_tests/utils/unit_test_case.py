@@ -58,6 +58,7 @@ from gazoo_device.utility import host_utils
 from gazoo_device.utility import multiprocessing_utils
 from gazoo_device.utility import usb_utils
 import pyudev
+import usb
 
 main = absltest.main
 
@@ -176,13 +177,7 @@ class UnitTestCase(parameterized.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    """Creates logger and artifacts directory.
-
-    Args:
-      self.logger (logger): test logger
-      self.artifacts_directory (str): directory to which all logs should go
-    """
-    # Set up artifacts directory as self.artifacts_directory
+    """Creates logger and artifacts directory."""
     super().setUpClass()
 
     cls.artifacts_directory = os.path.join(TEST_DIR, "artifacts", cls.__name__)
@@ -190,7 +185,6 @@ class UnitTestCase(parameterized.TestCase):
       shutil.rmtree(cls.artifacts_directory)
     os.makedirs(cls.artifacts_directory)
 
-    # set up logger as self.logger
     cls.logger = logging.getLogger(cls.__name__)
     stderr_handler = logging.StreamHandler()
     cls.logger.addHandler(stderr_handler)
@@ -266,9 +260,11 @@ class UnitTestCase(parameterized.TestCase):
         side_effect=mock_get_interface_linux)
     mock_get_line = mock.patch.object(
         usb_utils, "get_other_ftdi_line", side_effect=mock_get_line_linux)
-
     mock_serial = mock.patch.object(
         usb_utils, "get_serial_number_from_path", return_value="FT2BSR6O")
+    mock_devices_with_serial = mock.patch.object(
+        usb_utils, "get_usb_devices_having_a_serial_number",
+        return_value=[mock.Mock(spec=usb.core.Device, serial_number="123789")])
     mock_product_name.start()
     self.addCleanup(mock_product_name.stop)
     mock_ftdi_interface.start()
@@ -277,6 +273,8 @@ class UnitTestCase(parameterized.TestCase):
     self.addCleanup(mock_serial.stop)
     mock_get_line.start()
     self.addCleanup(mock_get_line.stop)
+    mock_devices_with_serial.start()
+    self.addCleanup(mock_devices_with_serial.stop)
 
   def get_resource(self, path):
     """Get absolute path of resource file included in test dependencies.

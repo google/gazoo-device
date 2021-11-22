@@ -14,7 +14,7 @@
 
 """Default implementation of the Pigweed RPC device common capability."""
 import time
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -24,9 +24,8 @@ from gazoo_device.switchboard.transports import pigweed_rpc_transport
 
 
 logger = gdm_logger.get_logger()
-_RPC_TIMEOUT = 10  # seconds
 _POLL_INTERVAL_SEC = 0.5  # seconds
-_DEFAULT_BOOTUP_TIMEOUT = 10  # seconds
+_DEFAULT_BOOTUP_TIMEOUT = 30  # seconds
 
 
 class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
@@ -35,18 +34,17 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
   def __init__(self,
                device_name: str,
                switchboard_call: Callable[..., Any],
-               switchboard_call_expect: Callable[..., Any]):
+               rpc_timeout_s: int):
     """Create an instance of the PwRPCCommonDefault capability.
 
     Args:
       device_name: Device name used for logging.
       switchboard_call: The switchboard.call method which calls to the endpoint.
-        See more examples in nrf_pigweed_lighting.py.
-      switchboard_call_expect: The switchboard.call_and_expect method.
+      rpc_timeout_s: Timeout (s) for RPC call.
     """
     super().__init__(device_name=device_name)
     self._switchboard_call = switchboard_call
-    self._switchboard_call_expect = switchboard_call_expect
+    self._rpc_timeout_s = rpc_timeout_s
 
   @decorators.DynamicProperty
   def vendor_id(self) -> str:
@@ -66,57 +64,35 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
   @decorators.CapabilityLogDecorator(logger)
   def reboot(self,
              verify: bool = True,
-             rpc_timeout_s: int = _RPC_TIMEOUT,
-             bootup_logline_regex: Optional[str] = None,
              bootup_timeout_s: int = _DEFAULT_BOOTUP_TIMEOUT) -> None:
     """Reboots the device.
 
     Args:
       verify: If true, waits for device bootup completes before returning.
-      rpc_timeout_s: Timeout (s) for RPC call.
-      bootup_logline_regex: Device logline indicating booting up.
       bootup_timeout_s: Timeout (s) to wait for the device to boot up.
     """
-    if bootup_logline_regex is None:
-      self._trigger_device_action(action="Reboot",
-                                  rpc_timeout_s=rpc_timeout_s)
-    else:
-      self._trigger_device_action(action="Reboot",
-                                  rpc_timeout_s=rpc_timeout_s,
-                                  expect_regex=bootup_logline_regex,
-                                  expect_timeout_s=bootup_timeout_s)
+    self._trigger_device_action(action="Reboot")
     if verify:
       self.wait_for_bootup_complete(bootup_timeout_s)
 
   @decorators.CapabilityLogDecorator(logger)
   def factory_reset(self,
                     verify: bool = True,
-                    rpc_timeout_s: int = _RPC_TIMEOUT,
-                    bootup_logline_regex: Optional[str] = None,
                     bootup_timeout_s: int = _DEFAULT_BOOTUP_TIMEOUT) -> None:
     """Factory resets the device.
 
     Args:
       verify: If true, waits for device bootup completes before returning.
-      rpc_timeout_s: Timeout (s) for RPC call.
-      bootup_logline_regex: Device logline indicating booting up.
       bootup_timeout_s: Timeout (s) to wait for the device to boot up.
     """
-    if bootup_logline_regex is None:
-      self._trigger_device_action(action="FactoryReset",
-                                  rpc_timeout_s=rpc_timeout_s)
-    else:
-      self._trigger_device_action(action="FactoryReset",
-                                  rpc_timeout_s=rpc_timeout_s,
-                                  expect_regex=bootup_logline_regex,
-                                  expect_timeout_s=bootup_timeout_s)
+    self._trigger_device_action(action="FactoryReset")
     if verify:
       self.wait_for_bootup_complete(bootup_timeout_s)
 
   @decorators.CapabilityLogDecorator(logger)
   def ota(self) -> None:
     """Triggers OTA to the device."""
-    self._trigger_device_action("TriggerOta")
+    self._trigger_device_action(action="TriggerOta")
 
   @decorators.CapabilityLogDecorator(logger)
   def wait_for_bootup_complete(self, bootup_timeout: int) -> None:
@@ -156,7 +132,7 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     ack, payload_in_bytes = self._switchboard_call(
         method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
         method_args=("Device", "GetDeviceInfo"),
-        method_kwargs={})
+        method_kwargs={"pw_rpc_timeout_s": self._rpc_timeout_s})
     if not ack:
       raise errors.DeviceError(
           f"{self._device_name} getting static info failed.")
@@ -166,40 +142,20 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
       raise errors.DeviceError(f"{property_name} doesn't exist in static info.")
     return device_property
 
-  def _trigger_device_action(
-      self,
-      action: str,
-      rpc_timeout_s: int = _RPC_TIMEOUT,
-      expect_regex: Optional[str] = None,
-      expect_timeout_s: Optional[int] = None) -> None:
+  def _trigger_device_action(self, action: str) -> None:
     """Triggers specific device action.
 
     Args:
       action: Device actions including reboot, factory-reset and OTA.
-      rpc_timeout_s: Timeout (s) for RPC call.
-      expect_regex: Expected device logline regex.
-      expect_timeout_s: Timeout (s) to wait for the expected regex.
 
     Raises:
       DeviceError: The ack status is not true.
     """
-    if expect_regex is None and expect_timeout_s is None:
-      ack, _ = self._switchboard_call(
-          method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-          method_args=("Device", action),
-          method_kwargs={"pw_rpc_timeout_s": rpc_timeout_s})
-    elif expect_regex is not None and expect_timeout_s is not None:
-      _, (ack, _) = self._switchboard_call_expect(
-          method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-          pattern_list=[expect_regex],
-          timeout=expect_timeout_s,
-          method_args=("Device", action),
-          method_kwargs={"pw_rpc_timeout_s": rpc_timeout_s},
-          raise_for_timeout=True)
-    else:
-      raise ValueError("Only one of \"expect_regex\", \"expect_timeout_s\" "
-                       "arguments was provided. Both or neither should be "
-                       "provided.")
+    ack, _ = self._switchboard_call(
+        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_args=("Device", action),
+        method_kwargs={"pw_rpc_timeout_s": self._rpc_timeout_s})
+
     if not ack:
       raise errors.DeviceError(f"{self._device_name} triggering {action} failed"
                                ": The action did not succeed")

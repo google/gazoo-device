@@ -21,7 +21,7 @@ import inspect
 import os
 import re
 import time
-from typing import Any, List, Set, Type
+from typing import Any, List, Set, Tuple, Type
 import weakref
 
 from gazoo_device import config
@@ -96,7 +96,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
   # Absolute paths to event filter files (filters/<device_type>/filter.json)
   _COMMUNICATION_KWARGS = {}
   _CONNECTION_TIMEOUT = 3
-  _DEFAULT_FILTERS = []
+  _DEFAULT_FILTERS = ()  # type: Tuple[str, ...]
   _OWNER_EMAIL = ""  # override in child classes
 
   def __init__(self,
@@ -136,12 +136,8 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     self._regexes = {}
     self._timeouts = TIMEOUTS.copy()
     self.device_type = self.DEVICE_TYPE
-
-    if not self._DEFAULT_FILTERS:
-      logger.warning(f"Device type {self.device_type!r} has no default event "
-                     "filters defined.")
-    self.filter_paths = self._DEFAULT_FILTERS.copy()
-    self.filter_paths += device_config.get("filters") or []
+    self.filter_paths = self._DEFAULT_FILTERS + tuple(
+        device_config.get("filters") or ())
 
     # Initialize log files
     self.log_directory = log_directory

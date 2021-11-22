@@ -29,17 +29,20 @@ class PwRPCButtonDefault(pwrpc_button_base.PwRPCButtonBase):
   def __init__(self,
                device_name: str,
                valid_button_ids: Tuple[int, ...],
-               switchboard_call: Callable[..., Any]):
+               switchboard_call: Callable[..., Any],
+               rpc_timeout_s: int):
     """Creates an instance of the PwRPCButtonDefault capability.
 
     Args:
       device_name: Device name used for logging.
       valid_button_ids: Button numbers as present on a device.
       switchboard_call: The switchboard.call method.
+      rpc_timeout_s: Timeout (s) for RPC call.
     """
     super().__init__(device_name=device_name)
     self._valid_button_ids = valid_button_ids
     self._switchboard_call = switchboard_call
+    self._rpc_timeout_s = rpc_timeout_s
 
   @decorators.CapabilityLogDecorator(logger)
   def push(self, button_id: int) -> None:
@@ -58,7 +61,9 @@ class PwRPCButtonDefault(pwrpc_button_base.PwRPCButtonBase):
     ack, _ = self._switchboard_call(
         method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
         method_args=("Button", "Event"),
-        method_kwargs={"idx": button_id, "pushed": True})
+        method_kwargs={"idx": button_id,
+                       "pushed": True,
+                       "pw_rpc_timeout_s": self._rpc_timeout_s})
 
     if not ack:
       raise errors.DeviceError(f"Device {self._device_name} button {button_id} "

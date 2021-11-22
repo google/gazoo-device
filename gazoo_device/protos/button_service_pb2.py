@@ -12,6 +12,7 @@ from google.protobuf import symbol_database as _symbol_database
 _sym_db = _symbol_database.Default()
 
 
+from gazoo_device.protos import common_pb2 as common__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
@@ -20,35 +21,11 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x14\x62utton_service.proto\x12\x08\x63hip.rpc\"\r\n\x0b\x42uttonEmpty\"*\n\x0b\x42uttonEvent\x12\x0b\n\x03idx\x18\x01 \x01(\r\x12\x0e\n\x06pushed\x18\x02 \x01(\x08\x32\x41\n\x06\x42utton\x12\x37\n\x05\x45vent\x12\x15.chip.rpc.ButtonEvent\x1a\x15.chip.rpc.ButtonEmpty\"\x00\x62\x06proto3'
-)
+  serialized_pb=b'\n\x14\x62utton_service.proto\x12\x08\x63hip.rpc\x1a\x0c\x63ommon.proto\"*\n\x0b\x42uttonEvent\x12\x0b\n\x03idx\x18\x01 \x01(\r\x12\x0e\n\x06pushed\x18\x02 \x01(\x08\x32>\n\x06\x42utton\x12\x34\n\x05\x45vent\x12\x15.chip.rpc.ButtonEvent\x1a\x12.pw.protobuf.Empty\"\x00\x62\x06proto3'
+  ,
+  dependencies=[common__pb2.DESCRIPTOR,])
 
 
-
-
-_BUTTONEMPTY = _descriptor.Descriptor(
-  name='ButtonEmpty',
-  full_name='chip.rpc.ButtonEmpty',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=34,
-  serialized_end=47,
-)
 
 
 _BUTTONEVENT = _descriptor.Descriptor(
@@ -85,20 +62,12 @@ _BUTTONEVENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=49,
-  serialized_end=91,
+  serialized_start=48,
+  serialized_end=90,
 )
 
-DESCRIPTOR.message_types_by_name['ButtonEmpty'] = _BUTTONEMPTY
 DESCRIPTOR.message_types_by_name['ButtonEvent'] = _BUTTONEVENT
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
-
-ButtonEmpty = _reflection.GeneratedProtocolMessageType('ButtonEmpty', (_message.Message,), {
-  'DESCRIPTOR' : _BUTTONEMPTY,
-  '__module__' : 'button_service_pb2'
-  # @@protoc_insertion_point(class_scope:chip.rpc.ButtonEmpty)
-  })
-_sym_db.RegisterMessage(ButtonEmpty)
 
 ButtonEvent = _reflection.GeneratedProtocolMessageType('ButtonEvent', (_message.Message,), {
   'DESCRIPTOR' : _BUTTONEVENT,
@@ -116,8 +85,8 @@ _BUTTON = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=93,
-  serialized_end=158,
+  serialized_start=92,
+  serialized_end=154,
   methods=[
   _descriptor.MethodDescriptor(
     name='Event',
@@ -125,7 +94,7 @@ _BUTTON = _descriptor.ServiceDescriptor(
     index=0,
     containing_service=None,
     input_type=_BUTTONEVENT,
-    output_type=_BUTTONEMPTY,
+    output_type=common__pb2._EMPTY,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),

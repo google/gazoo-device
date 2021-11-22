@@ -58,7 +58,7 @@ class PackageManagementTestSuite(gdm_test_base.GDMTestBase):
     # Not sure what packages are on device, but guaranteed to be not empty.
     self.assertTrue(packages_on_device, "Cannot list packages on the device.")
 
-  def test_install_and_uninstalled_package(self):
+  def test_install_and_uninstall_package(self):
     """Tests the ability to install and uninstall a package."""
     package_name = self.test_config["sample_package_name"]
     download_folder = _DOWNLOAD_FOLDER_TEMPLATE.format(

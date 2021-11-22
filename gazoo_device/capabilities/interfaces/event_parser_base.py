@@ -100,6 +100,8 @@ events in the event file and from Python extract and decode each event JSON
 object as described above.
 """
 import abc
+from typing import Collection
+
 from gazoo_device.capabilities.interfaces import capability_base
 
 LABEL_REBOOT_TRIGGER = "basic.reboot_trigger",
@@ -695,11 +697,11 @@ class EventParserBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def load_filters(self, filters):
+  def load_filters(self, filters: Collection[str]) -> None:
     """Load JSON filter files or directories specified.
 
     Args:
-        filters(list): of JSON filter files or paths to filter files
+        filters: JSON filter files or paths to filter files.
 
     Raises:
         ParserError: if files or paths do not exist

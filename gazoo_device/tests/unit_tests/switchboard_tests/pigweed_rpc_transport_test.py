@@ -30,7 +30,6 @@ _FAKE_DEVICE_ADDRESS = "/some/fake/device/address"
 _FAKE_PROTO_IMPORT_PATH = ("gazoo_device.protos.some_proto_pb2",)
 _FAKE_BAUDRATE = 115200
 _FAKE_HDLC_LOG = "<inf> chip: 30673 [ZCL]Cluster callback: 6"
-_FAKE_ECHO_MSG = "pigweed rpc echo message"
 _FAKE_SERVICE = "fake_service"
 _FAKE_EVENT = "fake_event"
 _FAKE_SERIALIZED_BYTES = b"fake_bytes"
@@ -290,18 +289,6 @@ class PigweedRPCTransportTest(unit_test_case.UnitTestCase):
                                 event_name=_FAKE_EVENT)
     self.assertTrue(ack)
     self.assertEqual(_FAKE_SERIALIZED_BYTES, payload)
-
-  def test_007_transport_echo_rpc(self):
-    """Verifies PwRPC transport echo rpc method."""
-    fake_ack = mock.Mock()
-    fake_ack.ok.return_value = True
-    fake_payload = mock.Mock(msg=_FAKE_ECHO_MSG)
-    fake_channel = mock.Mock()
-    fake_channel.EchoService.Echo.return_value = fake_ack, fake_payload
-    self.fake_client.rpcs.return_value.pw.rpc = fake_channel
-    ack, echo_msg = self.uut.echo_rpc(msg=_FAKE_ECHO_MSG)
-    self.assertTrue(ack)
-    self.assertEqual(_FAKE_ECHO_MSG, echo_msg)
 
 
 if __name__ == "__main__":

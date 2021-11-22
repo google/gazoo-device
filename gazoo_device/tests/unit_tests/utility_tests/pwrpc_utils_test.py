@@ -56,7 +56,6 @@ class PwRPCUtilsTests(parameterized.TestCase):
         decoder_path=_FAKE_DECODER_PATH)
 
   @parameterized.named_parameters(
-      ("echo_app", pwrpc_utils.PigweedAppType.ECHO),
       ("lighting_app", pwrpc_utils.PigweedAppType.LIGHTING),
       ("locking_app", pwrpc_utils.PigweedAppType.LOCKING),
       ("non-matter-app", pwrpc_utils.PigweedAppType.NON_PIGWEED))

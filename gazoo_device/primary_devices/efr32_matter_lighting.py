@@ -29,6 +29,8 @@ logger = gdm_logger.get_logger()
 # Button action details can be referred to
 # https://github.com/project-chip/connectedhomeip/tree/master/examples/lighting-app/efr32#running-the-complete-example
 _VALID_BUTTON_IDS = (0, 1)
+_BUTTON_RPC_TIMEOUT = 5  # seconds
+_LIGHTING_RPC_TIMEOUT = 5  # seconds
 
 
 class Efr32MatterLighting(efr32_matter_device.Efr32MatterDevice):
@@ -57,7 +59,8 @@ class Efr32MatterLighting(efr32_matter_device.Efr32MatterDevice):
         pwrpc_button_default.PwRPCButtonDefault,
         device_name=self.name,
         valid_button_ids=_VALID_BUTTON_IDS,
-        switchboard_call=self.switchboard.call)
+        switchboard_call=self.switchboard.call,
+        rpc_timeout_s=_BUTTON_RPC_TIMEOUT)
 
   @decorators.CapabilityDecorator(pwrpc_light_default.PwRPCLightDefault)
   def pw_rpc_light(self):
@@ -65,4 +68,5 @@ class Efr32MatterLighting(efr32_matter_device.Efr32MatterDevice):
     return self.lazy_init(
         pwrpc_light_default.PwRPCLightDefault,
         device_name=self.name,
-        switchboard_call=self.switchboard.call)
+        switchboard_call=self.switchboard.call,
+        rpc_timeout_s=_LIGHTING_RPC_TIMEOUT)

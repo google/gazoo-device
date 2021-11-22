@@ -17,6 +17,7 @@ import queue
 import time
 from unittest import mock
 
+from gazoo_device import gdm_logger
 from gazoo_device.switchboard import switchboard_process
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import multiprocessing_utils
@@ -126,7 +127,8 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
   def test_013_switchboard_process_put_message_closed_queue(self):
     out_queue = multiprocessing_utils.get_context().Queue()
     out_queue.close()
-    with self.assertRaisesRegex(AssertionError, "Queue.*closed"):
+    with self.assertRaisesRegex(
+        (AssertionError, ValueError), "Queue.*closed"):
       switchboard_process.put_message(out_queue, _ECHO_MESSAGE, timeout=0)
 
   @mock.patch.object(psutil, "Process", autospec=True)
@@ -149,8 +151,12 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     mock_parent_proc = mock_psutil_proc.return_value
     mock_switchboard_process._pre_run_hook.return_value = False
 
-    switchboard_process._process_loop(mock_switchboard_process, 1234)
+    with mock.patch.object(
+        gdm_logger,
+        "initialize_child_process_logging") as mock_initialize_logging:
+      switchboard_process._process_loop(mock_switchboard_process, 1234)
 
+    mock_initialize_logging.assert_called_once()
     mock_start_event.set.assert_called_once()
     mock_switchboard_process._pre_run_hook.assert_called_once()
     mock_parent_proc.status.assert_not_called()
@@ -179,8 +185,12 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     mock_switchboard_process._pre_run_hook.return_value = True
     mock_parent_proc.status.return_value = psutil.STATUS_ZOMBIE
 
-    switchboard_process._process_loop(mock_switchboard_process, 1234)
+    with mock.patch.object(
+        gdm_logger,
+        "initialize_child_process_logging") as mock_initialize_logging:
+      switchboard_process._process_loop(mock_switchboard_process, 1234)
 
+    mock_initialize_logging.assert_called_once()
     mock_start_event.set.assert_called_once()
     mock_switchboard_process._pre_run_hook.assert_called_once()
     mock_parent_proc.status.assert_called_once()
@@ -211,8 +221,12 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     mock_switchboard_process._pre_run_hook.return_value = True
     mock_parent_proc.status.side_effect = psutil.NoSuchProcess(0, "foo")
 
-    switchboard_process._process_loop(mock_switchboard_process, 1234)
+    with mock.patch.object(
+        gdm_logger,
+        "initialize_child_process_logging") as mock_initialize_logging:
+      switchboard_process._process_loop(mock_switchboard_process, 1234)
 
+    mock_initialize_logging.assert_called_once()
     mock_start_event.set.assert_called_once()
     mock_switchboard_process._pre_run_hook.assert_called_once()
     mock_parent_proc.status.assert_called_once()
@@ -243,8 +257,12 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     mock_switchboard_process._pre_run_hook.return_value = True
     mock_terminate_event.is_set.return_value = True
 
-    switchboard_process._process_loop(mock_switchboard_process, 1234)
+    with mock.patch.object(
+        gdm_logger,
+        "initialize_child_process_logging") as mock_initialize_logging:
+      switchboard_process._process_loop(mock_switchboard_process, 1234)
 
+    mock_initialize_logging.assert_called_once()
     mock_start_event.set.assert_called_once()
     mock_switchboard_process._pre_run_hook.assert_called_once()
     mock_parent_proc.status.assert_called_once()
@@ -276,8 +294,12 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     mock_terminate_event.is_set.return_value = False
     mock_switchboard_process._do_work.return_value = False
 
-    switchboard_process._process_loop(mock_switchboard_process, 1234)
+    with mock.patch.object(
+        gdm_logger,
+        "initialize_child_process_logging") as mock_initialize_logging:
+      switchboard_process._process_loop(mock_switchboard_process, 1234)
 
+    mock_initialize_logging.assert_called_once()
     mock_start_event.set.assert_called_once()
     mock_switchboard_process._pre_run_hook.assert_called_once()
     mock_parent_proc.status.assert_called_once()
@@ -309,8 +331,12 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     mock_terminate_event.is_set.side_effect = IOError("[Errno 32] Broken pipe")
     mock_stop_event.set.side_effect = IOError("[Errno 32] Broken pipe")
 
-    switchboard_process._process_loop(mock_switchboard_process, 1234)
+    with mock.patch.object(
+        gdm_logger,
+        "initialize_child_process_logging") as mock_initialize_logging:
+      switchboard_process._process_loop(mock_switchboard_process, 1234)
 
+    mock_initialize_logging.assert_called_once()
     mock_start_event.set.assert_called_once()
     mock_switchboard_process._pre_run_hook.assert_called_once()
     mock_parent_proc.status.assert_called_once()
@@ -342,8 +368,12 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     mock_terminate_event.is_set.return_value = False
     mock_start_event.set.side_effect = IOError("[Errno 32] Broken pipe")
 
-    switchboard_process._process_loop(mock_switchboard_process, 1234)
+    with mock.patch.object(
+        gdm_logger,
+        "initialize_child_process_logging") as mock_initialize_logging:
+      switchboard_process._process_loop(mock_switchboard_process, 1234)
 
+    mock_initialize_logging.assert_called_once()
     mock_start_event.set.assert_called_once()
     mock_terminate_event.is_set.assert_called_once()
     mock_terminate_event.clear.assert_not_called()

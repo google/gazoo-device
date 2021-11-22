@@ -14,11 +14,15 @@
 
 """Utility module for using the multiprocessing library."""
 import multiprocessing
+import os
 
-_PROCESS_START_METHOD = "fork"
-_MP_CONTEXT = multiprocessing.get_context(_PROCESS_START_METHOD)
+_MP_CONTEXT = multiprocessing.get_context("spawn")
 
 
 def get_context() -> multiprocessing.context.BaseContext:
-  """Returns a multiprocessing context (fork-based)."""
+  """Returns a multiprocessing context (forkserver- or spawn-based)."""
   return _MP_CONTEXT
+
+
+def configure_multiprocessing() -> None:
+  """Configures multiprocessing. No-op in the open source version."""

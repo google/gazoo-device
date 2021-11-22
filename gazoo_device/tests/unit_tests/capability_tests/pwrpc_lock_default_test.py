@@ -25,6 +25,7 @@ from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 _PWRPC_LOCK_CLASS = (
     gazoo_device.capabilities.pwrpc_lock_default.PwRPCLockDefault)
 _FAKE_DEVICE_NAME = "lock_device"
+_FAKE_TIMEOUT = 1
 
 
 class PwRPCLockDefaultTest(fake_device_test_case.FakeDeviceTestCase):
@@ -35,7 +36,8 @@ class PwRPCLockDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.switchboard_call_mock = mock.Mock()
     self.uut = pwrpc_lock_default.PwRPCLockDefault(
         device_name=_FAKE_DEVICE_NAME,
-        switchboard_call=self.switchboard_call_mock)
+        switchboard_call=self.switchboard_call_mock,
+        rpc_timeout_s=_FAKE_TIMEOUT)
     fake_locked_state = locking_service_pb2.LockingState(locked=True)
     fake_unlocked_state = locking_service_pb2.LockingState(locked=False)
     self.locked_state_in_bytes = fake_locked_state.SerializeToString()

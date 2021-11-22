@@ -42,7 +42,6 @@ To get the current switching status (UP/DOWN) of a downstream port 2.
 
 $ ykushcmd -g 2
 """
-import os
 import subprocess
 
 from gazoo_device import decorators
@@ -55,8 +54,6 @@ from gazoo_device.utility import deprecation_utils
 from gazoo_device.utility import host_utils
 
 logger = gdm_logger.get_logger()
-
-yepkit_enabled = not bool(os.system("which ykushcmd > /dev/null"))
 
 MODEL = "yepkit"
 PRODUCT_ID = "f2f7"
@@ -75,6 +72,16 @@ REGEXES = {
 }
 
 TIMEOUTS = {}
+
+
+def _check_yepkit_enabled():
+  """Checks that the host has 'ykushcmd' installed.
+
+  Raises:
+    DependencyUnavailableError: if 'ykushcmd' is not installed.
+  """
+  if not host_utils.has_command("ykushcmd"):
+    raise errors.DependencyUnavailableError("'ykushcmd' is not installed.")
 
 
 class Yepkit(auxiliary_device.AuxiliaryDevice):
@@ -103,8 +110,7 @@ class Yepkit(auxiliary_device.AuxiliaryDevice):
     Raises:
         RuntimeError: if yepkit is not enabled.
     """
-    if not yepkit_enabled:
-      raise RuntimeError("yepkit is not enabled.")
+    _check_yepkit_enabled()
 
     super().__init__(
         manager,
@@ -166,9 +172,6 @@ class Yepkit(auxiliary_device.AuxiliaryDevice):
 
         optional: {}
     """
-    if not yepkit_enabled:
-      raise RuntimeError("yepkit is not enabled.")
-
     if len(self.communication_address) < 4:
       raise RuntimeError("{} serial number {} is too short. "
                          "Length of serial number must be >= 4".format(

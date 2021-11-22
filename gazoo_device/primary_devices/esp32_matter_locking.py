@@ -23,6 +23,7 @@ from gazoo_device.protos import locking_service_pb2
 from gazoo_device.utility import pwrpc_utils
 
 logger = gdm_logger.get_logger()
+_LOCK_RPC_TIMEOUT = 5  # seconds
 
 
 class Esp32MatterLocking(esp32_matter_device.Esp32MatterDevice):
@@ -50,4 +51,5 @@ class Esp32MatterLocking(esp32_matter_device.Esp32MatterDevice):
     return self.lazy_init(
         pwrpc_lock_default.PwRPCLockDefault,
         device_name=self.name,
-        switchboard_call=self.switchboard.call)
+        switchboard_call=self.switchboard.call,
+        rpc_timeout_s=_LOCK_RPC_TIMEOUT)

@@ -324,22 +324,9 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
           tries=2,
           check_return_code=True)
 
-  def test_641_get_default_event_filters_warning_no_filters(self):
-    """Verify _get_default_event_filters warns for missing filters."""
-
-    class GazooDeviceBaseStubNoFilters(GazooDeviceBaseStub):
-      _DEFAULT_FILTERS = []
-
-    with mock.patch.object(gazoo_device_base, "logger") as mock_logger:
-      GazooDeviceBaseStubNoFilters(
-          self.mock_manager,
-          self.device_config,
-          log_directory=self.artifacts_directory)
-      mock_logger.warning.assert_called_once()
-
   def test_642_default_event_filters(self):
     """Test that default event filters are present in filter_paths."""
-    test_filters = ["/path/to/folder1/name1.json", "/path/to/name2.json"]
+    test_filters = ("/path/to/folder1/name1.json", "/path/to/name2.json")
 
     class GazooDeviceBaseStubWithFilters(GazooDeviceBaseStub):
       _DEFAULT_FILTERS = test_filters

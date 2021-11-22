@@ -38,7 +38,8 @@ class PwRPCLightDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.switchboard_call_mock = mock.Mock()
     self.uut = pwrpc_light_default.PwRPCLightDefault(
         device_name=_FAKE_DEVICE_NAME,
-        switchboard_call=self.switchboard_call_mock)
+        switchboard_call=self.switchboard_call_mock,
+        rpc_timeout_s=_FAKE_TIMEOUT)
 
   @mock.patch.object(pwrpc_light_default.PwRPCLightDefault, "_on_off")
   def test_001_light_on(self, mock_on_off):

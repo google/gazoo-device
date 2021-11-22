@@ -53,9 +53,9 @@ _DEFAULT_NAME = "sshdevice-1234"
 
 class FakeSSHDevice(ssh_device.SshDevice):
   """Fake SSH device (primary device) for testing purposes."""
-  _DEFAULT_FILTERS = [
+  _DEFAULT_FILTERS = (
       os.path.join(_FILTER_DIRECTORY, "basic.json"),
-  ]
+  )
   DEVICE_TYPE = "sshdevice"
   _OWNER_EMAIL = "gdm-authors@google.com"
   DETECT_MATCH_CRITERIA = {}
@@ -119,9 +119,9 @@ class FakeSSHDevice(ssh_device.SshDevice):
 
 class FakeGazooDeviceBase(gazoo_device_base.GazooDeviceBase):
   """A dummy valid concrete primary device class."""
-  _DEFAULT_FILTERS = [
+  _DEFAULT_FILTERS = (
       os.path.join(_FILTER_DIRECTORY, "basic.json"),
-  ]
+  )
 
   @classmethod
   def is_connected(cls, device_config):

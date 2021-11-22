@@ -82,6 +82,7 @@ Logging behavior:
   in new individual device log files.
 """
 import dataclasses
+import importlib
 import multiprocessing
 import os
 import queue
@@ -89,9 +90,10 @@ import time
 from typing import Any, Callable, List, Optional, Sequence, Tuple
 
 from gazoo_device import errors
+from gazoo_device import extensions
 from gazoo_device import gdm_logger
 from gazoo_device import manager
-from gazoo_device.utility import common_utils
+from gazoo_device import package_registrar
 from gazoo_device.utility import multiprocessing_utils
 import immutabledict
 
@@ -155,22 +157,33 @@ def _process_wrapper(
     error_queue: multiprocessing.Queue,
     logging_queue: multiprocessing.Queue,
     process_id: str,
+    extension_package_import_paths: Sequence[str],
     call_spec: CallSpec) -> None:
   """Executes the provided function in a parallel process."""
   gdm_logger.initialize_child_process_logging(logging_queue)
   short_description = f"{call_spec.function.__name__} in process {os.getpid()}"
-  full_description = f"{call_spec} in process {os.getpid()}"
   logger = gdm_logger.get_logger()
-  logger.debug(f"Starting execution of {full_description}...")
+  logger.debug(f"{short_description}: starting execution of {call_spec}...")
+  # The state of the main process (such as registered extension packages) is not
+  # copied over when using "forkserver" or "spawn" as the process start method.
+  for import_path in extension_package_import_paths:
+    try:
+      package_registrar.register(importlib.import_module(import_path))
+    except (ImportError, errors.PackageRegistrationError) as e:
+      logger.debug(f"{short_description}: failed to import and register GDM "
+                   f"extension package with import path {import_path}. "
+                   f"Error: {e!r}. Proceeding despite the failure.")
+
   manager_inst = manager.Manager()
   try:
     return_value = call_spec.function(
         manager_inst, *call_spec.args, **call_spec.kwargs)
+    logger.debug(f"{short_description}: execution succeeded. "
+                 f"Return value: {return_value}.")
     return_queue.put((process_id, return_value))
-    logger.debug(f"Execution of {short_description} succeeded.")
   except Exception as e:  # pylint: disable=broad-except
+    logger.warning(f"{short_description}: execution raised an error: {e!r}.")
     error_queue.put((process_id, (type(e).__name__, str(e))))
-    logger.warning(f"Execution of {short_description} raised an error: {e!r}.")
   finally:
     manager_inst.close()
 
@@ -220,20 +233,24 @@ def execute_concurrently(
   error_queue = multiprocessing_utils.get_context().Queue()
   gdm_logger.switch_to_multiprocess_logging()
   logging_queue = gdm_logger.get_logging_queue()
+  extension_package_import_paths = [
+      package_info["import_path"]
+      for package_name, package_info in extensions.package_info.items()
+      if package_name != "gazoo_device_controllers"  # Built-in controllers.
+  ]
 
   processes = []
   for proc_id, call_spec in enumerate(call_specs):
     processes.append(
         multiprocessing_utils.get_context().Process(
             target=_process_wrapper,
-            args=(return_queue, error_queue, logging_queue, proc_id, call_spec),
+            args=(return_queue, error_queue, logging_queue, proc_id,
+                  extension_package_import_paths, call_spec),
             ))
 
   deadline = time.time() + timeout
   for process in processes:
-    common_utils.run_before_fork()
     process.start()
-    common_utils.run_after_fork_in_parent()
 
   for process in processes:
     remaining_timeout = max(0, deadline - time.time())  # ensure timeout >= 0

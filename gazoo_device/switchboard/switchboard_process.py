@@ -22,7 +22,6 @@ import time
 import traceback
 
 from gazoo_device import gdm_logger
-from gazoo_device.utility import common_utils
 from gazoo_device.utility import multiprocessing_utils
 import psutil
 import six.moves.queue
@@ -222,10 +221,8 @@ class SwitchboardProcess(object):
           name=self.process_name,
           target=_process_loop,
           args=(self, parent_pid))
-      common_utils.run_before_fork()
       process.start()
-      common_utils.run_after_fork_in_parent()
-      start_event_value = self._start_event.wait(timeout=5)
+      start_event_value = self._start_event.wait(timeout=30)
       if not start_event_value:
         raise RuntimeError("Device {} failed to start child process {}. "
                            "Start event was not set.".format(

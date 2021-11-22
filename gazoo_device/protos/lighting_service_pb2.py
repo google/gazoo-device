@@ -12,6 +12,7 @@ from google.protobuf import symbol_database as _symbol_database
 _sym_db = _symbol_database.Default()
 
 
+from gazoo_device.protos import common_pb2 as common__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
@@ -20,35 +21,11 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x16lighting_service.proto\x12\x08\x63hip.rpc\"\x0f\n\rLightingEmpty\"0\n\rLightingColor\x12\x0b\n\x03hue\x18\x01 \x01(\r\x12\x12\n\nsaturation\x18\x02 \x01(\r\"p\n\rLightingState\x12\n\n\x02on\x18\x01 \x01(\x08\x12\x12\n\x05level\x18\x02 \x01(\rH\x00\x88\x01\x01\x12+\n\x05\x63olor\x18\x03 \x01(\x0b\x32\x17.chip.rpc.LightingColorH\x01\x88\x01\x01\x42\x08\n\x06_levelB\x08\n\x06_color2\x80\x01\n\x08Lighting\x12\x39\n\x03Set\x12\x17.chip.rpc.LightingState\x1a\x17.chip.rpc.LightingEmpty\"\x00\x12\x39\n\x03Get\x12\x17.chip.rpc.LightingEmpty\x1a\x17.chip.rpc.LightingState\"\x00\x62\x06proto3'
-)
+  serialized_pb=b'\n\x16lighting_service.proto\x12\x08\x63hip.rpc\x1a\x0c\x63ommon.proto\"0\n\rLightingColor\x12\x0b\n\x03hue\x18\x01 \x01(\r\x12\x12\n\nsaturation\x18\x02 \x01(\r\"p\n\rLightingState\x12\n\n\x02on\x18\x01 \x01(\x08\x12\x12\n\x05level\x18\x02 \x01(\rH\x00\x88\x01\x01\x12+\n\x05\x63olor\x18\x03 \x01(\x0b\x32\x17.chip.rpc.LightingColorH\x01\x88\x01\x01\x42\x08\n\x06_levelB\x08\n\x06_color2v\n\x08Lighting\x12\x34\n\x03Set\x12\x17.chip.rpc.LightingState\x1a\x12.pw.protobuf.Empty\"\x00\x12\x34\n\x03Get\x12\x12.pw.protobuf.Empty\x1a\x17.chip.rpc.LightingState\"\x00\x62\x06proto3'
+  ,
+  dependencies=[common__pb2.DESCRIPTOR,])
 
 
-
-
-_LIGHTINGEMPTY = _descriptor.Descriptor(
-  name='LightingEmpty',
-  full_name='chip.rpc.LightingEmpty',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=36,
-  serialized_end=51,
-)
 
 
 _LIGHTINGCOLOR = _descriptor.Descriptor(
@@ -85,8 +62,8 @@ _LIGHTINGCOLOR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=53,
-  serialized_end=101,
+  serialized_start=50,
+  serialized_end=98,
 )
 
 
@@ -141,8 +118,8 @@ _LIGHTINGSTATE = _descriptor.Descriptor(
       create_key=_descriptor._internal_create_key,
     fields=[]),
   ],
-  serialized_start=103,
-  serialized_end=215,
+  serialized_start=100,
+  serialized_end=212,
 )
 
 _LIGHTINGSTATE.fields_by_name['color'].message_type = _LIGHTINGCOLOR
@@ -152,17 +129,9 @@ _LIGHTINGSTATE.fields_by_name['level'].containing_oneof = _LIGHTINGSTATE.oneofs_
 _LIGHTINGSTATE.oneofs_by_name['_color'].fields.append(
   _LIGHTINGSTATE.fields_by_name['color'])
 _LIGHTINGSTATE.fields_by_name['color'].containing_oneof = _LIGHTINGSTATE.oneofs_by_name['_color']
-DESCRIPTOR.message_types_by_name['LightingEmpty'] = _LIGHTINGEMPTY
 DESCRIPTOR.message_types_by_name['LightingColor'] = _LIGHTINGCOLOR
 DESCRIPTOR.message_types_by_name['LightingState'] = _LIGHTINGSTATE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
-
-LightingEmpty = _reflection.GeneratedProtocolMessageType('LightingEmpty', (_message.Message,), {
-  'DESCRIPTOR' : _LIGHTINGEMPTY,
-  '__module__' : 'lighting_service_pb2'
-  # @@protoc_insertion_point(class_scope:chip.rpc.LightingEmpty)
-  })
-_sym_db.RegisterMessage(LightingEmpty)
 
 LightingColor = _reflection.GeneratedProtocolMessageType('LightingColor', (_message.Message,), {
   'DESCRIPTOR' : _LIGHTINGCOLOR,
@@ -187,8 +156,8 @@ _LIGHTING = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=218,
-  serialized_end=346,
+  serialized_start=214,
+  serialized_end=332,
   methods=[
   _descriptor.MethodDescriptor(
     name='Set',
@@ -196,7 +165,7 @@ _LIGHTING = _descriptor.ServiceDescriptor(
     index=0,
     containing_service=None,
     input_type=_LIGHTINGSTATE,
-    output_type=_LIGHTINGEMPTY,
+    output_type=common__pb2._EMPTY,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),
@@ -205,7 +174,7 @@ _LIGHTING = _descriptor.ServiceDescriptor(
     full_name='chip.rpc.Lighting.Get',
     index=1,
     containing_service=None,
-    input_type=_LIGHTINGEMPTY,
+    input_type=common__pb2._EMPTY,
     output_type=_LIGHTINGSTATE,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,

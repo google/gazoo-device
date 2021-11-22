@@ -13,11 +13,6 @@
 # limitations under the License.
 
 """Unit tests for common_utils.py."""
-import copy
-import multiprocessing
-import os
-from unittest import mock
-
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import common_utils
 
@@ -133,70 +128,6 @@ class CommonUtilsTests(unit_test_case.UnitTestCase):
     for object_name, expected_name in _GENERATE_NAME_TEST_CASES:
       test_object = _NamedObject(object_name)
       self.assertEqual(expected_name, common_utils.generate_name(test_object))
-
-  def test_register_at_fork(self):
-    """Test operation of register_at_fork(), run_before_fork, and run_after_fork_in_parent."""
-    func_before = mock.Mock()
-    func_parent_after = mock.Mock()
-    func_child_after = mock.Mock()
-
-    saved_before_fork_functions = copy.copy(
-        common_utils._run_before_fork_functions)
-    saved_after_fork_in_parent_functions = copy.copy(
-        common_utils._run_after_fork_in_parent_functions)
-
-    try:
-      if hasattr(os, "register_at_fork"):
-        # common_utils.register_at_fork() should directly call
-        # os.register_at_fork().
-
-        with mock.patch.object(os, "register_at_fork") as mock_os_register:
-          with mock.patch.object(
-              multiprocessing.util,
-              "register_after_fork") as mock_mp_util_register:
-            common_utils.register_at_fork(
-                before=func_before,
-                after_in_parent=func_parent_after,
-                after_in_child=func_child_after)
-        mock_os_register.assert_called_once_with(
-            before=func_before,
-            after_in_parent=func_parent_after,
-            after_in_child=func_child_after)
-        mock_mp_util_register.assert_not_called()
-
-        # Values of these lists shouldn't have changed.
-        self.assertEqual(common_utils._run_before_fork_functions,
-                         saved_before_fork_functions)
-        self.assertEqual(common_utils._run_after_fork_in_parent_functions,
-                         saved_after_fork_in_parent_functions)
-
-      else:
-        # common_utils.register_at_fork() should use the workaround.
-
-        with mock.patch.object(multiprocessing.util,
-                               "register_after_fork") as mock_mp_util_register:
-          common_utils.register_at_fork(
-              before=func_before,
-              after_in_parent=func_parent_after,
-              after_in_child=func_child_after)
-        mock_mp_util_register.assert_called_once()
-        self.assertIn(func_before, common_utils._run_before_fork_functions)
-        self.assertIn(func_parent_after,
-                      common_utils._run_after_fork_in_parent_functions)
-
-        # Check that run_before_fork() and run_after_fork_in_parent()
-        # function correctly
-        common_utils.run_before_fork()
-        func_before.assert_called_once()
-        func_parent_after.assert_not_called()
-
-        common_utils.run_after_fork_in_parent()
-        func_before.assert_called_once()
-        func_parent_after.assert_called_once()
-
-    finally:  # Clean up after the test
-      common_utils._run_before_fork_functions = saved_before_fork_functions
-      common_utils._run_after_fork_in_parent_functions = saved_after_fork_in_parent_functions
 
 
 if __name__ == "__main__":

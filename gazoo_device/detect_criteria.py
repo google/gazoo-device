@@ -86,6 +86,8 @@ class PtyProcessQuery(QueryEnum):
 
 class SerialQuery(QueryEnum):
   product_name = "usb info product_name"
+  serial_number = "usb serial_numer"
+  vendor_product_id = "VENDOR_ID:PRODUCT_ID"
 
 
 class SshQuery(QueryEnum):
@@ -225,6 +227,37 @@ def usb_product_name_query(
   return product_name
 
 
+def _usb_serial_number_from_serial_port_path(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> str:
+  """Gets serial number from serial port path."""
+  del create_switchboard_func  # Unused
+
+  serial_number = usb_utils.get_serial_number_from_path(address)
+  detect_logger.info(
+      "_usb_serial_number_from_serial_port_path response: "
+      f"{serial_number}")
+  return serial_number
+
+
+def _usb_vendor_product_id_from_serial_port_path(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> str:
+  """Gets USB vendor ID and product ID from serial port path."""
+  del create_switchboard_func  # Unused
+
+  device_info = usb_utils.get_device_info(address)
+  response_string = f"{device_info.vendor_id}:{device_info.product_id}"
+  detect_logger.info(
+      "_usb_vendor_product_id_from_serial_port_path "
+      f"response: {response_string}")
+  return response_string
+
+
 def _usb_vendor_product_id_query(
     address: str,
     detect_logger: logging.Logger,
@@ -346,6 +379,8 @@ PTY_PROCESS_QUERY_DICT = immutabledict.immutabledict({
 
 SERIAL_QUERY_DICT = immutabledict.immutabledict({
     SerialQuery.product_name: usb_product_name_query,
+    SerialQuery.serial_number: _usb_serial_number_from_serial_port_path,
+    SerialQuery.vendor_product_id: _usb_vendor_product_id_from_serial_port_path,
 })
 
 SSH_QUERY_DICT = immutabledict.immutabledict({

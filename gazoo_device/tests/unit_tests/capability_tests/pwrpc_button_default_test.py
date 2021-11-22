@@ -33,7 +33,8 @@ class PwRPCButtonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.uut = pwrpc_button_default.PwRPCButtonDefault(
         device_name=_FAKE_DEVICE_NAME,
         valid_button_ids=_FAKE_VALID_BUTTON_IDS,
-        switchboard_call=self.switchboard_call_mock)
+        switchboard_call=self.switchboard_call_mock,
+        rpc_timeout_s=_FAKE_TIMEOUT)
 
   def test_001_button_push_pass(self):
     """Verifies button push success."""

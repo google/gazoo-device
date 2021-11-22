@@ -105,6 +105,7 @@ import os
 import re
 import subprocess
 import time
+from typing import Collection
 
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -557,14 +558,16 @@ class _EventMatch(object):
 class EventParserDefault(event_parser_base.EventParserBase):
   """Parser class for filtering log lines."""
 
-  def __init__(self, filters, event_file_path, device_name):
+  def __init__(self,
+               filters: Collection[str],
+               event_file_path: str,
+               device_name: str) -> None:
     """Initializes the log event parser.
 
     Args:
-        filters (list[str]): list of paths to JSON filter files or filter
-          directories.
-        event_file_path (str): path to the log event file.
-        device_name (str): the name of the device using this capability.
+        filters: Paths to JSON filter files or filter directories.
+        event_file_path: Path to the log event file.
+        device_name: The name of the device using this capability.
     """
     super().__init__(device_name=device_name)
     self._filters_dict = {}
@@ -1512,11 +1515,11 @@ class EventParserDefault(event_parser_base.EventParserBase):
           "Unable to access filter path '{}'".format(filter_path))
 
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
-  def load_filters(self, filters):
+  def load_filters(self, filters: Collection[str]) -> None:
     """Load JSON filter files or directories specified.
 
     Args:
-        filters(list): of JSON filter files or paths to filter files
+        filters: JSON filter files or paths to filter files.
 
     Raises:
         ParserError: if files or paths do not exist
@@ -1525,15 +1528,9 @@ class EventParserDefault(event_parser_base.EventParserBase):
         Only files ending in .json are loaded, others are skipped(see
         load_filter_file method for an example)
     """
-    if not filters:
-      return
-    if not isinstance(filters, list):
-      raise errors.ParserError("Expecting 'filters' value to be a list "
-                               "but instead its a {}.".format(type(filters)))
     for filter_path in filters:
       if not os.path.exists(filter_path):
-        raise errors.ParserError(
-            "Filter path '{}' doesn't exist".format(filter_path))
+        raise errors.ParserError(f"Filter path {filter_path!r} doesn't exist")
       elif os.path.isdir(filter_path):
         self._load_filter_directory(filter_path)
       else:

@@ -29,10 +29,8 @@ from gazoo_device.utility import usb_utils
 
 logger = gdm_logger.get_logger()
 BAUDRATE = 115200
-RPC_TIMEOUT = 10  # seconds
+_RPC_TIMEOUT = 10  # seconds
 _NRF_JLINK_NAME = "NRF52840_XXAA"
-_REGEXES = {"BOOT_UP": "<inf> app: Starting CHIP task",}
-_BOOTUP_TIMEOUT = 10  # seconds
 
 
 class NrfMatterDevice(gazoo_device_base.GazooDeviceBase):
@@ -43,18 +41,6 @@ class NrfMatterDevice(gazoo_device_base.GazooDeviceBase):
   COMMUNICATION_TYPE = "PigweedSerialComms"
   _COMMUNICATION_KWARGS = {
       "protobufs": (device_service_pb2,), "baudrate": BAUDRATE}
-
-  def __init__(self,
-               manager,
-               device_config,
-               log_file_name=None,
-               log_directory=None):
-    super().__init__(
-        manager,
-        device_config,
-        log_file_name=log_file_name,
-        log_directory=log_directory)
-    self._regexes.update(_REGEXES)
 
   def get_console_configuration(self) -> console_config.ConsoleConfiguration:
     """Returns the interactive console configuration."""
@@ -103,10 +89,7 @@ class NrfMatterDevice(gazoo_device_base.GazooDeviceBase):
       method: Reboot technique to use.
     """
     del method  # Unused
-    self.pw_rpc_common.reboot(verify=not no_wait,
-                              rpc_timeout_s=RPC_TIMEOUT,
-                              bootup_logline_regex=self.regexes["BOOT_UP"],
-                              bootup_timeout_s=_BOOTUP_TIMEOUT)
+    self.pw_rpc_common.reboot(verify=not no_wait)
 
   @decorators.LogDecorator(logger)
   def factory_reset(self, no_wait: bool = False) -> None:
@@ -115,11 +98,7 @@ class NrfMatterDevice(gazoo_device_base.GazooDeviceBase):
     Args:
       no_wait: Return before reboot completes.
     """
-    self.pw_rpc_common.factory_reset(
-        verify=not no_wait,
-        rpc_timeout_s=RPC_TIMEOUT,
-        bootup_logline_regex=self.regexes["BOOT_UP"],
-        bootup_timeout_s=_BOOTUP_TIMEOUT)
+    self.pw_rpc_common.factory_reset(verify=not no_wait)
 
   @decorators.LogDecorator(logger)
   def shell(self,
@@ -162,7 +141,7 @@ class NrfMatterDevice(gazoo_device_base.GazooDeviceBase):
         pwrpc_common_default.PwRPCCommonDefault,
         device_name=self.name,
         switchboard_call=self.switchboard.call,
-        switchboard_call_expect=self.switchboard.call_and_expect)
+        rpc_timeout_s=_RPC_TIMEOUT)
 
   @decorators.CapabilityDecorator(flash_build_jlink.FlashBuildJLink)
   def flash_build(self):

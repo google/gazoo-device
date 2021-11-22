@@ -57,7 +57,6 @@ Refer to https://github.com/google/gazoo-device for full documentation.
 import gc
 import logging
 import multiprocessing
-import os
 import signal
 import sys
 
@@ -67,7 +66,7 @@ from gazoo_device import gdm_logger
 from gazoo_device import manager
 from gazoo_device import mobly_controller
 from gazoo_device import package_registrar
-from gazoo_device.utility import common_utils
+from gazoo_device.utility import multiprocessing_utils
 
 Manager = manager.Manager
 register = package_registrar.register
@@ -80,6 +79,8 @@ create = mobly_controller.create
 destroy = mobly_controller.destroy
 get_info = mobly_controller.get_info
 
+multiprocessing_utils.configure_multiprocessing()
+
 # Defend against inadvertent basicConfig, which adds log noise
 logging.getLogger().addHandler(logging.NullHandler())
 
@@ -91,43 +92,10 @@ def graceful_exit(*args, **kwargs):  # pylint: disable=unused-argument
 
 signal.signal(signal.SIGTERM, graceful_exit)
 
-if sys.platform == "darwin" and sys.version_info >= (3, 8):
-  # Workaround for b/160958582: Python >= 3.8 defaults to "spawn" start method
-  # on Macs. GDM isn't compatible with "spawn" yet, so use the "fork" method
-  # instead.
-  multiprocessing.set_start_method("fork", force=True)
 
 # Set up logger
 gdm_logger.initialize_logger()
 
-
-def _after_fork():
-  """Re-enables garbage collection in both parent & child process."""
-  gc.enable()
-
-
-def _before_fork():
-  """Collects garbage, disables periodic GC, and flushes logger messages.
-
-  This ensures that the logging thread is not logging anything during os.fork()
-  calls. If the logging thread is logging during an os.fork() call, child
-  processes may be forked with an acquired stdout lock, which will cause a
-  deadlock when the child process finishes. Child processes attempt to flush the
-  stdout buffer before exiting and will hang indefinitely if forked with an
-  acquired stdout buffer lock.
-  """
-  gc.disable()
-  gc.collect()
-  gdm_logger.flush_queue_messages()
-
-
-# Periodic GC is active in child processes created via os.fork.
-# Trigger a collection in the parent process prior to forking to prevent
-# parent process's garbage from being copied over to the child and later being
-# collected in each process. See b/150018610.
-common_utils.register_at_fork(before=_before_fork,
-                              after_in_parent=_after_fork,
-                              after_in_child=_after_fork)
 
 # Register device classes and capabilities built into GDM
 package_registrar.register(gazoo_device_controllers)
