@@ -97,10 +97,10 @@ Detect the NRF lighting app: `gdm detect`
 ```
     Device                     Alias           Type                 Model                Connected
     -------------------------- --------------- -------------------- -------------------- ----------
+    nrfmatterlighting-6125     <undefined>     nrfmatterlighting   PROTO                connected
 
     Other Devices              Alias           Type                 Model                Available
     -------------------------- --------------- -------------------- -------------------- ----------
-    nrfpigweedlighting-6125    <undefined>     nrfpigweedlighting   PROTO                available
 ```
 
 ## Usage
@@ -108,16 +108,16 @@ Detect the NRF lighting app: `gdm detect`
 Using GDM CLI
 
 ```
-gdm issue nrfpigweedlighting-6125 - pw_rpc_light - on  # Turn the light on
-gdm issue nrfpigweedlighting-6125 - pw_rpc_light - state  # Check the light state
-gdm issue nrfpigweedlighting-6125 - pw_rpc_light - off  # Turn the light off
-gdm issue nrfpigweedlighting-6125 - pw_rpc_button - push 0  # Push button 0
-gdm issue nrfpigweedlighting-6125 - factory_reset
-gdm issue nrfpigweedlighting-6125 - reboot
-gdm issue nrfpigweedlighting-6125 - pw_rpc_common - vendor_id
-gdm issue nrfpigweedlighting-6125 - pw_rpc_common - product_id
-gdm issue nrfpigweedlighting-6125 - pw_rpc_common - software_version
-gdm man nrfpigweedlighting  # To see all supported functionality
+gdm issue nrfmatterlighting-6125 - pw_rpc_light - on  # Turn the light on
+gdm issue nrfmatterlighting-6125 - pw_rpc_light - state  # Check the light state
+gdm issue nrfmatterlighting-6125 - pw_rpc_light - off  # Turn the light off
+gdm issue nrfmatterlighting-6125 - pw_rpc_button - push 0  # Push button 0
+gdm issue nrfmatterlighting-6125 - factory_reset
+gdm issue nrfmatterlighting-6125 - reboot
+gdm issue nrfmatterlighting-6125 - pw_rpc_common - vendor_id
+gdm issue nrfmatterlighting-6125 - pw_rpc_common - product_id
+gdm issue nrfmatterlighting-6125 - pw_rpc_common - software_version
+gdm man nrfmatterlighting  # To see all supported functionality
 ```
 
 Or inside the python console
@@ -134,7 +134,7 @@ Inside python console:
 ```
 >>> from gazoo_device import Manager
 >>> m = Manager()
->>> nrf = m.create_device('nrfpigweedlighting-6125')
+>>> nrf = m.create_device('nrfmatterlighting-6125')
 >>> nrf.pw_rpc_light.on()
 >>> nrf.pw_rpc_light.state
 >>> nrf.close()

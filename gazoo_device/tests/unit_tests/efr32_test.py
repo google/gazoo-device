@@ -48,7 +48,11 @@ class EFR32DeviceTests(fake_device_test_case.FakeDeviceTestCase):
                 self.device_config,
                 log_directory=self.artifacts_directory)
 
-  def test_001_efr32_attributes(self):
+  def test_001_get_console_configuration(self):
+    """Verifies efr32 get_console_configuration."""
+    self.assertIsNotNone(self.uut.get_console_configuration())
+
+  def test_002_efr32_attributes(self):
     """Verifies efr32 attributes."""
     self._test_get_detection_info(_FAKE_DEVICE_ADDRESS,
                                   efr32.EFR32,

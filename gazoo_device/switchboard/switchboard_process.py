@@ -26,6 +26,8 @@ from gazoo_device.utility import multiprocessing_utils
 import psutil
 import six.moves.queue
 
+_PROCESS_START_TIMEOUT_S = 30
+
 
 def get_message(queue, timeout=None):
   """Returns next message from queue.
@@ -203,15 +205,15 @@ class SwitchboardProcess(object):
     if self.is_started():
       self.stop()
 
-  def start(self):
-    """Starts process if process is not already running.
+  def start(self, wait_for_start: bool = True) -> None:
+    """Starts the process.
+
+    Args:
+        wait_for_start: Whether to wait for the process to start. If False, the
+            caller is responsible for calling wait_for_start() separately.
 
     Raises:
-        RuntimeError: if called when process is already running
-
-    Note:
-        When calling this method you should use is_started() to check if
-        process was previously started to prevent raising an error.
+        RuntimeError: if the process has already been started or fails to start.
     """
     if not self.is_started():
       self._start_event.clear()
@@ -222,16 +224,22 @@ class SwitchboardProcess(object):
           target=_process_loop,
           args=(self, parent_pid))
       process.start()
-      start_event_value = self._start_event.wait(timeout=30)
-      if not start_event_value:
-        raise RuntimeError("Device {} failed to start child process {}. "
-                           "Start event was not set.".format(
-                               self.device_name, self.process_name))
+      if wait_for_start:
+        self.wait_for_start()
       self._process = process
     else:
       raise RuntimeError("Device {} failed to start child process {}. "
                          "Child process is already running.".format(
                              self.device_name, self.process_name))
+
+  def wait_for_start(self):
+    """Waits for the process to start."""
+    start_event_value = self._start_event.wait(timeout=_PROCESS_START_TIMEOUT_S)
+    if not start_event_value:
+      raise RuntimeError(
+          "Device {} failed to start child process {}. "
+          "Start event was not set in {}s.".format(
+              self.device_name, self.process_name, _PROCESS_START_TIMEOUT_S))
 
   def is_started(self):
     """Returns True if process was started, False otherwise.

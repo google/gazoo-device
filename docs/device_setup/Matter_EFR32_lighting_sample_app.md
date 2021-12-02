@@ -88,10 +88,10 @@ Detect the EFR32 lighting app: `gdm detect`
 ```
     Device                     Alias           Type                 Model                Connected
     -------------------------- --------------- -------------------- -------------------- ----------
+    efr32matterlighting-3453  <undefined>     efr32matterlighting   PROTO                connected
 
     Other Devices              Alias           Type                 Model                Available
     -------------------------- --------------- -------------------- -------------------- ----------
-    efr32pigweedlighting-3453  <undefined>     efr32pigweedlighting PROTO                available
 ```
 
 ## Usage
@@ -99,16 +99,16 @@ Detect the EFR32 lighting app: `gdm detect`
 Using GDM CLI
 
 ```
-gdm issue efr32pigweedlighting-3453 - pw_rpc_light - on  # Turn the light on
-gdm issue efr32pigweedlighting-3453 - pw_rpc_light - state  # Check the light state
-gdm issue efr32pigweedlighting-3453 - pw_rpc_light - off  # Turn the light off
-gdm issue efr32pigweedlighting-3453 - pw_rpc_button - push 0  # Push button 0
-gdm issue efr32pigweedlighting-3453 - factory_reset
-gdm issue efr32pigweedlighting-3453 - reboot
-gdm issue efr32pigweedlighting-3453 - pw_rpc_common - vendor_id
-gdm issue efr32pigweedlighting-3453 - pw_rpc_common - product_id
-gdm issue efr32pigweedlighting-3453 - pw_rpc_common - software_version
-gdm man efr32pigweedlighting  # To see all supported functionality
+gdm issue efr32matterlighting-3453 - pw_rpc_light - on  # Turn the light on
+gdm issue efr32matterlighting-3453 - pw_rpc_light - state  # Check the light state
+gdm issue efr32matterlighting-3453 - pw_rpc_light - off  # Turn the light off
+gdm issue efr32matterlighting-3453 - pw_rpc_button - push 0  # Push button 0
+gdm issue efr32matterlighting-3453 - factory_reset
+gdm issue efr32matterlighting-3453 - reboot
+gdm issue efr32matterlighting-3453 - pw_rpc_common - vendor_id
+gdm issue efr32matterlighting-3453 - pw_rpc_common - product_id
+gdm issue efr32matterlighting-3453 - pw_rpc_common - software_version
+gdm man efr32matterlighting  # To see all supported functionality
 ```
 
 Or inside the python console:
@@ -125,7 +125,7 @@ Inside python console:
 ```
 >>> from gazoo_device import Manager
 >>> m = Manager()
->>> efr = m.create_device('efr32pigweedlighting-3453')
+>>> efr = m.create_device('efr32matterlighting-3453')
 >>> efr.pw_rpc_light.on()
 >>> efr.pw_rpc_light.state
 >>> efr.close()

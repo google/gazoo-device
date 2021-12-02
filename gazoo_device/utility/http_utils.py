@@ -187,6 +187,7 @@ def send_http_get(url,
 def send_http_post(url,
                    auth=None,
                    data=None,
+                   params=None,
                    headers=None,
                    json_data=None,
                    ssl_version=None,
@@ -199,6 +200,7 @@ def send_http_post(url,
       url (str): HTTP URL to which HTTP POST request needs to be sent
       auth (auth.AuthBase): HTTP authentication object (i.e. HTTPDigestAuth)
       data (dict): Data that is needed for this HTTP GET Request
+      params (dict): Parameters that is needed for this HTTP GET Request
       headers (dict): Headers needed that is needed for this HTTP POST Request
       json_data (object): JSON data that is needed for this HTTP POST Request
       ssl_version (int): SSL version to be used for secure http (https)
@@ -246,6 +248,7 @@ def send_http_post(url,
             json=json_data,
             headers=headers,
             timeout=timeout,
+            params=params,
             verify=False)
         break
       except (requests.exceptions.RequestException,

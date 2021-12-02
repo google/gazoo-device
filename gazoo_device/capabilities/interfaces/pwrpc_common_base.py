@@ -22,17 +22,17 @@ class PwRPCCommonBase(capability_base.CapabilityBase):
 
   @property
   @abc.abstractmethod
-  def vendor_id(self) -> str:
+  def vendor_id(self) -> int:
     """The vendor id of the device."""
 
   @property
   @abc.abstractmethod
-  def product_id(self) -> str:
+  def product_id(self) -> int:
     """The product id of the device."""
 
   @property
   @abc.abstractmethod
-  def software_version(self) -> str:
+  def software_version(self) -> int:
     """The software version of the device."""
 
   @abc.abstractmethod

@@ -98,8 +98,9 @@ class SshQuery(QueryEnum):
 
 
 class UsbQuery(QueryEnum):
-  vendor_product_id = "VENDOR_ID:PRODUCT_ID"
+  product_name = "usb product name"
   serial_number = "serial_number"
+  vendor_product_id = "VENDOR_ID:PRODUCT_ID"
 
 
 def _docker_product_name_query(
@@ -258,6 +259,34 @@ def _usb_vendor_product_id_from_serial_port_path(
   return response_string
 
 
+def _usb_product_name_from_serial_number(
+    address: str,
+    detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> str:
+  """Returns USB product name from serial number.
+
+  Args:
+    address: Serial number of the device. USB devices are addressed by their
+      serial number.
+    detect_logger: The logger of device interactions.
+    create_switchboard_func: Method to create the switchboard.
+
+  Returns:
+    Product name from USB descriptor.
+  """
+  del create_switchboard_func  # Unused
+  device = usb_utils.get_usb_device_from_serial_number(address)
+  if device:
+    return_value = device.product
+  else:
+    return_value = ""
+  detect_logger.info(
+      "_usb_product_name_from_serial_number device: %r\nresponse: %s",
+      device, return_value)
+  return return_value
+
+
 def _usb_vendor_product_id_query(
     address: str,
     detect_logger: logging.Logger,
@@ -390,6 +419,7 @@ SSH_QUERY_DICT = immutabledict.immutabledict({
 })
 
 USB_QUERY_DICT = immutabledict.immutabledict({
+    UsbQuery.product_name: _usb_product_name_from_serial_number,
     UsbQuery.serial_number: _usb_serial_number,
     UsbQuery.vendor_product_id: _usb_vendor_product_id_query,
 })

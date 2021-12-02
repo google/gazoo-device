@@ -47,7 +47,11 @@ class NRF52840DeviceTests(fake_device_test_case.FakeDeviceTestCase):
                 self.device_config,
                 log_directory=self.artifacts_directory)
 
-  def test_001_nrf52840_attributes(self):
+  def test_001_get_console_configuration(self):
+    """Verifies nrf52840 get_console_configuration."""
+    self.assertIsNotNone(self.uut.get_console_configuration())
+
+  def test_002_nrf52840_attributes(self):
     """Verifies nrf52840 attributes."""
     self._test_get_detection_info(_FAKE_DEVICE_ADDRESS,
                                   nrf52840.NRF52840,

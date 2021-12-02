@@ -25,24 +25,24 @@ Supported models: ESP32 M5Stack
 ```shell
     Device                         Alias           Type                     Model                Connected
     ------------------------------ --------------- ------------------------ -------------------- ----------
-
+    esp32matterallclusters-fa26   <undefined>     esp32matterallclusters  PROTO                connected
     Other Devices                  Alias           Type                     Model                Available
     ------------------------------ --------------- ------------------------ -------------------- ----------
-    esp32pigweedallclusters-fa26   <undefined>     esp32pigweedallclusters  PROTO                available
 ```
 
 ## Usage
 
 ```shell
-gdm issue esp32pigweedallclusters-fa26 - pw_rpc_light - on  # Turn the light on
-gdm issue esp32pigweedallclusters-fa26 - pw_rpc_light - state  # Check the light state
-gdm issue esp32pigweedallclusters-fa26 - pw_rpc_light - off  # Turn the light off
-gdm issue esp32pigweedallclusters-fa26 - factory_reset
-gdm issue esp32pigweedallclusters-fa26 - pw_rpc_common - vendor_id
-gdm issue esp32pigweedallclusters-fa26 - pw_rpc_common - product_id
-gdm issue esp32pigweedallclusters-fa26 - pw_rpc_common - software_version
-gdm man esp32pigweedallclusters  # To see all supported functionality
+gdm issue esp32matterallclusters-fa26 - pw_rpc_light - on  # Turn the light on
+gdm issue esp32matterallclusters-fa26 - pw_rpc_light - state  # Check the light state
+gdm issue esp32matterallclusters-fa26 - pw_rpc_light - off  # Turn the light off
+gdm issue esp32matterallclusters-fa26 - factory_reset
+gdm issue esp32matterallclusters-fa26 - pw_rpc_common - vendor_id
+gdm issue esp32matterallclusters-fa26 - pw_rpc_common - product_id
+gdm issue esp32matterallclusters-fa26 - pw_rpc_common - software_version
+gdm man esp32matterallclusters  # To see all supported functionality
 ```
+
 Or inside the python console:
 
 Activate GDM virtual env and open the console:
@@ -57,7 +57,7 @@ Inside python console:
 ```
 >>> from gazoo_device import Manager
 >>> m = Manager()
->>> esp = m.create_device('esp32pigweedallclusters-fa26')
+>>> esp = m.create_device('esp32matterallclusters-fa26')
 >>> esp.pw_rpc_light.on()
 >>> esp.pw_rpc_light.state
 >>> esp.close()

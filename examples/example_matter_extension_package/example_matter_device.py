@@ -38,6 +38,9 @@ class PartnerExampleMatterLighting(nrf_matter_device.NrfMatterDevice):
   for more examples.
   """
 
+  # TODO(user): You may need to change the value of
+  # detect_criteria.PigweedQuery.product_name and
+  # detect_criteria.PigweedQuery.manufacturer_name for your device.
   DETECT_MATCH_CRITERIA = {
       detect_criteria.PigweedQuery.product_name:
           "partner-device-product-name",

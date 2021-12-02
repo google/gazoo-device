@@ -432,7 +432,6 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
                                               self.log_path)
     self.uut.send(_DEVICE_COMMAND, add_newline=False)
     self._wait_for_log_write()
-    self._wait_for_transport_write(self.fake_transport)
     lines = self._verify_log_file_and_lines(1)
     self.assertIn("wrote command 'command' to port 0", lines[0])
     command = self._get_command(self.fake_transport)
@@ -452,7 +451,6 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
                                               transport_list, self.log_path)
     self.uut.send(_DEVICE_COMMAND, port=1, add_newline=False)
     self._wait_for_log_write()
-    self._wait_for_transport_write(transport_list[1])
     lines = self._verify_log_file_and_lines(1)
     self.assertIn("wrote command 'command' to port 1", lines[0])
     command = self._get_command(transport_list[1])
@@ -473,7 +471,6 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     newline = "!"
     self.uut.send(_DEVICE_COMMAND, newline=newline)
     self._wait_for_log_write()
-    self._wait_for_transport_write(self.fake_transport)
     lines = self._verify_log_file_and_lines(1)
     self.assertIn("wrote command 'command' to port 0", lines[0])
     command = self._get_command(self.fake_transport)
@@ -491,11 +488,11 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
                                               self.log_path)
     newline = "!"
     self.uut.send(_DEVICE_COMMAND + newline, newline=newline)
-    command = self._get_command(self.fake_transport, True)
+    command = self._get_command(self.fake_transport)
     self.assertEqual(_DEVICE_COMMAND + newline, command)
 
     self.uut.send(_DEVICE_COMMAND + "\x00", newline=newline)
-    command = self._get_command(self.fake_transport, True)
+    command = self._get_command(self.fake_transport)
     self.assertEqual(_DEVICE_COMMAND + "\x00", command)
 
   def test_024_switchboard_send_slow(self):
@@ -509,7 +506,6 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     self._wait_for_log_write()
     command = ""
     for _ in range(0, len(_DEVICE_COMMAND_NEWLINE)):
-      self._wait_for_transport_write(self.fake_transport)
       command += self._get_command(self.fake_transport)
     lines = self._verify_log_file_and_lines(1)
 
@@ -533,7 +529,6 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     self._wait_for_log_write()
     command = ""
     for _ in range(0, len(_DEVICE_COMMAND_NEWLINE)):
-      self._wait_for_transport_write(self.fake_transport)
       command += self._get_command(self.fake_transport)
     lines = self._verify_log_file_and_lines(1)
 
@@ -911,7 +906,6 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
         timeout=_EXPECT_TIMEOUT,
         add_newline=False,
         expect_type="response")
-    self._wait_for_transport_write(self.fake_transport)
     command = self._get_command(self.fake_transport)
     self.assertEqual(
         _DEVICE_COMMAND, command,
@@ -1962,14 +1956,12 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     for pattern in patterns:
       self.fake_transport.reads.put((pattern + "\n").encode())
 
-  def _get_command(self, transport, wait_for_write=False):
+  def _get_command(self, transport):
     """Returns last message sent to fake transport."""
     command = ""
     while not command or command[-1] != "\n":
       try:
-        if wait_for_write:
-          self._wait_for_transport_write(transport)
-        command += transport.writes.get_nowait()
+        command += transport.writes.get(timeout=_DEVICE_WRITE_TIMEOUT)
       except queue.Empty:
         break
     return command

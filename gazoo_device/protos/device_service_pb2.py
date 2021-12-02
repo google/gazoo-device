@@ -21,11 +21,50 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x14\x64\x65vice_service.proto\x12\x08\x63hip.rpc\x1a\x0c\x63ommon.proto\"d\n\nDeviceInfo\x12\x11\n\tvendor_id\x18\x01 \x01(\r\x12\x12\n\nproduct_id\x18\x02 \x01(\r\x12\x18\n\x10software_version\x18\x03 \x01(\r\x12\x15\n\rserial_number\x18\x04 \x01(\t2\xe9\x01\n\x06\x44\x65vice\x12\x38\n\x0c\x46\x61\x63toryReset\x12\x12.pw.protobuf.Empty\x1a\x12.pw.protobuf.Empty\"\x00\x12\x32\n\x06Reboot\x12\x12.pw.protobuf.Empty\x1a\x12.pw.protobuf.Empty\"\x00\x12\x36\n\nTriggerOta\x12\x12.pw.protobuf.Empty\x1a\x12.pw.protobuf.Empty\"\x00\x12\x39\n\rGetDeviceInfo\x12\x12.pw.protobuf.Empty\x1a\x12.pw.protobuf.Empty\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\x14\x64\x65vice_service.proto\x12\x08\x63hip.rpc\x1a\x0c\x63ommon.proto\"2\n\x0bPairingInfo\x12\x0c\n\x04\x63ode\x18\x01 \x01(\r\x12\x15\n\rdiscriminator\x18\x02 \x01(\r\"\x91\x01\n\nDeviceInfo\x12\x11\n\tvendor_id\x18\x01 \x01(\r\x12\x12\n\nproduct_id\x18\x02 \x01(\r\x12\x18\n\x10software_version\x18\x03 \x01(\r\x12\x15\n\rserial_number\x18\x04 \x01(\t\x12+\n\x0cpairing_info\x18\x05 \x01(\x0b\x32\x15.chip.rpc.PairingInfo\"0\n\nFabricInfo\x12\x11\n\tfabric_id\x18\x01 \x01(\r\x12\x0f\n\x07node_id\x18\x02 \x01(\x04\"X\n\x0b\x44\x65viceState\x12\x1e\n\x16time_since_boot_millis\x18\x01 \x01(\x04\x12)\n\x0b\x66\x61\x62ric_info\x18\x02 \x03(\x0b\x32\x14.chip.rpc.FabricInfo2\xe9\x02\n\x06\x44\x65vice\x12\x38\n\x0c\x46\x61\x63toryReset\x12\x12.pw.protobuf.Empty\x1a\x12.pw.protobuf.Empty\"\x00\x12\x32\n\x06Reboot\x12\x12.pw.protobuf.Empty\x1a\x12.pw.protobuf.Empty\"\x00\x12\x36\n\nTriggerOta\x12\x12.pw.protobuf.Empty\x1a\x12.pw.protobuf.Empty\"\x00\x12;\n\rGetDeviceInfo\x12\x12.pw.protobuf.Empty\x1a\x14.chip.rpc.DeviceInfo\"\x00\x12=\n\x0eGetDeviceState\x12\x12.pw.protobuf.Empty\x1a\x15.chip.rpc.DeviceState\"\x00\x12=\n\x0eSetPairingInfo\x12\x15.chip.rpc.PairingInfo\x1a\x12.pw.protobuf.Empty\"\x00\x62\x06proto3'
   ,
   dependencies=[common__pb2.DESCRIPTOR,])
 
 
+
+
+_PAIRINGINFO = _descriptor.Descriptor(
+  name='PairingInfo',
+  full_name='chip.rpc.PairingInfo',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='code', full_name='chip.rpc.PairingInfo.code', index=0,
+      number=1, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='discriminator', full_name='chip.rpc.PairingInfo.discriminator', index=1,
+      number=2, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=48,
+  serialized_end=98,
+)
 
 
 _DEVICEINFO = _descriptor.Descriptor(
@@ -64,6 +103,13 @@ _DEVICEINFO = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='pairing_info', full_name='chip.rpc.DeviceInfo.pairing_info', index=4,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -76,12 +122,102 @@ _DEVICEINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=48,
-  serialized_end=148,
+  serialized_start=101,
+  serialized_end=246,
 )
 
+
+_FABRICINFO = _descriptor.Descriptor(
+  name='FabricInfo',
+  full_name='chip.rpc.FabricInfo',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='fabric_id', full_name='chip.rpc.FabricInfo.fabric_id', index=0,
+      number=1, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='node_id', full_name='chip.rpc.FabricInfo.node_id', index=1,
+      number=2, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=248,
+  serialized_end=296,
+)
+
+
+_DEVICESTATE = _descriptor.Descriptor(
+  name='DeviceState',
+  full_name='chip.rpc.DeviceState',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='time_since_boot_millis', full_name='chip.rpc.DeviceState.time_since_boot_millis', index=0,
+      number=1, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='fabric_info', full_name='chip.rpc.DeviceState.fabric_info', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=298,
+  serialized_end=386,
+)
+
+_DEVICEINFO.fields_by_name['pairing_info'].message_type = _PAIRINGINFO
+_DEVICESTATE.fields_by_name['fabric_info'].message_type = _FABRICINFO
+DESCRIPTOR.message_types_by_name['PairingInfo'] = _PAIRINGINFO
 DESCRIPTOR.message_types_by_name['DeviceInfo'] = _DEVICEINFO
+DESCRIPTOR.message_types_by_name['FabricInfo'] = _FABRICINFO
+DESCRIPTOR.message_types_by_name['DeviceState'] = _DEVICESTATE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
+
+PairingInfo = _reflection.GeneratedProtocolMessageType('PairingInfo', (_message.Message,), {
+  'DESCRIPTOR' : _PAIRINGINFO,
+  '__module__' : 'device_service_pb2'
+  # @@protoc_insertion_point(class_scope:chip.rpc.PairingInfo)
+  })
+_sym_db.RegisterMessage(PairingInfo)
 
 DeviceInfo = _reflection.GeneratedProtocolMessageType('DeviceInfo', (_message.Message,), {
   'DESCRIPTOR' : _DEVICEINFO,
@@ -89,6 +225,20 @@ DeviceInfo = _reflection.GeneratedProtocolMessageType('DeviceInfo', (_message.Me
   # @@protoc_insertion_point(class_scope:chip.rpc.DeviceInfo)
   })
 _sym_db.RegisterMessage(DeviceInfo)
+
+FabricInfo = _reflection.GeneratedProtocolMessageType('FabricInfo', (_message.Message,), {
+  'DESCRIPTOR' : _FABRICINFO,
+  '__module__' : 'device_service_pb2'
+  # @@protoc_insertion_point(class_scope:chip.rpc.FabricInfo)
+  })
+_sym_db.RegisterMessage(FabricInfo)
+
+DeviceState = _reflection.GeneratedProtocolMessageType('DeviceState', (_message.Message,), {
+  'DESCRIPTOR' : _DEVICESTATE,
+  '__module__' : 'device_service_pb2'
+  # @@protoc_insertion_point(class_scope:chip.rpc.DeviceState)
+  })
+_sym_db.RegisterMessage(DeviceState)
 
 
 
@@ -99,8 +249,8 @@ _DEVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=151,
-  serialized_end=384,
+  serialized_start=389,
+  serialized_end=750,
   methods=[
   _descriptor.MethodDescriptor(
     name='FactoryReset',
@@ -138,6 +288,26 @@ _DEVICE = _descriptor.ServiceDescriptor(
     index=3,
     containing_service=None,
     input_type=common__pb2._EMPTY,
+    output_type=_DEVICEINFO,
+    serialized_options=None,
+    create_key=_descriptor._internal_create_key,
+  ),
+  _descriptor.MethodDescriptor(
+    name='GetDeviceState',
+    full_name='chip.rpc.Device.GetDeviceState',
+    index=4,
+    containing_service=None,
+    input_type=common__pb2._EMPTY,
+    output_type=_DEVICESTATE,
+    serialized_options=None,
+    create_key=_descriptor._internal_create_key,
+  ),
+  _descriptor.MethodDescriptor(
+    name='SetPairingInfo',
+    full_name='chip.rpc.Device.SetPairingInfo',
+    index=5,
+    containing_service=None,
+    input_type=_PAIRINGINFO,
     output_type=common__pb2._EMPTY,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,

@@ -115,10 +115,10 @@ Detect the ESP32 locking app: `gdm detect`
 ```
     Device                     Alias           Type                 Model                Connected
     -------------------------- --------------- -------------------- -------------------- ----------
+    esp32matterlocking-b69b   <undefined>      esp32matterlocking   PROTO                connected
 
     Other Devices              Alias           Type                 Model                Available
     -------------------------- --------------- -------------------- -------------------- ----------
-    esp32pigweedlocking-b69b   <undefined>     esp32pigweedlocking  PROTO                available
 ```
 
 ## Usage
@@ -126,10 +126,10 @@ Detect the ESP32 locking app: `gdm detect`
 Using GDM CLI
 
 ```
-gdm issue esp32pigweedlocking-b69b - pw_rpc_lock - lock  # Lock the device
-gdm issue esp32pigweedlocking-b69b - pw_rpc_lock - unlock  # Unlock the device
-gdm issue esp32pigweedlocking-b69b - pw_rpc_lock - state  # Get locked state
-gdm man nrfpigweedlighting  # To see all supported functionality
+gdm issue esp32matterlocking-b69b - pw_rpc_lock - lock  # Lock the device
+gdm issue esp32matterlocking-b69b - pw_rpc_lock - unlock  # Unlock the device
+gdm issue esp32matterlocking-b69b - pw_rpc_lock - state  # Get locked state
+gdm man esp32matterlocking  # To see all supported functionality
 ```
 
 Or inside the python console:
@@ -146,7 +146,7 @@ Inside python console:
 ```
 >>> from gazoo_device import Manager
 >>> m = Manager()
->>> esp = m.create_device('esp32pigweedlocking-b69b')
+>>> esp = m.create_device('esp32matterlocking-b69b')
 >>> esp.pw_rpc_lock.lock()
 >>> esp.pw_rpc_lock.state
 >>> esp.close()

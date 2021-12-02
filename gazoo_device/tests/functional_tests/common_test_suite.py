@@ -222,24 +222,31 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
 
   def _verify_boot_up_log(self, start_time):
     """Verifies that the device booted up after the start_time."""
-    parser_result = self.device.event_parser.get_last_event(["basic.bootup"])
+    event_name = "basic.bootup"
+    if event_name not in self.device.event_parser.get_event_labels():
+      self.logger.info("%s does not define a %r event. "
+                       "Skipping boot up event verification.",
+                       self.device.name, event_name)
+      return
+
+    parser_result = self.device.event_parser.get_last_event([event_name])
     self.assertGreater(parser_result.count, 0,
-                       "Error: event label 'basic.bootup' not found.")
+                       f"Event label {event_name!r} not found.")
     timestamp = parser_result.results_list[0]["system_timestamp"]
     self.assertGreater(
         timestamp, start_time,
-        "Expected basic bootup timestamp {} to be > start time {}".format(
-            timestamp, start_time))
+        "Expected {!r} timestamp {} to be > start time {}".format(
+            event_name, timestamp, start_time))
 
   def _verify_expect_log(self):
     """Verifies that 'known_logline' occurs in device logs."""
-    self.logger.info("Expecting logline %r", self.test_config["known_logline"])
-    res = self.device.switchboard.expect([self.test_config["known_logline"]],
-                                         timeout=30)
+    known_logline_regex = self.test_config["known_logline"]
+    self.logger.info("Expecting log line %r", known_logline_regex)
+    res = self.device.switchboard.expect([known_logline_regex], timeout=30)
     self.assertFalse(
         res.timedout,
         "Expect timed out when waiting for log line {!r}. Shell response: {}"
-        .format(self.test_config["known_logline"], res.before))
+        .format(known_logline_regex, res.before))
 
 
 if __name__ == "__main__":

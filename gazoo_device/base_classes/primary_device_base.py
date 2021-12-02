@@ -52,8 +52,8 @@ class PrimaryDeviceBase(abc.ABC):
     """Returns whether the device is connected or not."""
 
   @abc.abstractproperty
-  def firmware_version(self):
-    """Returns the firmware version installed on the device."""
+  def firmware_version(self) -> str:
+    """The firmware version installed on the device."""
 
   @abc.abstractmethod
   def get_console_configuration(

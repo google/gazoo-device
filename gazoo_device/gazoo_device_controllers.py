@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Device controllers and capabilities built into GDM."""
 from typing import Any, Dict
 
@@ -46,6 +45,7 @@ from gazoo_device.capabilities import pwrpc_lock_default
 from gazoo_device.capabilities import shell_ssh
 from gazoo_device.capabilities import switch_power_dli_powerswitch
 from gazoo_device.capabilities import switch_power_ethernet
+from gazoo_device.capabilities import switch_power_snmp
 from gazoo_device.capabilities import switch_power_unifi_switch
 from gazoo_device.capabilities import switch_power_usb_default
 from gazoo_device.capabilities import switch_power_usb_with_charge
@@ -171,6 +171,7 @@ def export_extensions() -> Dict[str, Any]:
           shell_ssh.ShellSSH,
           switch_power_dli_powerswitch.SwitchPowerDliPowerswitch,
           switch_power_ethernet.SwitchPowerEthernet,
+          switch_power_snmp.SwitchPowerSnmp,
           switch_power_unifi_switch.SwitchPowerUnifiSwitch,
           switch_power_usb_default.SwitchPowerUsbDefault,
           switch_power_usb_with_charge.SwitchPowerUsbWithCharge,

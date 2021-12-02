@@ -1820,15 +1820,22 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     if process.is_started():
       process.stop()
 
-  def _start_processes(self):
-    for process_num in range(len(self._transport_processes)):
-      self.start_transport_process(process_num)
-    if hasattr(self, "_log_writer_process"):
-      if not self._log_writer_process.is_started():
-        self._log_writer_process.start()
-    if hasattr(self, "_log_filter_process"):
-      if not self._log_filter_process.is_started():
-        self._log_filter_process.start()
+  def _start_processes(self) -> None:
+    """Starts all Switchboard processes if not already started."""
+    all_processes = self._transport_processes + [
+        getattr(self, "_log_writer_process", None),
+        getattr(self, "_log_filter_process", None)]
+    processes_to_start = [
+        process for process in all_processes
+        if process is not None and not process.is_started()]
+    for process in processes_to_start:
+      process.start(wait_for_start=False)
+    # b/207400270: with "spawn", each process takes ~1.5s to become responsive.
+    # To speed up the combined process start time, start each process without
+    # waiting for it to become responsive and then wait for all processes to
+    # become responsive to parallelize process startup.
+    for process in processes_to_start:
+      process.wait_for_start()
 
   def _stop_processes(self):
     """Stop all Switchboard processes."""

@@ -15,6 +15,7 @@
 """Default implementation of the Pigweed RPC device common capability."""
 import time
 from typing import Any, Callable
+
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -47,17 +48,17 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     self._rpc_timeout_s = rpc_timeout_s
 
   @decorators.DynamicProperty
-  def vendor_id(self) -> str:
+  def vendor_id(self) -> int:
     """The vendor id of the device."""
     return self._get_static_info("vendor_id")
 
   @decorators.DynamicProperty
-  def product_id(self) -> str:
+  def product_id(self) -> int:
     """The product id of the device."""
     return self._get_static_info("product_id")
 
   @decorators.DynamicProperty
-  def software_version(self) -> str:
+  def software_version(self) -> int:
     """The software version of the device."""
     return self._get_static_info("software_version")
 
@@ -118,7 +119,7 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
       time.sleep(_POLL_INTERVAL_SEC)
     raise errors.DeviceError(f"Failed to boot up within {bootup_timeout}s.")
 
-  def _get_static_info(self, property_name: str) -> str:
+  def _get_static_info(self, property_name: str) -> Any:
     """Returns device static information.
 
     Args:

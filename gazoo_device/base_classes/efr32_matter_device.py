@@ -78,7 +78,7 @@ class Efr32MatterDevice(gazoo_device_base.GazooDeviceBase):
   @decorators.DynamicProperty
   def firmware_version(self) -> str:
     """Firmware version of the device."""
-    return self.pw_rpc_common.software_version
+    return str(self.pw_rpc_common.software_version)
 
   @decorators.LogDecorator(logger)
   def reboot(self, no_wait: bool = False, method: str = "pw_rpc") -> None:

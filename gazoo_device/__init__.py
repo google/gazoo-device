@@ -67,6 +67,7 @@ from gazoo_device import manager
 from gazoo_device import mobly_controller
 from gazoo_device import package_registrar
 from gazoo_device.utility import multiprocessing_utils
+from gazoo_device.utility import signal_utils
 
 Manager = manager.Manager
 register = package_registrar.register
@@ -84,13 +85,8 @@ multiprocessing_utils.configure_multiprocessing()
 # Defend against inadvertent basicConfig, which adds log noise
 logging.getLogger().addHandler(logging.NullHandler())
 
-
-# Ensure that atexit handlers run when killed by SIGTERM
-def graceful_exit(*args, **kwargs):  # pylint: disable=unused-argument
-  raise SystemExit(0)
-
-
-signal.signal(signal.SIGTERM, graceful_exit)
+# Ensure that 'finally' clauses and atexit handlers run when killed by SIGTERM.
+signal.signal(signal.SIGTERM, signal_utils.handle_sigterm)
 
 
 # Set up logger
