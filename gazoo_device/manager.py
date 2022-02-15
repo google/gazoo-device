@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 """
 import atexit
 import collections
+import contextlib
 import copy
 import datetime
 import difflib
@@ -30,7 +31,7 @@ import queue
 import shutil
 import signal
 import time
-from typing import Any, Dict, List, Mapping, Optional, Type, Union
+from typing import Any, Collection, Dict, Generator, List, Mapping, Optional, Tuple, Type, Union
 
 from gazoo_device import config
 from gazoo_device import custom_types
@@ -194,7 +195,8 @@ class Manager:
       skip_recover_device=False,
       make_device_ready: data_types.MAKE_DEVICE_READY_SETTING = "on",
       filters=None,
-      log_name_prefix="") -> custom_types.Device:
+      log_name_prefix="",
+      raise_if_already_open=True) -> custom_types.Device:
     """Returns created device object by identifier specified.
 
     Args:
@@ -210,6 +212,9 @@ class Manager:
         make_device_ready.
       filters (list): paths to custom Parser filter files or directories to use.
       log_name_prefix (str): string to prepend to log filename.
+      raise_if_already_open (bool): If True, creating a primary or virtual
+        device which is already open raises an error. If False, the existing
+        open instance is returned.
 
     Returns:
       The device found and created by the identifier specified.
@@ -251,8 +256,12 @@ class Manager:
     device_type = device_config["persistent"]["device_type"]
     if device_name in self._open_devices:
       if device_type not in self.get_supported_auxiliary_device_types():
-        raise errors.DeviceError(f"Device {device_name} already created. Call "
-                                 f"manager.get_open_device('{device_name}').")
+        if raise_if_already_open:
+          raise errors.DeviceError(
+              f"Device {device_name} already created. "
+              f"Call manager.get_open_device('{device_name}').")
+        else:
+          return self.get_open_device(device_name)
       else:
         # b/193758294: Allow create_device to return open auxiliary devices.
         logger.info(f"{device_name} is an auxiliary device and is already "
@@ -278,6 +287,35 @@ class Manager:
       device_inst.close()
       raise
     return device_inst
+
+  @contextlib.contextmanager
+  def create_and_close_device(
+      self, identifier: str, **kwargs: Any
+  ) -> Generator[custom_types.Device, None, None]:
+    """Context manager for opening and closing a device instance.
+
+    Args:
+      identifier: Identifier of the device to create such as the name, alias, or
+        communication address.
+      **kwargs: Keyword arguments to create_device().
+
+    Yields:
+      A device instance corresponding to the provided identifier.
+    """
+    device_name = self._get_device_name(identifier, raise_error=True)
+    is_auxiliary_device = (
+        self.get_device_configuration(device_name)["persistent"]["device_type"]
+        in self.get_supported_auxiliary_device_types())
+    # Auxiliary devices have an instance user count and should always be closed.
+    # Primary and virtual devices only need to be closed if we opened them.
+    should_close = (
+        is_auxiliary_device or device_name not in self.get_open_device_names())
+    device = self.create_device(identifier, **kwargs)
+    try:
+      yield device
+    finally:
+      if should_close:
+        device.close()
 
   def create_device_sim(
       self,
@@ -521,31 +559,32 @@ class Manager:
     else:
       return (device_config, device_options_config)
 
-  def detect(self,
-             force_overwrite=False,
-             static_ips=None,
-             log_directory=None,
-             save_changes=True,
-             device_configs=None):
+  def detect(
+      self,
+      force_overwrite: bool = False,
+      static_ips: Optional[Collection[str]] = None,
+      log_directory: Optional[str] = None,
+      save_changes: bool = True,
+      device_configs: Optional[Tuple[custom_types.PersistentConfigsDict,
+                                     custom_types.OptionalConfigsDict]] = None,
+      communication_types: Optional[Collection[str]] = None
+  ) -> Optional[Tuple[custom_types.PersistentConfigsDict,
+                      custom_types.OptionalConfigsDict]]:
     """Detect new devices not present in config files.
 
     Args:
-       force_overwrite (bool): Erase the current configs completely and
-         re-detect everything.
-       static_ips (list): list of static ips to detect.
-       log_directory (str): alternative location to store log from default.
-       save_changes (bool): if True, updates the config files.
-       device_configs (None or tuple[dict, dict]): device configs (persistent,
-         options) to pass to the device detector. If None, uses the current
-         Manager configs.
+      force_overwrite: Erase the current configs completely and re-detect
+          everything. The old config files are saved to a backup directory.
+      static_ips: Static ips to detect.
+      log_directory: Alternative location to store log from default.
+      save_changes: If True, updates the config files.
+      device_configs: Device configs (persistent, options) to pass to the
+          device detector. If None, uses the current Manager configs.
+      communication_types: Limit detection to specific communication types.
 
     Returns:
-        None: if save_changes is True.
-        tuple[dict, dict]: if save_changes is False, returns
-            the new device configs: (devices, device_options).
-
-    Note:
-       Overwrite saves the files to a backup directory.
+      The new device configs: (devices, device_options) if save_changes is
+      False, or None if save_changes is True.
     """
     if device_configs is None:
       device_config, options_config = self._make_device_configs(
@@ -560,6 +599,9 @@ class Manager:
       static_ips = [ip_addr for ip_addr in static_ips.split(",") if ip_addr]
     if not log_directory:
       log_directory = self.log_directory
+    if isinstance(communication_types, str):
+      communication_types = [comm_type for comm_type in
+                             communication_types.split(",") if comm_type]
 
     if force_overwrite:
       comm_ports = [
@@ -583,7 +625,7 @@ class Manager:
         .get_supported_auxiliary_device_classes())
 
     new_device_config, new_options_config = detector.detect_all_new_devices(
-        static_ips)
+        static_ips=static_ips, comm_types=communication_types)
     if save_changes:
       self._save_config_to_file(new_device_config, self.device_file_name)
       self._save_config_to_file(new_options_config,
@@ -1362,14 +1404,11 @@ class Manager:
 
     logger.debug("Getting prop for identifier: {} Attr: {}".format(
         identifier, prop))
-    close_device = True
-    device_name = self._get_device_name(identifier, raise_error=True)
-    if device_name in self.get_open_device_names():
-      close_device = False
-      device = self.get_open_device(device_name)
-    else:
-      device = self.create_device(identifier, make_device_ready="off")
-    try:
+
+    with self.create_and_close_device(
+        identifier,
+        raise_if_already_open=False,
+        make_device_ready="off") as device:
       if prop:  # Return a specific property.
         prop = prop.lower()
         if prop in ["communication_type", "device_type"]:
@@ -1397,9 +1436,6 @@ class Manager:
       else:
         device_config["dynamic"] = {"connected": False}
       return device_config
-    finally:
-      if close_device:
-        device.close()
 
   def _get_attributes_list(self, device_config, just_props=False):
     """Return public attributes of class.
@@ -1728,20 +1764,16 @@ class Manager:
     """
     self._type_check("Property name", prop)
     self._type_check(prop, value, allowed_types=(str, type(None), int))
-    device_name = self._get_device_name(identifier, raise_error=True)
-    close_device = True
-    if device_name in self.get_open_device_names():
-      close_device = False
-      device = self.get_open_device(device_name)
-    else:
-      device = self.create_device(identifier, make_device_ready="off")
-    try:
+
+    with self.create_and_close_device(
+        identifier,
+        raise_if_already_open=False,
+        make_device_ready="off") as device:
       if prop == "alias":
         self._realign_alias(value, device.alias, device.name)
       device.set_property(prop, value)
-    finally:
-      if close_device:
-        device.close()
+      device_name = device.name
+
     if device_name in self._devices:
       a_dict = self._devices
     else:

@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,16 +13,17 @@
 # limitations under the License.
 
 """Device Power Default Capability."""
+
 import time
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
-
 from gazoo_device.capabilities.interfaces import device_power_base
 from gazoo_device.utility import deprecation_utils
 import immutabledict
+
 
 logger = gdm_logger.get_logger()
 
@@ -55,7 +56,9 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
                switchboard_inst: Any,
                change_triggers_reboot: bool = False,
                usb_hub_name_prop: str = "device_usb_hub_name",
-               usb_port_prop: str = "device_usb_port"):
+               usb_port_prop: str = "device_usb_port",
+               wait_for_connection_fn: Optional[Callable[[], None]] = None,
+               ):
     """Create an instance of the device_power capability.
 
     The power switch type can be changed by setting the 'device_power_hub_type'
@@ -85,6 +88,8 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
         changing the power mode for the device causes a reboot.
       usb_hub_name_prop: Name of the hub name property.
       usb_port_prop: Name of the hub port property.
+      wait_for_connection_fn: a method to wait for the device to become
+        reachable.
 
     Raises:
       ValueError: If hub type is not a known type.
@@ -114,6 +119,7 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
     self._wait_for_bootup_complete_fn = wait_for_bootup_complete_fn
     self._switchboard = switchboard_inst
     self._change_triggers_reboot = change_triggers_reboot
+    self._wait_for_connection_fn = wait_for_connection_fn
 
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
   def health_check(self):
@@ -222,7 +228,10 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
           f"GDM triggered reboot via {self.hub_type} power change.")
     self._hub.switch_power.power_on(self.port_number)
     if not self._change_triggers_reboot:
-      time.sleep(2)  # Small delay to give time for 'dev/tty' to populate
+      if self._wait_for_connection_fn is not None:
+        self._wait_for_connection_fn()
+      else:
+        time.sleep(2)  # Small delay to give time for 'dev/tty' to populate
       self._switchboard.open_all_transports()
 
     if not no_wait:

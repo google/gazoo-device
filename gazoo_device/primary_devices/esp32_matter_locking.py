@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,13 +17,16 @@ from gazoo_device import decorators
 from gazoo_device import detect_criteria
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import esp32_matter_device
-from gazoo_device.capabilities import pwrpc_lock_default
+from gazoo_device.capabilities.matter_endpoints import door_lock  # pylint: disable=unused-import
 from gazoo_device.protos import device_service_pb2
 from gazoo_device.protos import locking_service_pb2
 from gazoo_device.utility import pwrpc_utils
+import immutabledict
 
 logger = gdm_logger.get_logger()
-_LOCK_RPC_TIMEOUT = 5  # seconds
+
+# TODO(b/209366650) Use discovery cluster and remove the hard-coded IDs.
+_ESP32_DOOR_LOCK_ENDPOINT_ID = 1
 
 
 class Esp32MatterLocking(esp32_matter_device.Esp32MatterDevice):
@@ -39,17 +42,16 @@ class Esp32MatterLocking(esp32_matter_device.Esp32MatterDevice):
       detect_criteria.PigweedQuery.app_type:
           pwrpc_utils.PigweedAppType.LOCKING.value,
   }
+  ENDPOINT_ID_TO_CLASS = immutabledict.immutabledict({
+      _ESP32_DOOR_LOCK_ENDPOINT_ID: door_lock.DoorLockEndpoint,
+  })
   DEVICE_TYPE = "esp32matterlocking"
   _OWNER_EMAIL = "gdm-authors@google.com"
   _COMMUNICATION_KWARGS = {"protobufs": (locking_service_pb2,
                                          device_service_pb2,),
                            "baudrate": esp32_matter_device.BAUDRATE}
 
-  @decorators.CapabilityDecorator(pwrpc_lock_default.PwRPCLockDefault)
-  def pw_rpc_lock(self):
-    """PwRPCLock instance to send RPC commands."""
-    return self.lazy_init(
-        pwrpc_lock_default.PwRPCLockDefault,
-        device_name=self.name,
-        switchboard_call=self.switchboard.call,
-        rpc_timeout_s=_LOCK_RPC_TIMEOUT)
+  @decorators.CapabilityDecorator(door_lock.DoorLockEndpoint)
+  def door_lock(self) -> door_lock.DoorLockEndpoint:
+    """ZCL door lock endpoint instance."""
+    return self.matter_endpoints.get(_ESP32_DOOR_LOCK_ENDPOINT_ID)

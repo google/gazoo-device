@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -111,7 +111,7 @@ class SwitchPowerSnmp(switch_power_base.SwitchPowerBase):
                              f"with command: {get_mode_command}\n"
                              f"Unexpected output: {response}")
 
-  @decorators.CapabilityLogDecorator(logger, decorators.DEBUG)
+  @decorators.CapabilityLogDecorator(logger)
   def set_mode(self, mode: Literal[_ON, _OFF], port: int):
     """Sets the given port to the mode specified.
 
@@ -149,7 +149,7 @@ class SwitchPowerSnmp(switch_power_base.SwitchPowerBase):
           f"the port using command: '{set_mode_command}'. "
           f"Output: '{response}'")
 
-  @decorators.CapabilityLogDecorator(logger, decorators.DEBUG)
+  @decorators.CapabilityLogDecorator(logger)
   def power_off(self, port: int):
     """This command powers off the port specified.
 
@@ -158,7 +158,7 @@ class SwitchPowerSnmp(switch_power_base.SwitchPowerBase):
     """
     self.set_mode(_OFF, port)
 
-  @decorators.CapabilityLogDecorator(logger, decorators.DEBUG)
+  @decorators.CapabilityLogDecorator(logger)
   def power_on(self, port: int):
     """This command powers on the port specified.
 

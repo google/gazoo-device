@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -249,7 +249,8 @@ class Yepkit(auxiliary_device.AuxiliaryDevice):
                        command_name="shell",
                        raise_error=False,
                        tries=1,
-                       port=0):
+                       port=0,
+                       timeout=None):
     """Sends a command, searches for a regex in the response, and returns a match group.
 
     Args:
@@ -261,6 +262,7 @@ class Yepkit(auxiliary_device.AuxiliaryDevice):
           a match.
         tries (int): how many times to try executing the command before failing.
         port (int): which port to send the shell command to.
+        timeout (float): Time in seconds to wait for device to respond.
 
     Returns:
         str: value of the capturing group with index 'regex_group' in the match.
@@ -277,7 +279,8 @@ class Yepkit(auxiliary_device.AuxiliaryDevice):
         raise_error=raise_error,
         tries=tries,
         command_name=command_name,
-        port=port)
+        port=port,
+        timeout=timeout)
 
 
 deprecation_utils.add_deprecated_attributes(

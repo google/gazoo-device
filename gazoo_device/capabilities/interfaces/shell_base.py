@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,89 +14,82 @@
 
 """Shell capability interface."""
 import abc
+from typing import Callable, Optional, Tuple, Union
+
+from gazoo_device import config
 from gazoo_device.capabilities.interfaces import capability_base
+from gazoo_device.switchboard import expect_response
+
+TIMEOUT = 10
+TRIES = 2
 
 _DEVICE_CAPABILITY_NAME = "shell_capability"
-_SHELL_CMD = u"{cmd};echo Return Code: $?\n"
-_SHELL_REGEX = r"(.*)Return Code: (\d+)\n"
-_TIMEOUT = 10
-_TRIES = 2
 
 
 class ShellBase(capability_base.CapabilityBase):
   """Abstract base class defining the API for the shell() method."""
 
   def __init__(self,
-               send_and_expect,
-               device_name,
-               shell_cmd=_SHELL_CMD,
-               shell_regex=_SHELL_REGEX,
-               tries=_TRIES,
-               timeout=_TIMEOUT):
-    """Initalize the SSH shell capability.
+               send_and_expect: Callable[..., expect_response.ExpectResponse],
+               device_name: str,
+               tries: int = TRIES,
+               timeout: float = TIMEOUT) -> None:
+    """Initializes an instance of Shell capability.
 
     Args:
-        send_and_expect (method): bound send_and_expect method of the device
-          class instance.
-        device_name (str): name of the device using this capability.
-        shell_cmd (str): return code wrapper around the shell command to
-          execute.
-        shell_regex (str): shell regex to use. Must contain two capturing
-          groups: one for the output and one for the return code.
-        tries (int): how many times to try sending the shell command.
-        timeout (float): shell timeout in seconds.
+      send_and_expect: send_and_expect method of the device class instance.
+      device_name: Name of the device using this capability.
+      tries: How many times to try sending the shell command.
+      timeout: Shell timeout in seconds.
     """
-    super(ShellBase, self).__init__(device_name=device_name)
+    super().__init__(device_name=device_name)
 
     self._send_and_expect = send_and_expect
-    self._shell_regex = shell_regex
-    self._shell_cmd = shell_cmd
     self._tries = tries
     self._timeout = timeout
 
   @classmethod
-  def get_capability_name(cls):
+  def get_capability_name(cls) -> str:
     """Override the default to avoid a name conflict with the "shell" method."""
     return _DEVICE_CAPABILITY_NAME
 
   @abc.abstractmethod
-  def shell(self,
-            command,
-            command_name="shell",
-            timeout=10,
-            port=0,
-            include_return_code=False):
+  def shell(
+      self,
+      command: str,
+      command_name: str = "shell",
+      timeout: Optional[float] = None,
+      port: int = 0,
+      include_return_code: bool = False,
+      searchwindowsize: int = config.SEARCHWINDOWSIZE
+  ) -> Union[str, Tuple[str, int]]:
     """Sends command and returns response and optionally return code.
 
+    If the SSH connection fails, the command is retried (up to a total of
+    self._tries attempts).
+
     Args:
-        command (str): Command to send to the device.
-        command_name (str): Identifier for command.
-        timeout (float): Time in seconds to wait for device to respond.
-        port (int): Which port to send on, 0 or 1.
-        include_return_code (bool): flag indicating return code should be
-          returned.
+      command: Command to send to the device.
+      command_name: Identifier for command.
+      timeout: Time in seconds to wait for device to respond.
+      port: Which port to send on. Port 0 is typically used for commands.
+      include_return_code: Whether to also return the command return code.
+      searchwindowsize: Number of the last bytes to look at.
 
     Raises:
-        DeviceError: if communication fails.
-
-    Note:
-        Can try multiple times as connection can sometimes fail.
-        See the init args for setting the number of retry attempts.
+      DeviceError: if communication fails.
 
     Returns:
-        str: If include_return_code is False return the device response to
-        the command.
-        tuple: If include_return_code is True return the device response and
-        return code.
+      If include_return_code is False, returns the device response to the
+        command.
+      If include_return_code is True, returns the device response and the
+        command return code.
     """
 
   @abc.abstractmethod
-  def has_command(self, binary_name):
+  def has_command(self, binary_name: str) -> bool:
     """Returns if binary_name is installed on the device.
 
     Args:
-        binary_name (str): name of the executable.
-
-    Returns:
-        bool: True if the executable is found on the device, False otherwise.
+      binary_name: Name of the executable.
     """

@@ -1,0 +1,7 @@
+{
+  "shell_cmd": "which chip-tool\n",
+  "expect": ["/usr/bin/chip-tool"],
+  "do_not_run_tests": [],
+  "slow_tests": [],
+  "volatile_tests": []
+}

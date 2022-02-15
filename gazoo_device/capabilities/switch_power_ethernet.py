@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ class SwitchPowerEthernet(switch_power_base.SwitchPowerBase):
       return ON
     return OFF
 
-  @decorators.CapabilityLogDecorator(logger, decorators.DEBUG)
+  @decorators.CapabilityLogDecorator(logger)
   def power_off(self, port):
     """This command powers off the port specified.
 
@@ -76,7 +76,7 @@ class SwitchPowerEthernet(switch_power_base.SwitchPowerBase):
     """
     self.set_mode(OFF, port)
 
-  @decorators.CapabilityLogDecorator(logger, decorators.DEBUG)
+  @decorators.CapabilityLogDecorator(logger)
   def power_on(self, port):
     """This command powers on the port specified.
 
@@ -85,7 +85,7 @@ class SwitchPowerEthernet(switch_power_base.SwitchPowerBase):
     """
     self.set_mode(ON, port)
 
-  @decorators.CapabilityLogDecorator(logger, decorators.DEBUG)
+  @decorators.CapabilityLogDecorator(logger)
   def set_mode(self, mode, port):
     """Sets the given port to the mode specified.
 

@@ -53,6 +53,25 @@ export PATH=$PATH:$HOME/SimplicityCommander-Linux/commander
 commander flash ${image_file}.s37
 ```
 
+You may also use GDM for flashing. You'll need to download the `.hex` image from
+the above build bot, or manually convert the image from `.s37` to `.hex`
+following the
+[commander instruction](https://www.silabs.com/documents/public/user-guides/ug162-simplicity-commander-reference-guide.pdf).
+Then use GDM python interpreter to flash:
+
+```
+>>> from gazoo_device import Manager
+>>> m = Manager()
+>>> efr = m.create_device('efr32-3453')
+>>> efr.flash_build.flash_device(['/path/to/efr32_light.hex'])
+```
+
+Or using GDM CLI:
+
+```
+gdm issue efr32-3453 - flash_build - upgrade --build_file=/path/to/efr32_light.hex
+```
+
 **4. (Optional) Try RPC**
 
 Try if the Lighting endpoints work in the interactive console.
@@ -99,9 +118,9 @@ Detect the EFR32 lighting app: `gdm detect`
 Using GDM CLI
 
 ```
-gdm issue efr32matterlighting-3453 - pw_rpc_light - on  # Turn the light on
-gdm issue efr32matterlighting-3453 - pw_rpc_light - state  # Check the light state
-gdm issue efr32matterlighting-3453 - pw_rpc_light - off  # Turn the light off
+gdm issue efr32matterlighting-3453 - on_off_light - on_off - on  # Turn the light on
+gdm issue efr32matterlighting-3453 - on_off_light - on_off - onoff  # Check the light state
+gdm issue efr32matterlighting-3453 - on_off_light - on_off - off  # Turn the light off
 gdm issue efr32matterlighting-3453 - pw_rpc_button - push 0  # Push button 0
 gdm issue efr32matterlighting-3453 - factory_reset
 gdm issue efr32matterlighting-3453 - reboot
@@ -126,8 +145,8 @@ Inside python console:
 >>> from gazoo_device import Manager
 >>> m = Manager()
 >>> efr = m.create_device('efr32matterlighting-3453')
->>> efr.pw_rpc_light.on()
->>> efr.pw_rpc_light.state
+>>> efr.on_off_light.on_off.on()
+>>> efr.on_off_light.on_off.onoff
 >>> efr.close()
 ```
 
@@ -141,24 +160,25 @@ and
 **1. Turn on/off the light and get light state**
 
 ```
->> efr.pw_rpc_light.on()
->> efr.pw_rpc_light.off()
->> efr.pw_rpc_light.state
+>>> efr.on_off_light.on_off.on()
+>>> efr.on_off_light.on_off.off()
+>>> efr.on_off_light.on_off.onoff
 ```
 
 **2. Set and get brightness level**
 
 ```
->> efr.pw_rpc_light.on(level=100)
->> efr.pw_rpc_light.brightness
+>>> efr.on_off_light.on_off.move_to_level(level=108)
+>>> efr.on_off_light.on_off.current_level
 ```
 
 **3. Set and get lighting color**
 
 ```
->>> efr.pw_rpc_light.on(hue=50, saturation=30)
->>> efr.pw_rpc_light.color.hue
->>> efr.pw_rpc_light.color.saturation
+>>> efr.color_temperature_light.color.move_to_hue(108)
+>>> efr.color_temperature_light.color.current_hue
+>>> efr.color_temperature_light.color.move_to_saturation(50)
+>>> efr.color_temperature_light.color.current_saturation
 ```
 
 **4. Push buttons on the board**

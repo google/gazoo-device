@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,28 +21,32 @@ class PackageManagementBase(capability_base.CapabilityBase):
   """Abstract base class defining API for package management."""
 
   @abc.abstractmethod
-  def install_package(self, package_path, *args, **kwargs):
+  def install_package(self, package_path: str) -> None:
     """Installs a package on the device.
 
     Args:
-        package_path (str): the path to the package on host machine.
-        *args (list): positional arguments.
-        **kwargs (dict): optional keyword arguments.
+      package_path: The path to the package on the host machine.
 
     Raises:
-        ValueError: when package_path is not valid.
-        DeviceError: if failed to install the package.
+      ValueError: when package_path is not valid.
+      DeviceError: if failed to install the package.
     """
 
   @abc.abstractmethod
-  def uninstall_package(self, package_name, *args, **kwargs):
+  def uninstall_package(self, package_name: str) -> None:
     """Uninstalls a package on the device.
 
     Args:
-        package_name (str): the name of the package to uninstall.
-        *args (list): positional arguments.
-        **kwargs (dict): optional keyword arguments.
+      package_name: The name of the package to uninstall.
 
     Raises:
-        DeviceError: if failed to uninstall the package.
+      DeviceError: if failed to uninstall the package.
+    """
+
+  @abc.abstractmethod
+  def has_package(self, package_name: str) -> bool:
+    """Returns whether the package is installed on the device.
+
+    Args:
+      package_name: The package name.
     """

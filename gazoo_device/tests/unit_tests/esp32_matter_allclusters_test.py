@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,17 +32,22 @@ class Esp32MatterAllclustersTests(fake_device_test_case.FakeDeviceTestCase):
         self.device_config,
         log_directory=self.artifacts_directory)
 
-  def test_001_create_esp32matterallclusters_device(self):
-    """Verifies create_device works as expected."""
-    self.assertIsNotNone(self.uut)
-
-  def test_002_lighting_rpc_capability(self):
-    """Verifies the initialization of pw_rpc_light capability."""
-    self.assertTrue(self.uut.pw_rpc_light)
-
-  def test_003_button_rpc_capability(self):
+  def test_button_rpc_capability(self):
     """Verifies the initialization of pw_rpc_button capability."""
-    self.assertTrue(self.uut.pw_rpc_button)
+    self.assertIsNotNone(self.uut.pw_rpc_button)
+
+  def test_wifi_rpc_capability(self):
+    """Verifies the initialization of pw_rpc_wifi capability."""
+    self.assertIsNotNone(self.uut.pw_rpc_wifi)
+
+  def test_on_off_light_endpoint(self):
+    """Verifies the initialization of on_off_light endpoint."""
+    self.assertIsNotNone(self.uut.on_off_light)
+
+  def test_color_temperature_light_endpoint(self):
+    """Verifies the initialization of color_temperature_light endpoint."""
+    self.assertIsNotNone(self.uut.color_temperature_light)
+
 
 if __name__ == "__main__":
   fake_device_test_case.main()

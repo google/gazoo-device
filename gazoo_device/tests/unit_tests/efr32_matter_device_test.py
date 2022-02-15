@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,32 +15,38 @@
 """Unit tests for base class Efr32MatterDevice."""
 from unittest import mock
 
-from gazoo_device import console_config
+from absl.testing import parameterized
 from gazoo_device import errors
 from gazoo_device.base_classes import efr32_matter_device
+from gazoo_device.capabilities import device_power_default
+from gazoo_device.capabilities import pwrpc_common_default
+from gazoo_device.tests.unit_tests.capability_tests.mixins import pwrpc_common_test
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 import immutabledict
 
-
 _FAKE_DEVICE_ID = "efr32matterdevicestub-detect"
 _FAKE_DEVICE_ADDRESS = "fake-device-address"
-_FAKE_FIRMWARE_VERSION = "fake-firmware-version"
-_FAKE_COMMAND = "fake-command"
+_FAKE_VENDOR_ID = "fake-vendor-id"
+_FAKE_PRODUCT_ID = "fake-product-id"
 _EFR32_CONNECT_PERSISTENT_PROPERTIES = immutabledict.immutabledict({
     "os": "FreeRTOS",
     "platform": "EFR32MG",
     "serial_number": "FT2BSR6O",
     "name": "efr32matterdevicestub_detect",
     "device_type": "efr32matterdevicestub",
+    "vendor_id": _FAKE_VENDOR_ID,
+    "product_id": _FAKE_PRODUCT_ID,
 })
 
 
 class Efr32MatterDeviceStub(efr32_matter_device.Efr32MatterDevice):
   """Dummy implementation for instantiation of Efr32MatterDevice."""
   DEVICE_TYPE = "efr32matterdevicestub"
+  ENDPOINT_ID_TO_CLASS = {}
 
 
-class Efr32MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
+class Efr32MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase,
+                            pwrpc_common_test.PigweedRpcCommonTestMixin):
   """Unit tests for base class Efr32MatterDevice."""
 
   def setUp(self):
@@ -54,21 +60,8 @@ class Efr32MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
                                      self.device_config,
                                      log_directory=self.artifacts_directory)
 
-  @mock.patch.object(console_config, "get_log_only_configuration")
-  def test_001_get_console_configuration_on_success(self, mock_console_config):
-    """Verifies get_console_configuration on success."""
-    config = self.uut.get_console_configuration()
-    self.assertIsNotNone(config)
-
-  def test_002_get_detection_info_on_success(self):
-    """Verifies persistent properties are set correctly."""
-    self._test_get_detection_info(
-        console_port_name=_FAKE_DEVICE_ADDRESS,
-        device_class=Efr32MatterDeviceStub,
-        persistent_properties=_EFR32_CONNECT_PERSISTENT_PROPERTIES)
-
   @mock.patch.object(efr32_matter_device.os.path, "exists", return_value=True)
-  def test_003_is_connected_true(self, mock_exists):
+  def test_is_connected_true(self, mock_exists):
     """Verifies is_connected returns true when console port exists."""
     self.assertTrue(
         efr32_matter_device.Efr32MatterDevice.is_connected(self.device_config))
@@ -76,45 +69,46 @@ class Efr32MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
 
   @mock.patch.object(
       efr32_matter_device.Efr32MatterDevice, "pw_rpc_common")
-  def test_004_get_firmware_version_on_success(self, mock_rpc_common):
-    """Verifies get firmware_version on success."""
-    mock_rpc_common.software_version = _FAKE_FIRMWARE_VERSION
-    self.assertEqual(self.uut.firmware_version, _FAKE_FIRMWARE_VERSION)
+  def test_get_detection_info_on_success(self, mock_rpc_common):
+    """Verifies persistent properties are set correctly."""
+    mock_rpc_common.vendor_id = _FAKE_VENDOR_ID
+    mock_rpc_common.product_id = _FAKE_PRODUCT_ID
+    self._test_get_detection_info(
+        console_port_name=_FAKE_DEVICE_ADDRESS,
+        device_class=Efr32MatterDeviceStub,
+        persistent_properties=_EFR32_CONNECT_PERSISTENT_PROPERTIES)
 
-  @mock.patch.object(
-      efr32_matter_device.Efr32MatterDevice, "pw_rpc_common")
-  def test_005_reboot_on_success(self, mock_rpc_common):
-    """Verifies reboot on success."""
-    self.uut.reboot()
-    mock_rpc_common.reboot.assert_called_once()
-
-  @mock.patch.object(
-      efr32_matter_device.Efr32MatterDevice, "pw_rpc_common")
-  def test_006_factory_reset_on_success(self, mock_rpc_common):
-    """Verifies factory reset on success."""
-    self.uut.factory_reset()
-    mock_rpc_common.factory_reset.assert_called_once()
-
-  def test_007_common_rpc_capability(self):
-    """Verifies the initialization of pw_rpc_common capability."""
-    self.assertTrue(self.uut.pw_rpc_common)
-
-  def test_008_flash_build_capability(self):
+  def test_flash_build_capability(self):
     """Verifies the initialization of flash_build capability."""
     self.assertTrue(self.uut.flash_build)
 
-  def test_009_shell_not_implemented(self):
-    """Verifies the shell method not implemented."""
-    error_regex = "shell not implemented for EFR32 Matter device."
-    with self.assertRaisesRegex(errors.DeviceError, error_regex):
-      self.uut.shell(command=_FAKE_COMMAND)
+  def test_matter_endpoints_capability(self):
+    """Verifies the initialization of matter_endpoints capability."""
+    self.assertIsNotNone(self.uut.matter_endpoints)
+
+  def test_device_power_capability(self):
+    """Verifies the initialization of device_power capability."""
+    self.assertIsNotNone(self.uut.device_power)
 
   @mock.patch.object(
-      efr32_matter_device.Efr32MatterDevice, "pw_rpc_common")
-  def test_010_wait_for_bootup_complete_not_implemented(self, mock_rpc_common):
-    """Verifies the wait_for_bootup_complete not implemented."""
-    self.uut.wait_for_bootup_complete()
-    mock_rpc_common.wait_for_bootup_complete.assert_called_once()
+      device_power_default.DevicePowerDefault, "cycle", autospec=True)
+  def test_device_reboot_hard(self, reboot_fn):
+    self.uut.reboot(method="hard")
+    reboot_fn.assert_called_once()
+
+  @parameterized.parameters(dict(method="soft"), dict(method="pw_rpc"))
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "reboot", autospec=True)
+  def test_device_reboot(self, reboot_fn, method):
+    self.uut.reboot(method)
+    reboot_fn.assert_called_once()
+
+  def test_device_reboot_raise_error(self):
+    """Test reboot method with invalid method."""
+    with self.assertRaisesRegex(
+        errors.DeviceError,
+        r"ValueError: Method invalid_reboot_method not recognized"):
+      self.uut.reboot(method="invalid_reboot_method")
 
 
 if __name__ == "__main__":

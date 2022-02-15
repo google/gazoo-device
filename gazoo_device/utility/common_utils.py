@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Common reusable utility functions."""
+import re
 import weakref
 
 
@@ -140,3 +141,15 @@ def _is_new_word(s, pos):
   return (pos == 0 or (s[pos].isupper() and
                        (not s[pos - 1].isupper() or
                         (pos + 1 < len(s) and not s[pos + 1].isupper()))))
+
+
+def extract_posix_portable_characters(string: str) -> str:
+  """Extracts posix fully portable characters from a string.
+
+  Args:
+    string: String to extract characters from.
+
+  Returns:
+    String of characters with all non-posix portable characters removed.
+  """
+  return re.sub(r"[^a-zA-Z0-9._\-]", "", string)

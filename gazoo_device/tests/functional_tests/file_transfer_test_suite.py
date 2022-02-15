@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ from typing import Type
 
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 import immutabledict
+from mobly import asserts
 
 _COMMANDS = immutabledict.immutabledict({
     "IS_WRITABLE_DIRECTORY": "test -d {path} && test -w {path}",
@@ -59,12 +60,12 @@ class FileTransferTestSuite(gdm_test_base.GDMTestBase):
     """Returns True if the device must be paired to run this test suite."""
     return False
 
-  def setUp(self):
+  def setup_test(self):
     """Creates a text source file for transfer to the device."""
-    super().setUp()
+    super().setup_test()
 
     file_contents = "The quick brown dog jumps over the lazy fox\n"
-    self.host_source_path = os.path.join(self.get_output_dir(),
+    self.host_source_path = os.path.join(self.log_path,
                                          "file_transfer_source.txt")
     with open(self.host_source_path, "w") as open_file:
       open_file.write(file_contents)
@@ -76,17 +77,17 @@ class FileTransferTestSuite(gdm_test_base.GDMTestBase):
     device_path = os.path.join(device_dir, received_file_name)
     self.device.file_transfer.send_file_to_device(self.host_source_path,
                                                   device_path)
-    host_received_path = os.path.join(self.get_output_dir(), received_file_name)
+    host_received_path = os.path.join(self.log_path, received_file_name)
     try:
       self.device.file_transfer.recv_file_from_device(device_path,
                                                       host_received_path)
-      self.assertTrue(
+      asserts.assert_true(
           os.path.exists(host_received_path),
           f"recv_file_from_device did not create {host_received_path}")
       with open(self.host_source_path) as source_file:
         with open(host_received_path) as received_file:
-          self.assertEqual(source_file.read(), received_file.read(),
-                           "Received file was not equal to the sent file")
+          asserts.assert_equal(source_file.read(), received_file.read(),
+                               "Received file was not equal to the sent file")
     finally:
       self.device.shell(_COMMANDS["REMOVE_FILE"].format(path=device_path))
 
@@ -101,9 +102,9 @@ class FileTransferTestSuite(gdm_test_base.GDMTestBase):
           include_return_code=True)
       if return_code == 0:
         return possible_dir
-    self.fail("Failed to find a writable directory on the device. "
-              f"Known possible directories {possible_dirs} did not work. "
-              "Find an appropriate directory and add it to the list.")
+    asserts.fail("Failed to find a writable directory on the device. "
+                 f"Known possible directories {possible_dirs} did not work. "
+                 "Find an appropriate directory and add it to the list.")
 
 
 if __name__ == "__main__":

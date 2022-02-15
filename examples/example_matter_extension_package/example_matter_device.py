@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,12 +17,14 @@ from gazoo_device import decorators
 from gazoo_device import detect_criteria
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import nrf_matter_device
-from gazoo_device.capabilities import pwrpc_light_default
+from gazoo_device.capabilities.matter_endpoints import on_off_light  # pylint: disable=unused-import
 from gazoo_device.protos import device_service_pb2
 from gazoo_device.protos import lighting_service_pb2
 from gazoo_device.utility import pwrpc_utils
+import immutabledict
 
 logger = gdm_logger.get_logger()
+_NRF_ON_OFF_LIGHT_ENDPOINT_ID = 1
 
 
 class PartnerExampleMatterLighting(nrf_matter_device.NrfMatterDevice):
@@ -55,18 +57,16 @@ class PartnerExampleMatterLighting(nrf_matter_device.NrfMatterDevice):
       detect_criteria.PigweedQuery.app_type:
           pwrpc_utils.PigweedAppType.LIGHTING.value,
   }
+  ENDPOINT_ID_TO_CLASS = immutabledict.immutabledict({
+      _NRF_ON_OFF_LIGHT_ENDPOINT_ID: on_off_light.OnOffLightEndpoint})
   DEVICE_TYPE = "examplematterlighting"
   _COMMUNICATION_KWARGS = {
-      "protobufs": (device_service_pb2,
-                    lighting_service_pb2),
+      "protobufs": (device_service_pb2, lighting_service_pb2),
       "baudrate": nrf_matter_device.BAUDRATE,
   }
   _OWNER_EMAIL = "gdm-authors@google.com"
 
-  @decorators.CapabilityDecorator(pwrpc_light_default.PwRPCLightDefault)
-  def pw_rpc_light(self):
-    """PwRPCLight capability to send RPC command."""
-    return self.lazy_init(
-        pwrpc_light_default.PwRPCLightDefault,
-        device_name=self.name,
-        switchboard_call=self.switchboard.call)
+  @decorators.CapabilityDecorator(on_off_light.OnOffLightEndpoint)
+  def on_off_light(self):
+    """ZCL on_off light endpoint instance."""
+    return self.matter_endpoints.get(_NRF_ON_OFF_LIGHT_ENDPOINT_ID)

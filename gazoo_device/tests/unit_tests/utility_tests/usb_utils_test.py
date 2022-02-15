@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -173,7 +173,7 @@ class UsbUtilsTests(unit_test_case.UnitTestCase):
   def test_003_bad_serial_path(self, mock_mac_info):
     """Returns empty dict."""
     product_name = usb_utils.get_product_name_from_path("/dev/bogus_path")
-    self.assertIsNone(product_name)
+    self.assertFalse(product_name)
 
   @mock.patch("sys.platform", "darwin")
   @mock.patch.object(

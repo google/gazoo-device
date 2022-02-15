@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,14 +13,19 @@
 # limitations under the License.
 
 """Device logs for raspbian devices."""
-RETURN_CODE = "0\n"
-ERROR_RETURN_CODE = "127\n"
+from gazoo_device.tests.unit_tests.utils import ssh_device_logs
 
-DEFAULT_BEHAVIOR = {
-    "cat /proc/device-tree/model;echo Return Code: $?\n":
-        "Raspberry Pi 3 Model B Rev 1.1\nReturn Code: 0\n",
-    "cat /etc/os-release;echo Return Code: $?\n":
-        f"""
+generate_command = ssh_device_logs.generate_command
+generate_response = ssh_device_logs.generate_response
+make_device_responses = ssh_device_logs.make_device_responses
+
+_RESPONSES = [{
+    "cmd": "cat /proc/device-tree/model",
+    "resp": "Raspberry Pi 3 Model B Rev 1.1",
+    "code": 0,
+}, {
+    "cmd": "cat /etc/os-release",
+    "resp": """
         PRETTY_NAME="Raspbian GNU/Linux 10 (buster)"
         NAME="Raspbian GNU/Linux"
         VERSION_ID="10"
@@ -30,10 +35,11 @@ DEFAULT_BEHAVIOR = {
         ID_LIKE=debian
         HOME_URL="http://www.raspbian.org/"
         SUPPORT_URL="http://www.raspbian.org/RaspbianForums"
-        BUG_REPORT_URL="http://www.raspbian.org/RaspbianBugs"
-        Return Code: {RETURN_CODE}""",
-    "cat /proc/cpuinfo;echo Return Code: $?\n":
-        f"""
+        BUG_REPORT_URL="http://www.raspbian.org/RaspbianBugs""",
+    "code": 0,
+}, {
+    "cmd": "cat /proc/cpuinfo",
+    "resp": """
         processor	: 0
         model name	: ARMv7 Processor rev 4 (v7l)
         BogoMIPS	: 38.40
@@ -77,29 +83,43 @@ DEFAULT_BEHAVIOR = {
         Hardware	: BCM2835
         Revision	: a020d3
         Serial		: 000000005ee230c2
-        Model		: Raspberry Pi 3 Model B Plus Rev 1.3
-        Return Code: {RETURN_CODE}""",
-    "uname -r;echo Return Code: $?\n":
-        f"4.19.75-v7+\nReturn Code: {RETURN_CODE}",
-    "sudo bash -c 'echo \"--- GDM Log Marker ---\" >> /var/log/syslog';"
-        "echo Return Code: $?\n":
-        f"Return Code: {RETURN_CODE}",
-    "sudo systemctl --wait is-system-running;echo Return Code: $?\n":
-        f"running\nReturn Code: {RETURN_CODE}",
-    "Hello;echo Return Code: $?\n":
-        f"bash: Hello: command not foundReturn Code: {RETURN_CODE}",
-    "echo 'GDM-HELLO';echo Return Code: $?\n":
-        "GDM-HELLO\nReturn Code: 0\n",
-    "echo 'wlan0';echo Return Code: $?\n":
-        "wlan0\nReturn Code: 0\n",
-    "ip address show wlan0;echo Return Code: $?\n":
-        """
+        Model		: Raspberry Pi 3 Model B Plus Rev 1.3""",
+    "code": 0,
+}, {
+    "cmd": "uname -r",
+    "resp": "4.19.75-v7+",
+    "code": 0,
+}, {
+    "cmd": "sudo bash -c 'echo \"--- GDM Log Marker ---\" >> /var/log/syslog'",
+    "resp": "",
+    "code": 0,
+}, {
+    "cmd": "sudo systemctl --wait is-system-running",
+    "resp": "running",
+    "code": 0,
+}, {
+    "cmd": "Hello",
+    "resp": "bash: Hello: command not found",
+    "code": 0,
+}, {
+    "cmd": "echo 'GDM-HELLO'",
+    "resp": "GDM-HELLO",
+    "code": 0,
+}, {
+    "cmd": "echo 'wlan0'",
+    "resp": "wlan0",
+    "code": 0,
+}, {
+    "cmd": "ip address show wlan0",
+    "resp": """
         3: wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast
            state UP group default qlen 1000
            link/ether b8:27:eb:ae:7c:57 brd ff:ff:ff:ff:ff:ff
            inet 192.168.50.199/24 brd 192.168.50.255 scope global wlan0
            valid_lft forever preferred_lft forever
            inet6 fe80::319b:325e:d0f2:4d78/64 scope link
-           valid_lft forever preferred_lft forever
-        Return Code: 0""",
-}
+           valid_lft forever preferred_lft forever""",
+    "code": 0,
+}]
+
+DEFAULT_BEHAVIOR = ssh_device_logs.make_device_responses(_RESPONSES)

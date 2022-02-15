@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -73,8 +73,10 @@ set raise_on_process_error to False. For example:
 
 In this case results will be ["< No result received >",
                               "< No result received >"].
-Errors will be [("RuntimeError", "Demo of exception handling 1"),
-                ("RuntimeError", "Demo of exception handling 2")].
+Errors will be [
+    ("RuntimeError", "Demo of exception handling 1", "< Exception traceback >"),
+    ("RuntimeError", "Demo of exception handling 2", "< Exception traceback >"),
+].
 
 Logging behavior:
   Parallel process GDM logger logs are sent to the main process.
@@ -87,6 +89,7 @@ import multiprocessing
 import os
 import queue
 import time
+import traceback
 from typing import Any, Callable, List, Optional, Sequence, Tuple
 
 from gazoo_device import errors
@@ -98,6 +101,7 @@ from gazoo_device.utility import multiprocessing_utils
 import immutabledict
 
 NO_RESULT = "< No result received >"
+NO_TRACEBACK = "< No traceback available >"
 TIMEOUT_PROCESS = 600.0
 _TIMEOUT_TERMINATE_PROCESS = 3
 _QUEUE_READ_TIMEOUT = 1
@@ -182,8 +186,10 @@ def _process_wrapper(
                  f"Return value: {return_value}.")
     return_queue.put((process_id, return_value))
   except Exception as e:  # pylint: disable=broad-except
-    logger.warning(f"{short_description}: execution raised an error: {e!r}.")
-    error_queue.put((process_id, (type(e).__name__, str(e))))
+    logger.warning(f"{short_description}: execution raised an error: {e!r}.",
+                   exc_info=True)
+    error_queue.put((process_id,
+                     (type(e).__name__, str(e), traceback.format_exc())))
   finally:
     manager_inst.close()
 
@@ -200,11 +206,26 @@ def _read_all_from_queue(queue_inst: multiprocessing.Queue) -> List[Any]:
   return queue_contents
 
 
+def _format_process_errors(
+    proc_errors: Sequence[Optional[Tuple[str, str, str]]]) -> str:
+  """Returns a formatted string with all process errors."""
+  formatted_errors = []
+  for proc_error in proc_errors:
+    if proc_error is not None:
+      error_type, error_message, error_tb = proc_error
+      if error_tb != NO_TRACEBACK:
+        formatted_error = error_tb
+      else:
+        formatted_error = f"{error_type}({error_message!r})"
+      formatted_errors.append(formatted_error)
+  return "\n".join(formatted_errors)
+
+
 def execute_concurrently(
     call_specs: Sequence[CallSpec],
     timeout=TIMEOUT_PROCESS,
     raise_on_process_error=True
-) -> Tuple[List[Any], List[Optional[Tuple[str, str]]]]:
+) -> Tuple[List[Any], List[Optional[Tuple[str, str, str]]]]:
   """Concurrently executes function calls in parallel processes.
 
   Args:
@@ -221,9 +242,9 @@ def execute_concurrently(
     functions executed in parallel. If a parallel process fails, the
     corresponding entry in the return value list will be NO_RESULT.
     Errors are only returned if raise_on_process_error is False.
-    Each error is specified as a tuple of (error_type, error_message).
-    If a parallel process succeeds (there's no error), the corresponding entry
-    in the error list will be None.
+    Each error is specified as a tuple of
+    (error_type, error_message, error_traceback). If a parallel process succeeds
+    (there's no error), the corresponding entry in the error list will be None.
 
   Raises:
     ParallelUtilsError: If raise_on_process_error is True and any of the
@@ -267,8 +288,8 @@ def execute_concurrently(
     proc_results[proc_id] = result
 
   proc_errors = [None] * len(call_specs)
-  for proc_id, error_type_and_message in _read_all_from_queue(error_queue):
-    proc_errors[proc_id] = error_type_and_message
+  for proc_id, error_type_message_tb in _read_all_from_queue(error_queue):
+    proc_errors[proc_id] = error_type_message_tb
 
   # We might not receive any results from a process if it times out or dies
   # unexpectedly. Mark such cases as errors.
@@ -276,11 +297,13 @@ def execute_concurrently(
     if proc_results[proc_id] == NO_RESULT and proc_errors[proc_id] is None:
       proc_errors[proc_id] = (
           errors.ResultNotReceivedError.__name__,
-          "Did not receive any results from the process.")
+          "Did not receive any results from the process.",
+          NO_TRACEBACK)
 
   if raise_on_process_error and any(proc_errors):
     raise errors.ParallelUtilsError(
-        f"Encountered errors in parallel processes: {proc_errors}")
+        "Encountered errors in parallel processes:\n"
+        f"{_format_process_errors(proc_errors)}")
 
   return proc_results, proc_errors
 

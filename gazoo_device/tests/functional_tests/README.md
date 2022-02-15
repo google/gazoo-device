@@ -92,9 +92,9 @@ specified, all tests in the applicable (or selected) test suites will be run.
    and "device" with your device name and type:
 
    ```shell
-   cp ~/gazoo/testbeds/device-1234.textproto ~/gazoo/testbeds/<your-device-name>.textproto
-   # Now update the "name" and "device_type" fields in
-   # ~/gazoo/testbeds/<your-device-name>.textproto.
+   cp ~/gazoo/testbeds/One-Exampledevice.yml ~/gazoo/testbeds/<your-device-name>.yml
+   # Now update the "Name" and "id" fields in
+   # ~/gazoo/testbeds/<your-device-name>.yml.
    ```
 
 4. Set up a virtual environment and install *gazoo-device* and
@@ -112,33 +112,34 @@ specified, all tests in the applicable (or selected) test suites will be run.
 * Run all presubmit tests (excludes slow tests):
 
   ```shell
-  python3 functional_test_runner.py -t ~/gazoo/testbeds/device-1234.textproto \
+  python3 functional_test_runner.py --config ~/gazoo/testbeds/device-1234.yml \
     --run_type presubmit
   ```
 
 * Run all applicable tests (presubmit + volatile + slow, aka full regression):
 
   ```shell
-  python3 functional_test_runner.py -t ~/gazoo/testbeds/device-1234.textproto
+  python3 functional_test_runner.py --config ~/gazoo/testbeds/device-1234.yml
   ```
 
 * Run specific functional test files (in order):
 
   ```shell
-  python3 functional_test_runner.py -t ~/gazoo/testbeds/device-1234.textproto \
+  python3 functional_test_runner.py --config ~/gazoo/testbeds/device-1234.yml \
     --files switch_power_test_suite,auxiliary_device_common_test_suite
   ```
 
 * Run specific functional tests (in order; tests can be from different suites):
 
   ```shell
-  python3 functional_test_runner.py -t ~/gazoo/testbeds/device-1234.textproto \
-    --tests test_shell,test_switch_power_on_and_off
+  python3 functional_test_runner.py --config ~/gazoo/testbeds/device-1234.yml \
+    --tests \
+  CommonTestSuite.test_shell,SwitchPowerTestSuite.test_switch_power_on_and_off
   ```
 
 * Run only volatile tests:
 
   ```shell
-  python3 functional_test_runner.py -t ~/gazoo/testbeds/device-1234.textproto \
+  python3 functional_test_runner.py --config ~/gazoo/testbeds/device-1234.yml \
     --run_type volatile
   ```

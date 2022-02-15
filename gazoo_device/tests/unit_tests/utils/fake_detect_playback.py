@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """A fake playback class to enable mocks for detection tests."""
 
-from typing import Any, Collection, Optional
+from typing import Any, Collection, Optional, Sequence
 from unittest import mock
 
 from gazoo_device.tests.unit_tests.utils import fake_responder
@@ -51,6 +51,13 @@ SINGLETON_DEVICES = immutabledict.immutabledict({
     "yepkit": "YepkitComms",
 })
 
+SNMP_DEVICE_BEHAVIORS = immutabledict.immutabledict({
+    "dlink_switch": {
+        "snmpget -v 2c -c private 192.168.2.65:161 1.3.6.1.2.1.1.1.0":
+            "iso.3.6.1.2.1.1.1.0 = STRING: \"DGS-1100-05 Gigabit Ethernet Switch\"",
+    },
+})
+
 SSH_DEVICE_BEHAVIORS = immutabledict.immutabledict({
     "powerswitch": {
         "http://192.168.2.65/restapi/config/=brand_name/": [
@@ -60,6 +67,10 @@ SSH_DEVICE_BEHAVIORS = immutabledict.immutabledict({
     },
     "raspberrypi": {
         "cat /proc/device-tree/model": "Raspberry Pi 3 Model B Rev 1.1",
+    },
+    "rpi_matter_controller": {
+        "cat /proc/device-tree/model": "Raspberry Pi 4 Model B Rev 1.4",
+        "which chip-tool": "/usr/bin/chip-tool",
     },
     "unifi_switch": {
         "mca-cli-op info":
@@ -100,6 +111,29 @@ class FakeDetectPlayback:
     self.responder = fake_responder.FakeResponder()
     self.responder.behavior_dict = {}
     self.responder.debug = self.debug
+
+  def check_output(self, args: Sequence[str], **kwargs: Any) -> str:
+    """Mocks subprocess.check_output().
+
+    Args:
+      args: Command to invoke.
+      **kwargs: No op.
+
+    Raises:
+      RuntimeError: If command not found in behavior dictionary.
+
+    Returns:
+      Mock response to subprocess.check_output() command.
+    """
+    del kwargs  # Unused
+    command = " ".join(args)
+    if self.debug:
+      print("FAKEPLAYBACK: check_output command: {}".format(command))
+    if command in self.behavior:
+      if self.debug:
+        print("FAKEPLAYBACK: Response: {}".format(self.behavior[command]))
+      return self.behavior[command]
+    raise RuntimeError("Command {command!r} failed")
 
   def ssh_command(self,
                   ip_address: str,

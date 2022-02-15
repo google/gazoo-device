@@ -1,10 +1,9 @@
 {
-  "known_logline": "",
+  "known_logline": ".*",
   "shell_cmd": "",
   "expect": [""],
   "do_not_run_tests": [
     "CommonTestSuite.test_shell",
-    "FlashBuildTestSuite",
     "SwitchboardTestSuite.test_send_and_expect"
   ],
   "slow_tests": [],

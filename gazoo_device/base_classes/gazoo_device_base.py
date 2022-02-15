@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -179,7 +179,10 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
   @decorators.DynamicProperty
   def connected(self):
     """Returns whether or not device is connected."""
-    device_config = {"persistent": self.props["persistent_identifiers"]}
+    device_config = {
+        "persistent": self.props["persistent_identifiers"],
+        "options": self.props["optional"],
+    }
     return self.is_connected(device_config)
 
   @decorators.PersistentProperty
@@ -422,12 +425,12 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     return self._get_properties(names)
 
   @decorators.LogDecorator(logger, decorators.DEBUG)
-  def set_property(self, prop, value):
-    """Set an optional property.
+  def set_property(self, prop: str, value: Any) -> None:
+    """Sets an optional property without writing it to the config file.
 
     Args:
-        prop (str): property name
-        value (object): value of the property name.
+        prop: Property name.
+        value: Value of the property.
 
     Raises:
         ValueError: if property is persistent or dynamic with no setter.
@@ -562,7 +565,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
                        "but device does not support 'flash_build' capability")
       logger.info(f"{self.name} was not able to recover from "
                   f"{unrecoverable_error!r}")
-      raise unrecoverable_error
+      raise unrecoverable_error from recoverable_error
 
     logger.info(f"{self.name} re-flashing device with the default build")
     self.flash_build.upgrade(forced_upgrade=True)
@@ -582,7 +585,8 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
         CheckDeviceReadyError: if no recovery steps are available for the
         error type.
     """
-    if isinstance(error, errors.SwitchboardCreationError):
+    if (isinstance(error, errors.SwitchboardCreationError) and
+        "failed to start child process" not in str(error)):
       if not self.has_capabilities(["comm_power"]):
         raise error
       logger.info(
@@ -596,7 +600,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
                     "Unable to power cycle communication port. "
                     "Try manually power cycling communication port.".format(
                         self.name, err))
-        raise error
+        raise error from err
     else:
       raise error
 
@@ -810,7 +814,8 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
                        tries=2,
                        port=0,
                        searchwindowsize=config.SEARCHWINDOWSIZE,
-                       check_return_code=False):
+                       check_return_code=False,
+                       timeout=None):
     """Sends a command, searches for a regex in the response, and returns a match group.
 
     Args:
@@ -825,6 +830,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
         port (int): which port to send the shell command to.
         searchwindowsize (int): Number of the last bytes to look at
         check_return_code (bool): whether to check the shell return code.
+        timeout (float): Time in seconds to wait for device to respond.
 
     Returns:
         str: value of the capturing group with index 'regex_group' in the
@@ -841,7 +847,8 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
             command_name=command_name,
             port=port,
             searchwindowsize=searchwindowsize,
-            include_return_code=True)
+            include_return_code=True,
+            timeout=timeout)
       except errors.DeviceError:
         continue
 

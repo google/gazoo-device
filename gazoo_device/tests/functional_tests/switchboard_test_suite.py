@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ from typing import Tuple, Type
 
 from gazoo_device.switchboard import log_process
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
+from mobly import asserts
 
 
 class MockPowerSwitch:
@@ -60,7 +61,7 @@ class SwitchboardTestSuite(gdm_test_base.GDMTestBase):
         self.test_config["shell_cmd"],
         self.test_config["expect"],
         timeout=timeout)
-    self.assertFalse(
+    asserts.assert_false(
         response.timedout,
         "{} switchboard.send_and_expect failed for command {!r}. "
         "Did not find regex {!r} in {}s. Device output: {!r}"
@@ -74,21 +75,21 @@ class SwitchboardTestSuite(gdm_test_base.GDMTestBase):
         switch.turn_on_power, (), {},
         ["fake_string, won't match anything"],
         timeout=.1)
-    self.assertTrue(
+    asserts.assert_true(
         expect_result.timedout,
         "Expected do_and_expect to time out, but timedout was False")
-    self.assertTrue(switch.power_is_on,
-                    "switch.turn_on_power() did not execute. "
-                    "The power state is still off for switch.")
+    asserts.assert_true(
+        switch.power_is_on, "switch.turn_on_power() did not execute. "
+        "The power state is still off for switch.")
 
   def test_expect_with_bogus_logline(self):
     """Tests switchboard.expect() method for a log line that doesn't exist."""
     phrase = "garblygookand more"
     response = self.device.switchboard.expect([phrase], timeout=2)
-    self.assertTrue(response.timedout,
-                    "Response should have timed out, but it didn't. "
-                    f"Requested log line regex: {phrase!r}. "
-                    f"Device output: {response.before!r}")
+    asserts.assert_true(
+        response.timedout, "Response should have timed out, but it didn't. "
+        f"Requested log line regex: {phrase!r}. "
+        f"Device output: {response.before!r}")
 
   def test_rotate_log(self):
     """Tests max_log_size and auto log rotation features."""
@@ -106,13 +107,13 @@ class SwitchboardTestSuite(gdm_test_base.GDMTestBase):
       while (old_log_file_name == self.device.log_file_name
              and time.time() < end_time):
         time.sleep(0.1)
-      self.assertTrue(
+      asserts.assert_true(
           os.path.exists(old_log_file_name),
           f"Expected old log file name {old_log_file_name} to exist")
-      self.assertTrue(
+      asserts.assert_true(
           os.path.exists(expected_log_filename),
           f"Expected new log file name {expected_log_filename} to exist")
-      self.assertNotEqual(
+      asserts.assert_not_equal(
           old_log_file_name, self.device.log_file_name,
           f"Expected log file name to change from {old_log_file_name}")
     finally:

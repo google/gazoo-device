@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 #
 # Do not run gdm-install.sh as root.
 
-LINUX_PACKAGES="libftdi-dev libffi-dev lrzsz python3-dev python3-pip android-sdk-platform-tools udisks2 curl wget unzip"
+LINUX_PACKAGES="libftdi-dev libffi-dev lrzsz python3-dev python3-pip android-sdk-platform-tools udisks2 curl wget unzip snmp"
 # udisks2 to get udisksctl
 declare -a MAC_PACKAGES
 MAC_PACKAGES=("libftdi" "coreutils" "android-platform-tools")
@@ -36,7 +36,6 @@ GDM_LAUNCHER="$GAZOO_BIN_DIR/gdm"
 
 CONFIG_SRC_PATH="conf"
 UDEV_SRC_PATH="rules.d"
-EXAMPLE_TESTBED_GAZOOTEST="device-1234.textproto"
 EXAMPLE_TESTBED_MOBLY="One-Exampledevice.yml"
 
 source ./functions.sh
@@ -118,8 +117,6 @@ create_default_configs()
   done
   copy_file_if_not_exist "$CONFIG_SRC_PATH/$EXAMPLE_TESTBED_MOBLY" \
                          "$GAZOO_TESTBEDS_DIR/$EXAMPLE_TESTBED_MOBLY" 644
-  copy_file_if_not_exist "$CONFIG_SRC_PATH/$EXAMPLE_TESTBED_GAZOOTEST" \
-                         "$GAZOO_TESTBEDS_DIR/$EXAMPLE_TESTBED_GAZOOTEST" 644
 }
 
 

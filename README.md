@@ -110,6 +110,21 @@ Installation steps:
     export PATH="${PATH}:${HOME}/gazoo/bin"
     ```
 
+4.  [Optional] Install optional dependencies
+
+    Some of GDM's dependencies are optional and are not installed by the
+    installer automatically due to licensing restrictions.
+
+    To enable flashing NRF52840 DK and EFR32 dev boards through GDM, install the
+    J-Link SDK:
+    https://www.segger.com/downloads/jlink/#J-LinkSoftwareAndDocumentationPack.
+
+    To enable flashing ESP32 dev boards through GDM, install `esptool`:
+
+    ```shell
+    ~/gazoo/gdm/virtual_env/bin/pip install esptool>=3.2
+    ```
+
 GDM installation creates a virtual environment for the CLI at
 `~/gazoo/gdm/virtual_env`. \
 `gdm` CLI commands run in this virtual environment.

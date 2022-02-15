@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ from gazoo_device.auxiliary_devices import nrf52840
 from gazoo_device.base_classes import nrf_connect_sdk_device
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 import immutabledict
-
 
 _FAKE_DEVICE_ID = "nrf52840-detect"
 _FAKE_DEVICE_ADDRESS = "/dev/bus/usb/001/002"
@@ -47,22 +46,22 @@ class NRF52840DeviceTests(fake_device_test_case.FakeDeviceTestCase):
                 self.device_config,
                 log_directory=self.artifacts_directory)
 
-  def test_001_get_console_configuration(self):
+  def test_get_console_configuration(self):
     """Verifies nrf52840 get_console_configuration."""
     self.assertIsNotNone(self.uut.get_console_configuration())
 
-  def test_002_nrf52840_attributes(self):
+  def test_nrf52840_attributes(self):
     """Verifies nrf52840 attributes."""
     self._test_get_detection_info(_FAKE_DEVICE_ADDRESS,
                                   nrf52840.NRF52840,
                                   _NRF_CONNECT_PERSISTENT_PROPERTIES)
 
-  def test_003_jlink_flash_capability(self):
+  def test_jlink_flash_capability(self):
     """Verifies the initialization of j_link_flash capability."""
     self.assertTrue(self.uut.flash_build)
 
   @mock.patch.object(nrf_connect_sdk_device.os.path, "exists")
-  def test_004_is_connected_true(self, mock_exists):
+  def test_is_connected_true(self, mock_exists):
     """Verifies is_connected works as expected."""
     mock_exists.return_value = True
     self.assertTrue(nrf52840.NRF52840.is_connected(self.device_config))

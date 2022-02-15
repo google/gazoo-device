@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ class SwitchPowerUsbWithCharge(switch_power_usb_default.SwitchPowerUsbDefault):
       mode = CHARGE
     return mode
 
-  @decorators.CapabilityLogDecorator(logger, decorators.DEBUG)
+  @decorators.CapabilityLogDecorator(logger)
   def power_off(self, port):
     """This command powers off the port specified.
 
@@ -103,7 +103,7 @@ class SwitchPowerUsbWithCharge(switch_power_usb_default.SwitchPowerUsbDefault):
     self._validate_port("power_off", port)
     self.set_mode(OFF, port)
 
-  @decorators.CapabilityLogDecorator(logger, decorators.DEBUG)
+  @decorators.CapabilityLogDecorator(logger)
   def power_on(self, port, data_sync=True):
     """This command powers on the port specified.
 
@@ -119,7 +119,7 @@ class SwitchPowerUsbWithCharge(switch_power_usb_default.SwitchPowerUsbDefault):
     else:
       self.set_mode(CHARGE, port)
 
-  @decorators.CapabilityLogDecorator(logger, decorators.DEBUG)
+  @decorators.CapabilityLogDecorator(logger)
   def set_mode(self, mode, port):
     """Sets the given USB port to the mode specified.
 

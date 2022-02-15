@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -75,19 +75,19 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
         serial_instance=mock.Mock(spec=serial.Serial),
         protobuf_import_paths=_FAKE_PROTO_IMPORT_PATH)
 
-  def test_001_is_alive(self):
+  def test_is_alive(self):
     """Verifies is_alive method returning True."""
     self.uut._worker = mock.Mock(spec=threading.Thread)
     self.uut._worker.is_alive.return_value = True
     self.assertTrue(self.uut.is_alive())
 
   @mock.patch.object(threading, "Thread")
-  def test_002_start_on_success(self, mock_thread):
+  def test_start_on_success(self, mock_thread):
     """Verifies start method on success."""
     self.uut.start()
     mock_thread.assert_called_once()
 
-  def test_003_close_on_success(self):
+  def test_close_on_success(self):
     """Verifies close method on success."""
     self.uut._stop_event = threading.Event()
     fake_worker = mock.Mock(threading.Thread)
@@ -98,7 +98,7 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
     fake_worker.is_alive.assert_called_once()
     self.assertIsNone(self.uut._worker)
 
-  def test_004_close_on_failure(self):
+  def test_close_on_failure(self):
     """Verifies close method on failure."""
     self.uut._stop_event = threading.Event()
     fake_worker = mock.Mock(threading.Thread)
@@ -108,14 +108,14 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
       self.uut.close()
 
-  def test_005_rpcs_on_success_without_channel_id(self):
+  def test_rpcs_on_success_without_channel_id(self):
     """Verifies rpcs method on success without channel id."""
     self.uut._client = mock.Mock()
     self.uut._client.channels.return_value = [mock.Mock()]
     self.uut.rpcs(channel_id=None)
     self.uut._client.channels.assert_called_once()
 
-  def test_005_rpcs_on_success_with_channel_id(self):
+  def test_rpcs_on_success_with_channel_id(self):
     """Verifies rpcs method on success with channel id."""
     self.uut._client = mock.Mock()
     fake_channel_id = 1
@@ -124,7 +124,7 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
 
   @mock.patch.object(pigweed_rpc_transport.PwHdlcRpcClient, "_handle_frame")
   @mock.patch.object(select, "select")
-  def test_006_read_and_process_data_on_success(self, mock_select, mock_handle):
+  def test_read_and_process_data_on_success(self, mock_select, mock_handle):
     """Verifies read_and_process_data method on success."""
     self.uut._stop_event = mock.Mock(threading.Event)
     self.uut._stop_event.is_set.side_effect = [False, True]
@@ -142,7 +142,7 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
 
   @mock.patch.object(pigweed_rpc_transport, "logger")
   @mock.patch.object(select, "select")
-  def test_006_read_and_process_data_exception(self, mock_select, mock_logger):
+  def test_read_and_process_data_exception(self, mock_select, mock_logger):
     """Verifies read_and_process_data method with exception."""
     self.uut._stop_event = mock.Mock(threading.Event)
     self.uut._stop_event.is_set.side_effect = [False, True]
@@ -155,7 +155,7 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
     mock_logger.exception.assert_called_once()
 
   @mock.patch.object(pigweed_rpc_transport, "logger")
-  def test_007_handle_rpc_packet_logs_error(self, mock_logger):
+  def test_handle_rpc_packet_logs_error(self, mock_logger):
     """Verifies handle_rpc_packet method logging error."""
     self.uut._client = mock.Mock()
     self.uut._client.process_packet.return_value = False
@@ -165,7 +165,7 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
 
     mock_logger.error.assert_called_once()
 
-  def test_008_push_to_log_queue(self):
+  def test_push_to_log_queue(self):
     """Verifies push_to_log_queue on success."""
     self.uut.log_queue = queue.Queue()
     fake_frame = mock.Mock(data=_FAKE_FRAME)
@@ -177,7 +177,7 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
 
   @mock.patch.object(
       pigweed_rpc_transport.PwHdlcRpcClient, "_handle_rpc_packet")
-  def test_009_handle_frame_default_address_on_success(self, mock_handle):
+  def test_handle_frame_default_address_on_success(self, mock_handle):
     """Verifies handle_frame method on success with default address."""
     fake_frame = mock.Mock(address=_DEFAULT_ADDRESS)
     fake_frame.ok.return_value = True
@@ -188,7 +188,7 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
 
   @mock.patch.object(
       pigweed_rpc_transport.PwHdlcRpcClient, "_push_to_log_queue")
-  def test_009_handle_frame_stdout_address_on_success(self, mock_push):
+  def test_handle_frame_stdout_address_on_success(self, mock_push):
     """Verifies handle_frame method on success with stdout address."""
     fake_frame = mock.Mock(address=_STDOUT_ADDRESS)
     fake_frame.ok.return_value = True
@@ -197,14 +197,14 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
 
     mock_push.assert_called_once_with(fake_frame)
 
-  def test_009_handle_frame_not_ok(self):
+  def test_handle_frame_not_ok(self):
     """Verifies handle_frame method handling not ok frame."""
     fake_frame = mock.Mock()
     fake_frame.ok.return_value = False
     self.uut._handle_frame(fake_frame)
 
   @mock.patch.object(pigweed_rpc_transport, "logger")
-  def test_009_handle_frame_on_failure_invalid_frame_address(self, mock_logger):
+  def test_handle_frame_on_failure_invalid_frame_address(self, mock_logger):
     """Verifies handle_frame method on failure with invalid frame address."""
     fake_frame = mock.Mock(address=_FAKE_FRAME_ADDRESS)
     fake_frame.ok.return_value = True
@@ -214,7 +214,7 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
     mock_logger.warning.assert_called_once()
 
   @mock.patch.object(pigweed_rpc_transport, "logger")
-  def test_009_handle_frame_on_failure_exception(self, mock_logger):
+  def test_handle_frame_on_failure_exception(self, mock_logger):
     """Verifies handle_frame method on failure with unexpected exception."""
     fake_frame = mock.Mock()
     fake_frame.ok.side_effect = RuntimeError
@@ -240,7 +240,7 @@ class PigweedRPCTransportTest(unit_test_case.UnitTestCase):
     self.uut = pigweed_rpc_transport.PigweedRPCTransport(
         _FAKE_DEVICE_ADDRESS, _FAKE_PROTO_IMPORT_PATH, _FAKE_BAUDRATE)
 
-  def test_001_transport_is_open(self):
+  def test_transport_is_open(self):
     """Verifies PwRPC transport is_open method on success."""
     self.fake_client.is_alive.return_value = True
     self.fake_serial.isOpen.return_value = True
@@ -249,7 +249,7 @@ class PigweedRPCTransportTest(unit_test_case.UnitTestCase):
     self.fake_serial.isOpen.assert_called_once()
 
   @mock.patch.object(fcntl, "flock")
-  def test_002_transport_close(self, mock_flock):
+  def test_transport_close(self, mock_flock):
     """Verifies PwRPC transport close method on success."""
     self.uut._close()
     self.fake_client.close.assert_called_once()
@@ -258,7 +258,7 @@ class PigweedRPCTransportTest(unit_test_case.UnitTestCase):
     mock_flock.assert_called_once()
 
   @mock.patch.object(fcntl, "fcntl")
-  def test_003_transport_open(self, mock_fcntl):
+  def test_transport_open(self, mock_fcntl):
     """Verifies PwRPC transport open method on success."""
     self.uut._open()
     self.fake_serial.open.assert_called_once()
@@ -266,29 +266,49 @@ class PigweedRPCTransportTest(unit_test_case.UnitTestCase):
     self.fake_client.start.assert_called_once()
     self.assertEqual(2, mock_fcntl.call_count)
 
-  def test_004_transport_read(self):
+  def test_transport_read(self):
     """Verifies PwRPC transport read method."""
     self.fake_client.log_queue.get.side_effect = [_FAKE_HDLC_LOG, queue.Empty]
     self.assertEqual(_FAKE_HDLC_LOG, self.uut.read(0, 0.01))
     self.assertEqual(b"", self.uut.read(0, 0.01))
 
-  def test_005_transport_write(self):
+  def test_transport_write(self):
     """Verifies PwRPC transport write method."""
     self.assertEqual(0, self.uut._write(""))
 
-  def test_006_transport_rpc(self):
+  @mock.patch.object(pigweed_rpc_transport, "_serialize")
+  def test_transport_rpc(self, mock_serialize):
     """Verifies PwRPC transport general rpc method."""
     fake_ack = mock.Mock()
     fake_ack.ok.return_value = True
-    fake_payload = mock.Mock()
-    fake_payload.SerializeToString.return_value = _FAKE_SERIALIZED_BYTES
     fake_channel = mock.Mock()
-    fake_channel.fake_service.fake_event.return_value = fake_ack, fake_payload
+    fake_channel.fake_service.fake_event.return_value = fake_ack, None
     self.fake_client.rpcs.return_value.chip.rpc = fake_channel
+    mock_serialize.return_value = _FAKE_SERIALIZED_BYTES
+
     ack, payload = self.uut.rpc(service_name=_FAKE_SERVICE,
                                 event_name=_FAKE_EVENT)
+
     self.assertTrue(ack)
     self.assertEqual(_FAKE_SERIALIZED_BYTES, payload)
+
+  def test_is_primitive_return_true(self):
+    """Verifies _is_primitive method returning true for primitive data type."""
+    self.assertTrue(pigweed_rpc_transport._is_primitive(_FAKE_DATA))
+
+  def test_is_primitive_return_false(self):
+    """Verifies _is_primitive method returning false for complex data type."""
+    complex_fake_data = mock.Mock()
+    self.assertFalse(pigweed_rpc_transport._is_primitive(complex_fake_data))
+
+  def test_serialize(self):
+    """Verifies _serialize method on success for a list type input."""
+    fake_protobuf_data = mock.Mock()
+    fake_protobuf_data.SerializeToString.return_value = _FAKE_SERIALIZED_BYTES
+    fake_payload = [_FAKE_DATA, fake_protobuf_data]
+
+    self.assertEqual([_FAKE_DATA, _FAKE_SERIALIZED_BYTES],
+                     pigweed_rpc_transport._serialize(fake_payload))
 
 
 if __name__ == "__main__":

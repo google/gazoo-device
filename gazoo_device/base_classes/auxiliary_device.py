@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -134,7 +134,10 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
   @decorators.DynamicProperty
   def connected(self):
     """Returns whether or not device is connected."""
-    device_config = {"persistent": self.props["persistent_identifiers"]}
+    device_config = {
+        "persistent": self.props["persistent_identifiers"],
+        "options": self.props["optional"],
+    }
     return self.is_connected(device_config)
 
   @classmethod
@@ -580,7 +583,7 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
                        "but device does not support 'flash_build' capability")
       logger.info(f"{self.name} was not able to recover from "
                   f"{unrecoverable_error!r}")
-      raise unrecoverable_error
+      raise unrecoverable_error from recoverable_error
 
     logger.info(f"{self.name} re-flashing device with the default build")
     self.flash_build.upgrade(forced_upgrade=True)
@@ -635,12 +638,12 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
       delattr(self, capability_name)
 
   @decorators.LogDecorator(logger, decorators.DEBUG)
-  def set_property(self, prop, value):
-    """Set an optional property.
+  def set_property(self, prop: str, value: Any) -> None:
+    """Sets an optional property without writing it to the config file.
 
     Args:
-        prop (str): property name
-        value (object): value of the property name.
+        prop: Property name.
+        value: Value of the property.
 
     Raises:
         ValueError: if property is persistent or dynamic with no setter.

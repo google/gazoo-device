@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ class RaspberryPi(raspbian_device.RaspbianDevice):
   """
   DETECT_MATCH_CRITERIA = {
       detect_criteria.SshQuery.is_rpi: True,
+      detect_criteria.SshQuery.is_chip_tool_present: False,
   }
   DEVICE_TYPE = "raspberrypi"
   _OWNER_EMAIL = "gdm-authors@google.com"

@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -246,7 +246,7 @@ class LogFilterProcess(switchboard_process.SwitchboardProcess):
           self._open_event_file()
       self._filter_log_lines()
     else:
-      time.sleep(0.001)
+      time.sleep(0.01)
 
     return True
 
@@ -297,7 +297,7 @@ class LogFilterProcess(switchboard_process.SwitchboardProcess):
         if self._is_log_swap_or_rotation(log_line):
           change_log_file = True
     else:
-      time.sleep(0.001)
+      time.sleep(0.01)
     if change_log_file:
       self._open_next_log_file()
 

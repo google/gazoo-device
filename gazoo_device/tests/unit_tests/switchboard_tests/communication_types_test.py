@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -99,6 +99,7 @@ CONNECTIONS_DICT = {
     "PtyProcessComms": [_PTY_PROCESS_DIRECTORY],
     "SerialComms": [_CAMBRIONIX_ADDRESS, _CAMBRIONIX_USB3_ADDRESS,
                     _M5STACK_ADDRESS],
+    "SnmpComms": STATIC_IPS,
     "SshComms": STATIC_IPS,
     "UsbComms": [_USB_SERIAL_NUMBER],
     "YepkitComms": [],
@@ -151,6 +152,7 @@ class CommunicationTypeTests(unit_test_case.UnitTestCase):
         key_info=None,
         username="root")
 
+  @mock.patch.object(host_utils, "get_all_snmp_ips", return_value=STATIC_IPS)
   @mock.patch.object(
       host_utils,
       "get_all_pty_process_directories",
@@ -169,7 +171,7 @@ class CommunicationTypeTests(unit_test_case.UnitTestCase):
   @mock.patch.object(os, "access", return_value=True)
   def test_007_detection_works(
       self, mock_access, mock_sshable, mock_ping, mock_yepkit, mock_adb,
-      mock_docker, mock_pty,
+      mock_docker, mock_pty, mock_get_all_snmp_ips,
   ):
 
     # detection with warnings
@@ -193,6 +195,32 @@ class CommunicationTypeTests(unit_test_case.UnitTestCase):
       self.assertCountEqual(connections, a_dict[comm_type],
                             "Mismatch in detected connections for "
                             f"communication type {comm_type!r}")
+
+  @mock.patch.object(
+      adb_utils,
+      "get_adb_devices",
+      return_value=ADB_CONNECTIONS)
+  def test_detection_for_specific_communication_types_works(
+      self, mock_adb):
+    a_dict = communication_types.detect_connections(comm_types=["AdbComms"])
+    self.assertEqual(set(a_dict.keys()), set(["AdbComms"]),
+                     "Mismatch in detected communication types")
+
+  @mock.patch.object(
+      adb_utils,
+      "get_adb_devices",
+      return_value=ADB_CONNECTIONS)
+  def test_detection_for_specific_communication_types_works_case_insensitive(
+      self, mock_adb):
+    a_dict = communication_types.detect_connections(
+        comm_types=["adbcomms", "Invalid", "another"])
+    self.assertEqual(set(a_dict.keys()), set(["AdbComms"]),
+                     "Mismatch in detected communication types")
+
+  def test_detection_for_specific_communication_types_works_no_matches(self):
+    a_dict = communication_types.detect_connections(
+        comm_types=["Invalid"])
+    self.assertEmpty(a_dict, "Mismatch in detected communication types")
 
   def test_013_inaccessible_serial_works(self):
     """Test Inaccessible serial ports are removed from possible serial ports."""

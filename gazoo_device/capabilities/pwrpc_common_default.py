@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
 
 """Default implementation of the Pigweed RPC device common capability."""
 import time
-from typing import Any, Callable
-
+from typing import Any, Callable, List, Optional
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -47,20 +46,31 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     self._switchboard_call = switchboard_call
     self._rpc_timeout_s = rpc_timeout_s
 
-  @decorators.DynamicProperty
+  @decorators.PersistentProperty
   def vendor_id(self) -> int:
     """The vendor id of the device."""
-    return self._get_static_info("vendor_id")
+    return self.get_device_info().vendor_id
 
-  @decorators.DynamicProperty
+  @decorators.PersistentProperty
   def product_id(self) -> int:
     """The product id of the device."""
-    return self._get_static_info("product_id")
+    return self.get_device_info().product_id
 
   @decorators.DynamicProperty
   def software_version(self) -> int:
     """The software version of the device."""
-    return self._get_static_info("software_version")
+    return self.get_device_info().software_version
+
+  @decorators.DynamicProperty
+  def pairing_info(self) -> device_service_pb2.PairingInfo:
+    """The pairing information of the device."""
+    return self.get_device_info().pairing_info
+
+  @decorators.DynamicProperty
+  def fabric_info(self) -> List[device_service_pb2.FabricInfo]:
+    """The list of fabric information of the device."""
+    repeated_fabric_info = self.get_device_state().fabric_info
+    return list(repeated_fabric_info)
 
   @decorators.CapabilityLogDecorator(logger)
   def reboot(self,
@@ -96,6 +106,24 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     self._trigger_device_action(action="TriggerOta")
 
   @decorators.CapabilityLogDecorator(logger)
+  def set_pairing_info(
+      self, code: Optional[int] = None, discriminator: Optional[int] = None
+  ) -> None:
+    """Sets the pairing info of the device.
+
+    Args:
+      code: New pairing code to set.
+      discriminator: New discriminator to set.
+    """
+    new_code = self.pairing_info.code if code is None else code
+    new_discriminator = (
+        self.pairing_info.discriminator if discriminator is None
+        else discriminator)
+    self._trigger_device_action(action="SetPairingInfo",
+                                code=new_code,
+                                discriminator=new_discriminator)
+
+  @decorators.CapabilityLogDecorator(logger)
   def wait_for_bootup_complete(self, bootup_timeout: int) -> None:
     """Waits for device to boot up.
 
@@ -119,16 +147,12 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
       time.sleep(_POLL_INTERVAL_SEC)
     raise errors.DeviceError(f"Failed to boot up within {bootup_timeout}s.")
 
-  def _get_static_info(self, property_name: str) -> Any:
+  @decorators.CapabilityLogDecorator(logger)
+  def get_device_info(self) -> device_service_pb2.DeviceInfo:
     """Returns device static information.
 
-    Args:
-      property_name: Static property name which currently supports: vendor_id,
-        product_id and software_version.
-
     Raises:
-      DeviceError: The ack status is not true or an invalid property_name is
-      given.
+      DeviceError: The ack status is not true.
     """
     ack, payload_in_bytes = self._switchboard_call(
         method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
@@ -138,24 +162,42 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
       raise errors.DeviceError(
           f"{self._device_name} getting static info failed.")
     payload = device_service_pb2.DeviceInfo.FromString(payload_in_bytes)
-    device_property = getattr(payload, property_name, None)
-    if device_property is None:
-      raise errors.DeviceError(f"{property_name} doesn't exist in static info.")
-    return device_property
+    return payload
 
-  def _trigger_device_action(self, action: str) -> None:
-    """Triggers specific device action.
-
-    Args:
-      action: Device actions including reboot, factory-reset and OTA.
+  @decorators.CapabilityLogDecorator(logger)
+  def get_device_state(self) -> device_service_pb2.DeviceState:
+    """Returns device state information.
 
     Raises:
       DeviceError: The ack status is not true.
     """
+    ack, payload_in_bytes = self._switchboard_call(
+        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_args=("Device", "GetDeviceState"),
+        method_kwargs={"pw_rpc_timeout_s": self._rpc_timeout_s})
+    if not ack:
+      raise errors.DeviceError(
+          f"{self._device_name} getting device state failed.")
+    payload = device_service_pb2.DeviceState.FromString(payload_in_bytes)
+    return payload
+
+  def _trigger_device_action(self, action: str, **kwargs: Any) -> None:
+    """Triggers specific device action.
+
+    Args:
+      action: Device actions including reboot, factory-reset,
+        OTA and setting pairing info.
+      **kwargs: Arguments for the device action.
+
+    Raises:
+      DeviceError: The ack status is not true.
+    """
+    device_rpc_kwargs = {"pw_rpc_timeout_s": self._rpc_timeout_s}
+    device_rpc_kwargs.update(kwargs)
     ack, _ = self._switchboard_call(
         method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
         method_args=("Device", action),
-        method_kwargs={"pw_rpc_timeout_s": self._rpc_timeout_s})
+        method_kwargs=device_rpc_kwargs)
 
     if not ack:
       raise errors.DeviceError(f"{self._device_name} triggering {action} failed"

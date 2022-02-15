@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,10 @@
 # limitations under the License.
 
 """This test suite verifies comm_power capability."""
+import logging
 from typing import Type
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
+from mobly import asserts
 
 _ON = "on"
 _OFF = "off"
@@ -57,9 +59,9 @@ class CommPowerTestSuite(gdm_test_base.GDMTestBase):
     """Returns True if the device must be paired to run this test suite."""
     return False
 
-  def setUp(self):
+  def setup_test(self):
     """Called at the beginning of each test."""
-    super().setUp()
+    super().setup_test()
     if self.device.comm_power.hub_type == "ethernet_switch":
       self.device.ethernet_switch = FakeManagerEthernetSwitch()
 
@@ -75,13 +77,13 @@ class CommPowerTestSuite(gdm_test_base.GDMTestBase):
 
     try:
       self.device.comm_power.off()
-      self.assertEqual(
+      asserts.assert_equal(
           self.device.comm_power.port_mode, expected_mode_off,
           f"{self.device.name} port {self.device.comm_power.port_number} "
           f"should have been set to {expected_mode_off}")
 
       self.device.comm_power.on()
-      self.assertIn(
+      asserts.assert_in(
           self.device.comm_power.port_mode, ["sync", "on"],
           f"{self.device.name} port {self.device.comm_power.port_number} "
           "should have been set to 'on' or 'sync' but is "
@@ -89,8 +91,9 @@ class CommPowerTestSuite(gdm_test_base.GDMTestBase):
 
     finally:
       if self.device.comm_power.port_mode != original_mode:
-        self.logger.info("Restoring device communication power back to its "
-                         "original mode %r", original_mode)
+        logging.info(
+            "Restoring device communication power back to its "
+            "original mode %r", original_mode)
         if original_mode in ["off", "charge"]:
           self.device.comm_power.off()
         else:

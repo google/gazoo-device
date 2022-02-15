@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,11 +15,13 @@
 """Capability unit test for JLink flashing default capability."""
 import os
 from unittest import mock
+from gazoo_device import config
 from gazoo_device import errors
 from gazoo_device.capabilities import flash_build_jlink
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
+from gazoo_device.utility import subprocess_utils
 import intelhex
-
+import pylink
 
 _MOCK_DEVICE_NAME = "MOCK_DEVICE"
 _MOCK_SERIAL_NUMBER = 123456789
@@ -40,17 +42,28 @@ class JLinkFlashDefaultTest(fake_device_test_case.FakeDeviceTestCase):
                                                  _MOCK_SERIAL_NUMBER,
                                                  _MOCK_CHIP_NAME)
 
-  def test_001_flash(self):
-    """Test JLinkFlashDefault.flash."""
+  def test_no_jlink_dll_raises_error(self):
+    """Tests that an actionable error is raised if the J-Link DLL is missing."""
+    with mock.patch.object(
+        pylink, "JLink",
+        side_effect=TypeError("Expected to be given a valid DLL.")):
+      with self.assertRaisesRegex(
+          errors.DependencyUnavailableError,
+          "No J-Link DLL found. Install the J-Link SDK"):
+        self.uut._jlink_flash(_MOCK_IMAGE_PATH)
+
+  @mock.patch.object(os.path, "exists", return_value=True)
+  def test_flash(self, mock_exists):
+    """Tests JLinkFlashDefault.flash."""
     mock_image = mock.Mock()
     mock_segments = [(0, 10), (10, 20)]
     mock_binarray = mock.Mock()
-    with mock.patch.object(os.path, "exists", return_value=True):
-      with mock.patch.object(intelhex, "IntelHex", return_value=mock_image):
-        mock_image.segments.return_value = mock_segments
-        mock_image.tobinarray.return_value = mock_binarray
-        self.uut.upgrade(build_file=_MOCK_IMAGE_PATH)
+    with mock.patch.object(intelhex, "IntelHex", return_value=mock_image):
+      mock_image.segments.return_value = mock_segments
+      mock_image.tobinarray.return_value = mock_binarray
+      self.uut.upgrade(build_file=_MOCK_IMAGE_PATH)
 
+    mock_exists.assert_called_once_with(_MOCK_IMAGE_PATH)
     mock_image.tobinarray.assert_has_calls(
         [mock.call(start=0, size=10), mock.call(start=10, size=10)])
     self.mock_jlink.flash_write8.assert_has_calls(
@@ -63,8 +76,8 @@ class JLinkFlashDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.mock_jlink.restart.assert_called_once()
     self.mock_jlink.close.assert_called_once()
 
-  def test_002_image_invalid(self):
-    """Test image invalid failure."""
+  def test_image_invalid(self):
+    """Tests image invalid failure."""
     with self.assertRaises(errors.DeviceError):
       self.uut.upgrade(build_file=_MOCK_IMAGE_PATH)
     with self.assertRaises(errors.DeviceError):
@@ -72,10 +85,13 @@ class JLinkFlashDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     with self.assertRaises(errors.DeviceError):
       self.uut.flash_device(["h1.hex", "h2.hex"])
 
-  def test_003_return_unknown_properties(self):
-    for name in ["get_firmware_version", "get_firmware_type"]:
-      method = getattr(self.uut, name)
-      self.assertEqual(method(), flash_build_jlink.UNKNOWN)
+  def test_get_firmware_version(self):
+    """Tests that get_firmware_version() returns UNKNOWN."""
+    self.assertEqual(self.uut.get_firmware_version(), flash_build_jlink.UNKNOWN)
+
+  def test_get_firmware_type(self):
+    """Tests that get_firmware_type() returns UNKNOWN."""
+    self.assertEqual(self.uut.get_firmware_type(), flash_build_jlink.UNKNOWN)
 
 
 if __name__ == "__main__":

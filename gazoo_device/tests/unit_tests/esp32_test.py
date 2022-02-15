@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ from gazoo_device.base_classes import espressif_esp32_device
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 import immutabledict
 
-
 _FAKE_DEVICE_ID = "esp32-detect"
 _FAKE_DEVICE_ADDRESS = "/dev/bus/usb/001/002"
 _ESP32_PERSISTENT_PROPERTIES = immutabledict.immutabledict({
@@ -37,27 +36,31 @@ class ESP32DeviceTests(fake_device_test_case.FakeDeviceTestCase):
 
   def setUp(self):
     super().setUp()
-    self.setup_fake_device_requirements()
+    self.setup_fake_device_requirements(_FAKE_DEVICE_ID)
     self.device_config["persistent"]["console_port_name"] = _FAKE_DEVICE_ADDRESS
     self.uut = esp32.ESP32(self.mock_manager,
                            self.device_config,
                            log_directory=self.artifacts_directory)
 
-  def test_001_get_console_configuration(self):
+  def test_get_console_configuration(self):
     """Verifies esp32 get_console_configuration."""
     self.assertIsNotNone(self.uut.get_console_configuration())
 
-  def test_002_esp32_attributes(self):
+  def test_esp32_attributes(self):
     """Verifies esp32 attributes."""
     self._test_get_detection_info(_FAKE_DEVICE_ADDRESS,
                                   esp32.ESP32,
                                   _ESP32_PERSISTENT_PROPERTIES)
 
   @mock.patch.object(espressif_esp32_device.os.path, "exists")
-  def test_003_is_connected_true(self, mock_exists):
+  def test_is_connected_true(self, mock_exists):
     """Verifies is_connected works as expected."""
     mock_exists.return_value = True
-    self.assertTrue(esp32.ESP32.is_connected(self.device_config))
+    self.assertIsNotNone(esp32.ESP32.is_connected(self.device_config))
+
+  def test_flash_build_capability(self):
+    """Verifies the initialization of flash_build capability."""
+    self.assertIsNotNone(self.uut.flash_build)
 
 
 if __name__ == "__main__":

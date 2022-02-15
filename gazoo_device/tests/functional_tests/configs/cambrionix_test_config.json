@@ -1,5 +1,4 @@
 {
-  "known_logline": [],
   "shell_cmd": "state",
   "expect": [""],
   "do_not_run_tests": [

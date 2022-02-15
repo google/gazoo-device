@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -159,7 +159,7 @@ def _process_loop(cls, parent_pid):
   cls._post_run_hook()
 
 
-class SwitchboardProcess(object):
+class SwitchboardProcess:
   """Simplifies creating Switchboard processes.
 
   Provides the following capabilities:
@@ -200,6 +200,7 @@ class SwitchboardProcess(object):
     self._stop_event = multiprocessing_utils.get_context().Event()
     self._terminate_event = multiprocessing_utils.get_context().Event()
     self._valid_commands = valid_commands or ()
+    self._process = None
 
   def __del__(self):
     if self.is_started():
@@ -247,7 +248,7 @@ class SwitchboardProcess(object):
     Return:
         bool: True if process was started
     """
-    return hasattr(self, "_process")
+    return self._process is not None
 
   def is_running(self):
     """Returns True if process is currently running, False otherwise.
@@ -309,13 +310,20 @@ class SwitchboardProcess(object):
         pass
       self._process.join(timeout=1)
       if self._process.is_alive():
-        self._process.terminate()
-      delattr(self, "_process")
+        self.terminate()
+      else:
+        self._process = None
     else:
       msg = ("Device {} failed to stop child process {}. Child process is not "
              "currently running.").format(self.device_name, self.process_name)
       gdm_logger.get_logger().error(msg)
       raise RuntimeError(msg)
+
+  def terminate(self):
+    """Terminates the process."""
+    self._process.terminate()
+    self._process.join(timeout=1)
+    self._process = None
 
   def is_command_consumed(self):
     """Returns True if command queue is empty, false otherwise.

@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,15 +15,20 @@
 """Default implementation of the JLink flashing capability."""
 import os
 from typing import Dict, List, Optional
+
+from gazoo_device import config
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import flash_build_base
+from gazoo_device.utility import subprocess_utils
 import intelhex
 import pylink
 
 logger = gdm_logger.get_logger()
 UNKNOWN = flash_build_base.UNKNOWN
+_FLASH_TIMEOUT_S = 60
+_JLINK_NO_DLL_ERROR = "Expected to be given a valid DLL."
 
 
 class FlashBuildJLink(flash_build_base.FlashBuildBase):
@@ -43,7 +48,6 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
     super().__init__(device_name=device_name)
     self._serial_number = serial_number
     self._platform_name = platform_name
-    self._jlink = pylink.JLink()
 
   @decorators.CapabilityLogDecorator(logger)
   def flash_device(self,
@@ -61,6 +65,11 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
       expected_build_type: Not used.
       verify_flash: Not used.
       method: Not used.
+
+    Raises:
+      ValueError: If invalid arguments are provided.
+      DeviceError: If flashing fails.
+      DependencyUnavailableError: If J-Link SDK is not installed.
     """
     del expected_version, expected_build_type, verify_flash, method  # Unused.
     if len(list_of_files) != 1:
@@ -69,30 +78,37 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
     if not image_path.endswith(".hex"):
       raise ValueError("Only hex type file can be flashed.")
     if not os.path.exists(image_path):
-      raise errors.DeviceError(f"Firmware image {image_path} does not exist.")
+      raise ValueError(f"Firmware image {image_path} does not exist.")
 
-    self._open_and_halt()
+    self._jlink_flash(image_path)
+
+  def _jlink_flash(self, image_path: str) -> None:
+    """Flashes the provided image onto the device via J-Link."""
+    try:
+      jlink = pylink.JLink()
+    except TypeError as e:
+      if _JLINK_NO_DLL_ERROR in str(e):
+        raise errors.DependencyUnavailableError(
+            "No J-Link DLL found. Install the J-Link SDK from "
+            "https://www.segger.com/downloads/jlink/#J-LinkSoftwareAndDocumentationPack. "
+            f"Error: {e!r}.")
+      else:
+        raise
+
+    jlink.open(serial_no=self._serial_number)
+    jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
+    jlink.connect(chip_name=self._platform_name, speed="auto")
+    jlink.halt()
 
     image = intelhex.IntelHex(os.path.abspath(image_path))
     for segment_start, segment_end in image.segments():
       segment_size = segment_end - segment_start
       segment = image.tobinarray(start=segment_start, size=segment_size)
-      self._jlink.flash_write8(segment_start, segment)
+      jlink.flash_write8(segment_start, segment)
 
-    self._reset_and_close()
-
-  def _open_and_halt(self):
-    """Opens and connects to the jlink interface and halts the CPU core."""
-    self._jlink.open(serial_no=self._serial_number)
-    self._jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
-    self._jlink.connect(chip_name=self._platform_name, speed="auto")
-    self._jlink.halt()
-
-  def _reset_and_close(self):
-    """Resets and closes the jlink interface."""
-    self._jlink.reset()
-    self._jlink.restart()
-    self._jlink.close()
+    jlink.reset()
+    jlink.restart()
+    jlink.close()
 
   @decorators.CapabilityLogDecorator(logger)
   def download_build_file(self, remote_build_folder, local_folder):

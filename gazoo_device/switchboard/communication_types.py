@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -52,22 +52,67 @@ ESP32_M5STACK_COMMS_ADDRESS_LINUX = "Silicon_Labs_CP2104"
 ESP32_M5STACK_COMMS_ADDRESS_MAC = "tty.usbserial"
 
 
+def _validate_comm_types(
+    comm_types: Optional[Collection[str]] = None) -> Optional[Collection[str]]:
+  """Validate that the communication types specified for detection are valid.
+
+  A warning will be logged if a non-supported communication is included in
+  the provided comm types.
+
+  Args:
+   comm_types: Specific communication types to use for detection.
+
+  Returns:
+    Lowercase supported communication types to use for detection.
+  """
+  if comm_types is None:
+    return None
+
+  lowercase_supported_types = [comm_type.lower() for comm_type in
+                               extensions.communication_types.keys()]
+  validated_comm_types = []
+  invalid_comm_types = []
+  for comm_type in comm_types:
+    if comm_type.lower() in lowercase_supported_types:
+      validated_comm_types.append(comm_type.lower())
+    else:
+      invalid_comm_types.append(comm_type)
+
+  if invalid_comm_types:
+    logger.warning(
+        "Unknown communication types specified "
+        f"{', '.join(invalid_comm_types)}. Known communication types "
+        f"{', '.join(extensions.communication_types.keys())}.")
+
+  return validated_comm_types
+
+
 def detect_connections(
-    static_ips: Optional[List[str]] = None) -> Dict[str, List[str]]:
+    static_ips: Optional[List[str]] = None,
+    comm_types: Optional[Collection[str]] = None) -> Dict[str, List[str]]:
   """Detects all the communication addresses for the different devices.
 
   Args:
     static_ips: Static ip addresses.
+    comm_types: Limit detection to specific communication types.
 
   Returns:
     Connections by connection class name from classes in this module
     and other registered classes in extensions.communication_types.
   """
+  lowercase_comm_types = _validate_comm_types(comm_types)
+
   connections_dict = {}
   for comms_name, comms_class in extensions.communication_types.items():
-    detection_method = comms_class.get_comms_addresses
+    if lowercase_comm_types is not None:
+      if comms_name.lower() not in lowercase_comm_types:
+        logger.debug(
+            f"Skipping detection for {comms_name} communication addresses.")
+        continue
+
     logger.info(
         "\tdetecting potential {} communication addresses".format(comms_name))
+    detection_method = comms_class.get_comms_addresses
     try:
       try:
         comms_addresses = detection_method(static_ips=static_ips)
@@ -176,8 +221,8 @@ class CommunicationType(abc.ABC):
       Potential communication addresses.
     """
 
-  def get_data_framers(
-      self, num_transports: int) -> List[data_framer.DataFramer]:
+  def get_data_framers(self,
+                       num_transports: int) -> List[data_framer.DataFramer]:
     """Set up framers used to atomicize the raw output of the device.
 
     Deals with interwoven lines as well as tokenized output. Default
@@ -260,6 +305,7 @@ class AdbComms(CommunicationType):
 
   @classmethod
   def get_comms_addresses(cls) -> List[str]:
+    """Returns ADB identifiers of available ADB devices."""
     return adb_utils.get_adb_devices()
 
   def get_transport_list(self) -> List[transport_base.TransportBase]:
@@ -435,6 +481,18 @@ class SshComms(CommunicationType):
 
   def get_identifier(self) -> line_identifier.PortLogIdentifier:
     return line_identifier.PortLogIdentifier(log_ports=[1])
+
+
+class SnmpComms(CommunicationType):
+  """Communication type for device communication over snmp protocol."""
+
+  @classmethod
+  def get_comms_addresses(cls, static_ips: List[str]) -> List[str]:
+    return host_utils.get_all_snmp_ips(static_ips)
+
+  def get_transport_list(self) -> List[transport_base.TransportBase]:
+    # This comms type does not use Swtichboard so no transports exist.
+    return []
 
 
 class SerialComms(CommunicationType):

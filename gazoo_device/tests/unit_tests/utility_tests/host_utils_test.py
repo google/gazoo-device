@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Unit tests for gazoo_device.utility.host_utils.py."""
 import os
 import subprocess
@@ -35,10 +34,12 @@ _EXPECTED_KEY_SSH_PUBLIC_PATH = os.path.join(_EXPECTED_KEY_DIR,
 _TEST_KEY_OTHER_NAME = "bar_key"
 _EXPECTED_KEY_OTHER_PATH = os.path.join(_EXPECTED_KEY_DIR, _TEST_KEY_OTHER_NAME)
 _TEST_KEY_SSH_PRIVATE = data_types.KeyInfo(
-    _TEST_KEY_SSH_PRIVATE_NAME, type=data_types.KeyType.SSH,
+    _TEST_KEY_SSH_PRIVATE_NAME,
+    type=data_types.KeyType.SSH,
     package=_TEST_PACKAGE)
 _TEST_KEY_SSH_PUBLIC = data_types.KeyInfo(
-    _TEST_KEY_SSH_PUBLIC_NAME, type=data_types.KeyType.SSH,
+    _TEST_KEY_SSH_PUBLIC_NAME,
+    type=data_types.KeyType.SSH,
     package=_TEST_PACKAGE)
 _TEST_KEY_OTHER = data_types.KeyInfo(
     _TEST_KEY_OTHER_NAME, type=data_types.KeyType.OTHER, package=_TEST_PACKAGE)
@@ -171,6 +172,92 @@ class HostUtilsTests(unit_test_case.UnitTestCase):
         host_utils._set_key_permissions(_EXPECTED_KEY_SSH_PRIVATE_PATH)
     mock_chmod.assert_called_once_with(_EXPECTED_KEY_SSH_PRIVATE_PATH,
                                        int("400", 8))
+
+
+class SnmpHostUtilsTests(unit_test_case.UnitTestCase):
+  """Unit tests for SNMP methods in gazoo_device.utility.host_utils.py."""
+
+  @mock.patch.object(host_utils, "is_pingable", return_value=True)
+  @mock.patch.object(host_utils, "accepts_snmp", return_value=True)
+  def test_get_all_snmp_ips__finds_snmp_enabled_ip(
+      self, mock_accepts_snmp, mock_is_pingable,
+  ):
+    """Test get_all_snmp_ips when it finds SNMP enabled IP."""
+    static_ips = ["0.0.0.0"]
+    self.assertEqual(
+        host_utils.get_all_snmp_ips(static_ips=static_ips), static_ips)
+    mock_is_pingable.assert_called_once_with(static_ips[0])
+    mock_accepts_snmp.assert_called_once_with(static_ips[0])
+
+  @mock.patch.object(host_utils, "is_pingable", return_value=True)
+  @mock.patch.object(host_utils, "accepts_snmp", return_value=True)
+  def test_get_all_snmp_ips__finds_multiple_snmp_enabled_ips(
+      self, mock_accepts_snmp, mock_is_pingable,
+  ):
+    """Test get_all_snmp_ips when it finds multiple SNMP enabled IPs."""
+    static_ips = ["0.0.0.0", "1.1.1.1", "2.2.2.2"]
+    self.assertCountEqual(
+        host_utils.get_all_snmp_ips(static_ips=static_ips), static_ips)
+    mock_is_pingable.assert_called()
+    mock_accepts_snmp.assert_called()
+
+  @mock.patch.object(host_utils, "is_pingable", return_value=False)
+  @mock.patch.object(host_utils, "accepts_snmp", return_value=True)
+  def test_get_all_snmp_ips__all_ips_unpingable(
+      self, mock_accepts_snmp, mock_is_pingable,
+  ):
+    """Test get_all_snmp_ips when it finds no pingable IPs."""
+    static_ips = ["0.0.0.0", "1.1.1.1", "2.2.2.2"]
+    self.assertEqual(host_utils.get_all_snmp_ips(static_ips=static_ips), [])
+
+  @mock.patch.object(host_utils, "is_pingable", return_value=True)
+  @mock.patch.object(host_utils, "accepts_snmp", return_value=False)
+  def test_get_all_snmp_ips__none_snmp_enabled(
+      self, mock_accepts_snmp, mock_is_pingable,
+  ):
+    """Test get_all_snmp_ips when it finds no snmp enabled IPs."""
+    static_ips = ["0.0.0.0", "1.1.1.1", "2.2.2.2"]
+    self.assertEqual(host_utils.get_all_snmp_ips(static_ips=static_ips), [])
+
+  @mock.patch.object(host_utils, "is_pingable", return_value=True)
+  @mock.patch.object(
+      host_utils, "accepts_snmp", side_effect=[True, False, True])
+  def test_get_all_snmp_ips__finds_two_snmp_enabled_ip(
+      self, mock_accepts_snmp, mock_is_pingable,
+  ):
+    """Test get_all_snmp_ips when it finds only one SNMP enabled IP."""
+    static_ips = ["0.0.0.0", "1.1.1.1", "2.2.2.2"]
+    snmp_ips = host_utils.get_all_snmp_ips(static_ips=static_ips)
+    self.assertLen(snmp_ips, 2)
+    self.assertContainsSubset(snmp_ips, static_ips)
+
+  @mock.patch.object(host_utils, "is_pingable", side_effect=[False, True, True])
+  @mock.patch.object(
+      host_utils, "accepts_snmp", side_effect=[True, False])
+  def test_get_all_snmp_ips__few_pingable_and_one_snmp_enabled(
+      self, mock_accepts_snmp, mock_is_pingable,
+  ):
+    """Test get_all_snmp_ips when it finds no SNMP enabled IPs."""
+    static_ips = ["0.0.0.0", "1.1.1.1", "2.2.2.2"]
+    snmp_ips = host_utils.get_all_snmp_ips(static_ips=static_ips)
+    self.assertLen(snmp_ips, 1)
+    self.assertContainsSubset(snmp_ips, static_ips)
+
+  @mock.patch.object(subprocess, "check_output")
+  def test_accepts_snmp__pass(self, mock_check_output):
+    ip_address = "0.0.0.0"
+    self.assertTrue(host_utils.accepts_snmp(ip_address=ip_address))
+    cmd = host_utils._SNMPWALK_COMMAND.format(ip_address=ip_address).split()
+    mock_check_output.assert_called_once_with(
+        cmd, timeout=host_utils._SNMPWALK_TIMEOUT)
+
+  @mock.patch.object(
+      subprocess,
+      "check_output",
+      side_effect=subprocess.CalledProcessError("some_err", "some_cmd"))
+  def test_accepts_snmp__fail(self, mock_check_output):
+    ip_address = "0.0.0.0"
+    self.assertFalse(host_utils.accepts_snmp(ip_address=ip_address))
 
 
 if __name__ == "__main__":

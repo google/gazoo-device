@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,22 +19,55 @@ import os
 import subprocess
 from unittest import mock
 
+from absl.testing import parameterized
 from gazoo_device import config
 from gazoo_device import errors
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import adb_utils
 from gazoo_device.utility import host_utils
+import immutabledict
 
 ADB_CMD_PATH = "/usr/bin/adb"
-FAKE_ADB_DEVICES_OUTPUT = ("List of devices attached\n"
-                           "04576e89\tdevice\n"
-                           "04576ee5\tsideload\n"
-                           "04576eaz\toffline\n"
-                           "123.45.67.89:5555\tdevice\n"
-                           "123.45.67.90:5555\tsideload\n"
-                           "123.45.67.91:5555\toffline\n\n")
-ADB_DEVICES = ["04576e89", "123.45.67.89"]
-SIDELOAD_DEVICES = ["04576ee5", "123.45.67.90:5555"]
+FAKE_ADB_DEVICES_OUTPUT = (
+    "* daemon not running; starting now at tcp:1234\n"
+    "* daemon started successfully\n"
+    "List of devices attached\n"
+    "04576e89\tdevice\n"
+    "04576ee5\tsideload\n"
+    "04576eaz\toffline\n"
+    "04576abc\tbootloader\n"
+    "04576bcd\tno permissions (some reason); see [some url]\n"
+    "04576cde\trecovery\n"
+    "04576def\tunauthorized\n"
+    "04576efg\tunknown\n"
+    "04576fgh\thost\n"
+    "04576ghi\tthis-should-fail-to-parse\n"
+    "123.45.67.89:5555\tdevice\n"
+    "123.45.67.90:5555\tsideload\n"
+    "123.45.67.91:5555\toffline\n"
+    "123.45.67.92:5555\tbootloader\n"
+    "123.45.67.93:5555\tno permissions (some reason); see [some url]\n"
+    "123.45.67.94:5555\trecovery\n"
+    "123.45.67.95:5555\tunauthorized\n"
+    "123.45.67.96:5555\tunknown\n"
+    "123.45.67.97:5555\thost\n"
+    "123.45.67.98:5555\tthis-should-fail-to-parse\n"
+    "\n")
+PARSED_ADB_DEVICES = immutabledict.immutabledict({
+    adb_utils.AdbDeviceState.DEVICE: ["04576e89", "123.45.67.89:5555"],
+    adb_utils.AdbDeviceState.SIDELOAD: ["04576ee5", "123.45.67.90:5555"],
+    adb_utils.AdbDeviceState.OFFLINE: ["04576eaz", "123.45.67.91:5555"],
+    adb_utils.AdbDeviceState.BOOTLOADER: ["04576abc", "123.45.67.92:5555"],
+    adb_utils.AdbDeviceState.NO_PERMISSIONS: ["04576bcd", "123.45.67.93:5555"],
+    adb_utils.AdbDeviceState.RECOVERY: ["04576cde", "123.45.67.94:5555"],
+    adb_utils.AdbDeviceState.UNAUTHORIZED: ["04576def", "123.45.67.95:5555"],
+    adb_utils.AdbDeviceState.UNKNOWN: ["04576efg", "123.45.67.96:5555"],
+    adb_utils.AdbDeviceState.HOST: ["04576fgh", "123.45.67.97:5555"],
+    adb_utils.AdbDeviceState.UNRECOGNIZED: ["04576ghi", "123.45.67.98:5555"],
+})
+ADB_DEVICES = PARSED_ADB_DEVICES[adb_utils.AdbDeviceState.DEVICE]
+SIDELOAD_DEVICES = PARSED_ADB_DEVICES[adb_utils.AdbDeviceState.SIDELOAD]
+OFFLINE_DEVICES = PARSED_ADB_DEVICES[adb_utils.AdbDeviceState.OFFLINE]
 FAKE_ADB_REBOOT = ""
 FAKE_ADB_ROOT = ""
 
@@ -59,6 +92,10 @@ TEST_USER_NAME = "test_user"
 
 class AdbUtilsTests(unit_test_case.UnitTestCase):
   """ADB utility tests."""
+
+  def setUp(self):
+    super().setUp()
+    self.add_time_mocks()
 
   @mock.patch.object(host_utils, "has_command", return_value=False)
   def test_010_adb_utils_get_fastboot_path_raises_error(self,
@@ -243,9 +280,26 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
 
   @mock.patch.object(
       adb_utils, "_adb_command", return_value=FAKE_ADB_DEVICES_OUTPUT)
-  def test_060_adb_utils_get_adb_devices_calls_get_adb_path(
-      self, mock_adb_command):
-    """Verify get_adb_devices calls _adb_command."""
+  def test_adb_devices(self, mock_adb_command):
+    """Tests adb_devices()."""
+    expected_output = []
+    for state, identifiers in PARSED_ADB_DEVICES.items():
+      for identifier in identifiers:
+        expected_output.append((identifier, state))
+    self.assertCountEqual(expected_output, adb_utils.adb_devices())
+
+  @mock.patch.object(
+      adb_utils, "_adb_command", return_value=(
+          "* daemon not running; starting now at tcp:1234\n"
+          "* daemon started successfully\n"))
+  def test_adb_devices_no_output(self, mock_adb_command):
+    """Tests adb_devices() when there's no device output."""
+    self.assertFalse(adb_utils.adb_devices())
+
+  @mock.patch.object(
+      adb_utils, "_adb_command", return_value=FAKE_ADB_DEVICES_OUTPUT)
+  def test_adb_utils_get_adb_devices(self, mock_adb_command):
+    """Tests get_adb_devices()."""
     self.assertEqual(ADB_DEVICES, adb_utils.get_adb_devices())
     mock_adb_command.assert_called()
 
@@ -271,19 +325,36 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
     self.assertEqual([], adb_utils.get_sideload_devices())
     mock_adb_command.assert_called_once_with("devices", adb_path=None)
 
-  @mock.patch.object(adb_utils, "get_adb_devices", return_value=ADB_DEVICES)
-  def test_070_adb_utils_is_adb_mode_returns_true(self, mock_get_adb_devices):
-    """Verify is_adb_mode calls get_adb_devices."""
-    adb_serial = "04576e89"
-    self.assertTrue(adb_utils.is_adb_mode(adb_serial))
-    mock_get_adb_devices.assert_called()
+  @parameterized.named_parameters(
+      ("available", "04576e89", True),
+      ("sideload", "04576ee5", False),
+      ("offline", "04576eaz", False),
+      ("not_present", "bogus", False))
+  @mock.patch.object(
+      adb_utils, "get_adb_devices", autospec=True, return_value=ADB_DEVICES)
+  def test_is_adb_mode_serial_number(
+      self, serial_number, expected_is_adb_mode, mock_get_adb_devices):
+    """Tests is_adb_mode() for an ADB serial number identifier."""
+    self.assertEqual(adb_utils.is_adb_mode(serial_number), expected_is_adb_mode)
+    mock_get_adb_devices.assert_called_once()
 
-  @mock.patch.object(adb_utils, "get_adb_devices", return_value=ADB_DEVICES)
-  def test_071_adb_utils_is_adb_mode_returns_false(self, mock_get_adb_devices):
-    """Verify is_adb_mode calls get_adb_devices."""
-    adb_serial = "bogus"
-    self.assertFalse(adb_utils.is_adb_mode(adb_serial))
-    mock_get_adb_devices.assert_called()
+  @parameterized.named_parameters(
+      ("available_pingable", "123.45.67.89:5555", True, True),
+      ("available_not_pingable", "123.45.67.89:5555", False, False),
+      ("offline_not_pingable", "123.45.67.91:5555", False, False),
+      ("offline_pingable", "123.45.67.91:5555", True, False),
+      ("not_present_not_pingable", "123.45.67.123:5555", False, False),
+      ("not_present_pingable", "123.45.67.123:5555", True, False))
+  @mock.patch.object(
+      adb_utils, "get_adb_devices", autospec=True, return_value=ADB_DEVICES)
+  def test_is_adb_mode_ip_address_and_port(
+      self, ip_address_and_port, is_pingable, expected_is_adb_mode,
+      mock_get_adb_devices):
+    """Tests is_adb_mode() for an IP address + port identifier."""
+    with mock.patch.object(host_utils, "is_pingable", return_value=is_pingable):
+      self.assertEqual(
+          adb_utils.is_adb_mode(ip_address_and_port), expected_is_adb_mode)
+    mock_get_adb_devices.assert_called_once()
 
   @mock.patch.object(adb_utils, "is_fastboot_mode", return_value=False)
   @mock.patch.object(adb_utils, "is_adb_mode", return_value=True)
@@ -923,22 +994,81 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
         fastboot_path=fastboot_path,
         timeout=fastboot_timeout)
 
+  @mock.patch.object(adb_utils, "_adb_command", autospec=True, return_value=(
+      "connected to 12.34.56.78:5555", 0))
   @mock.patch.object(
-      adb_utils,
-      "_adb_command",
-      return_value="connected to aabbccdd")
-  def test_311_adb_connect(self, mock_adb_command):
-    """Verify adb connect method."""
-    adb_utils.connect(DEVICE_ADB_SERIAL)
+      adb_utils, "is_adb_mode", autospec=True, side_effect=[False, True])
+  def test_connect_success(self, mock_is_adb_mode, mock_adb_command):
+    """Tests connect() when the ADB command succeeds."""
+    adb_utils.connect("12.34.56.78:5555")
+    mock_adb_command.assert_called_once()
+    self.assertEqual(mock_is_adb_mode.call_count, 2)
+    mock_is_adb_mode.assert_called_with("12.34.56.78:5555")
 
+  @mock.patch.object(adb_utils, "_adb_command", autospec=True, return_value=(
+      "failed to connect to '12.34.56.78:5555': Connection refused", 0))
+  @mock.patch.object(adb_utils, "is_adb_mode", autospec=True)
+  def test_connect_failure_adb_command_error(
+      self, mock_is_adb_mode, mock_adb_command):
+    """Tests connect() when the ADB command fails."""
+    with self.assertRaisesRegex(
+        errors.DeviceError, "Unable to connect to device '12.34.56.78:5555'"):
+      adb_utils.connect("12.34.56.78:5555")
+    self.assertGreater(mock_adb_command.call_count, 1)
+    mock_is_adb_mode.assert_not_called()
+
+  @mock.patch.object(adb_utils, "_adb_command", autospec=True, return_value=(
+      "connected to 12.34.56.78:5555", 0))
   @mock.patch.object(
-      adb_utils,
-      "_adb_command",
-      return_value="unable to connect")
-  def test_312_adb_connect_failure_to_connect(self, mock_adb_command):
-    """Verify adb connect method."""
-    with self.assertRaises(errors.DeviceError):
-      adb_utils.connect(DEVICE_ADB_SERIAL)
+      adb_utils, "is_adb_mode", autospec=True, return_value=False)
+  def test_connect_failure_not_in_adb_devices(
+      self, mock_is_adb_mode, mock_adb_command):
+    """Tests connect() when device is not seen in 'adb devices'."""
+    with self.assertRaisesRegex(
+        errors.DeviceError,
+        "'12.34.56.78:5555' was not found in 'adb devices'"):
+      adb_utils.connect("12.34.56.78:5555")
+    mock_adb_command.assert_called_once()
+    mock_is_adb_mode.assert_called_with("12.34.56.78:5555")
+    self.assertGreater(mock_is_adb_mode.call_count, 1)
+
+  @mock.patch.object(adb_utils, "_adb_command", autospec=True, return_value=(
+      "disconnected 12.34.56.78:5555", 0))
+  @mock.patch.object(adb_utils, "adb_devices", autospec=True, side_effect=[
+      [("12.34.56.78:5555", adb_utils.AdbDeviceState.DEVICE)], []])
+  def test_disconnect_success(self, mock_adb_devices, mock_adb_command):
+    """Tests disconnect() when the ADB command succeeds."""
+    adb_utils.disconnect("12.34.56.78:5555")
+    mock_adb_command.assert_called_once()
+    self.assertEqual(mock_adb_devices.call_count, 2)
+
+  @mock.patch.object(adb_utils, "_adb_command", autospec=True, return_value=(
+      "error: no such device '12.34.56.78:5555'", 1))
+  @mock.patch.object(adb_utils, "adb_devices", autospec=True)
+  def test_disconnect_failure_adb_command_error(
+      self, mock_adb_devices, mock_adb_command):
+    """Tests disconnect() when the ADB command fails."""
+    with self.assertRaisesRegex(
+        errors.DeviceError,
+        "Unable to disconnect ADB from device '12.34.56.78:5555'"):
+      adb_utils.disconnect("12.34.56.78:5555")
+    self.assertGreater(mock_adb_command.call_count, 1)
+    mock_adb_devices.assert_not_called()
+
+  @mock.patch.object(adb_utils, "_adb_command", autospec=True, return_value=(
+      "disconnected 12.34.56.78:5555", 0))
+  @mock.patch.object(
+      adb_utils, "adb_devices", autospec=True,
+      return_value=[("12.34.56.78:5555", adb_utils.AdbDeviceState.DEVICE)])
+  def test_disconnect_failure_not_in_adb_devices(
+      self, mock_adb_devices, mock_adb_command):
+    """Tests disconnect() when device is seen in 'adb devices'."""
+    with self.assertRaisesRegex(
+        errors.DeviceError,
+        "'12.34.56.78:5555' was still found in 'adb devices'"):
+      adb_utils.disconnect("12.34.56.78:5555")
+    mock_adb_command.assert_called_once()
+    self.assertGreater(mock_adb_devices.call_count, 1)
 
   @mock.patch.object(adb_utils, "get_adb_path", return_value=ADB_CMD_PATH)
   def test_313_adb_command_terminate(self, mock_get_adb_path):
@@ -1081,6 +1211,67 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
       adb_utils.bugreport(DEVICE_ADB_SERIAL, destination_path=destination_path)
     mock_os_path_exists.assert_called()
     mock_adb_command.assert_not_called()
+
+  @mock.patch.object(
+      adb_utils, "_adb_command", autospec=True,
+      return_value=("restarting in TCP mode port: 5555", 0))
+  def test_tcpip_success(self, mock_adb_command):
+    """Tests tcpip() when the ADB command succeeds."""
+    adb_utils.tcpip("123abcde", 5555)
+    mock_adb_command.assert_called_once()
+
+  @mock.patch.object(
+      adb_utils, "_adb_command", autospec=True,
+      return_value=("adb: tcpip: invalid port: 120321", 1))
+  def test_tcpip_failure(self, mock_adb_command):
+    """Tests tcpip() when the ADB command fails."""
+    with self.assertRaisesRegex(
+        RuntimeError, "ADB failed to start listening on port 120321"):
+      adb_utils.tcpip("123abcde", 120321)
+    mock_adb_command.assert_called_once()
+
+  @parameterized.named_parameters(
+      ("ip_address_no_port_arg", "12.34.56.78", None, "12.34.56.78:5555"),
+      ("ip_address_with_port_no_port_arg",
+       "12.34.56.78:1234", None, "12.34.56.78:1234"),
+      ("ip_address_no_port_with_port_arg",
+       "12.34.56.78", 1234, "12.34.56.78:1234"))
+  def test_get_adb_over_ip_identifier(
+      self, identifier, port, expected_identifier):
+    """Tests get_adb_over_ip_identifier() with an ADB over IP identifier."""
+    if port is None:
+      actual_identifier = adb_utils.get_adb_over_ip_identifier(identifier)
+    else:
+      actual_identifier = adb_utils.get_adb_over_ip_identifier(
+          identifier, port=port)
+    self.assertEqual(actual_identifier, expected_identifier)
+
+  def test_get_adb_over_ip_identifier_adb_serial(self):
+    """Tests get_adb_over_ip_identifier() with an ADB serial."""
+    with self.assertRaisesRegex(ValueError, "'abcde123' is not an IP address"):
+      adb_utils.get_adb_over_ip_identifier("abcde123")
+
+  @mock.patch.object(adb_utils, "_adb_command", return_value=("", 0))
+  def test_wait_for_device_adb(self, mock_adb_command):
+    """Tests wait_for_device_adb."""
+    adb_utils.wait_for_device("abcde123", 1)  # Should not raise timeout.
+
+  @mock.patch.object(adb_utils, "_adb_command", return_value=("", 124))
+  def test_wait_for_device_adb_timeout(self, mock_adb_command):
+    """Tests wait_for_device_adb when it times out."""
+    with self.assertRaises(errors.CommunicationTimeoutError):
+      adb_utils.wait_for_device("abcde123", 1)
+
+  @mock.patch.object(adb_utils, "is_adb_mode", side_effect=[True, False])
+  def test_wait_for_device_offline(self, mock_is_adb_mode):
+    """Tests wait_for_device_offline returns once device is offline."""
+    adb_utils.wait_for_device_offline("abcde123", 1, 0.005)
+
+  @mock.patch.object(adb_utils, "is_adb_mode", return_value=True)
+  def test_wait_for_device_offline_timeout(self, mock_is_adb_mode):
+    """Tests wait_for_device_raises error when times out waiting."""
+    with self.assertRaises(errors.CommunicationTimeoutError):
+      adb_utils.wait_for_device_offline("abcde123", 0.005, 0.001)
 
 
 if __name__ == "__main__":

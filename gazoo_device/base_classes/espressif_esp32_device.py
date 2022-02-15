@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,10 +21,14 @@ from gazoo_device import custom_types
 from gazoo_device import decorators
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import auxiliary_device
+from gazoo_device.capabilities import flash_build_esptool
 from gazoo_device.utility import usb_utils
 
 logger = gdm_logger.get_logger()
 BAUDRATE = 115200
+_DEFAULT_BOOTUP_TIMEOUT_SECONDS = 15
+_FLASH_MODE = "dio"
+_FLASH_FREQ = "40m"
 
 
 class EspressifESP32Device(auxiliary_device.AuxiliaryDevice):
@@ -34,6 +38,7 @@ class EspressifESP32Device(auxiliary_device.AuxiliaryDevice):
   """
   COMMUNICATION_TYPE = "PigweedSerialComms"
   _COMMUNICATION_KWARGS = {"protobufs": None, "baudrate": BAUDRATE}
+  _CHIP_TYPE = "esp32"
 
   def get_console_configuration(self) -> console_config.ConsoleConfiguration:
     """Returns the interactive console configuration."""
@@ -67,3 +72,16 @@ class EspressifESP32Device(auxiliary_device.AuxiliaryDevice):
   @decorators.PersistentProperty
   def platform(self) -> str:
     return "ESP32"
+
+  @decorators.CapabilityDecorator(flash_build_esptool.FlashBuildEsptool)
+  def flash_build(self):
+    """FlashBuildEsptool capability to flash bin image."""
+    return self.lazy_init(
+        flash_build_esptool.FlashBuildEsptool,
+        device_name=self.name,
+        chip_type=self._CHIP_TYPE,
+        serial_port=self.communication_address,
+        boot_up_time=_DEFAULT_BOOTUP_TIMEOUT_SECONDS,
+        baud=BAUDRATE,
+        flash_mode=_FLASH_MODE,
+        flash_freq=_FLASH_FREQ)

@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ from gazoo_device.base_classes import auxiliary_device_base
 from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.base_classes import primary_device_base
 from gazoo_device.capabilities.interfaces import capability_base
+from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 
 _ALLOWED_PROPERTY_TYPES_CAPABILITY = (decorators.PersistentProperty,
                                       decorators.DynamicProperty,
@@ -32,6 +33,7 @@ _ALLOWED_PROPERTY_TYPES_DEVICE = (decorators.PersistentProperty,
                                   decorators.DynamicProperty,
                                   decorators.OptionalProperty,
                                   decorators.CapabilityProperty)
+_ALLOWED_PROPERTY_TYPES_MATTER_ENDPOINT = (decorators.CapabilityProperty,)
 _LOG_DECORATOR_BASE_CLASSES = (auxiliary_device.AuxiliaryDevice,
                                gazoo_device_base.GazooDeviceBase,
                                capability_base.CapabilityBase)
@@ -265,6 +267,8 @@ def get_uncategorized_properties(
   excluded_properties = excluded_properties or []
   if issubclass(cls, capability_base.CapabilityBase):
     allowed_property_types = _ALLOWED_PROPERTY_TYPES_CAPABILITY
+    if issubclass(cls, endpoint_base.EndpointBase):
+      allowed_property_types += _ALLOWED_PROPERTY_TYPES_MATTER_ENDPOINT
   else:
     allowed_property_types = _ALLOWED_PROPERTY_TYPES_DEVICE
   incompliant_properties = []
@@ -347,7 +351,7 @@ def _is_decoration_required(attr: Any) -> bool:
           and not attr.__name__.startswith("_")  # Public
           and not getattr(attr, "__isabstractmethod__", False)  # Not abstract
           and not _has_return_value(attr)  # Has a return other than None
-          and decorators.WRAPS_ATTR_NAME not in attr.__dict__)  # Not decorated
+          and decorators.LOG_DECORATOR_ATTRIBUTE not in attr.__dict__)
 
 
 def _has_return_value(method: Callable[..., Any]) -> Optional[bool]:

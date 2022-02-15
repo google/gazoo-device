@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -80,6 +80,7 @@ _NEW_COMMUNICATION_TYPES = (
 )
 # Communication types for which detect criteria are exported
 _COMM_TYPES_WITH_DETECT_CRITERIA = (
+    "AdbComms",
     "DockerComms",
     "JlinkSerialComms",
     "PtyProcessComms",
@@ -89,7 +90,6 @@ _COMM_TYPES_WITH_DETECT_CRITERIA = (
 )
 # Communication types for which no detect criteria are exported
 _COMM_TYPES_WITHOUT_DETECT_CRITERIA = (
-    "AdbComms",
 )
 
 _EXTENSIONS = gazoo_device_controllers.export_extensions()

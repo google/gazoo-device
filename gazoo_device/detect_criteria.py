@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Queries sent to devices during detection to determine their device type."""
 import copy
 import enum
@@ -23,6 +22,7 @@ import typing
 from typing import Any, Callable, Collection, Dict, List, Union
 
 from gazoo_device import config
+from gazoo_device import errors
 from gazoo_device import extensions
 from gazoo_device.base_classes import auxiliary_device_base
 from gazoo_device.base_classes import primary_device_base
@@ -45,10 +45,16 @@ _DOCKER_COMMANDS = immutabledict.immutabledict({
 })
 
 _SSH_COMMANDS = immutabledict.immutabledict({
+    "IS_CHIP_TOOL_PRESENT": "which chip-tool",
     "UNIFI_PRODUCT_NAME": "mca-cli-op info",
     "DLI_PRODUCT_NAME": "http://{address}/restapi/config/=brand_name/",
     "RPI_PRODUCT_NAME": "cat /proc/device-tree/model",
 })
+
+_GET_DLINK_MODEL_SNMP_COMMAND = (
+    "snmpget -v 2c -c private {ip_address}:161 1.3.6.1.2.1.1.1.0")
+_MODEL_RESPONSE_REG_EX = r"DGS-1100.+? Gigabit Ethernet Switch"
+_SNMP_TIMEOUT_S = 10
 
 _UNIFI_MODEL_PREFIXES = ("USW-", "US-")
 
@@ -62,7 +68,7 @@ class QueryEnum(enum.Enum):
 
 
 class AdbQuery(QueryEnum):
-  pass
+  is_serial_number = "is_serial_number"
 
 
 class DockerQuery(QueryEnum):
@@ -90,11 +96,17 @@ class SerialQuery(QueryEnum):
   vendor_product_id = "VENDOR_ID:PRODUCT_ID"
 
 
+class SnmpQuery(QueryEnum):
+  """Query names for detection of SnmpComms Devices."""
+  is_dlink = "is_dlink_power_switch"
+
+
 class SshQuery(QueryEnum):
   """Query names for detection for SshComms Devices."""
   is_dli = "is_dli_power_switch"
   is_rpi = "is_raspberry_pi"
   is_unifi = "is_unifi_switch"
+  is_chip_tool_present = "is_chip_tool_installed_on_rpi"
 
 
 class UsbQuery(QueryEnum):
@@ -104,8 +116,7 @@ class UsbQuery(QueryEnum):
 
 
 def _docker_product_name_query(
-    address: str,
-    detect_logger: logging.Logger,
+    address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> str:
   """Gets product name from docker device."""
@@ -115,26 +126,33 @@ def _docker_product_name_query(
         _DOCKER_COMMANDS["PRODUCT_NAME"].format(address).split())
     name = name.decode()
   except subprocess.CalledProcessError as err:
-    detect_logger.info("_docker_product_name_query failure: " + repr(err))
+    detect_logger.info(
+        "_docker_product_name_query failed for %s: %r", address, err)
     return ""
-  detect_logger.info("_docker_product_name_query response: {}".format(name))
   return name
 
 
 def _always_true_query(
+    address: str, detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> bool:
+  """Used when there is just one type of device for a communication type."""
+  del address, create_switchboard_func, detect_logger  # Unused.
+  return True
+
+
+def _adb_is_serial_number_query(
     address: str,
     detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> bool:
-  """Used when there is just one type of device for a communication type."""
-  del address, create_switchboard_func  # Unused: query always returns True
-  detect_logger.info("_always_true_query response: True")
-  return True
+  """Returns True if address is a serial number, False if it's an IP address."""
+  del create_switchboard_func, detect_logger  # Unused.
+  return not re.search(host_utils.IP_ADDRESS, address)
 
 
 def _is_dli_query(
-    address: str,
-    detect_logger: logging.Logger,
+    address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> bool:
   """Determines if address belongs to dli power switch."""
@@ -148,15 +166,44 @@ def _is_dli_query(
         timeout=1)
     name = response.text
   except RuntimeError as err:
-    detect_logger.info("_is_dli_query failure: " + repr(err))
+    detect_logger.info("_is_dli_query failed for %s: %r", address, err)
     return False
-  detect_logger.info("_is_dli_query response: {!r}".format(name))
   return "Power Switch" in name
 
 
+def get_dlink_model_name(ip_address: str) -> str:
+  """Returns the model name of the Dlink switch at the ip_address."""
+  command = _GET_DLINK_MODEL_SNMP_COMMAND.format(ip_address=ip_address)
+  # Expected response for 5 port model should look like:
+  # "DGS-1100-05 Gigabit Ethernet Switch"
+  response = subprocess.check_output(
+      command.split(), text=True, timeout=_SNMP_TIMEOUT_S)
+  match = re.search(_MODEL_RESPONSE_REG_EX, response)
+  if match:
+    return match[0]
+  raise errors.DeviceError(f"Failed to retrieve model name from dlink_switch "
+                           f"with command: {command}\n"
+                           f"Unexpected output: {response}")
+
+
+def _is_dlink_query(
+    address: str, detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> bool:
+  """Determines if address belongs to dli power switch."""
+  del create_switchboard_func  # Unused by _is_dlink_query
+  try:
+    model = get_dlink_model_name(ip_address=address)
+    detect_logger.info(f"Got response to sysDescr SNMP query: {model}\n"
+                       f"_is_dlink_query response: True")
+  except (subprocess.CalledProcessError, errors.DeviceError) as err:
+    detect_logger.info("_is_dlink_query failure: " + repr(err))
+    return False
+  return True
+
+
 def _is_rpi_query(
-    address: str,
-    detect_logger: logging.Logger,
+    address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> bool:
   """Determines if address belongs to raspberry pi."""
@@ -168,15 +215,32 @@ def _is_rpi_query(
         user="pi",
         key_info=config.KEYS["raspberrypi3_ssh_key"])
   except RuntimeError as err:
-    detect_logger.info("_is_rpi_query failure: " + repr(err))
+    detect_logger.info("_is_rpi_query failed for %s: %r", address, err)
     return False
-  detect_logger.info("_is_rpi_query response: {!r}".format(name))
   return "Raspberry Pi" in name
 
 
+def _is_chip_tool_installed_query(
+    address: str, detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> bool:
+  """Determines whether chip-tool is installed on an RPI."""
+  del create_switchboard_func  # Unused by _is_chip_tool_installed_query
+  try:
+    host_utils.ssh_command(
+        address,
+        command=_SSH_COMMANDS["IS_CHIP_TOOL_PRESENT"],
+        user="pi",
+        key_info=config.KEYS["raspberrypi3_ssh_key"])
+  except RuntimeError as err:
+    detect_logger.info(
+        "_is_chip_tool_installed_query failed for %s: %r", address, err)
+    return False
+  return True
+
+
 def _is_unifi_query(
-    address: str,
-    detect_logger: logging.Logger,
+    address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> bool:
   """Determines if address belongs to unifi poe switch."""
@@ -188,9 +252,8 @@ def _is_unifi_query(
         user="admin",
         key_info=config.KEYS["unifi_switch_ssh_key"])
   except RuntimeError as err:
-    detect_logger.info("_is_unifi_query failure: " + repr(err))
+    detect_logger.info("_is_unifi_query failed for %s: %r", address, err)
     return False
-  detect_logger.info("_is_unifi_query response: {!r}".format(mca_info))
 
   for model_prefix in _UNIFI_MODEL_PREFIXES:
     if model_prefix in mca_info:
@@ -199,8 +262,7 @@ def _is_unifi_query(
 
 
 def _pty_process_name_query(
-    address: str,
-    detect_logger: logging.Logger,
+    address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> str:
   """Returns product name from pty process comms address directory.
@@ -210,53 +272,36 @@ def _pty_process_name_query(
     detect_logger: The logger of device interactions.
     create_switchboard_func: Method to create the switchboard.
   """
-  del create_switchboard_func  # Unused by _pty_process_name_query
-  detect_logger.info("pty_process_name_query response: {}".format(address))
+  del create_switchboard_func, detect_logger  # Unused.
   return address
 
 
 def usb_product_name_query(
-    address: str,
-    detect_logger: logging.Logger,
+    address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> str:
   """Gets product name from usb_info."""
-  del create_switchboard_func  # Unused by usb_product_name_query
-  product_name = usb_utils.get_product_name_from_path(address).lower()
-  detect_logger.info(
-      "usb_product_name_query response: {}".format(product_name))
-  return product_name
+  del create_switchboard_func, detect_logger  # Unused.
+  return usb_utils.get_product_name_from_path(address).lower()
 
 
 def _usb_serial_number_from_serial_port_path(
-    address: str,
-    detect_logger: logging.Logger,
+    address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> str:
   """Gets serial number from serial port path."""
-  del create_switchboard_func  # Unused
-
-  serial_number = usb_utils.get_serial_number_from_path(address)
-  detect_logger.info(
-      "_usb_serial_number_from_serial_port_path response: "
-      f"{serial_number}")
-  return serial_number
+  del create_switchboard_func, detect_logger  # Unused.
+  return usb_utils.get_serial_number_from_path(address)
 
 
 def _usb_vendor_product_id_from_serial_port_path(
-    address: str,
-    detect_logger: logging.Logger,
+    address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> str:
   """Gets USB vendor ID and product ID from serial port path."""
-  del create_switchboard_func  # Unused
-
+  del create_switchboard_func, detect_logger  # Unused.
   device_info = usb_utils.get_device_info(address)
-  response_string = f"{device_info.vendor_id}:{device_info.product_id}"
-  detect_logger.info(
-      "_usb_vendor_product_id_from_serial_port_path "
-      f"response: {response_string}")
-  return response_string
+  return f"{device_info.vendor_id}:{device_info.product_id}"
 
 
 def _usb_product_name_from_serial_number(
@@ -277,19 +322,13 @@ def _usb_product_name_from_serial_number(
   """
   del create_switchboard_func  # Unused
   device = usb_utils.get_usb_device_from_serial_number(address)
-  if device:
-    return_value = device.product
-  else:
-    return_value = ""
   detect_logger.info(
-      "_usb_product_name_from_serial_number device: %r\nresponse: %s",
-      device, return_value)
-  return return_value
+      "_usb_product_name_from_serial_number: USB device is %r", device)
+  return device.product if device else ""
 
 
 def _usb_vendor_product_id_query(
-    address: str,
-    detect_logger: logging.Logger,
+    address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> str:
   """Returns USB vendor and product ID from serial number.
@@ -309,19 +348,12 @@ def _usb_vendor_product_id_query(
   del create_switchboard_func  # Unused by usb_vendor_product_id_query
   # Address contains serial number for USB devices
   device = usb_utils.get_usb_device_from_serial_number(address)
-  if device:
-    return_value = f"{device.idVendor:04x}:{device.idProduct:04x}"
-  else:
-    return_value = ""
-  detect_logger.info(
-      "_usb_vendor_product_id_query device: %r\nresponse: %s",
-      device, return_value)
-  return return_value
+  detect_logger.info("_usb_vendor_product_id_query: USB device is %r", device)
+  return f"{device.idVendor:04x}:{device.idProduct:04x}" if device else ""
 
 
 def _usb_serial_number(
-    address: str,
-    detect_logger: logging.Logger,
+    address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> str:
   """Returns the serial number from a USB device.
@@ -340,30 +372,25 @@ def _usb_serial_number(
       serial number.
     detect_logger: The logger of device interactions.
     create_switchboard_func: Method to create the switchboard.
+
   Returns:
     Serial number.
   """
-  del create_switchboard_func  # Unused by _usb_serial_number
-  detect_logger.info("_usb_serial_number response: %s", address)
+  del create_switchboard_func, detect_logger  # Unused.
   return address
 
 
 def _manufacturer_name_query(
-    address: str,
-    detect_logger: logging.Logger,
+    address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> str:
   """Gets manufacturer name from usb_info."""
-  del create_switchboard_func  # Unused by _manufacturer_name_query
-  manufacturer = usb_utils.get_device_info(address).manufacturer.lower()
-  detect_logger.info(
-      "_manufacturer_name_query response: {}".format(manufacturer))
-  return manufacturer
+  del create_switchboard_func, detect_logger  # Unused.
+  return usb_utils.get_device_info(address).manufacturer.lower()
 
 
 def _pigweed_application_query(
-    address: str,
-    detect_logger: logging.Logger,
+    address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> str:
   """Gets Pigweed application type of the device.
@@ -378,11 +405,8 @@ def _pigweed_application_query(
   """
   file_handler = typing.cast(logging.FileHandler, detect_logger.handlers[0])
   log_path = file_handler.baseFilename
-  app_type = pwrpc_utils.get_application_type(address,
-                                              log_path,
-                                              create_switchboard_func)
-  detect_logger.info(f"_pigweed_application_query response {app_type}")
-  return app_type
+  return pwrpc_utils.get_application_type(
+      address, log_path, create_switchboard_func)
 
 
 GENERIC_QUERY_DICT = immutabledict.immutabledict({
@@ -390,6 +414,7 @@ GENERIC_QUERY_DICT = immutabledict.immutabledict({
 })
 
 ADB_QUERY_DICT = immutabledict.immutabledict({
+    AdbQuery.is_serial_number: _adb_is_serial_number_query,
 })
 
 DOCKER_QUERY_DICT = immutabledict.immutabledict({
@@ -412,10 +437,15 @@ SERIAL_QUERY_DICT = immutabledict.immutabledict({
     SerialQuery.vendor_product_id: _usb_vendor_product_id_from_serial_port_path,
 })
 
+SNMP_QUERY_DICT = immutabledict.immutabledict({
+    SnmpQuery.is_dlink: _is_dlink_query,
+})
+
 SSH_QUERY_DICT = immutabledict.immutabledict({
     SshQuery.is_dli: _is_dli_query,
     SshQuery.is_rpi: _is_rpi_query,
     SshQuery.is_unifi: _is_unifi_query,
+    SshQuery.is_chip_tool_present: _is_chip_tool_installed_query,
 })
 
 USB_QUERY_DICT = immutabledict.immutabledict({
@@ -431,6 +461,7 @@ DETECT_CRITERIA = immutabledict.immutabledict({
     "PigweedSerialComms": PIGWEED_QUERY_DICT,
     "PtyProcessComms": PTY_PROCESS_QUERY_DICT,
     "SerialComms": SERIAL_QUERY_DICT,
+    "SnmpComms": SNMP_QUERY_DICT,
     "SshComms": SSH_QUERY_DICT,
     "UsbComms": USB_QUERY_DICT,
     "YepkitComms": GENERIC_QUERY_DICT,
@@ -438,9 +469,7 @@ DETECT_CRITERIA = immutabledict.immutabledict({
 
 
 def determine_device_class(
-    address: str,
-    communication_type: str,
-    log_file_path: str,
+    address: str, communication_type: str, log_file_path: str,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> List[_DeviceClassType]:
   """Returns the device class(es) that matches the address' responses.
@@ -469,9 +498,7 @@ def determine_device_class(
 
 
 def find_matching_device_class(
-    address: str,
-    communication_type: str,
-    detect_logger: logging.Logger,
+    address: str, communication_type: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase],
     device_classes: Collection[_DeviceClassType]) -> List[_DeviceClassType]:
   """Returns all classes where the device responses match the detect criteria.
@@ -489,12 +516,16 @@ def find_matching_device_class(
   matching_classes = []
   responses = _get_detect_query_response(address, communication_type,
                                          detect_logger, create_switchboard_func)
+  detect_logger.info(
+      "Possible %s device types: %s",
+      communication_type,
+      [device_class.DEVICE_TYPE for device_class in device_classes])
   for device_class in device_classes:
     if _matches_criteria(responses, device_class.DETECT_MATCH_CRITERIA):
       matching_classes.append(device_class)
-      detect_logger.info("{}: Match.".format(device_class.DEVICE_TYPE))
+      detect_logger.info("\t%s: Match.", device_class.DEVICE_TYPE)
     else:
-      detect_logger.info("{}: No Match.".format(device_class.DEVICE_TYPE))
+      detect_logger.info("\t%s: No Match.", device_class.DEVICE_TYPE)
   return matching_classes
 
 
@@ -519,9 +550,7 @@ def get_communication_type_classes(
 
 
 def _get_detect_query_response(
-    address: str,
-    communication_type: str,
-    detect_logger: logging.Logger,
+    address: str, communication_type: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> Dict[str, Any]:
   """Gathers device responses for all queries of that communication type.
@@ -543,10 +572,16 @@ def _get_detect_query_response(
           address=address,
           detect_logger=detect_logger,
           create_switchboard_func=create_switchboard_func)
-    except Exception as err:
-      detect_logger.debug(
-          f"failed getting detect query response for {address}: {err!r}")
+      detect_logger.info("%s response from %s: %r",
+                         query_name, address, query_responses[query_name])
+    except Exception as err:  # pylint: disable=broad-except
+      detect_logger.info("%s failed for %s: %r", query_name, address, err)
       query_responses[query_name] = repr(err)
+
+    if not isinstance(query_responses[query_name], (str, bool)):
+      detect_logger.warning(
+          "%s returned invalid response type %s for %s!",
+          query_name, type(query_responses[query_name]), address)
 
   return query_responses
 

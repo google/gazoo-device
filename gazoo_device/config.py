@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import immutabledict
 PACKAGE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 INSTALL_DIRECTORY = os.path.join(os.path.expanduser("~"), "gazoo", "gdm")
-
+LAUNCHER_PATH = os.path.join(os.path.expanduser("~"), "gazoo", "bin", "gdm")
 
 ADB_BIN_PATH_CONFIG = "adb_path"
 SEARCHWINDOWSIZE = 2000  # Default size of search window for switchboard methods
@@ -30,6 +30,7 @@ CONFIG_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "conf")
 DATA_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "data")
 BACKUP_PARENT_DIRECTORY = os.path.join(CONFIG_DIRECTORY, "backup")
 BOTO_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "botos")
+BIN_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "bin")
 KEYS_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "keys")
 PTY_PROCESS_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "pty_proc")
 DETOK_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "detok")

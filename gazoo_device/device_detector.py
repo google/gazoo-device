@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,9 @@
 """Device detector module."""
 import copy
 import os
+import time
 import typing
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Collection, Dict, List, Optional, Tuple
 import weakref
 
 from gazoo_device import config
@@ -26,6 +27,7 @@ from gazoo_device import extensions
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import auxiliary_device_base
 from gazoo_device.switchboard import communication_types
+from gazoo_device.utility import common_utils
 from gazoo_device.utility import pty_process_utils
 
 WIKI_URL = (
@@ -33,7 +35,7 @@ WIKI_URL = (
 logger = gdm_logger.get_logger()
 
 
-class DeviceDetector(object):
+class DeviceDetector:
   """Class for detecting devices.
 
   Class scans systems for all connections, filters out known connections,
@@ -67,22 +69,25 @@ class DeviceDetector(object):
     self.known_connections = self._create_known_connections()
 
   def detect_all_new_devices(
-      self, static_ips: Optional[List[str]] = None
+      self, static_ips: Optional[List[str]] = None,
+      comm_types: Optional[Collection[str]] = None
     ) -> Tuple[
         custom_types.PersistentConfigsDict,
         custom_types.OptionalConfigsDict]:
     """Finds all possible new connections and detects devices.
 
     Args:
-        static_ips: Static ips not otherwise detectable.
+      static_ips: Static ips not otherwise detectable.
+      comm_types: Limit detection to specific communication types.
 
     Returns:
-        (Dicts of persistent props, dict of optional props).
+      (Dicts of persistent props, dict of optional props).
     """
     logger.info(
         "\n##### Step 1/3: Detecting potential new communication addresses. #####\n"
     )
-    all_connections_dict = communication_types.detect_connections(static_ips)
+    all_connections_dict = communication_types.detect_connections(
+        static_ips=static_ips, comm_types=comm_types)
     return self.detect_new_devices(all_connections_dict)
 
   def detect_new_devices(
@@ -197,7 +202,7 @@ class DeviceDetector(object):
         (Name, dict of persistent props, dict of options props).
     """
     device_type = device_class.DEVICE_TYPE
-    detect_file = self._get_detect_log_file(connection)
+    detect_file = self._get_detect_log_file_name(connection, device_type)
     device_config = {
         "persistent": {
             "console_port_name": connection,
@@ -252,8 +257,7 @@ class DeviceDetector(object):
       ]
       if new_con_dict[key]:
         logger.info("Found {} possible {} connections:".format(
-            len(new_con_dict[key]),
-            key.lower().replace("_", " ")))
+            len(new_con_dict[key]), key))
         logger.info(u"\t" + u"\n\t".join(new_con_dict[key]))
     return new_con_dict
 
@@ -294,9 +298,12 @@ class DeviceDetector(object):
         name = "{}-{}".format(device_type, serial_number[-8:].lower())
     return name
 
-  def _get_detect_log_file(self, address: str) -> str:
-    name = address.replace("/", "_")
-    return "{}_detect.txt".format(name)
+  def _get_detect_log_file_name(
+      self, address: str, comm_type_or_device_type: str) -> str:
+    name = common_utils.extract_posix_portable_characters(
+        address.replace("/", "_"))
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    return f"{name}_{comm_type_or_device_type}_detect_{timestamp}.txt"
 
   def _identify_connection_device_class(
       self, connections_dict: Dict[str, List[str]]
@@ -317,17 +324,18 @@ class DeviceDetector(object):
     no_id_cons = []
     logger.info("\n##### Step 2/3 Identify Device Type of Connections. #####\n")
 
-    for key in sorted(connections_dict.keys()):
-      if not connections_dict[key]:  # no connections of that type
+    for communication_type in sorted(connections_dict.keys()):
+      if not connections_dict[communication_type]:
+        # No connections of that type.
         continue
-      key_name = key.lower().replace("_", " ")
-      logger.info("Identifying {} devices..".format(key_name))
-      for connection in connections_dict[key]:
-        detect_log = os.path.join(self.log_directory,
-                                  self._get_detect_log_file(connection))
+      logger.info("Identifying {} devices..".format(communication_type))
+      for connection in connections_dict[communication_type]:
+        detect_log = os.path.join(
+            self.log_directory,
+            self._get_detect_log_file_name(connection, communication_type))
         matching_classes = detect_criteria.determine_device_class(
             connection,
-            key,
+            communication_type,
             detect_log,
             # pytype: disable=attribute-error
             self.manager_weakref().create_switchboard
@@ -344,15 +352,17 @@ class DeviceDetector(object):
                                      extensions.get_registered_package_info(),
                                      device_types[0]))
         if matching_classes:
-          logger.info("\t{} is a {}.".format(connection,
-                                             matching_classes[0].DEVICE_TYPE))
+          logger.info("\t{} is a {}. See {} for details.".format(
+              connection, matching_classes[0].DEVICE_TYPE, detect_log))
           possible_device_tuples.append((matching_classes[0], connection))
         else:
-          logger.info(
-              "\t{} responses did not match a known device type.".format(
-                  connection))
+          logger.info("\t{} responses did not match a known {} device type. "
+                      "See {} for details.".format(connection,
+                                                   communication_type,
+                                                   detect_log))
           no_id_cons.append(connection)
-      logger.info("\t{} device_type detection complete.".format(key_name))
+      logger.info(
+          "\t{} device_type detection complete.".format(communication_type))
     return possible_device_tuples, errs, no_id_cons
 
   def _print_summary(

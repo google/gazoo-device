@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+import sys
+import os.path
+
+DEFAULTS = {
+  'application': os.path.join(os.path.dirname(sys.argv[0]), 'chip-all-clusters-app.bin'),
+  'parttool': None,
+  'port': '',
+  'baud': '460800',
+  'before': 'default_reset',
+  'after': 'hard_reset',
+  'flash_mode': 'dio',
+  'flash_freq': '30m',
+  'flash_size': '8MB',
+  'bootloader': os.path.join(os.path.dirname(sys.argv[0]), 'bootloader/bootloader.bin'),
+  'partition': os.path.join(os.path.dirname(sys.argv[0]), 'partition_table/partition-table.bin'),
+  'partition_offset': '0x6000',
+  'application_offset': '0x15000',
+}
+
+import esp32_firmware_utils
+
+if __name__ == '__main__':
+    sys.exit(esp32_firmware_utils.Flasher(**DEFAULTS).flash_command(sys.argv))

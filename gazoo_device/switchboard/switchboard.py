@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1834,8 +1834,14 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     # To speed up the combined process start time, start each process without
     # waiting for it to become responsive and then wait for all processes to
     # become responsive to parallelize process startup.
-    for process in processes_to_start:
-      process.wait_for_start()
+    try:
+      for process in processes_to_start:
+        process.wait_for_start()
+    except RuntimeError:
+      # If any process fails to start, terminate all of them to clean up.
+      for process in processes_to_start:
+        process.terminate()
+      raise
 
   def _stop_processes(self):
     """Stop all Switchboard processes."""

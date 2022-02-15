@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -115,6 +115,17 @@ class FakeSSHDevice(ssh_device.SshDevice):
         hub_name=self.props["optional"].get("usb_hub"),
         device_port=self.props["optional"].get("usb_port"),
         get_switchboard_if_initialized=self.switchboard)
+
+
+class FakePtyDevice(FakeSSHDevice):
+  """Fake primary PTY device for testing purposes."""
+  DEVICE_TYPE = "ptydevice"
+  COMMUNICATION_TYPE = "PtyProcessComms"
+  _COMMUNICATION_KWARGS = {}
+  PTY_PROCESS_COMMAND_CONFIG = {
+      "device_image_path_pattern": os.path.join("*", "some_firmware.img"),
+      "launch_command_template": "some_dir/some_binary --some_arg {param}",
+  }
 
 
 class FakeGazooDeviceBase(gazoo_device_base.GazooDeviceBase):

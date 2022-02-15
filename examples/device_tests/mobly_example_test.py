@@ -1,3 +1,17 @@
+# Copyright 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Example reboot device test with GDM + Mobly.
 
 Usage:
@@ -7,6 +21,7 @@ See README.md for more details.
 """
 import logging
 import os
+import sys
 from typing import List
 
 import gazoo_device
@@ -70,16 +85,14 @@ class MoblyExampleRebootTest(base_test.BaseTestClass):
     Returns:
       Names of all GazooDevices in the testbed.
     """
-    gazoo_device_configs = []
-    for controller, device_name_list in self.controller_configs.items():
-      if controller == _GAZOO_DEVICE_CONTROLLER:
-        for device_name in device_name_list:
-          gazoo_device_configs.append(device_name)
-    if not gazoo_device_configs:
+    gazoo_device_configs = self.controller_configs.get(
+        _GAZOO_DEVICE_CONTROLLER, [])
+    gazoo_device_names = [config["id"] for config in gazoo_device_configs]
+    if not gazoo_device_names:
       raise RuntimeError(
           f"The testbed config does not have any {_GAZOO_DEVICE_CONTROLLER} "
           "controller entries")
-    return gazoo_device_configs
+    return gazoo_device_names
 
   def test_reboot(self):
     """Reboots all devices in the testbed."""

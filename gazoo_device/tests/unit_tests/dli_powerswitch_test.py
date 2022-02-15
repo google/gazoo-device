@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """dli_powerswitch.py unit tests."""
 from unittest import mock
 
@@ -21,7 +20,6 @@ from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.utility import host_utils
 from gazoo_device.utility import http_utils
 import immutabledict
-
 
 _PERSISTENT_PROPERTIES = immutabledict.immutabledict({
     "console_port_name": "123.45.67.89",
@@ -66,13 +64,13 @@ class PowerswitchTest(fake_device_test_case.FakeDeviceTestCase):
         "The {} object failed to be created.".format("powerswitch_device"))
 
   @mock.patch.object(host_utils, "is_pingable", return_value=True)
-  def test_003_is_connected_true(self, mock_ping):
+  def test_002_is_connected_true(self, mock_ping):
     """Verify is_connected works as expected."""
     self.assertTrue(
         dli_powerswitch.DliPowerSwitch.is_connected(self.device_config))
 
   @mock.patch.object(http_utils, "send_http_get", side_effect=_mock_command)
-  def test_004_get_detection_info(self, mock_http_get):
+  def test_003_get_detection_info(self, mock_http_get):
     """Verify get detection info works correctly."""
     self._test_get_detection_info(
         self.device_config["persistent"]["console_port_name"],

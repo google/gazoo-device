@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,34 +13,57 @@
 # limitations under the License.
 
 """Utility module for interaction with adb."""
+import enum
 import json
 import os
 import re
 import subprocess
 import time
-from typing import Any, Optional
+from typing import Any, List, Optional, Tuple
 
 from gazoo_device import config
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.utility import host_utils
-
-import six
+from gazoo_device.utility import retry
 
 ADB_RETRY_SLEEP = 10
+DEFAULT_PORT = 5555
 FASTBOOT_TIMEOUT = 10.0
 PROPERTY_PATTERN = r"\[(.*)\]: \[(.*)\]\n"
 SYSENV_PATTERN = r"(.*)=(.*)\n"
+
+
+class AdbDeviceState(enum.Enum):
+  """ADB device states as found in output of 'adb devices'.
+
+  The values come from connection_state_name() in
+  https://android.googlesource.com/platform/system/adb/+/refs/heads/master/transport.cpp#759.
+  """
+  BOOTLOADER = "bootloader"
+  DEVICE = "device"
+  HOST = "host"
+  OFFLINE = "offline"
+  NO_PERMISSIONS = "no permissions"
+  RECOVERY = "recovery"
+  SIDELOAD = "sideload"
+  UNAUTHORIZED = "unauthorized"
+  UNKNOWN = "unknown"
+  # Not defined by ADB (in case we fail to parse the state).
+  UNRECOGNIZED = "unrecognized"
+
+
 logger = gdm_logger.get_logger()
 
 
-def bugreport(adb_serial: str,
+def bugreport(adb_identifier: str,
               destination_path: str = "./",
               adb_path: Optional[str] = None) -> str:
-  """Gets a bugreport to destination_path on host for the adb_serial provided.
+  """Gets a bugreport to destination_path on host for the adb_identifier.
 
   Args:
-      adb_serial: Device serial number
+      adb_identifier: Device ADB identifier, a serial number ("abcde123") or an
+          IP address and a port number ("12.34.56.78:5555").
       destination_path: Path to destination on host computer where bugreport
           should copied to.
       adb_path: optional alternative path to adb executable. If adb_path is not
@@ -59,11 +82,11 @@ def bugreport(adb_serial: str,
     raise ValueError(f"The destination_path directory {destination_dir} does "
                      "not exist.")
   output, returncode = _adb_command(command=["bugreport", destination_path],
-                                    adb_serial=adb_serial,
+                                    adb_serial=adb_identifier,
                                     adb_path=adb_path,
                                     include_return_code=True)
   if returncode != 0:
-    raise RuntimeError(f"Getting bugreport on ADB device {adb_serial} to "
+    raise RuntimeError(f"Getting bugreport on ADB device {adb_identifier} to "
                        f"{destination_path} failed. "
                        f"Error: {output!r} with return code {returncode}")
   return output
@@ -241,28 +264,6 @@ def enter_sideload(adb_serial, adb_path=None, auto_reboot=False):
   return _adb_command(command, adb_serial=adb_serial, adb_path=adb_path)
 
 
-def is_sideload_mode(adb_serial, adb_path=None):
-  """Checks if device is in sideload mode.
-
-  Args:
-      adb_serial (str): Device serial number.
-      adb_path (str): optional alternative path to adb executable
-
-  Raises:
-      RuntimeError: if adb_path is invalid or adb_path executable was not
-      found by
-                    get_adb_path().
-
-  Returns:
-      bool: True if device is in sideload mode. False otherwise.
-
-  Note:
-      If adb_path is not provided then path returned by get_adb_path will be
-      used instead.
-  """
-  return adb_serial in get_sideload_devices(adb_path=adb_path)
-
-
 def sideload_package(package_path, adb_serial, adb_path=None):
   """Perform "adb sideload <package>" command.
 
@@ -285,56 +286,116 @@ def sideload_package(package_path, adb_serial, adb_path=None):
                       adb_path=adb_path)
 
 
-def get_sideload_devices(adb_path=None):
-  """Returns a list of adb devices in sideload mode.
+def adb_devices(
+    adb_path: Optional[str] = None,
+    state: Optional[AdbDeviceState] = None
+) -> List[Tuple[str, AdbDeviceState]]:
+  """Returns parsed output of 'adb devices'.
 
   Args:
-      adb_path (str): optional alternative path to adb executable
-
-  Raises:
-      RuntimeError: if adb_path is invalid or adb executable was not found by
-                    get_adb_path.
+    adb_path: Optional alternative path to the 'adb' executable. Defaults to the
+      path returned by get_adb_path().
+    state: If provided, only include devices in the given ADB state.
 
   Returns:
-      list: A list of device serial numbers that are in sideload mode.
-
-  Note:
-      If adb_path is not provided then path returned by get_adb_path will be
-      used instead.
+    List of (device identifier, device ADB state) tuples found in
+    'adb devices'. The device identifiers are either serial numbers
+    ("abcde123") or IP addresses and ports ("12.34.56.78:5555").
   """
   try:
     output = _adb_command("devices", adb_path=adb_path)
   except RuntimeError as err:
     logger.warning(repr(err))
     return []
-  device_lines = [x for x in output.splitlines() if "\tsideload" in x]
-  return [x.split()[0] for x in device_lines]
+
+  output_lines = output.splitlines()
+  output_start_marker = "List of devices attached"
+  if output_start_marker not in output_lines:
+    return []
+
+  output_start_index = output_lines.index(output_start_marker) + 1
+  device_lines = [line for line in output_lines[output_start_index:]
+                  if line and "\t" in line]
+
+  identifiers_and_states = []
+  for device_line in device_lines:
+    identifier, _, device_state_str = device_line.partition("\t")
+    if "no permissions" in device_state_str:
+      # Reasons and URLs vary: "no permissions (<reason>); see [<url>]".
+      device_state = AdbDeviceState.NO_PERMISSIONS
+    else:
+      try:
+        device_state = AdbDeviceState(device_state_str)
+      except ValueError as e:
+        logger.debug(
+            f"Failed to parse ADB state {device_state_str!r}. Error: {e!r}")
+        device_state = AdbDeviceState.UNRECOGNIZED
+    if state is None or state == device_state:
+      identifiers_and_states.append((identifier, device_state))
+  return identifiers_and_states
 
 
-def get_adb_devices(adb_path=None):
-  """Returns a list of available adb devices.
+def get_adb_devices(adb_path: Optional[str] = None) -> List[str]:
+  """Returns ADB device identifiers of available ("device") ADB devices.
 
   Args:
-      adb_path (str): optional alternative path to adb executable
-
-  Raises:
-      RuntimeError: if adb_path is invalid or adb executable was not found by
-                    get_adb_path.
+    adb_path: Optional alternative path to the 'adb' executable. Defaults to the
+      path returned by get_adb_path().
 
   Returns:
-      list: A list of device serial numbers returned by 'adb devices'.
-
-  Note:
-      If adb_path is not provided then path returned by get_adb_path will be
-      used instead.
+    Returns ADB device identifiers of available ("device") ADB devices. The
+    device identifiers are either serial numbers ("abcde123") or IP addresses
+    and ports ("12.34.56.78:5555").
   """
-  try:
-    output = _adb_command("devices", adb_path=adb_path)
-  except RuntimeError as err:
-    logger.warning(repr(err))
-    return []
-  device_lines = [x for x in output.splitlines() if "\tdevice" in x]
-  return [x.split()[0].split(":", 1)[0] for x in device_lines]
+  return [identifier
+          for identifier, _ in adb_devices(adb_path, AdbDeviceState.DEVICE)]
+
+
+def get_sideload_devices(adb_path: Optional[str] = None) -> List[str]:
+  """Returns ADB device identifiers of devices in "sideload" mode.
+
+  Args:
+    adb_path: Optional alternative path to the 'adb' executable. Defaults to
+        the path returned by get_adb_path().
+
+  Returns:
+    Returns ADB device identifiers of devices in "sideload" mode. The device
+    identifiers are either serial numbers ("abcde123") or IP addresses and ports
+    ("12.34.56.78:5555").
+  """
+  return [identifier
+          for identifier, _ in adb_devices(adb_path, AdbDeviceState.SIDELOAD)]
+
+
+def is_adb_mode(adb_identifier: str, adb_path: Optional[str] = None) -> bool:
+  """Returns whether the ADB identifier is shown as a "device" in 'adb devices'.
+
+  Args:
+    adb_identifier: Device ADB identifier, a serial number ("abcde123") or an IP
+      address and a port number ("12.34.56.78:5555").
+    adb_path: An optional alternative path to the 'adb' executable. If not
+        provided, the path returned by get_adb_path() is used instead.
+  """
+  is_available = adb_identifier in get_adb_devices(adb_path=adb_path)
+  if not re.search(host_utils.IP_ADDRESS, adb_identifier):
+    return is_available
+  ip_address = adb_identifier.split(":")[0]  # Remove the port number.
+  # Devices connected through ADB over IP can show up as available ("device") in
+  # 'adb devices' even if the device is offline.
+  return is_available and host_utils.is_pingable(ip_address)
+
+
+def is_sideload_mode(
+    adb_identifier: str, adb_path: Optional[str] = None) -> bool:
+  """Returns True if the adb_identifier is in sideload mode.
+
+  Args:
+    adb_identifier: Device ADB identifier, a serial number ("abcde123") or an IP
+      address and a port number ("12.34.56.78:5555").
+    adb_path: An optional alternative path to the 'adb' executable. If not
+        provided, the path returned by get_adb_path() is used instead.
+  """
+  return adb_identifier in get_sideload_devices(adb_path=adb_path)
 
 
 def get_adb_path(adb_path=None):
@@ -376,12 +437,147 @@ def is_valid_path(path):
   return path and os.path.exists(path)
 
 
-def connect(adb_serial, adb_path=None):
-  """Connects to device via ADB."""
-  resp = _adb_command(["connect", adb_serial], adb_path=None)
-  if "unable to connect" in str(resp):
+def get_adb_over_ip_identifier(
+    adb_identifier: str, port: int = DEFAULT_PORT) -> str:
+  """Returns an ADB over IP identifier in the format 'IP_address:port'.
+
+  If the provided adb_identifier does not contain a port number, the default
+  port (":5555") is appended to the identifier.
+
+  Args:
+    adb_identifier: IP address or IP address and a port number.
+    port: TCP port number.
+
+  Raises:
+    ValueError: if adb_identifier is not an IP address.
+  """
+  if not re.search(host_utils.IP_ADDRESS, adb_identifier):
+    raise ValueError(f"ADB identifier {adb_identifier!r} is not an IP address.")
+  if ":" not in adb_identifier:
+    adb_identifier = f"{adb_identifier}:{port}"
+  return adb_identifier
+
+
+def _is_connect_successful(output_and_return_code: Tuple[str, int]) -> bool:
+  """Returns whether the connect() call was successful.
+
+  Args:
+    output_and_return_code: Output and return code of 'adb connect' command.
+
+  Returns:
+    True if the return code of 'adb connect' is 0 and there are no failure
+    markers in the command output. Note that 'adb connect' can return a 0 exit
+    code even when it fails, which is why we have to check for failure markers.
+  """
+  output, return_code = output_and_return_code
+  failure_markers = [
+      "failed to connect",
+      "failed to resolve host",
+      "missing port in specification",
+      "unable to connect",
+  ]
+  return (return_code == 0 and
+          all(marker not in output for marker in failure_markers))
+
+
+def connect(adb_identifier: str, attempts: int = 3) -> str:
+  """Connects to the device via ADB and returns the command output.
+
+  Args:
+    adb_identifier: IP address ("12.34.56.78") or IP address and a port number
+      ("12.34.56.78:5555"). If a port number is not provided, defaults to 5555.
+    attempts: Number of attempts for performing 'adb connect'.
+
+  Raises:
+    DeviceError: if 'adb connect' fails, or adb_identifier is not found in
+      'adb devices' after 'adb connect'.
+
+  Returns:
+    Output of the 'adb connect' command.
+  """
+  adb_identifier = get_adb_over_ip_identifier(adb_identifier)
+
+  retry_interval_s = 3
+  try:
+    output, _ = retry.retry(
+        func=_adb_command,
+        func_kwargs={
+            "command": ["connect", adb_identifier],
+            "include_return_code": True,
+        },
+        is_successful=_is_connect_successful,
+        timeout=retry_interval_s * attempts,
+        interval=retry_interval_s,
+        reraise=False)
+  except errors.CommunicationTimeoutError as e:
     raise errors.DeviceError(
-        f"Unable to connect to device {adb_serial!r} via ADB: {resp}")
+        f"Unable to connect to device {adb_identifier!r} via ADB. Error: {e!r}")
+
+  try:
+    retry.retry(
+        func=is_adb_mode,
+        func_args=[adb_identifier],
+        is_successful=bool,
+        timeout=retry_interval_s * attempts,
+        interval=retry_interval_s)
+  except errors.CommunicationTimeoutError as e:
+    raise errors.DeviceError(
+        f"{adb_identifier!r} was not found in 'adb devices' after "
+        f"'adb connect'. Error: {e!r}")
+  return output
+
+
+def _is_disconnected(adb_identifier: str) -> bool:
+  """Returns True if adb_identifier is not present in 'adb devices'."""
+  return adb_identifier not in [adb_id for adb_id, _ in adb_devices()]
+
+
+def disconnect(adb_identifier: str, attempts: int = 3) -> str:
+  """Disconnects ADB from the device and returns the command output.
+
+  Args:
+    adb_identifier: IP address ("12.34.56.78") or IP address and a port number
+      ("12.34.56.78:5555"). If a port number is not provided, defaults to 5555.
+    attempts: Number of attempts for performing 'adb disconnect'.
+
+  Raises:
+    DeviceError: if 'adb disconnect' fails, or if adb_identifier is still
+      present in 'adb devices' after 'adb disconnect'.
+
+  Returns:
+    Output of the 'adb disconnect' command.
+  """
+  adb_identifier = get_adb_over_ip_identifier(adb_identifier)
+
+  retry_interval_s = 3
+  try:
+    output, _ = retry.retry(
+        func=_adb_command,
+        func_kwargs={
+            "command": ["disconnect", adb_identifier],
+            "include_return_code": True,
+        },
+        is_successful=lambda output_and_code: output_and_code[1] == 0,
+        timeout=retry_interval_s * attempts,
+        interval=retry_interval_s,
+        reraise=False)
+  except errors.CommunicationTimeoutError as e:
+    raise errors.DeviceError(
+        f"Unable to disconnect ADB from device {adb_identifier!r}. "
+        f"Error: {e!r}")
+
+  try:
+    retry.retry(
+        func=_is_disconnected,
+        func_kwargs={"adb_identifier": adb_identifier},
+        is_successful=bool,
+        timeout=retry_interval_s * attempts,
+        interval=retry_interval_s)
+  except errors.CommunicationTimeoutError as e:
+    raise errors.DeviceError(
+        f"{adb_identifier!r} was still found in 'adb devices' after "
+        f"'adb connect'. Error: {e!r}")
+  return output
 
 
 def shell(adb_serial: str,
@@ -457,27 +653,6 @@ def get_fastboot_path(fastboot_path=None):
   if host_utils.has_command("fastboot"):
     return host_utils.get_command_path("fastboot")
   raise RuntimeError("No valid fastboot path found using 'which fastboot'")
-
-
-def is_adb_mode(adb_serial, adb_path=None):
-  """Checks if device is in adb mode.
-
-  Args:
-      adb_serial (str): Device serial number.
-      adb_path (str): optional alternative path to adb executable
-
-  Raises:
-      RuntimeError: if adb_path is invalid or adb executable was not found by
-                    get_adb_path.
-
-  Returns:
-      bool: True if device is in adb mode. False otherwise.
-
-  Note:
-      If adb_path is not provided then path returned by get_adb_path will be
-      used instead.
-  """
-  return adb_serial in get_adb_devices(adb_path=adb_path)
 
 
 def is_device_online(adb_serial, adb_path=None, fastboot_path=None):
@@ -681,6 +856,45 @@ def verify_user_has_fastboot(device_name):
                              "to add user to plugdev group".format(device_name))
 
 
+def wait_for_device(adb_identifier: str, timeout: float) -> None:
+  """Waits until the device is detected by ADB.
+
+  Args:
+      adb_identifier: ADB device identifier, e.g. serial number or IP address.
+      timeout: Time in seconds to wait before giving up.
+
+  Raises:
+      CommunicationTimeoutError: Timed out waiting for device detection.
+  """
+  _, return_code = _adb_command(command="wait-for-device",
+                                adb_serial=adb_identifier,
+                                timeout=timeout,
+                                include_return_code=True)
+  if return_code != 0:
+    raise errors.CommunicationTimeoutError(
+        f"Timeout waiting for device {adb_identifier} after {timeout} seconds")
+
+
+def wait_for_device_offline(adb_identifier: str, timeout: float = 20,
+                            check_interval: float = 1) -> None:
+  """Waits until the device is not seen via adb, e.g. reboot started.
+
+  Args:
+      adb_identifier: ADB device identifier, e.g. serial number or IP address.
+      timeout: Time in seconds to wait before raising timeout.
+      check_interval: Interval between checks to see if device is offline.
+
+  Raises:
+      CommunicationTimeoutError: Timed out waiting for device to go offline.
+  """
+  end_time = time.time() + timeout
+  while is_adb_mode(adb_identifier):
+    if time.time() > end_time:
+      raise errors.CommunicationTimeoutError(
+          f"Device {adb_identifier} did not go offline in {timeout} seconds.")
+    time.sleep(check_interval)
+
+
 def _adb_command(command,
                  adb_serial=None,
                  adb_path=None,
@@ -717,7 +931,7 @@ def _adb_command(command,
     args = [adb_path]
   else:
     args = [adb_path, "-s", adb_serial]
-  if isinstance(command, (str, six.text_type)):
+  if isinstance(command, str):
     args.append(command)
   elif isinstance(command, (list, tuple)):
     args.extend(command)
@@ -784,7 +998,7 @@ def _fastboot_command(command,
   else:
     args = ["timeout", str(timeout), fastboot_path, "-s", fastboot_serial]
 
-  if isinstance(command, (str, six.text_type)):
+  if isinstance(command, str):
     args.append(command)
   elif isinstance(command, (list, tuple)):
     args.extend(command)
@@ -821,7 +1035,7 @@ def install_package_on_device(package_path: str,
       all_permissions: Grants all runtime permission to the app.
 
   Raises:
-      ValueError: when pacakge_path is not valid.
+      ValueError: when package_path is not valid.
       DeviceError: when installation failed.
   """
   if not os.path.exists(package_path):
@@ -918,6 +1132,34 @@ def remove_port_forwarding(host_port: int,
                                     include_return_code=True)
   if returncode != 0:
     raise RuntimeError(
-        f"Failed to remove port forwarding on device serial:{adb_serial} "
+        f"Failed to remove port forwarding on device serial: {adb_serial} "
         f"on host port {host_port}. {output}")
+  return output
+
+
+def tcpip(adb_serial: Optional[str] = None,
+          port: Optional[int] = DEFAULT_PORT,
+          adb_path: Optional[str] = None) -> str:
+  """Restarts adbd listening on the provided TCP port for the adb_serial.
+
+  Args:
+    adb_serial: ADB serial number.
+    port: TCP port to listen on.
+    adb_path: Alternative path to 'adb' executable.
+
+  Raises:
+    RuntimeError: If the command fails.
+
+  Returns:
+    The command output.
+  """
+  output, return_code = _adb_command(
+      ["tcpip", str(port)],
+      adb_serial=adb_serial,
+      adb_path=adb_path,
+      include_return_code=True)
+  if return_code != 0:
+    raise RuntimeError(
+        f"ADB failed to start listening on port {port} for ADB serial "
+        f"{adb_serial}. Return code: {return_code}, output: {output}.")
   return output

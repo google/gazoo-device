@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests the switchboard_process.py module."""
+import multiprocessing
 import queue
 import time
 from unittest import mock
@@ -577,6 +578,17 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
                     "Expected _pre_run_hook to return True")
     self.assertIsNone(self.uut._post_run_hook(),
                       "Expected _post_run_hook to return None")
+
+  def test_terminate(self):
+    """Tests terminating a Switchboard process."""
+    self.uut = switchboard_process.SwitchboardProcess(
+        "fake_device", "some_process", self.exception_queue, self.command_queue)
+    mock_process = mock.MagicMock(spec=multiprocessing.Process)
+    self.uut._process = mock_process
+    self.uut.terminate()
+    mock_process.terminate.assert_called_once()
+    mock_process.join.assert_called_once()
+    self.assertIsNone(self.uut._process)
 
 
 if __name__ == "__main__":

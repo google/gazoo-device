@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,10 @@
 # limitations under the License.
 
 """This test suite verifies device_power capability."""
+import logging
 from typing import Type
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
+from mobly import asserts
 
 
 class DevicePowerTestSuite(gdm_test_base.GDMTestBase):
@@ -41,20 +43,20 @@ class DevicePowerTestSuite(gdm_test_base.GDMTestBase):
 
     try:
       self.device.device_power.off()
-      self.assertEqual(
+      asserts.assert_equal(
           self.device.device_power.port_mode, "off",
           f"{self.device.name} port {self.device.device_power.port_number} "
           "should have been set to off")
       self.device.device_power.on()
       on_modes = ["on", "charge", "sync"]
-      self.assertIn(
+      asserts.assert_in(
           self.device.device_power.port_mode, on_modes,
           f"{self.device.name} port {self.device.device_power.port_number} "
           f"should have been set to one of {on_modes}")
 
     finally:
       if original_mode == "off":
-        self.logger.info(
+        logging.info(
             "Restoring device power back to its original mode 'off'")
         self.device.device_power.off()
 

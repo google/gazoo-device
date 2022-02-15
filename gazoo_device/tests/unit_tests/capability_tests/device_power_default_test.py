@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ from unittest import mock
 from gazoo_device import errors
 from gazoo_device import manager
 from gazoo_device.auxiliary_devices import cambrionix
+from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.capabilities import device_power_default
 from gazoo_device.switchboard import switchboard
 from gazoo_device.tests.unit_tests.utils import unit_test_case
@@ -45,6 +46,8 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     self.mock_cambrionix = mock.MagicMock(spec=cambrionix.Cambrionix)
     self.mock_manager.create_device.return_value = self.mock_cambrionix
     self.wait_for_bootup_complete = mock.MagicMock()
+    self.wait_for_connection_fn = mock.MagicMock(
+        spec=gazoo_device_base.GazooDeviceBase.check_device_connected)
     self.uut = device_power_default.DevicePowerDefault(
         device_name=self.name,
         create_device_func=self.mock_manager.create_device,
@@ -52,6 +55,7 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
         props=self.props,
         usb_ports_discovered=False,
         wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
+        wait_for_connection_fn=self.wait_for_connection_fn,
         switchboard_inst=self.mock_switchboard,
         change_triggers_reboot=False)
 
@@ -66,6 +70,7 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     self.uut.on()
     self.uut._hub.switch_power.power_on.assert_called_once_with(self.port_num)
     self.mock_switchboard.open_all_transports.assert_called_once()
+    self.wait_for_connection_fn.assert_called_once()
 
   def test_003_on_with_no_wait_true(self):
     """Verifies wait_for_boot_up_complete is skipped if no_wait is False."""

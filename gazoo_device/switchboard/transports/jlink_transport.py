@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,16 +14,16 @@
 
 """J-Link transport class."""
 import os.path
-
-import intelhex
-from pylink import enums
-from pylink import jlink
-import six
+import sys
 
 from gazoo_device import errors
 from gazoo_device.switchboard.transports import transport_base
+import intelhex
+from pylink import enums
+from pylink import jlink
 
 DEFAULT_CHIP_NAME = "NRF52840_XXAA"
+_JLINK_NO_DLL_ERROR = "Expected to be given a valid DLL."
 
 
 class JLinkTransport(transport_base.TransportBase):
@@ -67,11 +67,11 @@ class JLinkTransport(transport_base.TransportBase):
     try:
       self._jlink = jlink.JLink()
     except TypeError as e:
-      if "Expected to be given a valid DLL." in str(e):
-        raise errors.DeviceError(
+      if _JLINK_NO_DLL_ERROR in str(e):
+        raise errors.DependencyUnavailableError(
             "No J-Link DLL found. Install the J-Link SDK from "
             "https://www.segger.com/downloads/jlink/#J-LinkSoftwareAndDocumentationPack. "
-            "Error: {!r}.".format(e))
+            f"Error: {e!r}.")
       else:
         raise
 
@@ -135,7 +135,8 @@ class JLinkTransport(transport_base.TransportBase):
         bytes: bytes read from transport.
     """
     data = self._jlink.rtt_read(0, size)  # returns a list of int values (bytes)
-    return b"".join(six.int2byte(value) for value in data)
+    return b"".join(value.to_bytes(length=1, byteorder=sys.byteorder)
+                    for value in data)
 
   def _start_rtt_logging(self):
     """Restart RTT logging."""
@@ -155,8 +156,8 @@ class JLinkTransport(transport_base.TransportBase):
     Returns:
         int: number of bytes written.
     """
-    if isinstance(data, six.text_type):
+    if isinstance(data, str):
       data = data.encode("utf-8", errors="replace")
 
-    bytes_to_write = list(six.iterbytes(data))  # convert to list of int values
+    bytes_to_write = list(data)  # convert to list of int values
     return self._jlink.rtt_write(0, bytes_to_write)

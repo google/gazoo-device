@@ -1,3 +1,17 @@
+# Copyright 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Methods for mobly controller.
 
 Imported into init.
@@ -38,6 +52,19 @@ _LOGGER = gdm_logger.get_logger()
 _MANAGER_INSTANCE = None
 
 
+def get_manager() -> manager.Manager:
+  """Set up, as needed, and returns a manager instance."""
+  global _MANAGER_INSTANCE
+  if _MANAGER_INSTANCE is None:
+    log_path_directory = getattr(logging, "log_path", "/tmp/logs")
+    gdm_log_file = os.path.join(log_path_directory, "gdm.txt")
+    _MANAGER_INSTANCE = manager.Manager(
+        log_directory=log_path_directory,
+        gdm_log_file=gdm_log_file,
+        stdout_logging=False)
+  return _MANAGER_INSTANCE
+
+
 def _set_auxiliary_props(properties: Dict[str, Any], device_name: str):
   """Sets props on device instance to the values in the config.
 
@@ -51,10 +78,10 @@ def _set_auxiliary_props(properties: Dict[str, Any], device_name: str):
     if prop_name in ["id", "dimensions"]:
       continue
     elif prop_name == "label":
-      _MANAGER_INSTANCE.set_prop(device_name, "alias", value)
+      get_manager().set_prop(device_name, "alias", value)
     else:
       try:
-        _MANAGER_INSTANCE.set_prop(device_name, prop_name, value)
+        get_manager().set_prop(device_name, prop_name, value)
       except errors.DeviceError:
         _LOGGER.warning("%s unsettable for %s", prop_name, device_name)
 
@@ -62,18 +89,17 @@ def _set_auxiliary_props(properties: Dict[str, Any], device_name: str):
 def create(configs: List[Dict[str, Any]]) -> List[custom_types.Device]:
   """Creates gazoo device instances and returns them."""
   # log_path is set by mobly on logging in base_test
-  log_path_directory = getattr(logging, "log_path", "/tmp/logs")
-  gdm_log_file = os.path.join(log_path_directory, "gdm.txt")
-  global _MANAGER_INSTANCE
-  _MANAGER_INSTANCE = manager.Manager(
-      log_directory=log_path_directory,
-      gdm_log_file=gdm_log_file,
-      stdout_logging=False)
+
   devices = []
   for entry in configs:
     name = entry["id"]
     _set_auxiliary_props(entry, name)
-    device = _MANAGER_INSTANCE.create_device(name)
+    if entry.get("bypass_gdm_check") == "true":
+      _LOGGER.info(f"bypass_gdm_check is set for {name}. "
+                   "Skipping health checks")
+      device = get_manager().create_device(name, make_device_ready="off")
+    else:
+      device = get_manager().create_device(name)
     devices.append(device)
   return devices
 
@@ -99,5 +125,6 @@ def destroy(devices: List[custom_types.Device]) -> None:
   for device in devices:
     device.close()
   global _MANAGER_INSTANCE
-  _MANAGER_INSTANCE.close()
+  if _MANAGER_INSTANCE is not None:
+    _MANAGER_INSTANCE.close()
   _MANAGER_INSTANCE = None

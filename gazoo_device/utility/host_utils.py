@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,13 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Utility module for local host commands."""
 import glob
 import os
 import re
 import subprocess
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from gazoo_device import config
 from gazoo_device import data_types
@@ -46,6 +45,9 @@ DEFAULT_SSH_OPTIONS = _SSH_DISABLE_PSEUDO_TTY + SSH_CONFIG
 
 GET_COMMAND_PATH = "which {}"
 GET_CONNECTED_IPS = "/usr/sbin/arp -e"
+
+_SNMPWALK_COMMAND = "snmpwalk -v 2c -c private {ip_address}"
+_SNMPWALK_TIMEOUT = 10
 
 _gsutil_cli = None  # Set by _set_gsutil_cli().
 
@@ -207,6 +209,18 @@ def get_all_ssh_ips(static_ips: Optional[List[str]] = None) -> List[str]:
   return list(ssh_ips)
 
 
+def get_all_snmp_ips(static_ips: Optional[Sequence[str]] = None) -> List[str]:
+  """Returns all IPs that respond to ping and accept snmp protocol."""
+  static_ips = static_ips or []
+  snmp_ips = set(static_ips)
+  snmp_ips = {ip for ip in snmp_ips if is_pingable(ip)}
+  non_snmp_ips = {ip for ip in snmp_ips if not accepts_snmp(ip)}
+  if non_snmp_ips:
+    logger.info(f"ip_address(es) {non_snmp_ips} do not accept snmp protocol.")
+  snmp_ips -= non_snmp_ips
+  return list(snmp_ips)
+
+
 def get_all_yepkit_serials():
   """Returns all Yepkit serials."""
   if not has_command("ykushcmd"):
@@ -343,15 +357,13 @@ def is_in_ifconfig(ip_or_mac_address):
     return False
 
 
-def is_pingable(ip_address, timeout=PING_DEFAULT_TIMEOUT_SECONDS):
-  """Determine if the given IP address is pingable.
+def is_pingable(
+    ip_address: str, timeout: float = PING_DEFAULT_TIMEOUT_SECONDS) -> bool:
+  """Returns True if the ip_address responds to network pings.
 
   Args:
-      ip_address (str): to ping
-      timeout (int): timeout in seconds to wait for ping response
-
-  Returns:
-      bool: True if IP address is pingable with no loss within 1 second.
+      ip_address: IP address to ping.
+      timeout: Timeout in seconds to wait for ping response.
   """
   try:
     cmd_list = PING_CUSTOM_TIMEOUT.format(timeout, ip_address).split()
@@ -373,6 +385,23 @@ def is_sshable(ip_address):
   try:
     cmd_list = SSHABLE_COMMAND.format(ip_address).split()
     subprocess.check_output(cmd_list, stderr=subprocess.STDOUT)
+    return True
+  except subprocess.CalledProcessError:
+    return False
+
+
+def accepts_snmp(ip_address: str) -> bool:
+  """Determine if a given IP address accepts snmp protocol.
+
+  Args:
+    ip_address: IP to query snmpwalk.
+
+  Returns:
+    True if IP returns anything from snmpwalk command; False if not.
+  """
+  try:
+    snmpwalk_command = _SNMPWALK_COMMAND.format(ip_address=ip_address).split()
+    subprocess.check_output(snmpwalk_command, timeout=_SNMPWALK_TIMEOUT)
     return True
   except subprocess.CalledProcessError:
     return False

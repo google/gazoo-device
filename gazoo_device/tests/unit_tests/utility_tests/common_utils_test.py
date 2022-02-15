@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -54,23 +54,23 @@ class CommonUtilsTests(unit_test_case.UnitTestCase):
   """Common utility tests."""
 
   def test_get_value_from_json_good_response_value_extraction(self):
-    """Test for valid extraction of a value nested in a response message."""
+    """Tests for valid extraction of a value nested in a response message."""
     value = common_utils.get_value_from_json(_SAMPLE_RESPONSE, ["a", "b", "c"])
     self.assertEqual("d", value)
 
   def test_get_value_from_json_bad_response_value_extraction_raises(self):
-    """Test for failed extraction with raise option."""
+    """Tests for failed extraction with raise option."""
     with self.assertRaisesRegex(KeyError, "Unable to find key"):
       common_utils.get_value_from_json(_SAMPLE_RESPONSE, ["a", "b", "e"])
 
   def test_get_value_from_json_bad_response_value_extraction_no_raise(self):
-    """Test for failed extraction of a value with raise_if_absent=False."""
+    """Tests for failed extraction of a value with raise_if_absent=False."""
     value = common_utils.get_value_from_json(_SAMPLE_RESPONSE, ["a", "b", "e"],
                                              False)
     self.assertIsNone(value)
 
   def test_method_weakref_live_object_no_args(self):
-    """Test calling method via weakref on a live object with no method args."""
+    """Tests calling method via weakref on a live object with no method args."""
     method_calls = []
     test_class = TestClass(method_calls)
     method_weakref = common_utils.MethodWeakRef(test_class.method)
@@ -80,7 +80,7 @@ class CommonUtilsTests(unit_test_case.UnitTestCase):
     self.assertEqual(expected_calls, method_calls)
 
   def test_method_weakref_live_object_with_args(self):
-    """Test calling method via a weakref on a live object with method args."""
+    """Tests calling method via a weakref on a live object with method args."""
     method_calls = []
     test_class = TestClass(method_calls)
     method_weakref = common_utils.MethodWeakRef(test_class.method)
@@ -90,7 +90,7 @@ class CommonUtilsTests(unit_test_case.UnitTestCase):
     self.assertEqual(expected_calls, method_calls)
 
   def test_method_weakref_dead_object(self):
-    """Test calling method via a weakref on a dead object."""
+    """Tests calling method via a weakref on a dead object."""
     method_calls = []
     test_class = TestClass(method_calls)
     method_weakref = common_utils.MethodWeakRef(test_class.method)
@@ -100,34 +100,45 @@ class CommonUtilsTests(unit_test_case.UnitTestCase):
     self.assertFalse(method_calls)
 
   def test_title_to_snake_case_error_if_underscore_found(self):
-    """Test title_to_snake_case() raises if input contains an underscore."""
+    """Tests title_to_snake_case() raises if input contains an underscore."""
     with self.assertRaisesRegex(ValueError, "underscore"):
       common_utils.title_to_snake_case("Foo_Bar")
 
   def test_title_to_snake_case_success(self):
-    """Test title_to_snake_case() on several valid inputs."""
+    """Tests title_to_snake_case() on several valid inputs."""
     for title_str, snake_str in _CASE_CONVERSION_TEST_CASES:
       self.assertEqual(snake_str, common_utils.title_to_snake_case(title_str))
 
   def test_generate_name_error_no_name_attr(self):
-    """Test generate_name() raises if object doesn't have __name__ attribute."""
+    """Tests generate_name raises if object doesn't have __name__ attribute."""
     test_object = object()
     with self.assertRaisesRegex(ValueError,
                                 "must have a non-empty __name__ attribute"):
       common_utils.generate_name(test_object)
 
   def test_generate_name_error_empty_name_attr(self):
-    """Test generate_name() raises an error if object's __name__ is ""."""
+    """Tests generate_name() raises an error if object's __name__ is ""."""
     test_object = _NamedObject("")
     with self.assertRaisesRegex(ValueError,
                                 "must have a non-empty __name__ attribute"):
       common_utils.generate_name(test_object)
 
   def test_generate_name_success(self):
-    """Test generate_name() on several valid inputs."""
+    """Tests generate_name() on several valid inputs."""
     for object_name, expected_name in _GENERATE_NAME_TEST_CASES:
       test_object = _NamedObject(object_name)
       self.assertEqual(expected_name, common_utils.generate_name(test_object))
+
+  def test_extract_posix_portable_characters(self):
+    """Tests extracting posix portable characters."""
+    char_set = []
+    for n in range(0, 0x110000):
+      char_set.append(chr(n))
+    filtered_string = common_utils.extract_posix_portable_characters(
+        "".join(char_set))
+    self.assertRegexMatch(
+        filtered_string, [r"^[0-9a-zA-Z._\-]+$"],
+        "non posix characters not filtered")
 
 
 if __name__ == "__main__":

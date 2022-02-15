@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import time
 
 from typing import Type
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
+from mobly import asserts
 
 
 class EmbeddedScriptTestSuite(gdm_test_base.GDMTestBase):
@@ -39,9 +40,9 @@ class EmbeddedScriptTestSuite(gdm_test_base.GDMTestBase):
     """Returns True if the device must be paired to run this test suite."""
     return True
 
-  def setUp(self):
+  def setup_test(self):
     """Set states and script name for running tests."""
-    super().setUp()
+    super().setup_test()
     self.on_state = "on"
     self.script_name = "test_script"
     self.port = 1
@@ -53,7 +54,7 @@ class EmbeddedScriptTestSuite(gdm_test_base.GDMTestBase):
                                     script_args=[str(self.port)])
     time.sleep(10)
     current_state = self.device.switch_power.get_mode(self.port-1)
-    self.assertEqual(
+    asserts.assert_equal(
         current_state, self.on_state,
         "{port} for device {device_name} should have been set to on state.".
         format(port=self.port, device_name=self.device.name))
@@ -66,7 +67,7 @@ class EmbeddedScriptTestSuite(gdm_test_base.GDMTestBase):
     self.device.embedded_script.terminate()
     current_running_threads = (self.device.embedded_script.
                                get_current_running_threads())
-    self.assertEqual(
+    asserts.assert_equal(
         first=current_running_threads,
         second="{}",
         msg="Script still in execution {}".format(current_running_threads))
@@ -79,15 +80,15 @@ class EmbeddedScriptTestSuite(gdm_test_base.GDMTestBase):
     self.device.embedded_script.terminate(thread_id=thread_id)
     current_running_threads = (self.device.embedded_script.
                                get_current_running_threads())
-    self.assertEqual(
+    asserts.assert_equal(
         first=current_running_threads,
         second="{}",
         msg="Script still in execution {}".format(current_running_threads))
 
-  def tearDown(self):
+  def teardown_test(self):
     """Turns power off for test port."""
     self.device.switch_power.power_off(port=self.port-1)
-    super().tearDown()
+    super().teardown_test()
 
 if __name__ == "__main__":
   gdm_test_base.main()

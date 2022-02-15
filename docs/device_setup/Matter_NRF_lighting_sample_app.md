@@ -62,6 +62,21 @@ or the below commands:
 nrfjprog --program ${image_file}.hex -f NRF52 --snr ${DK serial-number} --sectoranduicrerase
 ```
 
+You may also use GDM python interpreter for flashing:
+
+```
+>>> from gazoo_device import Manager
+>>> m = Manager()
+>>> nrf = m.create_device('nrf52840-3453')
+>>> nrf.flash_build.flash_device(['/path/to/nrf52840_light.hex'])
+```
+
+Or using GDM CLI:
+
+```
+gdm issue nrf52840-3453 - flash_build - upgrade --build_file=/path/to/nrf52840_light.hex
+```
+
 **4. (Optional) Try RPC**
 
 Try if the Lighting endpoints work in the interactive console.
@@ -108,9 +123,9 @@ Detect the NRF lighting app: `gdm detect`
 Using GDM CLI
 
 ```
-gdm issue nrfmatterlighting-6125 - pw_rpc_light - on  # Turn the light on
-gdm issue nrfmatterlighting-6125 - pw_rpc_light - state  # Check the light state
-gdm issue nrfmatterlighting-6125 - pw_rpc_light - off  # Turn the light off
+gdm issue nrfmatterlighting-6125 - on_off_light - on_off - on  # Turn the light on
+gdm issue nrfmatterlighting-6125 - on_off_light - on_off - onoff  # Check the light state
+gdm issue nrfmatterlighting-6125 - on_off_light - on_off - off  # Turn the light off
 gdm issue nrfmatterlighting-6125 - pw_rpc_button - push 0  # Push button 0
 gdm issue nrfmatterlighting-6125 - factory_reset
 gdm issue nrfmatterlighting-6125 - reboot
@@ -135,8 +150,8 @@ Inside python console:
 >>> from gazoo_device import Manager
 >>> m = Manager()
 >>> nrf = m.create_device('nrfmatterlighting-6125')
->>> nrf.pw_rpc_light.on()
->>> nrf.pw_rpc_light.state
+>>> nrf.on_off_light.on_off.on()
+>>> nrf.on_off_light.on_off.onoff
 >>> nrf.close()
 ```
 
@@ -150,24 +165,25 @@ and
 **1. Turn on/off the light and get light state**
 
 ```
->>> nrf.pw_rpc_light.on()
->>> nrf.pw_rpc_light.off()
->>> nrf.pw_rpc_light.state
+>>> nrf.on_off_light.on_off.on()
+>>> nrf.on_off_light.on_off.off()
+>>> nrf.on_off_light.on_off.onoff
 ```
 
 **2. Set and get brightness level**
 
 ```
->>> nrf.pw_rpc_light.on(level=100)
->>> nrf.pw_rpc_light.brightness
+>>> nrf.on_off_light.on_off.move_to_level(level=108)
+>>> nrf.on_off_light.on_off.current_level
 ```
 
 **3. Set and get lighting color**
 
 ```
->>> nrf.pw_rpc_light.on(hue=50, saturation=30)
->>> nrf.pw_rpc_light.color.hue
->>> nrf.pw_rpc_light.color.saturation
+>>> nrf.color_temperature_light.color.move_to_hue(108)
+>>> nrf.color_temperature_light.color.current_hue
+>>> nrf.color_temperature_light.color.move_to_saturation(50)
+>>> nrf.color_temperature_light.color.current_saturation
 ```
 
 **4. Push buttons on the board**

@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ from gazoo_device.switchboard import ftdi_buttons
 from gazoo_device.switchboard import line_identifier
 from gazoo_device.switchboard import log_process
 from gazoo_device.switchboard import switchboard
+from gazoo_device.switchboard import transport_process
 from gazoo_device.switchboard.transports import serial_transport
 from gazoo_device.switchboard.transports import tcp_transport
 from gazoo_device.tests.unit_tests.utils import fake_responder
@@ -1946,6 +1947,33 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
           pattern_list=["a"],
           timeout=_EXPECT_TIMEOUT,
           method_kwargs={"raise_error": True})
+
+  def test_start_processes_terminates_processes_on_failure(self):
+    """Tests _start_processes terminates processes on process start failure."""
+    self.uut = switchboard.SwitchboardDefault(
+        "device-1234", self.exception_queue, [], self.log_path)
+    self.uut._transport_processes = [
+        mock.MagicMock(spec=transport_process.TransportProcess),
+        mock.MagicMock(spec=transport_process.TransportProcess)]
+    self.uut._log_writer_process = mock.MagicMock(
+        spec=log_process.LogWriterProcess)
+    self.uut._log_filter_process = mock.MagicMock(
+        spec=log_process.LogFilterProcess)
+    process_mocks = self.uut._transport_processes + [
+        self.uut._log_writer_process, self.uut._log_filter_process]
+    for process_mock in process_mocks:
+      process_mock.is_started.return_value = False
+    self.uut._transport_processes[0].wait_for_start.side_effect = RuntimeError(
+        "failed to start child process. Start event was not set")
+
+    with self.assertRaisesRegex(
+        RuntimeError, "failed to start child process.*Start event was not set"):
+      self.uut._start_processes()
+
+    for process_mock in process_mocks:
+      process_mock.start.assert_called_once_with(wait_for_start=False)
+      process_mock.terminate.assert_called_once()
+    self.uut._transport_processes = []
 
   def _generate_fake_transport_reads(self, patterns):
     """Generate FakeTransport's read responses.

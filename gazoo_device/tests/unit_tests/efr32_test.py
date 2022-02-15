@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ from gazoo_device.auxiliary_devices import efr32
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
 import immutabledict
-
 
 _FAKE_DEVICE_ID = "efr32-detect"
 _FAKE_DEVICE_ADDRESS = "/dev/bus/usb/001/002"
@@ -48,22 +47,22 @@ class EFR32DeviceTests(fake_device_test_case.FakeDeviceTestCase):
                 self.device_config,
                 log_directory=self.artifacts_directory)
 
-  def test_001_get_console_configuration(self):
+  def test_get_console_configuration(self):
     """Verifies efr32 get_console_configuration."""
     self.assertIsNotNone(self.uut.get_console_configuration())
 
-  def test_002_efr32_attributes(self):
+  def test_efr32_attributes(self):
     """Verifies efr32 attributes."""
     self._test_get_detection_info(_FAKE_DEVICE_ADDRESS,
                                   efr32.EFR32,
                                   _EFR32_PERSISTENT_PROPERTIES)
 
-  def test_003_jlink_flash_capability(self):
+  def test_jlink_flash_capability(self):
     """Verifies the initialization of flash_build capability."""
     self.assertTrue(self.uut.flash_build)
 
   @mock.patch.object(os.path, "exists", return_value=True)
-  def test_004_is_connected_true(self, mock_exists):
+  def test_is_connected_true(self, mock_exists):
     """Verifies is_connected works as expected."""
     self.assertTrue(efr32.EFR32.is_connected(self.device_config))
 

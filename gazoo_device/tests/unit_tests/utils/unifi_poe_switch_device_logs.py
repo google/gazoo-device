@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,13 +13,11 @@
 # limitations under the License.
 
 """Device logs for unifi poe switch."""
+from gazoo_device.tests.unit_tests.utils import ssh_device_logs
 
-RETURN_CODE = "0\n"
-ERROR_RETURN_CODE = "127\n"
-
-DEFAULT_BEHAVIOR = {
-    "mca-cli-op info;echo Return Code: $?\n":
-        f"""
+_RESPONSES = [{
+    "cmd": "mca-cli-op info",
+    "resp": """
         Model:       USW-8P-150
         Version:     4.3.13.11253
         MAC Address: 12:34:56:78:90:ab
@@ -29,24 +27,28 @@ DEFAULT_BEHAVIOR = {
 
         Status:      Unknown[11] (http://123.45.67.90:8080/inform)
 
-        Return Code: {RETURN_CODE}""",
-    "reboot;echo Return Code: $?\n":
-        f"""
-        Return Code: {RETURN_CODE}""",
-    "sh -c 'echo \"--- GDM Log Marker ---\" >> /var/log/messages';echo Return "
-    "Code: $?\n":
-        f"""
-        Return Code: {RETURN_CODE}""",
-    "echo 'exit' | telnet localhost;echo Return Code: $?\n":
-        f"""
-        Return Code: {RETURN_CODE}\n""",
-}
+        """,
+    "code": 0,
+}, {
+    "cmd": "reboot",
+    "resp": "",
+    "code": 0,
+}, {
+    "cmd": "sh -c 'echo \"--- GDM Log Marker ---\" >> /var/log/messages'",
+    "resp": "",
+    "code": 0,
+}, {
+    "cmd": "echo 'exit' | telnet localhost",
+    "resp": "",
+    "code": 0,
+}]
+DEFAULT_BEHAVIOR = ssh_device_logs.make_device_responses(_RESPONSES)
 
-HEALTH_CHECK_FAILURE = {
-    "echo 'exit' | telnet localhost;echo Return Code: $?\n":
-        f"""
-        Return Code: {ERROR_RETURN_CODE}\n""",
-}
+HEALTH_CHECK_FAILURE = ssh_device_logs.make_device_responses([{
+    "cmd": "echo 'exit' | telnet localhost",
+    "resp": "",
+    "code": 127,
+}])
 
 TELNET_COMMAND_RESPONSES = {
     "telnet localhost\n":

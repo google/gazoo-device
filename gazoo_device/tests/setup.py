@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ setuptools.setup(
         "absl-py>=0.12.0",
         "immutabledict>=2.0.0",
         "intelhex>=2.2.1",
-        "mobly>=1.10.1",
+        "mobly>=1.11",  # TODO(b/192406851): Update to 1.11.1
         "pigweed>=0.0.3",
         "prompt-toolkit>=3.0.19",
         "protobuf>=3.17.3",

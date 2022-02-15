@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Test suite for the package_management capability."""
+import logging
 import os
 import shutil
 from typing import Tuple, Type
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
+from mobly import asserts
 from gazoo_device.utility import host_utils
 
 _DOWNLOAD_FOLDER_TEMPLATE = "/tmp/{device_name}-packages"
@@ -47,16 +49,27 @@ class PackageManagementTestSuite(gdm_test_base.GDMTestBase):
     """Downloads package into local folder and returns the local file path."""
     file_name = os.path.basename(remote_package_path)
     local_file = os.path.join(local_folder, file_name)
-    self.logger.info("Downloading package from %s to %s",
-                     remote_package_path, local_file)
+    logging.info("Downloading package from %s to %s", remote_package_path,
+                 local_file)
     host_utils.gsutil_command("cp", remote_package_path, [local_folder])
     return local_file
 
+  def test_has_package(self):
+    """Tests the ability to check whether a package is installed."""
+    package_exists = self.device.package_management.has_package(
+        "nonexistent_package")
+    asserts.assert_is_instance(package_exists, bool)
+    asserts.assert_false(package_exists, "Package should not exist")
+
   def test_list_packages(self):
     """Tests the ability to list all packages on a device."""
+    if not hasattr(self.device.package_management, "list_packages"):
+      asserts.skip(f"{self.device.name}'s package_management capability "
+                   "does not implement 'list_packages'.")
     packages_on_device = self.device.package_management.list_packages()
-    # Not sure what packages are on device, but guaranteed to be not empty.
-    self.assertTrue(packages_on_device, "Cannot list packages on the device.")
+    asserts.assert_true(
+        packages_on_device, "Cannot list packages on the device.")
+    asserts.assert_is_instance(packages_on_device, list)
 
   def test_install_and_uninstall_package(self):
     """Tests the ability to install and uninstall a package."""
@@ -70,29 +83,23 @@ class PackageManagementTestSuite(gdm_test_base.GDMTestBase):
       package_path = self._download_package(
           self.test_config["sample_package_path"], download_folder)
       # Ensure package is not already present on the device.
-      packages_on_device = self.device.package_management.list_packages()
-      self.assertNotIn(
-          package_name, packages_on_device,
+      asserts.assert_false(
+          self.device.package_management.has_package(package_name),
           f"Package {package_name} is already present on the device")
 
       # Install the package and check if it is in the package list.
-      self.logger.info("Installing package %s from %s",
-                       package_name, package_path)
+      logging.info("Installing package %s from %s", package_name, package_path)
       self.device.package_management.install_package(package_path)
-      packages_on_device = self.device.package_management.list_packages()
-      self.assertIn(
-          package_name, packages_on_device,
-          f"New installed package {package_name} should be in the package "
-          "list.")
+      asserts.assert_true(
+          self.device.package_management.has_package(package_name),
+          f"Package {package_name} was not installed.")
 
       # Uninstall the package and check if it is not in the package list.
-      self.logger.info("Uninstalling package %s", package_name)
+      logging.info("Uninstalling package %s", package_name)
       self.device.package_management.uninstall_package(package_name)
-      packages_on_device = self.device.package_management.list_packages()
-      self.assertNotIn(
-          package_name, packages_on_device,
-          f"Package {package_name} should be uninstalled and not in the "
-          "package list.")
+      asserts.assert_false(
+          self.device.package_management.has_package(package_name),
+          f"Package {package_name} was not uninstalled.")
     finally:
       shutil.rmtree(download_folder)
 

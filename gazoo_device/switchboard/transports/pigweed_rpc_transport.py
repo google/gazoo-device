@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,6 +53,29 @@ _SELECT_TIMEOUT_SEC = 0.1  # seconds
 _SERIAL_TIMEOUT_SEC = 0.01  # seconds
 _RPC_CALLBACK_TIMEOUT_SEC = 1  # seconds
 logger = gdm_logger.get_logger()
+
+
+def _is_primitive(var: Any) -> bool:
+  """Checks if the given variable is of a primitive type."""
+  primitive = (bool, bytes, float, int, str)
+  return isinstance(var, primitive)
+
+
+def _serialize(payload: Any) -> Any:
+  """Serializes the given payload.
+
+  Args:
+    payload: The payload to serialize. Note that the payload type will be either
+      primitive type, protobuf type, or the list type of the above combination.
+
+  Returns:
+    Serialized payload.
+  """
+  if _is_primitive(payload):
+    return payload
+  if not isinstance(payload, list):
+    return payload.SerializeToString()
+  return [_serialize(content) for content in payload]
 
 
 class PwHdlcRpcClient:
@@ -291,4 +314,4 @@ class PigweedRPCTransport(transport_base.TransportBase):
         param.decode() if isinstance(param, pwrpc_utils.PigweedProtoState)
         else param for param_name, param in kwargs.items()}
     ack, payload = event(**kwargs)
-    return ack.ok(), payload.SerializeToString()
+    return ack.ok(), _serialize(payload)

@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -64,6 +64,9 @@ _DOC_INDENT_SIZE = 4
 _VISIBLE_CAPABILITY_ATTRIBUTES = [
     AttributeClassification.PROPERTY, AttributeClassification.PUBLIC_METHOD
 ]
+_FORMAT_DEF = "  {:22s}  {}"
+_FORMAT_VAL = "\t\t\t  {}"
+_FORMAT_DIC = "\t\t\t  {:25s} {!r}"
 
 
 def _log_man_warning_for_multiple_flavors(
@@ -106,6 +109,36 @@ def _run_device_action(
       return attribute
   finally:
     device.close()
+
+
+def pretty_print_props(props_dicts: Mapping[str, Mapping[str, Any]]):
+  """Prettily logs the props dictionaries from manager.get_device_prop."""
+  device_property_types = ["persistent", "optional", "dynamic"]
+  manager_property_types = ["settable"]
+  for property_type in device_property_types + manager_property_types:
+    if property_type not in props_dicts:
+      continue
+
+    title = "{} Properties:".format(property_type.capitalize())
+    logger.info("")
+    logger.info(title)
+    for prop_name in sorted(props_dicts[property_type]):
+      prop_value = props_dicts[property_type][prop_name]
+      if isinstance(prop_value, list) and len(prop_value) > 1:
+        logger.info(_FORMAT_DEF.format(prop_name, ""))
+        for value in prop_value:
+          if callable(value):
+            value = value.__name__
+          logger.info(_FORMAT_VAL.format(str(value)))
+        logger.info("")
+      elif isinstance(prop_value, dict) and len(prop_value) > 1:
+        logger.info(_FORMAT_DEF.format(prop_name, ""))
+        for key in sorted(prop_value):
+          logger.info(_FORMAT_DIC.format(key, prop_value[key]))
+        logger.info("")
+
+      else:
+        logger.info(_FORMAT_DEF.format(prop_name, prop_value))
 
 
 class FireManager(manager.Manager):
@@ -207,39 +240,12 @@ class FireManager(manager.Manager):
       device_name (str): identifier for device.
       prop (str): identifier for property.
     """
-    format_line = "  {:22s}  {}"
-
     if prop is not None:  # If requested a single property...
       value = self.get_device_prop(device_name, prop)
-      logger.info(format_line.format(prop, str(value)))
+      logger.info(_FORMAT_DEF.format(prop, str(value)))
     else:
       props_dicts = self.get_device_prop(device_name, prop)
-      device_property_types = ["persistent", "optional", "dynamic"]
-      manager_property_types = ["settable"]
-      for property_type in device_property_types + manager_property_types:
-        if property_type not in props_dicts:
-          continue
-
-        title = "{} Properties:".format(property_type.capitalize())
-        logger.info("")
-        logger.info(title)
-        for prop_name in sorted(props_dicts[property_type]):
-          prop_value = props_dicts[property_type][prop_name]
-          if isinstance(prop_value, list) and len(prop_value) > 1:
-            logger.info(format_line.format(prop_name, ""))
-            for value in prop_value:
-              if callable(value):
-                value = value.__name__
-              logger.info("\t\t\t  {}".format(str(value)))
-            logger.info("")
-          elif isinstance(prop_value, dict) and len(prop_value) > 1:
-            logger.info(format_line.format(prop_name, ""))
-            for key in sorted(prop_value):
-              logger.info("\t\t\t  {:25s} {!r}".format(key, prop_value[key]))
-            logger.info("")
-
-          else:
-            logger.info(format_line.format(prop_name, prop_value))
+      pretty_print_props(props_dicts)
 
   def health_check(self, identifier, recover=False):
     """CLI command for running device health checks.
@@ -620,12 +626,10 @@ class FireManager(manager.Manager):
     If no version is specified then GDM will be updated to the latest
     version available otherwise the version specified will be installed instead.
     """
-    launcher_path = os.path.join(
-        os.path.expanduser("~"), "gazoo", "bin", "gdm")
     logger.info(textwrap.dedent(f"""
       Unable to update Gazoo Device Manager using this tool.
       If you want to update GDM call the GDM launcher script directly like this:
-      {launcher_path} update-gdm [version]
+      {config.LAUNCHER_PATH} update-gdm [version]
 
       If after doing the above you see this message again, then you probably did a
       'sudo pip install gazoo-device' and overwrote the GDM launcher script. Please

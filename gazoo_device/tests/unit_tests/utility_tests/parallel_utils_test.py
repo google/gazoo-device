@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -169,8 +169,13 @@ class ParallelUtilsUnitTests(unit_test_case.UnitTestCase):
     mock_function.assert_called_once_with(mock_manager, *args, **kwargs)
     mock_logger.warning.assert_called()
     return_queue.put.assert_not_called()
-    error_queue.put.assert_called_once_with(
-        (process_id, (RuntimeError.__name__, "Something went wrong")))
+    error_queue.put.assert_called_once()
+    pid, (error_type, error_msg, error_tb) = error_queue.put.call_args[0][0]
+    self.assertEqual(pid, process_id)
+    self.assertEqual(error_type, RuntimeError.__name__)
+    self.assertEqual(error_msg, "Something went wrong")
+    self.assertRegex(
+        error_tb, "(?s)Traceback.*RuntimeError: Something went wrong")
     mock_manager.close.assert_called_once()
 
 
@@ -200,6 +205,7 @@ def _test_function_times_out(manager_inst: manager.Manager) -> None:
   time.sleep(15)
 
 
+_GOOD_CALL_TIMEOUT_S = 30
 _GOOD_CALL_SPECS = [
     parallel_utils.CallSpec(_test_function_with_return, 5),
     parallel_utils.CallSpec(_test_function_with_return, some_arg=10),
@@ -207,16 +213,9 @@ _GOOD_CALL_SPECS = [
 ]
 _GOOD_CALL_RESULTS = [5, 10, None]
 _GOOD_CALL_ERRORS = [None, None, None]
-_BAD_CALL_SPECS = [
-    parallel_utils.CallSpec(_test_function_raises_exception),
-    parallel_utils.CallSpec(_test_function_times_out),
-]
-_BAD_CALL_RESULTS = [parallel_utils.NO_RESULT] * len(_BAD_CALL_SPECS)
-_BAD_CALL_ERRORS = [
-    (type(_TEST_EXCEPTION).__name__, str(_TEST_EXCEPTION)),
-    (errors.ResultNotReceivedError.__name__,
-     "Did not receive any results from the process."),
-]
+_ERROR_CALL_SPECS = [parallel_utils.CallSpec(_test_function_raises_exception)]
+_ERROR_CALL_RESULTS = [parallel_utils.NO_RESULT]
+_TIMEOUT_CALL_SPECS = [parallel_utils.CallSpec(_test_function_times_out)]
 
 
 class ParallelUtilsIntegrationTests(unit_test_case.UnitTestCase):
@@ -225,30 +224,49 @@ class ParallelUtilsIntegrationTests(unit_test_case.UnitTestCase):
   def test_execute_concurrently_success(self):
     """Tests execute_concurrently when all parallel processes succeed."""
     results, call_errors = parallel_utils.execute_concurrently(
-        _GOOD_CALL_SPECS, timeout=6, raise_on_process_error=True)
+        _GOOD_CALL_SPECS,
+        timeout=_GOOD_CALL_TIMEOUT_S,
+        raise_on_process_error=True)
     self.assertEqual(results, _GOOD_CALL_RESULTS)
     self.assertEqual(call_errors, _GOOD_CALL_ERRORS)
 
   def test_execute_concurrently_error_with_raise_on_process_error(self):
     """Tests execute_concurrently with errors and raise_on_process_error set."""
-    regex = (r"Encountered errors in parallel processes: \[None, None, None, "
-             r"\('RuntimeError', 'Something went wrong.'\), "
-             r"\('ResultNotReceivedError', "
-             r"'Did not receive any results from the process.'\)\]")
+    regex = (r"(?s)Encountered errors in parallel processes:\n"
+             r"Traceback.*RuntimeError: Something went wrong\.")
     with self.assertRaisesRegex(errors.ParallelUtilsError, regex):
       parallel_utils.execute_concurrently(
-          _GOOD_CALL_SPECS + _BAD_CALL_SPECS,
-          timeout=10,
+          _GOOD_CALL_SPECS + _ERROR_CALL_SPECS,
+          timeout=_GOOD_CALL_TIMEOUT_S,
           raise_on_process_error=True)
 
   def test_execute_concurrently_error_without_raise_on_process_error(self):
     """Tests execute_concurrently with errors and no raise_on_process_error."""
     results, call_errors = parallel_utils.execute_concurrently(
-        _GOOD_CALL_SPECS + _BAD_CALL_SPECS,
-        timeout=10,
+        _GOOD_CALL_SPECS + _ERROR_CALL_SPECS,
+        timeout=_GOOD_CALL_TIMEOUT_S,
         raise_on_process_error=False)
-    self.assertEqual(results, _GOOD_CALL_RESULTS + _BAD_CALL_RESULTS)
-    self.assertEqual(call_errors, _GOOD_CALL_ERRORS + _BAD_CALL_ERRORS)
+    self.assertEqual(results, _GOOD_CALL_RESULTS + _ERROR_CALL_RESULTS)
+    self.assertLen(call_errors, len(_GOOD_CALL_SPECS + _ERROR_CALL_SPECS))
+    self.assertEqual(call_errors[:len(_GOOD_CALL_SPECS)], _GOOD_CALL_ERRORS)
+    error_call_error = call_errors[len(_GOOD_CALL_SPECS)]
+    self.assertIsInstance(error_call_error, tuple)
+    error_type, error_msg, error_tb = error_call_error
+    self.assertEqual(error_type, type(_TEST_EXCEPTION).__name__)
+    self.assertEqual(error_msg, str(_TEST_EXCEPTION))
+    self.assertRegex(
+        error_tb, r"(?s)Traceback.*RuntimeError: Something went wrong\.")
+
+  def test_execute_concurrently_timeout(self):
+    """Tests execute_concurrently with a call that times out."""
+    regex = ("Encountered errors in parallel processes:\n"
+             "ResultNotReceivedError"
+             r"\('Did not receive any results from the process.'\)")
+    with self.assertRaisesRegex(errors.ParallelUtilsError, regex):
+      parallel_utils.execute_concurrently(
+          _TIMEOUT_CALL_SPECS,
+          timeout=1,
+          raise_on_process_error=True)
 
 
 if __name__ == "__main__":

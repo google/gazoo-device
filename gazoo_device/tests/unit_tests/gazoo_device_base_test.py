@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -531,6 +531,24 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
       error = errors.SwitchboardCreationError(self.uut.name, "FtdiError")
       with self.assertRaisesRegex(errors.SwitchboardCreationError, str(error)):
         self.uut.recover(error)
+
+  def test_1344_recover_switchboard_creation_error_failed_to_start_process(
+      self):
+    """Tests recover() from a process start SwitchboardCreationError."""
+    self.uut.reset_capability("switchboard")
+    error_message = (
+        f"Device {self.uut.name} failed to start child process "
+        f"{self.uut.name}-Transport0. Start event was not set in 30s.'")
+    error = errors.SwitchboardCreationError(self.uut.name, error_message)
+    self.uut.comm_power = mock.Mock(spec=comm_power_default.CommPowerDefault)
+    with mock.patch.object(
+        gazoo_device_base.GazooDeviceBase,
+        "has_capabilities",
+        return_value=True):
+      with self.assertRaisesRegex(
+          errors.SwitchboardCreationError, error_message):
+        self.uut.recover(error)
+    self.uut.comm_power.cycle.assert_not_called()
 
 
 class GazooDeviceCapabilityTests(fake_device_test_case.FakeDeviceTestCase):

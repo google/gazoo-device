@@ -104,19 +104,19 @@ Source code: [mobly_example_test.py](mobly_example_test.py).
    device name and type:
 
    ```shell
-   cp ~/gazoo/testbeds/One-Exampledevice.yml ~/gazoo/testbeds/One-<Your_device_type>.yml
+   cp ~/gazoo/testbeds/One-Exampledevice.yml ~/gazoo/testbeds/<your_device_name>.yml
    # Now update the testbed name and device name in the testbed file.
    ```
 
 Here's an example of what your testbed file could look like for a Raspberry Pi
-(`~/gazoo/testbeds/One-Raspberrypi.yml`):
+(`~/gazoo/testbeds/raspberrypi-1234.yml`):
 
 ```
 TestBeds:
   - Name: Testbed-One-Raspberrypi-01
     Controllers:
       GazooDevice:
-        - 'raspberrypi-k23o'
+        - id: 'raspberrypi-k23o'
 ```
 
 #### Install test requirements in your virtual environment
@@ -130,13 +130,13 @@ pip install -r mobly_test_requirements.txt
 Provide the Mobly testbed config as a command-line argument to the test:
 
 ```shell
-python3 mobly_example_test.py -c ~/gazoo/testbeds/One-<Your_device_type>.yml
+python3 mobly_example_test.py --config ~/gazoo/testbeds/<your_device_name>.yml
 ```
 
 Your test output should look like this:
 
 ```
-$ python3 mobly_example_test.py -c ~/gazoo/testbeds/One-Cambrionix.yml
+$ python3 mobly_example_test.py --config ~/gazoo/testbeds/cambrionix-jl0y.yml
 [Testbed-One-Cambrionix-01] 06-01 18:15:20.732 INFO Test output folder: "/tmp/logs/mobly/Testbed-One-Cambrionix-01/06-01-2021_18-15-20-732"
 [Testbed-One-Cambrionix-01] 06-01 18:15:20.733 INFO ==========> MoblyExampleRebootTest <==========
 [Testbed-One-Cambrionix-01] 06-01 18:15:20.755 INFO [Test] test_reboot

@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -68,7 +68,11 @@ class CapabilityBase(abc.ABC):
 
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
   def health_check(self):
-    """Overridden. Checks capability readiness."""
+    """Checks capability readiness. Override in derived classes.
+
+    Raises:
+      CapabilityNotReadyError: if the capability is not ready.
+    """
     self._healthy = True
 
   @classmethod

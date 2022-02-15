@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 
 """Test suite for all primary devices. Covers basic functionality."""
 import datetime
+import logging
 import os
 import shutil
 import time
@@ -24,6 +25,7 @@ from gazoo_device import errors
 from gazoo_device import fire_manager
 from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
+from mobly import asserts
 
 # Allows the log process to catch up after device creation using time.sleep().
 _LOG_CATCH_UP_DELAY = 3
@@ -56,7 +58,7 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
     runs) before other tests in alphabetic order.
     """
     self.device.factory_reset()
-    self.assertTrue(
+    asserts.assert_true(
         self.device.connected,
         f"{self.device.name} is offline after factory_reset() execution "
         "finished. factory_reset should block until the device comes back "
@@ -65,15 +67,19 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
   def test_close_device(self):
     """Tests that device.close() stops logging."""
     log_file = self.device.log_file_name
-    self.assertTrue(
+    asserts.assert_true(
         os.path.exists(log_file), "Cannot test close as device is not logging")
-    self.device.close()
-    time.sleep(1)
-    size = os.stat(log_file).st_size
-    time.sleep(.1)
-    self.assertEqual(size,
-                     os.stat(log_file).st_size,
-                     "Log has updated after device is closed")
+    try:
+      self.device.close()
+      time.sleep(1)
+      size = os.stat(log_file).st_size
+      time.sleep(.1)
+      asserts.assert_equal(size,
+                           os.stat(log_file).st_size,
+                           "Log has updated after device is closed")
+    finally:
+      # Re-open for the other tests
+      self.device = self.get_manager().create_device(self.device_name)
 
   def test_logging(self):
     """Tests that device logs are being captured."""
@@ -82,8 +88,8 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
   def test_serial_number(self):
     """Tests retrieval of 'serial_number' property."""
     serial_number = self.device.serial_number
-    self.assertTrue(serial_number)
-    self.assertIsInstance(serial_number, str)
+    asserts.assert_true(serial_number, "serial_number should be populated")
+    asserts.assert_is_instance(serial_number, str)
 
   def test_firmware_version(self):
     """Tests retrieval of 'firmware_version' property."""
@@ -100,7 +106,7 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
     start_time = datetime.datetime.now()
 
     self.device.reboot()
-    self.assertTrue(
+    asserts.assert_true(
         self.device.connected,
         f"{self.device.name} is offline after reboot() execution finished. "
         "reboot should block until the device comes back online and becomes "
@@ -116,48 +122,43 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
     try:
       self.device.check_device_ready()
     except errors.CheckDeviceReadyError as err:
-      self.fail(
+      asserts.fail(
           f"{self.device.name} didn't pass health checks after reboot: {err!r}")
 
   def test_shell(self):
     """Tests shell() method."""
     response = self.device.shell(self.test_config["shell_cmd"])
-    self.assertTrue(response)
-    self.assertIsInstance(response, str)
+    asserts.assert_true(response, "response should contain characters")
+    asserts.assert_is_instance(response, str)
 
   def test_start_new_log(self):
     """Tests that start_new_log begins a new log file."""
     old_log_file_name = self.device.log_file_name
-    self.device.start_new_log(log_name_prefix=self.get_log_suffix())
-    self.assertNotEqual(
+    self.device.start_new_log(log_name_prefix=self.get_full_test_name())
+    asserts.assert_not_equal(
         old_log_file_name, self.device.log_file_name,
         f"Expected log file name to change from {old_log_file_name}")
-    self.assertTrue(
+    asserts.assert_true(
         os.path.exists(old_log_file_name),
         f"Expected old log file name {old_log_file_name} to exist")
-    self.assertTrue(
+    asserts.assert_true(
         os.path.exists(self.device.log_file_name),
         f"Expected new log file name {self.device.log_file_name} to exist")
 
   def test_get_prop(self):
     """Tests that FireManager.get_prop() can retrieve all properties."""
-    device_name = self.device.name
-    self.device.close()
-    fire_manager_instance = fire_manager.FireManager()
-    try:
-      fire_manager_instance.get_prop(device_name)
-    finally:
-      fire_manager_instance.close()
+    props_dicts = self.get_manager().get_device_prop(self.device_name)
+    fire_manager.pretty_print_props(props_dicts)
 
   def test_redetect(self):
     """Tests device detection and properties populated during detection."""
-    self.device.close()
+    self.device.reset_all_capabilities()
     time.sleep(.2)
-    new_file_devices_name = os.path.join(self.get_output_dir(),
+    new_file_devices_name = os.path.join(self.log_path,
                                          "test_redetect_devices.json")
-    new_file_options_name = os.path.join(self.get_output_dir(),
+    new_file_options_name = os.path.join(self.log_path,
                                          "test_redetect_device_options.json")
-    new_log_file = os.path.join(self.get_output_dir(), "test_redetect_gdm.txt")
+    new_log_file = os.path.join(self.log_path, "test_redetect_gdm.txt")
 
     shutil.copy(self.get_manager().device_file_name, new_file_devices_name)
     shutil.copy(self.get_manager().device_options_file_name,
@@ -165,15 +166,16 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
     new_manager = gazoo_device.Manager(
         device_file_name=new_file_devices_name,
         device_options_file_name=new_file_options_name,
-        log_directory=self.get_output_dir(),
+        log_directory=self.log_path,
         gdm_log_file=new_log_file)
     try:
-      new_manager.redetect(self.device.name, self.get_output_dir())
+      new_manager.redetect(self.device.name, self.log_path)
     finally:
       new_manager.close()
+      self.device.make_device_ready()
 
     # pylint: disable=protected-access
-    self.assertTrue(
+    asserts.assert_true(
         self.device.name in new_manager._devices,
         "Device was not successfully detected. See test_redetect_gdm.txt and "
         f"{self.device.device_type}_detect.txt for more info")
@@ -182,9 +184,9 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
     # pylint: enable=protected-access
 
     for name, a_dict in [("Old", old_dict), ("Detected", new_dict)]:
-      self.logger.info("%s configuration:", name)
+      logging.info("%s configuration:", name)
       for key, value in a_dict.items():
-        self.logger.info("\t%s: %s", key, value)
+        logging.info("\t%s: %s", key, value)
 
     missing_props = []
     bad_values = []
@@ -204,36 +206,41 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
       msg += "{} has the following mismatched values: {}.".format(
           self.device.name, ", ".join(bad_values))
 
-    self.assertFalse(missing_props or bad_values, msg)
+    asserts.assert_false(missing_props or bad_values, msg)
 
   def _verify_firmware_version(self):
     """Verifies that firmware version is a non-empty string."""
     firmware_version = self.device.firmware_version
-    self.assertTrue(firmware_version)
-    self.assertIsInstance(firmware_version, str)
+    asserts.assert_true(firmware_version,
+                        "firmware_version should be populated")
+    asserts.assert_is_instance(firmware_version, str)
 
   def _verify_logging(self):
     """Verifies that the device has a non-empty log file."""
     log_file = self.device.log_file_name
-    self.assertTrue(os.path.exists(log_file),
-                    f"{self.device.name}'s log file {log_file} does not exist")
-    self.assertTrue(os.path.getsize(log_file),
-                    f"{self.device.name}'s log file {log_file} is empty")
+    asserts.assert_true(
+        os.path.exists(log_file),
+        f"{self.device.name}'s log file {log_file} does not exist")
+    logging.info("%s's firmware version is %r", self.device.name,
+                 self.device.firmware_version)  # generate logs
+    asserts.assert_true(
+        os.path.getsize(log_file),
+        f"{self.device.name}'s log file {log_file} is empty")
 
   def _verify_boot_up_log(self, start_time):
     """Verifies that the device booted up after the start_time."""
     event_name = "basic.bootup"
     if event_name not in self.device.event_parser.get_event_labels():
-      self.logger.info("%s does not define a %r event. "
-                       "Skipping boot up event verification.",
-                       self.device.name, event_name)
+      logging.info(
+          "%s does not define a %r event. "
+          "Skipping boot up event verification.", self.device.name, event_name)
       return
 
     parser_result = self.device.event_parser.get_last_event([event_name])
-    self.assertGreater(parser_result.count, 0,
-                       f"Event label {event_name!r} not found.")
+    asserts.assert_greater(parser_result.count, 0,
+                           f"Event label {event_name!r} not found.")
     timestamp = parser_result.results_list[0]["system_timestamp"]
-    self.assertGreater(
+    asserts.assert_greater(
         timestamp, start_time,
         "Expected {!r} timestamp {} to be > start time {}".format(
             event_name, timestamp, start_time))
@@ -241,9 +248,15 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
   def _verify_expect_log(self):
     """Verifies that 'known_logline' occurs in device logs."""
     known_logline_regex = self.test_config["known_logline"]
-    self.logger.info("Expecting log line %r", known_logline_regex)
+    if not known_logline_regex:
+      logging.info(
+          "%s does not define a 'known_logline' regex. "
+          "Skipping the expect() call after the boot up.", self.device.name)
+      return
+
+    logging.info("Expecting log line %r", known_logline_regex)
     res = self.device.switchboard.expect([known_logline_regex], timeout=30)
-    self.assertFalse(
+    asserts.assert_false(
         res.timedout,
         "Expect timed out when waiting for log line {!r}. Shell response: {}"
         .format(known_logline_regex, res.before))

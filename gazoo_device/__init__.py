@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -79,6 +79,7 @@ MOBLY_CONTROLLER_CONFIG_NAME = "GazooDevice"
 create = mobly_controller.create
 destroy = mobly_controller.destroy
 get_info = mobly_controller.get_info
+get_manager = mobly_controller.get_manager
 
 multiprocessing_utils.configure_multiprocessing()
 

@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -90,14 +90,14 @@ class UsbInfo(object):
   _address = None
   _child_addresses = []
   _ftdi_interface = 0
-  _manufacturer = None
+  _manufacturer = ""
   _disk = None
-  _product_id = None
-  _product_name = None
-  _serial_number = None
+  _product_id = ""
+  _product_name = ""
+  _serial_number = ""
   _usb_hub_port = None
   _usb_hub_address = None
-  _vendor_id = None
+  _vendor_id = ""
 
   def __init__(self, **kwargs):
     for key, value in kwargs.items():

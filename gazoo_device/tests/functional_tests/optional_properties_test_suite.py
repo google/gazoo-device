@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 """Test suite that verifies that optional properties are retrievable."""
 from typing import Type
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
+from mobly import asserts
 
 _TESTED_PROPERTIES = ("ftdi_serial_number", "build_date")
 
@@ -38,15 +39,15 @@ class OptionalPropertiesTestSuite(gdm_test_base.GDMTestBase):
     """Tests retrieval of 'ftdi_serial_number' property."""
     if hasattr(type(self.device), "ftdi_serial_number"):
       ftdi_serial_number = self.device.ftdi_serial_number
-      self.assertTrue(ftdi_serial_number)
-      self.assertIsInstance(ftdi_serial_number, str)
+      asserts.assert_true(ftdi_serial_number, "FTDI serial should be populated")
+      asserts.assert_is_instance(ftdi_serial_number, str)
 
   def test_get_build_date(self):
     """Tests retrieval of 'build_date' property."""
     if hasattr(type(self.device), "build_date"):
       build_date = self.device.build_date
-      self.assertTrue(build_date)
-      self.assertIsInstance(build_date, str)
+      asserts.assert_true(build_date, "build_date should be populated")
+      asserts.assert_is_instance(build_date, str)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 """Test suite for devices using the shell_ssh capability."""
 from typing import Tuple, Type
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
+from mobly import asserts
 
 _SUCCESS_RETURN_CODE = 0
 
@@ -43,9 +44,9 @@ class ShellSshTestSuite(gdm_test_base.GDMTestBase):
     """Tests shell() command execution with return code."""
     response, code = self.device.shell_capability.shell(
         self.test_config["shell_cmd"], include_return_code=True)
-    self.assertTrue(response)
-    self.assertIsInstance(response, str)
-    self.assertEqual(code, _SUCCESS_RETURN_CODE)
+    asserts.assert_true(response, "response should contain characters")
+    asserts.assert_is_instance(response, str)
+    asserts.assert_equal(code, _SUCCESS_RETURN_CODE)
 
 
 if __name__ == "__main__":

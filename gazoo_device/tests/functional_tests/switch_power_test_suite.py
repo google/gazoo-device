@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """This test suite verifies the switch_power capability."""
+import logging
 from typing import Type
 
 from gazoo_device.capabilities import switch_power_dli_powerswitch
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
+from mobly import asserts
 
 
 class SwitchPowerTestSuite(gdm_test_base.GDMTestBase):
@@ -35,9 +37,9 @@ class SwitchPowerTestSuite(gdm_test_base.GDMTestBase):
     """Returns True if the device must be paired to run this test suite."""
     return False
 
-  def setUp(self):
+  def setup_test(self):
     """Determines the switch 'on' state: 'sync' or 'on'."""
-    super().setUp()
+    super().setup_test()
     if "sync" in self.device.switch_power.supported_modes:
       self.on_state = "sync"
     else:
@@ -48,18 +50,18 @@ class SwitchPowerTestSuite(gdm_test_base.GDMTestBase):
     original_mode = self.device.switch_power.get_mode(port=1)
     try:
       self.device.switch_power.power_off(port=1)
-      self.assertEqual(
+      asserts.assert_equal(
           self.device.switch_power.get_mode(port=1), "off",
           f"{self.device.name} port 1 should have been set to 'off'")
       self.device.switch_power.power_on(port=1)
-      self.assertEqual(
+      asserts.assert_equal(
           self.device.switch_power.get_mode(port=1), self.on_state,
           f"{self.device.name} port 1 should have been set to "
           f"{self.on_state!r}")
 
     finally:
-      self.logger.info("Setting device power back to its original mode: %r",
-                       original_mode)
+      logging.info("Setting device power back to its original mode: %r",
+                   original_mode)
       self.device.switch_power.set_mode(mode=original_mode, port=1)
 
   def test_switch_power_set_all_ports_mode(self):
@@ -69,15 +71,15 @@ class SwitchPowerTestSuite(gdm_test_base.GDMTestBase):
       expected_value = [self.on_state] * self.device.switch_power.total_ports
       self.device.switch_power.set_all_ports_mode(self.on_state)
       all_ports_mode = self.device.switch_power.get_all_ports_mode()
-      self.assertEqual(
+      asserts.assert_equal(
           all_ports_mode,
           expected_value,
           f"{self.device.name} expected to set port values to {expected_value} "
           f"but got {all_ports_mode}")
 
     finally:
-      self.logger.info("Setting device power back to its original mode: %r",
-                       original_mode)
+      logging.info("Setting device power back to its original mode: %r",
+                   original_mode)
       if isinstance(self.device.switch_power,
                     switch_power_dli_powerswitch.SwitchPowerDliPowerswitch):
         offset = 0
@@ -91,17 +93,17 @@ class SwitchPowerTestSuite(gdm_test_base.GDMTestBase):
     original_mode = self.device.switch_power.get_mode(port=1)
     try:
       self.device.switch_power.set_mode(mode="off", port=1)
-      self.assertEqual(
+      asserts.assert_equal(
           self.device.switch_power.get_mode(port=1), "off",
           f"{self.device.name} port 1 should have been set to off")
       self.device.switch_power.set_mode(mode=self.on_state, port=1)
-      self.assertEqual(
+      asserts.assert_equal(
           self.device.switch_power.get_mode(port=1), self.on_state,
           f"{self.device.name} port 1 should have been set to "
           f"{self.on_state!r}")
     finally:
-      self.logger.info("Setting device power back to its original mode: %r",
-                       original_mode)
+      logging.info("Setting device power back to its original mode: %r",
+                   original_mode)
       self.device.switch_power.set_mode(mode=original_mode, port=1)
 
 

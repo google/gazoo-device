@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,9 @@ from gazoo_device import custom_types
 from gazoo_device import decorators
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import gazoo_device_base
+from gazoo_device.capabilities import device_power_default
+from gazoo_device.capabilities import flash_build_esptool
+from gazoo_device.capabilities import matter_endpoints_accessor
 from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.protos import device_service_pb2
 from gazoo_device.utility import usb_utils
@@ -28,7 +31,13 @@ from gazoo_device.utility import usb_utils
 
 logger = gdm_logger.get_logger()
 BAUDRATE = 115200
+_DEFAULT_BOOTUP_TIMEOUT_SECONDS = 15
 _RPC_TIMEOUT = 10  # seconds
+_ESP32_RPC_TIMEOUT = 5  # seconds
+_FLASH_MODE = "dio"
+_FLASH_FREQ = "40m"
+_CONNECTION_TIMEOUT_SECONDS = 10
+_REBOOT_METHODS = ("pw_rpc", "soft", "hard")
 
 
 class Esp32MatterDevice(gazoo_device_base.GazooDeviceBase):
@@ -39,6 +48,19 @@ class Esp32MatterDevice(gazoo_device_base.GazooDeviceBase):
   COMMUNICATION_TYPE = "PigweedSerialComms"
   _COMMUNICATION_KWARGS = {
       "protobufs": (device_service_pb2,), "baudrate": BAUDRATE}
+  _CHIP_TYPE = "esp32"
+
+  def __init__(self,
+               manager,
+               device_config,
+               log_file_name=None,
+               log_directory=None):
+    super().__init__(
+        manager,
+        device_config,
+        log_file_name=log_file_name,
+        log_directory=log_directory)
+    self._timeouts.update({"CONNECTED": _CONNECTION_TIMEOUT_SECONDS})
 
   def get_console_configuration(self) -> console_config.ConsoleConfiguration:
     """Returns the interactive console configuration."""
@@ -57,6 +79,8 @@ class Esp32MatterDevice(gazoo_device_base.GazooDeviceBase):
     persistent_dict["serial_number"] = (
         usb_utils.get_serial_number_from_path(address))
     persistent_dict["model"] = "PROTO"
+    persistent_dict.update(
+        usb_utils.get_usb_hub_info(self.communication_address))
     return persistent_dict, {}
 
   @classmethod
@@ -78,16 +102,57 @@ class Esp32MatterDevice(gazoo_device_base.GazooDeviceBase):
     """Firmware version of the device."""
     return str(self.pw_rpc_common.software_version)
 
+  @decorators.PersistentProperty
+  def vendor_id(self) -> int:
+    """Vendor ID of the device."""
+    return self.pw_rpc_common.vendor_id
+
+  @decorators.PersistentProperty
+  def product_id(self) -> int:
+    """Product ID of the device."""
+    return self.pw_rpc_common.product_id
+
+  @decorators.PersistentProperty
+  def device_usb_hub_name(self) -> Optional[str]:
+    """The name of the USB hub for the device or None if not configured."""
+    return self.props["persistent_identifiers"].get("device_usb_hub_name", None)
+
+  @decorators.PersistentProperty
+  def device_usb_port(self) -> Optional[str]:
+    """The port number on the USB hub or None if not configured."""
+    return self.props["persistent_identifiers"].get("device_usb_port", None)
+
+  @decorators.DynamicProperty
+  def pairing_code(self) -> int:
+    """Pairing code of the device."""
+    return self.pw_rpc_common.pairing_info.code
+
+  @decorators.DynamicProperty
+  def pairing_discriminator(self) -> int:
+    """Pairing discriminator of the device."""
+    return self.pw_rpc_common.pairing_info.discriminator
+
   @decorators.LogDecorator(logger)
   def reboot(self, no_wait: bool = False, method: str = "pw_rpc") -> None:
     """Reboots the device.
 
     Args:
       no_wait: Return before reboot completes.
-      method: Reboot technique to use.
+      method: Reboot technique to use. Valid methods
+       ["pw_rpc", "soft", "hard"].
+
+    Raises:
+      ValueError: If invalid reboot method is specified.
     """
-    del method  # Unused
-    self.pw_rpc_common.reboot(verify=not no_wait)
+    if method not in _REBOOT_METHODS:
+      raise ValueError(
+          f"Method {method} not recognized. Supported methods: "
+          f"{_REBOOT_METHODS}"
+      )
+    if method == "hard":
+      self.device_power.cycle(no_wait=no_wait)
+    else:
+      self.pw_rpc_common.reboot(verify=not no_wait)
 
   @decorators.LogDecorator(logger)
   def factory_reset(self, no_wait: bool = False) -> None:
@@ -124,7 +189,8 @@ class Esp32MatterDevice(gazoo_device_base.GazooDeviceBase):
     raise NotImplementedError("shell not implemented for ESP32 Matter device.")
 
   @decorators.LogDecorator(logger)
-  def wait_for_bootup_complete(self, timeout: Optional[int] = None) -> None:
+  def wait_for_bootup_complete(
+      self, timeout: int = _DEFAULT_BOOTUP_TIMEOUT_SECONDS) -> None:
     """Wait until the device finishes booting up and is ready for testing.
 
     Args:
@@ -140,3 +206,48 @@ class Esp32MatterDevice(gazoo_device_base.GazooDeviceBase):
         device_name=self.name,
         switchboard_call=self.switchboard.call,
         rpc_timeout_s=_RPC_TIMEOUT)
+
+  @decorators.CapabilityDecorator(flash_build_esptool.FlashBuildEsptool)
+  def flash_build(self):
+    """FlashBuildEsptool capability to flash bin image."""
+    return self.lazy_init(
+        flash_build_esptool.FlashBuildEsptool,
+        device_name=self.name,
+        chip_type=self._CHIP_TYPE,
+        serial_port=self.communication_address,
+        switchboard=self.switchboard,
+        wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
+        boot_up_time=_DEFAULT_BOOTUP_TIMEOUT_SECONDS,
+        baud=BAUDRATE,
+        flash_mode=_FLASH_MODE,
+        flash_freq=_FLASH_FREQ)
+
+  @decorators.CapabilityDecorator(
+      matter_endpoints_accessor.MatterEndpointsAccessor)
+  def matter_endpoints(self):
+    """Generic Matter endpoint instance."""
+    # TODO(b/209366650) Use discovery cluster and remove the hard-coded IDs.
+    return self.lazy_init(
+        matter_endpoints_accessor.MatterEndpointsAccessor,
+        endpoint_id_to_class=self.ENDPOINT_ID_TO_CLASS,
+        device_name=self.name,
+        switchboard_call=self.switchboard.call,
+        rpc_timeout_s=_ESP32_RPC_TIMEOUT
+    )
+
+  @decorators.CapabilityDecorator(device_power_default.DevicePowerDefault)
+  def device_power(self):
+    """Capability to manipulate device power through Cambrionix."""
+    return self.lazy_init(
+        device_power_default.DevicePowerDefault,
+        device_name=self.name,
+        create_device_func=self.get_manager().create_device,
+        default_hub_type="cambrionix",
+        props=self.props,
+        usb_ports_discovered=True,
+        switchboard_inst=self.switchboard,
+        wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
+        wait_for_connection_fn=self.check_device_connected,
+        usb_hub_name_prop="device_usb_hub_name",
+        usb_port_prop="device_usb_port",
+        )

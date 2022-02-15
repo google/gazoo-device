@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -474,6 +474,14 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
     with self.assertRaisesRegex(errors.DeviceError, "No devices are connected"):
       self.uut.issue_devices_all("make_device_ready", setting="off")
     mock_connected_devices.assert_called()
+
+  def test_update_gdm(self):
+    """Tests that update_gdm() logs a failure message."""
+    with mock.patch.object(fire_manager.logger, "info") as mock_logger_info:
+      self.uut.update_gdm()
+    mock_logger_info.assert_called_once()
+    failure_message = mock_logger_info.call_args[0][0]
+    self.assertRegex(failure_message, "Unable to update")
 
 
 if __name__ == "__main__":

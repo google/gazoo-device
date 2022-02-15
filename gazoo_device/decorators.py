@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -143,14 +143,15 @@ import functools
 import inspect
 import logging
 import time
-from typing import Any, Callable
+from typing import Any, Callable, Mapping, Optional, Sequence
 
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 
 logger_gdm = gdm_logger.get_logger()
 
-# Enable specifying logger levels by decorators.<LEVEL> (so users don't have to import logging)
+# Enable specifying logger levels by decorators.<LEVEL> (so users don't have to
+# import logging)
 NONE = None
 DEBUG = logging.DEBUG
 INFO = logging.INFO
@@ -160,7 +161,7 @@ CRITICAL = logging.CRITICAL
 
 MESSAGES = {
     "START":
-        "{device_name} starting {class_name}.{method_name}",
+        "{device_name} starting {class_name}.{method_name}{args_and_kwargs}",
     "SKIP":
         "{device_name} {class_name}.{method_name} skipped. {skip_reason}.",
     "SUCCESS":
@@ -172,10 +173,10 @@ MESSAGES = {
 }
 
 DEFAULT_DEVICE_NAME = "Unknown_device"
-
-# This attribute is added to decorated methods so it's possible
-# to access the wrapped function. Same as "__wrapped__" attribute in Python 3.
-WRAPS_ATTR_NAME = "_log_decorators_wraps"
+# This attribute is added to decorated methods.
+LOG_DECORATOR_ATTRIBUTE = "_log_decorator"
+_MAX_ARG_REPR_LENGTH_DEBUG = 1500
+_MAX_ARG_REPR_LENGTH_INFO = 500
 
 
 class SkipExceptionError(Exception):
@@ -198,7 +199,7 @@ def unwrap(func):
   return func
 
 
-class CapabilityDecorator():
+class CapabilityDecorator:
   """Decorator which defines capabilities in device classes.
 
   Usage example (from base_classes/raspbian_device.py):
@@ -270,31 +271,66 @@ class CapabilityProperty(property):
     self.capability_classes = set(classes)
 
 
-class LogDecorator():
-  """Wraps GDM methods with standard logger messages (logged to the provided logger).
+def _arg_to_str(arg: Any, max_length: int) -> str:
+  """Converts the argument to a string with max_length for logging."""
+  try:
+    arg_str = repr(arg)
+  except Exception:  # pylint: disable=broad-except
+    try:
+      arg_str = str(arg)
+    except Exception:  # pylint: disable=broad-except
+      arg_str = "<No description>"
+  return arg_str[:max_length] + "..." if len(arg_str) > max_length else arg_str
+
+
+def _get_args_and_kwargs_str(print_args: bool,
+                             log_level: Optional[int],
+                             method_signature: inspect.Signature,
+                             method_args: Sequence[Any],
+                             method_kwargs: Mapping[str, Any]) -> str:
+  """Returns formatted method arguments and keyword arguments."""
+  if not print_args:
+    return ""
+
+  if log_level is not None and log_level >= logging.INFO:
+    max_arg_length = _MAX_ARG_REPR_LENGTH_INFO  # Keep CLI stdout logs short.
+  else:
+    max_arg_length = _MAX_ARG_REPR_LENGTH_DEBUG
+  arg_names = [arg_name for arg_name in method_signature.parameters
+               if arg_name not in ["cls", "self"]]
+  args_str = ", ".join(
+      f"{arg_name}={_arg_to_str(arg_value, max_arg_length)}"
+      for arg_name, arg_value in zip(arg_names, method_args))
+  kwargs_str = ", ".join(
+      f"{arg_name}={_arg_to_str(arg_value, max_arg_length)}"
+      for arg_name, arg_value in method_kwargs.items())
+  args_and_kwargs_str = ", ".join(
+      args_or_kwargs_str for args_or_kwargs_str in (args_str, kwargs_str)
+      if args_or_kwargs_str)
+  return f"({args_and_kwargs_str})"
+
+
+class LogDecorator:
+  """Wraps GDM methods with standard logger messages.
 
   Catches all exceptions and wraps them in DeviceError (or other wrap_type).
   Required for any public method that doesn't return a value.
 
-  Note:
-      GDM design asks for there to be a syntax for all info messsages and
-      errors raised.
-      This enforces that syntax.
+  Example logs for a successful method call:
+      cambrionix-1234 starting Cambrionix.reboot(no_wait=False, method='shell')
+      cambrionix-1234 Cambrionix.reboot successful. It took 10 s.
 
-      Example output when successful:
-      cambrionix-1234 started factory_reset
-      cambrionix-1234 successfully factory_reset in 10 s.
-
-      Example out when failed:
-      cambrionix-1234 started factory_reset
-      cambrionix-1234 factory_reset failed. DeviceError: something failed.
+  Example logs for a failed method call:
+      cambrionix-1234 starting Cambrionix.reboot(no_wait=False, method='shell')
+      cambrionix-1234 Cambrionix.reboot failed. DeviceError: something failed.
   """
 
   def __init__(self,
                logger,
                level=INFO,
                wrap_type=errors.DeviceError,
-               name_attr="name"):
+               name_attr="name",
+               print_args=True):
     """Create a log decorator wrapper.
 
     Args:
@@ -309,6 +345,8 @@ class LogDecorator():
         name_attr (str): name of attribute containing the device name. For
           example, if device name is under self.device_name, the value
           should be "device_name".
+        print_args (bool): whether to include values of method args and kwargs
+          in the method start log message.
 
     Raises:
         TypeError: if wrap_type is not a subclass of DeviceError.
@@ -321,6 +359,7 @@ class LogDecorator():
     self.level = level
     self.wrap_type = wrap_type
     self.name_attr = name_attr
+    self.print_args = print_args
 
   def __call__(self, func):
     """Wraps (decorates) the provided function.
@@ -334,12 +373,13 @@ class LogDecorator():
     Raises:
         TypeError: incorrect type of func argument.
     """
-    # Note: cannot use inspect.ismethod() here. At the time of decorator __init__ call,
-    # python intepreter has not yet created the class of the method we're decorating.
-    # At this time, the 'method' is still a function. Once all methods are created,
-    # the python interpreter creates the class object, then binds the functions' self
-    # arguments to make them 'methods.' Hence at this point func is considered a function
-    # by python even if it's actually a method.
+    # Note: cannot use inspect.ismethod() here. At the time of decorator
+    # __init__ call, python intepreter has not yet created the class of the
+    # method we're decorating.  At this time, the 'method' is still a function.
+    # Once all methods are created, the python interpreter creates the class
+    # object, then binds the functions' self arguments to make them 'methods.'
+    # Hence at this point func is considered a function by python even if it's
+    # actually a method.
     if not callable(func):
       raise TypeError("Expected func to be callable, found {}.".format(func))
 
@@ -377,10 +417,13 @@ class LogDecorator():
           "device_name": getattr(instance, self.name_attr, DEFAULT_DEVICE_NAME),
           "method_name": func.__name__,
           "class_name": self._find_defining_class_name(func, type(instance)),
+          "args_and_kwargs": _get_args_and_kwargs_str(
+              self.print_args, self.level,
+              inspect.signature(func), args, kwargs),
           "skip_reason": None,
           "time_elapsed": None,
           "exc_name": None,
-          "exc_reason": None
+          "exc_reason": None,
       }
 
       return_val = None
@@ -396,7 +439,15 @@ class LogDecorator():
         method_skipped = True
         fmt_args["skip_reason"] = str(err)
       except Exception as err:
-        self._format_and_raise(fmt_args, err)
+        if (not isinstance(err, errors.CheckDeviceReadyError) and
+            not isinstance(err, self.wrap_type)):
+          # Wrap the error in a different type and reraise.
+          fmt_args["exc_name"] = type(err).__name__
+          fmt_args["exc_reason"] = str(err)
+          reraise_msg = MESSAGES["FAILURE"].format(**fmt_args)
+          wrapped_exc = self.wrap_type(reraise_msg)
+          raise wrapped_exc from err
+        raise
 
       if self.level is not None:
         if method_skipped:
@@ -407,7 +458,7 @@ class LogDecorator():
 
       return return_val
 
-    wrapped_func.__dict__[WRAPS_ATTR_NAME] = func
+    wrapped_func.__dict__[LOG_DECORATOR_ATTRIBUTE] = True
     return wrapped_func
 
   def _find_defining_class_name(self, method, current_class):
@@ -438,27 +489,6 @@ class LogDecorator():
       if a_class_method and unwrap(a_class_method) is method:
         return a_class.__name__
     return None
-
-  def _format_and_raise(self, fmt_args, err):
-    """Format the exception message & type before re-raising."""
-    wrapped_exc = err
-    if (not isinstance(err, errors.CheckDeviceReadyError) and
-        not isinstance(err, self.wrap_type)):
-      fmt_args["exc_name"] = type(err).__name__
-      fmt_args["exc_reason"] = str(err)
-      # Wrap the error in a different type and reraise.
-      reraise_msg = MESSAGES["FAILURE"].format(**fmt_args)
-      wrapped_exc = self.wrap_type(reraise_msg)
-
-    # Note: do nothing for CheckDeviceReadyErrors & subclasses.
-    # These have two mandatory positional arguments in their signatures,
-    # unlike the other errors, which typically have just one (the message).
-    # It would be nice to get rid of the extra arguments (device name) in the signatures
-    # and instead just let the log decorator add the device name to the error message.
-    # However, refactoring these errors to use the log decorator is non-trivial.
-    # This is because many of these are raised in plain functions (not methods),
-    # which are not supported by this log decorator...
-    raise wrapped_exc
 
 
 class CapabilityLogDecorator(LogDecorator):

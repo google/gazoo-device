@@ -80,6 +80,26 @@ Inside the same build folder, `${device-address}` should be something like
 idf.py -p ${device-address} flash monitor
 ```
 
+You may also use GDM python interpreter for flashing:
+
+```
+>>> from gazoo_device import Manager
+>>> m = Manager()
+>>> esp = m.create_device('esp32matterlocking-b69b')
+>>> esp.flash_build.upgrade(build_file='/path/to/application.bin',
+                            partition_file='/path/to/partition_table.bin',
+                            bootloader_file='/path/to/bootloader.bin')
+```
+
+Or using GDM CLI:
+
+```
+gdm issue esp32matterlocking-b69b - flash_build - upgrade \
+  --build_file=/path/to/application.bin \
+  --partition_file=/path/to/partition_table.bin \
+  --bootloader_file=/path/to/bootloader.bin
+```
+
 **5. (Optional) Try RPC**
 
 Try if the Locking endpoints work in the interactive console.
@@ -126,9 +146,9 @@ Detect the ESP32 locking app: `gdm detect`
 Using GDM CLI
 
 ```
-gdm issue esp32matterlocking-b69b - pw_rpc_lock - lock  # Lock the device
-gdm issue esp32matterlocking-b69b - pw_rpc_lock - unlock  # Unlock the device
-gdm issue esp32matterlocking-b69b - pw_rpc_lock - state  # Get locked state
+gdm issue esp32matterlocking-b69b - door_lock - door_lock - lock_door  # Lock the device
+gdm issue esp32matterlocking-b69b - door_lock - door_lock - unlock_door   # Unlock the device
+gdm issue esp32matterlocking-b69b - door_lock - door_lock - lock_state  # Get locked state
 gdm man esp32matterlocking  # To see all supported functionality
 ```
 
@@ -147,8 +167,8 @@ Inside python console:
 >>> from gazoo_device import Manager
 >>> m = Manager()
 >>> esp = m.create_device('esp32matterlocking-b69b')
->>> esp.pw_rpc_lock.lock()
->>> esp.pw_rpc_lock.state
+>>> esp.door_lock.door_lock.lock_door()
+>>> esp.door_lock.door_lock.lock_state
 >>> esp.close()
 ```
 
@@ -162,9 +182,9 @@ and
 **1. Lock/unlock and get locked state**
 
 ```
->>> esp.pw_rpc_lock.lock()
->>> esp.pw_rpc_lock.unlock()
->>> esp.pw_rpc_lock.state
+>>> esp.door_lock.door_lock.lock_door()
+>>> esp.door_lock.door_lock.unlock_door()
+>>> esp.door_lock.door_lock.lock_state
 ```
 
 **2. Reboot and factory reset**

@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 from gazoo_device.primary_devices import esp32_matter_locking
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
-_FAKE_DEVICE_ID = "esp32matteralllocking-1234"
+_FAKE_DEVICE_ID = "esp32matterlocking-1234"
 _FAKE_DEVICE_ADDRESS = "/dev/bus/usb/01/02"
 
 
@@ -32,13 +32,9 @@ class Esp32MatterLockingTests(fake_device_test_case.FakeDeviceTestCase):
         self.device_config,
         log_directory=self.artifacts_directory)
 
-  def test_001_create_esp32matterlocking_device(self):
-    """Verifies create_device works as expected."""
-    self.assertIsNotNone(self.uut)
-
-  def test_002_locking_rpc_capability(self):
-    """Verifies the initialization of pw_rpc_lock capability."""
-    self.assertTrue(self.uut.pw_rpc_lock)
+  def test_door_lock_endpoint(self):
+    """Verifies the initialization of door_lock endpoint."""
+    self.assertIsNotNone(self.uut.door_lock)
 
 
 if __name__ == "__main__":

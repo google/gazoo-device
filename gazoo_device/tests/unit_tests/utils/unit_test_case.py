@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -39,6 +39,7 @@ import tempfile
 import time
 from unittest import mock
 
+from absl import logging as absl_logging
 from absl.testing import absltest
 from absl.testing import parameterized
 from gazoo_device import gdm_logger
@@ -190,6 +191,8 @@ class UnitTestCase(parameterized.TestCase):
     cls.logger.addHandler(stderr_handler)
     cls.logger.setLevel(logging.INFO)
     cls.logger.info("\nArtifacts will be saved to %s", cls.artifacts_directory)
+    # Prevent ABSL logger from duplicating logs to stdout.
+    absl_logging.get_absl_handler().setLevel(logging.ERROR)
 
     # Allow accessing pyudev.Context, but prohibit instantiating it:
     # pyudev.Context() only works on Linux hosts.

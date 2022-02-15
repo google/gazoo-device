@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -185,9 +185,9 @@ class PrimaryDeviceBase(abc.ABC):
     """Issues a soft reboot command.
 
     Args:
-        no_wait (bool): flag indicating whether reboot verification should be
+        no_wait (bool): Flag indicating whether reboot verification should be
           skipped. If False, blocks until reboot completion.
-        method (str): reboot technique to use.
+        method (str): Reboot technique to use.
     """
 
   @abc.abstractmethod

@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -47,7 +47,9 @@ class JLinkTransportTests(unit_test_case.UnitTestCase):
     """Test that an actionable error is raised if the J-Link DLL is missing."""
     self.mock_jlink_class.side_effect = TypeError(
         "Expected to be given a valid DLL.")
-    with self.assertRaisesRegexp(errors.DeviceError, "No J-Link DLL found."):
+    with self.assertRaisesRegex(
+        errors.DependencyUnavailableError,
+        "No J-Link DLL found. Install the J-Link SDK"):
       jlink_transport.JLinkTransport(_JLINK_SERIAL, _CHIP_NAME)
 
   def test_10_is_open_true(self):

@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -908,7 +908,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       self.uut.create_device(self.first_name)
       self.uut.create_device(self.second_name)
 
-  def test_405_manager_create_device_open_error(self):
+  def test_create_device_open_error(self):
     """Ensure attempting to open already open device raises error."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -920,6 +920,19 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
 
       with self.assertRaisesRegex(errors.DeviceError, "open"):
         self.uut.create_device(self.second_name)
+
+  def test_create_device_open_success(self):
+    """Tests create_device(raise_if_already_open=False) for an open device."""
+    self.uut = self._create_manager_object()
+    with MockOutDevices():
+      device1 = self.uut.create_device(self.first_name)
+      device2 = self.uut.create_device(self.second_name)
+      self.assertIs(
+          self.uut.create_device(self.first_name, raise_if_already_open=False),
+          device1)
+      self.assertIs(
+          self.uut.create_device(self.second_name, raise_if_already_open=False),
+          device2)
 
   def test_406_manager_create_device_with_non_default_log_directory(self):
     """Test verify that symlink is skipped for non default directory."""
@@ -1008,6 +1021,46 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         self.uut.close_open_devices()
         self.assertFalse(self.uut.get_open_devices())
         close_wrapper.assert_called_once()
+
+  def test_create_and_close_device_closed_primary_device(self):
+    """Tests create_and_close_device() for a closed primary device."""
+    self.uut = self._create_manager_object()
+    device_name = "sshdevice-0000"
+    with MockOutDevices():
+      with self.uut.create_and_close_device(device_name) as device:
+        self.assertIsInstance(device, fake_devices.FakeSSHDevice)
+        self.assertIn(device_name, self.uut.get_open_device_names())
+      self.assertNotIn(device_name, self.uut.get_open_device_names())
+
+  def test_create_and_close_device_open_primary_device(self):
+    """Tests create_and_close_device() for an open primary device."""
+    self.uut = self._create_manager_object()
+    device_name = "sshdevice-0000"
+    with MockOutDevices():
+      device1 = self.uut.create_device(device_name)
+      with self.uut.create_and_close_device(
+          device_name, raise_if_already_open=False) as device2:
+        self.assertIs(device2, device1)
+        self.assertIn(device_name, self.uut.get_open_device_names())
+      # .close() should not be called since we reused the already open instance.
+      self.assertIn(device_name, self.uut.get_open_device_names())
+
+  def test_create_and_close_device_open_auxiliary_device(self):
+    """Tests create_and_close_device() for an open auxiliary device."""
+    self.uut = self._create_manager_object()
+    device_name = "cambrionix-1234"
+    with MockOutDevices():
+      device1 = self.uut.create_device(device_name)
+      with self.uut.create_and_close_device(
+          device_name, raise_if_already_open=False) as device2:
+        self.assertIs(device2, device1)
+        self.assertIn(device_name, self.uut.get_open_device_names())
+        open_count_before = device2._user_count
+      self.assertEqual(
+          device1._user_count,
+          open_count_before - 1,
+          "user count did not decrease: close() was not called")
+      self.assertIn(device_name, self.uut.get_open_device_names())
 
   def test_408_manager_create_devices_with_list_of_strings_successful(self):
     self.uut = self._create_manager_object()
@@ -1328,12 +1381,16 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         return_value=(persistent_configs, options_configs)) as mock_detect:
       # Ensure static ip strings are correctly parsed into lists
       self.uut.detect(static_ips="123.123.78.90")
-      mock_detect.assert_called_with([u"123.123.78.90"])
+      mock_detect.assert_called_with(static_ips=[u"123.123.78.90"],
+                                     comm_types=None)
       self.uut.detect(static_ips="123.123.78.90,123.123.78.1,99.9.9.0")
       mock_detect.assert_called_with(
-          [u"123.123.78.90", "123.123.78.1", "99.9.9.0"])
+          static_ips=[u"123.123.78.90", "123.123.78.1", "99.9.9.0"],
+          comm_types=None)
       self.uut.detect(static_ips="123.123.78.90,,,,,123.123.78.1,,")
-      mock_detect.assert_called_with([u"123.123.78.90", "123.123.78.1"])
+      mock_detect.assert_called_with(
+          static_ips=[u"123.123.78.90", "123.123.78.1"],
+          comm_types=None)
 
   def test_700a_detect_force_overwrite(self):
     """Test detect() with force_overwrite=True."""
@@ -1362,7 +1419,8 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         self.uut.detect(static_ips=["123.123.78.1"], force_overwrite=True)
       mock_overwrite.assert_called_once()
     mock_detect.assert_called_once_with(
-        ["123.123.78.1", "123.123.78.9", "123.123.78.0"])
+        static_ips=["123.123.78.1", "123.123.78.9", "123.123.78.0"],
+        comm_types=None)
     # Check that all devices are known to Manager
     device_names = (
         list(FAKE_DEVICES["devices"].keys()) +
@@ -1459,7 +1517,8 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           "detect_all_new_devices",
           return_value=(persistent_configs, options_configs)) as mock_detect:
         self.uut.redetect("sshdevice-0000")
-        mock_detect.assert_called_with([u"123.123.78.9"])
+        mock_detect.assert_called_with(static_ips=[u"123.123.78.9"],
+                                       comm_types=None)
 
   @mock.patch.object(switch_power_usb_with_charge.SwitchPowerUsbWithCharge,
                      "set_mode")

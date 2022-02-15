@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ FAKE_CONTROLLER_CONFIGS = {
     }, {
         "label": "b",
         "id": "sshdevice-0001",
+        "bypass_gdm_check": "true",
         "other": "b"
     }]
 }
@@ -108,7 +109,7 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
   def test_create_set_prop_error(self, mock_set, mock_create_device):
     mock_device = mock.Mock()
     mock_create_device.return_value = mock_device
-    mock_set.side_effect = iter([None, errors.DeviceError("")])
+    mock_set.side_effect = iter([None, None, errors.DeviceError("")])
     devices = gazoo_device.create(FAKE_CONTROLLER_CONFIGS["GazooDevice"])
 
     self.assertEqual(devices, [mock_device, mock_device])

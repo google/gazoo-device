@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -54,7 +54,8 @@ def get_address_to_usb_info_dict():
   """
   udev_devices = get_pyudev_list_of_devices()
   relevant_devices = [
-      device for device in udev_devices if device.get('ID_BUS') == 'usb'
+      device for device in udev_devices
+      if device.properties.get('ID_BUS') == 'usb'
   ]
   address_to_usb_info_dict = {}
   location_dict = {}
@@ -118,11 +119,11 @@ def _add_disk_info(address_to_usb_info_dict, disk_info):
 
 def _get_address(udev_device):
   """Gets the serial port symlink under '/dev/serial/by-id', mounted drives, or adb serial."""
-  devlinks_str = udev_device.get('DEVLINKS', '')
+  devlinks_str = udev_device.properties.get('DEVLINKS', '')
   paths = devlinks_str.split()
   if not devlinks_str:  # Get mounted drives without corresponding symlinks
-    if udev_device.get('ID_VENDOR') not in REPEAT_VENDORS:
-      return udev_device.get('DEVNAME')
+    if udev_device.properties.get('ID_VENDOR') not in REPEAT_VENDORS:
+      return udev_device.properties.get('DEVNAME')
 
   for path in paths:
     if PERSISTENT_SERIAL_PATH_FOLDER in path:
@@ -139,10 +140,10 @@ def _get_address(udev_device):
 def _get_cambrionix_model(udev_device):
   """Gets the model of the cambrionix."""
   parent = udev_device.parent.parent.parent.parent
-  if udev_device.get('ID_MODEL') in usb_config.CAMBRIONIX_PORT_MAP:
-    return udev_device.get('ID_MODEL')
+  if udev_device.properties.get('ID_MODEL') in usb_config.CAMBRIONIX_PORT_MAP:
+    return udev_device.properties.get('ID_MODEL')
   else:
-    return parent.get('ID_MODEL')
+    return parent.properties.get('ID_MODEL')
 
 
 def _get_cambrionix_port_number(hub_address,
@@ -210,12 +211,13 @@ def _get_child_addresses(udev_device):
   all_children = _get_cambrionix_udev_children(udev_device)
   relevant_children = [
       device for device in all_children
-      if device.get('DEVLINKS') and _get_address(device)
+      if device.properties.get('DEVLINKS') and _get_address(device)
   ]
   if udev_device in relevant_children:
     relevant_children.remove(udev_device)
   grand_children = []
-  for child_device in relevant_children:  # Remove children of other cambrionixes
+  for child_device in relevant_children:
+    # Remove children of other cambrionixes
     if _get_product_name(child_device) in usb_config.CAMBRIONIX_NAMES:
       grand_children += _get_cambrionix_udev_children(child_device)
       grand_children.remove(child_device)
@@ -230,7 +232,8 @@ def _get_disk_info():
   """Returns a dictionary of disk paths to serial numbers."""
   devices = get_pyudev_list_of_devices(subsystem='block')
   mounted_info = {
-      device.get('ID_SERIAL_SHORT', ''): device.get('DEVNAME')
+      device.properties.get('ID_SERIAL_SHORT', ''):
+          device.properties.get('DEVNAME')
       for device in devices
   }
   return mounted_info
@@ -238,7 +241,7 @@ def _get_disk_info():
 
 def _get_product_name(udev_device):
   """Gets the product name in a system agnostic way."""
-  model = udev_device.get('ID_MODEL', '').replace('_', ' ')
+  model = udev_device.properties.get('ID_MODEL', '').replace('_', ' ')
   if model == ANDROID_DEVICE_PRODUCT_NAME:  # Actually an Android device.
     model = 'Android'
   return model
@@ -247,18 +250,19 @@ def _get_product_name(udev_device):
 def _process_udev_device(udev_device):
   """Convert pyudev dict to the system agnostic form."""
   model = None
-  dev_path = udev_device.get('DEVPATH', '')
+  dev_path = udev_device.properties.get('DEVPATH', '')
 
   entry = usb_config.UsbInfo()
   address = _get_address(udev_device)
   if not address:
     return '', {}, None, None
   entry.address = address
-  entry.product_id = udev_device.get('ID_MODEL_ID', '')
-  entry.vendor_id = udev_device.get('ID_VENDOR_ID', '')
-  entry.ftdi_interface = int(udev_device.get('ID_USB_INTERFACE_NUM', 0))
-  entry.manufacturer = udev_device.get('ID_VENDOR', '')
-  entry.serial_number = udev_device.get('ID_SERIAL_SHORT', '')
+  entry.product_id = udev_device.properties.get('ID_MODEL_ID', '')
+  entry.vendor_id = udev_device.properties.get('ID_VENDOR_ID', '')
+  entry.ftdi_interface = int(
+      udev_device.properties.get('ID_USB_INTERFACE_NUM', 0))
+  entry.manufacturer = udev_device.properties.get('ID_VENDOR', '')
+  entry.serial_number = udev_device.properties.get('ID_SERIAL_SHORT', '')
   entry.product_name = _get_product_name(udev_device)
   if entry.product_name in usb_config.CAMBRIONIX_NAMES:
     entry.child_addresses = _get_child_addresses(udev_device)
