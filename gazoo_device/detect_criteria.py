@@ -68,51 +68,51 @@ class QueryEnum(enum.Enum):
 
 
 class AdbQuery(QueryEnum):
-  is_serial_number = "is_serial_number"
+  IS_SERIAL_NUMBER = "is_serial_number"
 
 
 class DockerQuery(QueryEnum):
-  product_name = "product_name"
+  PRODUCT_NAME = "product_name"
 
 
 class GenericQuery(QueryEnum):
-  always_true = "always_true"
+  ALWAYS_TRUE = "always_true"
 
 
 class PigweedQuery(QueryEnum):
   """Query names for detection for PigweedSerialComms Devices."""
-  app_type = "app_type"
-  product_name = "usb info product_name"
-  manufacturer_name = "usb info manufacturer_name"
+  IS_MATTER = "is_matter"
+  PRODUCT_NAME = "usb info product_name"
+  MANUFACTURER_NAME = "usb info manufacturer_name"
 
 
 class PtyProcessQuery(QueryEnum):
-  product_name = "product_name"
+  PRODUCT_NAME = "product_name"
 
 
 class SerialQuery(QueryEnum):
-  product_name = "usb info product_name"
-  serial_number = "usb serial_numer"
-  vendor_product_id = "VENDOR_ID:PRODUCT_ID"
+  PRODUCT_NAME = "usb info product_name"
+  SERIAL_NUMBER = "usb serial_numer"
+  VENDOR_PRODUCT_ID = "VENDOR_ID:PRODUCT_ID"
 
 
 class SnmpQuery(QueryEnum):
   """Query names for detection of SnmpComms Devices."""
-  is_dlink = "is_dlink_power_switch"
+  IS_DLINK = "is_dlink_power_switch"
 
 
 class SshQuery(QueryEnum):
   """Query names for detection for SshComms Devices."""
-  is_dli = "is_dli_power_switch"
-  is_rpi = "is_raspberry_pi"
-  is_unifi = "is_unifi_switch"
-  is_chip_tool_present = "is_chip_tool_installed_on_rpi"
+  IS_DLI = "is_dli_power_switch"
+  IS_RPI = "is_raspberry_pi"
+  IS_UNIFI = "is_unifi_switch"
+  IS_CHIP_TOOL_PRESENT = "is_chip_tool_installed_on_rpi"
 
 
 class UsbQuery(QueryEnum):
-  product_name = "usb product name"
-  serial_number = "serial_number"
-  vendor_product_id = "VENDOR_ID:PRODUCT_ID"
+  PRODUCT_NAME = "usb product name"
+  SERIAL_NUMBER = "serial_number"
+  VENDOR_PRODUCT_ID = "VENDOR_ID:PRODUCT_ID"
 
 
 def _docker_product_name_query(
@@ -389,11 +389,11 @@ def _manufacturer_name_query(
   return usb_utils.get_device_info(address).manufacturer.lower()
 
 
-def _pigweed_application_query(
+def _is_matter_device_query(
     address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
-) -> str:
-  """Gets Pigweed application type of the device.
+) -> bool:
+  """Returns True if the device is a Matter device.
 
   Args:
     address: The communication address.
@@ -401,57 +401,57 @@ def _pigweed_application_query(
     create_switchboard_func: Method to create the switchboard.
 
   Returns:
-    Pigweed application type.
+    True if the device is a Matter device, False otherwise.
   """
   file_handler = typing.cast(logging.FileHandler, detect_logger.handlers[0])
   log_path = file_handler.baseFilename
-  return pwrpc_utils.get_application_type(
-      address, log_path, create_switchboard_func)
+  return pwrpc_utils.is_matter_device(
+      address, log_path, create_switchboard_func, detect_logger)
 
 
 GENERIC_QUERY_DICT = immutabledict.immutabledict({
-    GenericQuery.always_true: _always_true_query,
+    GenericQuery.ALWAYS_TRUE: _always_true_query,
 })
 
 ADB_QUERY_DICT = immutabledict.immutabledict({
-    AdbQuery.is_serial_number: _adb_is_serial_number_query,
+    AdbQuery.IS_SERIAL_NUMBER: _adb_is_serial_number_query,
 })
 
 DOCKER_QUERY_DICT = immutabledict.immutabledict({
-    DockerQuery.product_name: _docker_product_name_query,
+    DockerQuery.PRODUCT_NAME: _docker_product_name_query,
 })
 
 PIGWEED_QUERY_DICT = immutabledict.immutabledict({
-    PigweedQuery.app_type: _pigweed_application_query,
-    PigweedQuery.product_name: usb_product_name_query,
-    PigweedQuery.manufacturer_name: _manufacturer_name_query,
+    PigweedQuery.IS_MATTER: _is_matter_device_query,
+    PigweedQuery.PRODUCT_NAME: usb_product_name_query,
+    PigweedQuery.MANUFACTURER_NAME: _manufacturer_name_query,
 })
 
 PTY_PROCESS_QUERY_DICT = immutabledict.immutabledict({
-    PtyProcessQuery.product_name: _pty_process_name_query,
+    PtyProcessQuery.PRODUCT_NAME: _pty_process_name_query,
 })
 
 SERIAL_QUERY_DICT = immutabledict.immutabledict({
-    SerialQuery.product_name: usb_product_name_query,
-    SerialQuery.serial_number: _usb_serial_number_from_serial_port_path,
-    SerialQuery.vendor_product_id: _usb_vendor_product_id_from_serial_port_path,
+    SerialQuery.PRODUCT_NAME: usb_product_name_query,
+    SerialQuery.SERIAL_NUMBER: _usb_serial_number_from_serial_port_path,
+    SerialQuery.VENDOR_PRODUCT_ID: _usb_vendor_product_id_from_serial_port_path,
 })
 
 SNMP_QUERY_DICT = immutabledict.immutabledict({
-    SnmpQuery.is_dlink: _is_dlink_query,
+    SnmpQuery.IS_DLINK: _is_dlink_query,
 })
 
 SSH_QUERY_DICT = immutabledict.immutabledict({
-    SshQuery.is_dli: _is_dli_query,
-    SshQuery.is_rpi: _is_rpi_query,
-    SshQuery.is_unifi: _is_unifi_query,
-    SshQuery.is_chip_tool_present: _is_chip_tool_installed_query,
+    SshQuery.IS_DLI: _is_dli_query,
+    SshQuery.IS_RPI: _is_rpi_query,
+    SshQuery.IS_UNIFI: _is_unifi_query,
+    SshQuery.IS_CHIP_TOOL_PRESENT: _is_chip_tool_installed_query,
 })
 
 USB_QUERY_DICT = immutabledict.immutabledict({
-    UsbQuery.product_name: _usb_product_name_from_serial_number,
-    UsbQuery.serial_number: _usb_serial_number,
-    UsbQuery.vendor_product_id: _usb_vendor_product_id_query,
+    UsbQuery.PRODUCT_NAME: _usb_product_name_from_serial_number,
+    UsbQuery.SERIAL_NUMBER: _usb_serial_number,
+    UsbQuery.VENDOR_PRODUCT_ID: _usb_vendor_product_id_query,
 })
 
 DETECT_CRITERIA = immutabledict.immutabledict({

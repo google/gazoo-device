@@ -340,21 +340,14 @@ class LogDecorator:
           decorators.NONE) NONE disables logging messages (but errors are
           still wrapped).
         wrap_type (DeviceError): wrap the errors in this class if it's not
-          an instance of it already. Valid values are DeviceError or its
+          an instance of it already. Prefer values of DeviceError or its
           subclasses.
         name_attr (str): name of attribute containing the device name. For
           example, if device name is under self.device_name, the value
           should be "device_name".
         print_args (bool): whether to include values of method args and kwargs
           in the method start log message.
-
-    Raises:
-        TypeError: if wrap_type is not a subclass of DeviceError.
     """
-    if not issubclass(wrap_type, errors.DeviceError):
-      raise TypeError(
-          "Invalid wrap_type: {}. "
-          "wrap_type can only be a subclass of DeviceError.".format(wrap_type))
     self.logger = logger
     self.level = level
     self.wrap_type = wrap_type

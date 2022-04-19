@@ -22,7 +22,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x18\x61ttributes_service.proto\x12\x08\x63hip.rpc\x1a\x0c\x63ommon.proto\"s\n\x11\x41ttributeMetadata\x12\x10\n\x08\x65ndpoint\x18\x01 \x01(\r\x12\x0f\n\x07\x63luster\x18\x02 \x01(\r\x12\x14\n\x0c\x61ttribute_id\x18\x03 \x01(\r\x12%\n\x04type\x18\x04 \x01(\x0e\x32\x17.chip.rpc.AttributeType\"\x86\x01\n\rAttributeData\x12\x13\n\tdata_bool\x18\x01 \x01(\x08H\x00\x12\x14\n\ndata_uint8\x18\x02 \x01(\rH\x00\x12\x15\n\x0b\x64\x61ta_uint16\x18\x03 \x01(\rH\x00\x12\x15\n\x0b\x64\x61ta_uint32\x18\x04 \x01(\rH\x00\x12\x14\n\ndata_bytes\x18\x05 \x01(\x0cH\x00\x42\x06\n\x04\x64\x61ta\"f\n\x0e\x41ttributeWrite\x12-\n\x08metadata\x18\x01 \x01(\x0b\x32\x1b.chip.rpc.AttributeMetadata\x12%\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x17.chip.rpc.AttributeData*\xab\x10\n\rAttributeType\x12\x1e\n\x1aZCL_NO_DATA_ATTRIBUTE_TYPE\x10\x00\x12\x1e\n\x1aZCL_BOOLEAN_ATTRIBUTE_TYPE\x10\x10\x12\x1e\n\x1aZCL_BITMAP8_ATTRIBUTE_TYPE\x10\x18\x12\x1f\n\x1bZCL_BITMAP16_ATTRIBUTE_TYPE\x10\x19\x12\x1f\n\x1bZCL_BITMAP32_ATTRIBUTE_TYPE\x10\x1b\x12\x1f\n\x1bZCL_BITMAP64_ATTRIBUTE_TYPE\x10\x1f\x12\x1c\n\x18ZCL_INT8U_ATTRIBUTE_TYPE\x10 \x12\x1d\n\x19ZCL_INT16U_ATTRIBUTE_TYPE\x10!\x12\x1d\n\x19ZCL_INT24U_ATTRIBUTE_TYPE\x10\"\x12\x1d\n\x19ZCL_INT32U_ATTRIBUTE_TYPE\x10#\x12\x1d\n\x19ZCL_INT40U_ATTRIBUTE_TYPE\x10$\x12\x1d\n\x19ZCL_INT48U_ATTRIBUTE_TYPE\x10%\x12\x1d\n\x19ZCL_INT56U_ATTRIBUTE_TYPE\x10&\x12\x1d\n\x19ZCL_INT64U_ATTRIBUTE_TYPE\x10\'\x12\x1c\n\x18ZCL_INT8S_ATTRIBUTE_TYPE\x10(\x12\x1d\n\x19ZCL_INT16S_ATTRIBUTE_TYPE\x10)\x12\x1d\n\x19ZCL_INT24S_ATTRIBUTE_TYPE\x10*\x12\x1d\n\x19ZCL_INT32S_ATTRIBUTE_TYPE\x10+\x12\x1d\n\x19ZCL_INT40S_ATTRIBUTE_TYPE\x10,\x12\x1d\n\x19ZCL_INT48S_ATTRIBUTE_TYPE\x10-\x12\x1d\n\x19ZCL_INT56S_ATTRIBUTE_TYPE\x10.\x12\x1d\n\x19ZCL_INT64S_ATTRIBUTE_TYPE\x10/\x12\x1c\n\x18ZCL_ENUM8_ATTRIBUTE_TYPE\x10\x30\x12\x1d\n\x19ZCL_ENUM16_ATTRIBUTE_TYPE\x10\x31\x12\x1d\n\x19ZCL_SINGLE_ATTRIBUTE_TYPE\x10\x39\x12\x1d\n\x19ZCL_DOUBLE_ATTRIBUTE_TYPE\x10:\x12#\n\x1fZCL_OCTET_STRING_ATTRIBUTE_TYPE\x10\x41\x12\"\n\x1eZCL_CHAR_STRING_ATTRIBUTE_TYPE\x10\x42\x12(\n$ZCL_LONG_OCTET_STRING_ATTRIBUTE_TYPE\x10\x43\x12\'\n#ZCL_LONG_CHAR_STRING_ATTRIBUTE_TYPE\x10\x44\x12\x1c\n\x18ZCL_ARRAY_ATTRIBUTE_TYPE\x10H\x12\x1d\n\x19ZCL_STRUCT_ATTRIBUTE_TYPE\x10L\x12\x1b\n\x16ZCL_TOD_ATTRIBUTE_TYPE\x10\xe0\x01\x12\x1c\n\x17ZCL_DATE_ATTRIBUTE_TYPE\x10\xe1\x01\x12\x1b\n\x16ZCL_UTC_ATTRIBUTE_TYPE\x10\xe2\x01\x12 \n\x1bZCL_EPOCH_US_ATTRIBUTE_TYPE\x10\xe3\x01\x12\x1f\n\x1aZCL_EPOCH_S_ATTRIBUTE_TYPE\x10\xe4\x01\x12\"\n\x1dZCL_SYSTIME_US_ATTRIBUTE_TYPE\x10\xe5\x01\x12\x1f\n\x1aZCL_PERCENT_ATTRIBUTE_TYPE\x10\xe6\x01\x12%\n ZCL_PERCENT100THS_ATTRIBUTE_TYPE\x10\xe7\x01\x12\"\n\x1dZCL_CLUSTER_ID_ATTRIBUTE_TYPE\x10\xe8\x01\x12!\n\x1cZCL_ATTRIB_ID_ATTRIBUTE_TYPE\x10\xe9\x01\x12 \n\x1bZCL_FIELD_ID_ATTRIBUTE_TYPE\x10\xea\x01\x12 \n\x1bZCL_EVENT_ID_ATTRIBUTE_TYPE\x10\xeb\x01\x12\"\n\x1dZCL_COMMAND_ID_ATTRIBUTE_TYPE\x10\xec\x01\x12!\n\x1cZCL_ACTION_ID_ATTRIBUTE_TYPE\x10\xed\x01\x12 \n\x1bZCL_TRANS_ID_ATTRIBUTE_TYPE\x10\xef\x01\x12\x1f\n\x1aZCL_NODE_ID_ATTRIBUTE_TYPE\x10\xf0\x01\x12!\n\x1cZCL_VENDOR_ID_ATTRIBUTE_TYPE\x10\xf1\x01\x12\"\n\x1dZCL_DEVTYPE_ID_ATTRIBUTE_TYPE\x10\xf2\x01\x12!\n\x1cZCL_FABRIC_ID_ATTRIBUTE_TYPE\x10\xf3\x01\x12 \n\x1bZCL_GROUP_ID_ATTRIBUTE_TYPE\x10\xf4\x01\x12\x1e\n\x19ZCL_STATUS_ATTRIBUTE_TYPE\x10\xf5\x01\x12 \n\x1bZCL_DATA_VER_ATTRIBUTE_TYPE\x10\xf6\x01\x12 \n\x1bZCL_EVENT_NO_ATTRIBUTE_TYPE\x10\xf7\x01\x12#\n\x1eZCL_ENDPOINT_NO_ATTRIBUTE_TYPE\x10\xf8\x01\x12\"\n\x1dZCL_FABRIC_IDX_ATTRIBUTE_TYPE\x10\xf9\x01\x12\x1d\n\x18ZCL_IPADR_ATTRIBUTE_TYPE\x10\xfa\x01\x12\x1f\n\x1aZCL_IPV4ADR_ATTRIBUTE_TYPE\x10\xfb\x01\x12\x1f\n\x1aZCL_IPV6ADR_ATTRIBUTE_TYPE\x10\xfc\x01\x12\x1f\n\x1aZCL_IPV6PRE_ATTRIBUTE_TYPE\x10\xfd\x01\x12\x1d\n\x18ZCL_HWADR_ATTRIBUTE_TYPE\x10\xfe\x01\x12\x1f\n\x1aZCL_UNKNOWN_ATTRIBUTE_TYPE\x10\xff\x01\x32\x85\x01\n\nAttributes\x12\x37\n\x05Write\x12\x18.chip.rpc.AttributeWrite\x1a\x12.pw.protobuf.Empty\"\x00\x12>\n\x04Read\x12\x1b.chip.rpc.AttributeMetadata\x1a\x17.chip.rpc.AttributeData\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\x18\x61ttributes_service.proto\x12\x08\x63hip.rpc\x1a\x0c\x63ommon.proto\"\x8a\x01\n\x11\x41ttributeMetadata\x12\x10\n\x08\x65ndpoint\x18\x01 \x01(\r\x12&\n\x07\x63luster\x18\x02 \x01(\x0e\x32\x15.chip.rpc.ClusterType\x12\x14\n\x0c\x61ttribute_id\x18\x03 \x01(\r\x12%\n\x04type\x18\x04 \x01(\x0e\x32\x17.chip.rpc.AttributeType\"\xc7\x01\n\rAttributeData\x12\x13\n\tdata_bool\x18\x01 \x01(\x08H\x00\x12\x14\n\ndata_uint8\x18\x02 \x01(\rH\x00\x12\x15\n\x0b\x64\x61ta_uint16\x18\x03 \x01(\rH\x00\x12\x15\n\x0b\x64\x61ta_uint32\x18\x04 \x01(\rH\x00\x12\x14\n\ndata_bytes\x18\x05 \x01(\x0cH\x00\x12\x13\n\tdata_int8\x18\x06 \x01(\x05H\x00\x12\x14\n\ndata_int16\x18\x07 \x01(\x05H\x00\x12\x14\n\ndata_int32\x18\x08 \x01(\x05H\x00\x42\x06\n\x04\x64\x61ta\"f\n\x0e\x41ttributeWrite\x12-\n\x08metadata\x18\x01 \x01(\x0b\x32\x1b.chip.rpc.AttributeMetadata\x12%\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x17.chip.rpc.AttributeData*\xab\x10\n\rAttributeType\x12\x1e\n\x1aZCL_NO_DATA_ATTRIBUTE_TYPE\x10\x00\x12\x1e\n\x1aZCL_BOOLEAN_ATTRIBUTE_TYPE\x10\x10\x12\x1e\n\x1aZCL_BITMAP8_ATTRIBUTE_TYPE\x10\x18\x12\x1f\n\x1bZCL_BITMAP16_ATTRIBUTE_TYPE\x10\x19\x12\x1f\n\x1bZCL_BITMAP32_ATTRIBUTE_TYPE\x10\x1b\x12\x1f\n\x1bZCL_BITMAP64_ATTRIBUTE_TYPE\x10\x1f\x12\x1c\n\x18ZCL_INT8U_ATTRIBUTE_TYPE\x10 \x12\x1d\n\x19ZCL_INT16U_ATTRIBUTE_TYPE\x10!\x12\x1d\n\x19ZCL_INT24U_ATTRIBUTE_TYPE\x10\"\x12\x1d\n\x19ZCL_INT32U_ATTRIBUTE_TYPE\x10#\x12\x1d\n\x19ZCL_INT40U_ATTRIBUTE_TYPE\x10$\x12\x1d\n\x19ZCL_INT48U_ATTRIBUTE_TYPE\x10%\x12\x1d\n\x19ZCL_INT56U_ATTRIBUTE_TYPE\x10&\x12\x1d\n\x19ZCL_INT64U_ATTRIBUTE_TYPE\x10\'\x12\x1c\n\x18ZCL_INT8S_ATTRIBUTE_TYPE\x10(\x12\x1d\n\x19ZCL_INT16S_ATTRIBUTE_TYPE\x10)\x12\x1d\n\x19ZCL_INT24S_ATTRIBUTE_TYPE\x10*\x12\x1d\n\x19ZCL_INT32S_ATTRIBUTE_TYPE\x10+\x12\x1d\n\x19ZCL_INT40S_ATTRIBUTE_TYPE\x10,\x12\x1d\n\x19ZCL_INT48S_ATTRIBUTE_TYPE\x10-\x12\x1d\n\x19ZCL_INT56S_ATTRIBUTE_TYPE\x10.\x12\x1d\n\x19ZCL_INT64S_ATTRIBUTE_TYPE\x10/\x12\x1c\n\x18ZCL_ENUM8_ATTRIBUTE_TYPE\x10\x30\x12\x1d\n\x19ZCL_ENUM16_ATTRIBUTE_TYPE\x10\x31\x12\x1d\n\x19ZCL_SINGLE_ATTRIBUTE_TYPE\x10\x39\x12\x1d\n\x19ZCL_DOUBLE_ATTRIBUTE_TYPE\x10:\x12#\n\x1fZCL_OCTET_STRING_ATTRIBUTE_TYPE\x10\x41\x12\"\n\x1eZCL_CHAR_STRING_ATTRIBUTE_TYPE\x10\x42\x12(\n$ZCL_LONG_OCTET_STRING_ATTRIBUTE_TYPE\x10\x43\x12\'\n#ZCL_LONG_CHAR_STRING_ATTRIBUTE_TYPE\x10\x44\x12\x1c\n\x18ZCL_ARRAY_ATTRIBUTE_TYPE\x10H\x12\x1d\n\x19ZCL_STRUCT_ATTRIBUTE_TYPE\x10L\x12\x1b\n\x16ZCL_TOD_ATTRIBUTE_TYPE\x10\xe0\x01\x12\x1c\n\x17ZCL_DATE_ATTRIBUTE_TYPE\x10\xe1\x01\x12\x1b\n\x16ZCL_UTC_ATTRIBUTE_TYPE\x10\xe2\x01\x12 \n\x1bZCL_EPOCH_US_ATTRIBUTE_TYPE\x10\xe3\x01\x12\x1f\n\x1aZCL_EPOCH_S_ATTRIBUTE_TYPE\x10\xe4\x01\x12\"\n\x1dZCL_SYSTIME_US_ATTRIBUTE_TYPE\x10\xe5\x01\x12\x1f\n\x1aZCL_PERCENT_ATTRIBUTE_TYPE\x10\xe6\x01\x12%\n ZCL_PERCENT100THS_ATTRIBUTE_TYPE\x10\xe7\x01\x12\"\n\x1dZCL_CLUSTER_ID_ATTRIBUTE_TYPE\x10\xe8\x01\x12!\n\x1cZCL_ATTRIB_ID_ATTRIBUTE_TYPE\x10\xe9\x01\x12 \n\x1bZCL_FIELD_ID_ATTRIBUTE_TYPE\x10\xea\x01\x12 \n\x1bZCL_EVENT_ID_ATTRIBUTE_TYPE\x10\xeb\x01\x12\"\n\x1dZCL_COMMAND_ID_ATTRIBUTE_TYPE\x10\xec\x01\x12!\n\x1cZCL_ACTION_ID_ATTRIBUTE_TYPE\x10\xed\x01\x12 \n\x1bZCL_TRANS_ID_ATTRIBUTE_TYPE\x10\xef\x01\x12\x1f\n\x1aZCL_NODE_ID_ATTRIBUTE_TYPE\x10\xf0\x01\x12!\n\x1cZCL_VENDOR_ID_ATTRIBUTE_TYPE\x10\xf1\x01\x12\"\n\x1dZCL_DEVTYPE_ID_ATTRIBUTE_TYPE\x10\xf2\x01\x12!\n\x1cZCL_FABRIC_ID_ATTRIBUTE_TYPE\x10\xf3\x01\x12 \n\x1bZCL_GROUP_ID_ATTRIBUTE_TYPE\x10\xf4\x01\x12\x1e\n\x19ZCL_STATUS_ATTRIBUTE_TYPE\x10\xf5\x01\x12 \n\x1bZCL_DATA_VER_ATTRIBUTE_TYPE\x10\xf6\x01\x12 \n\x1bZCL_EVENT_NO_ATTRIBUTE_TYPE\x10\xf7\x01\x12#\n\x1eZCL_ENDPOINT_NO_ATTRIBUTE_TYPE\x10\xf8\x01\x12\"\n\x1dZCL_FABRIC_IDX_ATTRIBUTE_TYPE\x10\xf9\x01\x12\x1d\n\x18ZCL_IPADR_ATTRIBUTE_TYPE\x10\xfa\x01\x12\x1f\n\x1aZCL_IPV4ADR_ATTRIBUTE_TYPE\x10\xfb\x01\x12\x1f\n\x1aZCL_IPV6ADR_ATTRIBUTE_TYPE\x10\xfc\x01\x12\x1f\n\x1aZCL_IPV6PRE_ATTRIBUTE_TYPE\x10\xfd\x01\x12\x1d\n\x18ZCL_HWADR_ATTRIBUTE_TYPE\x10\xfe\x01\x12\x1f\n\x1aZCL_UNKNOWN_ATTRIBUTE_TYPE\x10\xff\x01*\xc5$\n\x0b\x43lusterType\x12\x1a\n\x16ZCL_INVALID_CLUSTER_ID\x10\x00\x12\x1f\n\x1bZCL_POWER_CONFIG_CLUSTER_ID\x10\x01\x12\x1e\n\x1aZCL_DEVICE_TEMP_CLUSTER_ID\x10\x02\x12\x1b\n\x17ZCL_IDENTIFY_CLUSTER_ID\x10\x03\x12\x19\n\x15ZCL_GROUPS_CLUSTER_ID\x10\x04\x12\x19\n\x15ZCL_SCENES_CLUSTER_ID\x10\x05\x12\x19\n\x15ZCL_ON_OFF_CLUSTER_ID\x10\x06\x12\'\n#ZCL_ON_OFF_SWITCH_CONFIG_CLUSTER_ID\x10\x07\x12 \n\x1cZCL_LEVEL_CONTROL_CLUSTER_ID\x10\x08\x12\x18\n\x14ZCL_ALARM_CLUSTER_ID\x10\t\x12\x17\n\x13ZCL_TIME_CLUSTER_ID\x10\n\x12%\n!ZCL_BINARY_INPUT_BASIC_CLUSTER_ID\x10\x0f\x12 \n\x1cZCL_POWER_PROFILE_CLUSTER_ID\x10\x1a\x12$\n ZCL_APPLIANCE_CONTROL_CLUSTER_ID\x10\x1b\x12\x1d\n\x19ZCL_DESCRIPTOR_CLUSTER_ID\x10\x1d\x12\x1f\n\x1bZCL_POLL_CONTROL_CLUSTER_ID\x10 \x12\"\n\x1eZCL_BRIDGED_ACTIONS_CLUSTER_ID\x10%\x12\x18\n\x14ZCL_BASIC_CLUSTER_ID\x10(\x12\x1f\n\x1bZCL_OTA_PROVIDER_CLUSTER_ID\x10)\x12 \n\x1cZCL_OTA_REQUESTOR_CLUSTER_ID\x10*\x12$\n ZCL_UNIT_LOCALIZATION_CLUSTER_ID\x10-\x12\x1f\n\x1bZCL_POWER_SOURCE_CLUSTER_ID\x10/\x12(\n$ZCL_GENERAL_COMMISSIONING_CLUSTER_ID\x10\x30\x12(\n$ZCL_NETWORK_COMMISSIONING_CLUSTER_ID\x10\x31\x12\"\n\x1eZCL_DIAGNOSTIC_LOGS_CLUSTER_ID\x10\x32\x12&\n\"ZCL_GENERAL_DIAGNOSTICS_CLUSTER_ID\x10\x33\x12\'\n#ZCL_SOFTWARE_DIAGNOSTICS_CLUSTER_ID\x10\x34\x12-\n)ZCL_THREAD_NETWORK_DIAGNOSTICS_CLUSTER_ID\x10\x35\x12+\n\'ZCL_WIFI_NETWORK_DIAGNOSTICS_CLUSTER_ID\x10\x36\x12/\n+ZCL_ETHERNET_NETWORK_DIAGNOSTICS_CLUSTER_ID\x10\x37\x12\'\n#ZCL_BRIDGED_DEVICE_BASIC_CLUSTER_ID\x10\x39\x12\x19\n\x15ZCL_SWITCH_CLUSTER_ID\x10;\x12.\n*ZCL_ADMINISTRATOR_COMMISSIONING_CLUSTER_ID\x10<\x12*\n&ZCL_OPERATIONAL_CREDENTIALS_CLUSTER_ID\x10>\x12\x1e\n\x1aZCL_FIXED_LABEL_CLUSTER_ID\x10@\x12 \n\x1cZCL_BOOLEAN_STATE_CLUSTER_ID\x10\x45\x12\x1e\n\x1aZCL_MODE_SELECT_CLUSTER_ID\x10P\x12 \n\x1bZCL_SHADE_CONFIG_CLUSTER_ID\x10\x80\x02\x12\x1d\n\x18ZCL_DOOR_LOCK_CLUSTER_ID\x10\x81\x02\x12#\n\x1eZCL_WINDOW_COVERING_CLUSTER_ID\x10\x82\x02\x12#\n\x1eZCL_BARRIER_CONTROL_CLUSTER_ID\x10\x83\x02\x12\'\n\"ZCL_PUMP_CONFIG_CONTROL_CLUSTER_ID\x10\x80\x04\x12\x1e\n\x19ZCL_THERMOSTAT_CLUSTER_ID\x10\x81\x04\x12\x1f\n\x1aZCL_FAN_CONTROL_CLUSTER_ID\x10\x82\x04\x12#\n\x1eZCL_DEHUMID_CONTROL_CLUSTER_ID\x10\x83\x04\x12(\n#ZCL_THERMOSTAT_UI_CONFIG_CLUSTER_ID\x10\x84\x04\x12!\n\x1cZCL_COLOR_CONTROL_CLUSTER_ID\x10\x80\x06\x12)\n$ZCL_BALLAST_CONFIGURATION_CLUSTER_ID\x10\x81\x06\x12+\n&ZCL_ILLUMINANCE_MEASUREMENT_CLUSTER_ID\x10\x80\x08\x12$\n\x1fZCL_TEMP_MEASUREMENT_CLUSTER_ID\x10\x82\x08\x12(\n#ZCL_PRESSURE_MEASUREMENT_CLUSTER_ID\x10\x83\x08\x12$\n\x1fZCL_FLOW_MEASUREMENT_CLUSTER_ID\x10\x84\x08\x12\x31\n,ZCL_RELATIVE_HUMIDITY_MEASUREMENT_CLUSTER_ID\x10\x85\x08\x12%\n ZCL_OCCUPANCY_SENSING_CLUSTER_ID\x10\x86\x08\x12=\n8ZCL_CARBON_MONOXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x8c\x08\x12<\n7ZCL_CARBON_DIOXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x8d\x08\x12\x36\n1ZCL_ETHYLENE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x8e\x08\x12<\n7ZCL_ETHYLENE_OXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x8f\x08\x12\x36\n1ZCL_HYDROGEN_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x90\x08\x12?\n:ZCL_HYDROGEN_SULPHIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x91\x08\x12:\n5ZCL_NITRIC_OXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x92\x08\x12>\n9ZCL_NITROGEN_DIOXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x93\x08\x12\x34\n/ZCL_OXYGEN_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x94\x08\x12\x33\n.ZCL_OZONE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x95\x08\x12<\n7ZCL_SULFUR_DIOXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x96\x08\x12>\n9ZCL_DISSOLVED_OXYGEN_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x97\x08\x12\x35\n0ZCL_BROMATE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x98\x08\x12\x39\n4ZCL_CHLORAMINES_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x99\x08\x12\x36\n1ZCL_CHLORINE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x9a\x08\x12G\nBZCL_FECAL_COLIFORM_AND_E_COLI_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x9b\x08\x12\x36\n1ZCL_FLUORIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x9c\x08\x12>\n9ZCL_HALOACETIC_ACIDS_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x9d\x08\x12\x43\n>ZCL_TOTAL_TRIHALOMETHANES_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x9e\x08\x12\x45\n@ZCL_TOTAL_COLIFORM_BACTERIA_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\x9f\x08\x12\x37\n2ZCL_TURBIDITY_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\xa0\x08\x12\x34\n/ZCL_COPPER_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\xa1\x08\x12\x32\n-ZCL_LEAD_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\xa2\x08\x12\x37\n2ZCL_MANGANESE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\xa3\x08\x12\x35\n0ZCL_SULFATE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\xa4\x08\x12\x42\n=ZCL_BROMODICHLOROMETHANE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\xa5\x08\x12\x37\n2ZCL_BROMOFORM_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\xa6\x08\x12\x42\n=ZCL_CHLORODIBROMOMETHANE_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\xa7\x08\x12\x38\n3ZCL_CHLOROFORM_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\xa8\x08\x12\x34\n/ZCL_SODIUM_CONCENTRATION_MEASUREMENT_CLUSTER_ID\x10\xa9\x08\x12\x1c\n\x17ZCL_IAS_ZONE_CLUSTER_ID\x10\x80\n\x12\x1b\n\x16ZCL_IAS_ACE_CLUSTER_ID\x10\x81\n\x12\x1a\n\x15ZCL_IAS_WD_CLUSTER_ID\x10\x82\n\x12\x1f\n\x1aZCL_WAKE_ON_LAN_CLUSTER_ID\x10\x83\n\x12\x1b\n\x16ZCL_CHANNEL_CLUSTER_ID\x10\x84\n\x12$\n\x1fZCL_TARGET_NAVIGATOR_CLUSTER_ID\x10\x85\n\x12\"\n\x1dZCL_MEDIA_PLAYBACK_CLUSTER_ID\x10\x86\n\x12\x1f\n\x1aZCL_MEDIA_INPUT_CLUSTER_ID\x10\x87\n\x12\x1d\n\x18ZCL_LOW_POWER_CLUSTER_ID\x10\x88\n\x12 \n\x1bZCL_KEYPAD_INPUT_CLUSTER_ID\x10\x89\n\x12\"\n\x1dZCL_CONTENT_LAUNCH_CLUSTER_ID\x10\x8a\n\x12 \n\x1bZCL_AUDIO_OUTPUT_CLUSTER_ID\x10\x8b\n\x12(\n#ZCL_APPLICATION_LAUNCHER_CLUSTER_ID\x10\x8c\n\x12%\n ZCL_APPLICATION_BASIC_CLUSTER_ID\x10\x8d\n\x12!\n\x1cZCL_ACCOUNT_LOGIN_CLUSTER_ID\x10\x8e\n\x12\x18\n\x13ZCL_TEST_CLUSTER_ID\x10\x8f\n\x12\x1d\n\x18ZCL_MESSAGING_CLUSTER_ID\x10\x83\x0e\x12,\n\'ZCL_APPLIANCE_IDENTIFICATION_CLUSTER_ID\x10\x80\x16\x12(\n#ZCL_METER_IDENTIFICATION_CLUSTER_ID\x10\x81\x16\x12.\n)ZCL_APPLIANCE_EVENTS_AND_ALERT_CLUSTER_ID\x10\x82\x16\x12(\n#ZCL_APPLIANCE_STATISTICS_CLUSTER_ID\x10\x83\x16\x12*\n%ZCL_ELECTRICAL_MEASUREMENT_CLUSTER_ID\x10\x84\x16\x12\x1c\n\x16ZCL_BINDING_CLUSTER_ID\x10\x80\xe0\x03\x12)\n#ZCL_GROUP_KEY_MANAGEMENT_CLUSTER_ID\x10\x84\xe0\x03\x12(\n\"ZCL_SAMPLE_MFG_SPECIFIC_CLUSTER_ID\x10\x80\xf8\x03\x32\x85\x01\n\nAttributes\x12\x37\n\x05Write\x12\x18.chip.rpc.AttributeWrite\x1a\x12.pw.protobuf.Empty\"\x00\x12>\n\x04Read\x12\x1b.chip.rpc.AttributeMetadata\x1a\x17.chip.rpc.AttributeData\"\x00\x62\x06proto3'
   ,
   dependencies=[common__pb2.DESCRIPTOR,])
 
@@ -351,12 +351,573 @@ _ATTRIBUTETYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=411,
-  serialized_end=2502,
+  serialized_start=500,
+  serialized_end=2591,
 )
 _sym_db.RegisterEnumDescriptor(_ATTRIBUTETYPE)
 
 AttributeType = enum_type_wrapper.EnumTypeWrapper(_ATTRIBUTETYPE)
+_CLUSTERTYPE = _descriptor.EnumDescriptor(
+  name='ClusterType',
+  full_name='chip.rpc.ClusterType',
+  filename=None,
+  file=DESCRIPTOR,
+  create_key=_descriptor._internal_create_key,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_INVALID_CLUSTER_ID', index=0, number=0,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_POWER_CONFIG_CLUSTER_ID', index=1, number=1,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_DEVICE_TEMP_CLUSTER_ID', index=2, number=2,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_IDENTIFY_CLUSTER_ID', index=3, number=3,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_GROUPS_CLUSTER_ID', index=4, number=4,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_SCENES_CLUSTER_ID', index=5, number=5,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_ON_OFF_CLUSTER_ID', index=6, number=6,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_ON_OFF_SWITCH_CONFIG_CLUSTER_ID', index=7, number=7,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_LEVEL_CONTROL_CLUSTER_ID', index=8, number=8,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_ALARM_CLUSTER_ID', index=9, number=9,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_TIME_CLUSTER_ID', index=10, number=10,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_BINARY_INPUT_BASIC_CLUSTER_ID', index=11, number=15,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_POWER_PROFILE_CLUSTER_ID', index=12, number=26,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_APPLIANCE_CONTROL_CLUSTER_ID', index=13, number=27,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_DESCRIPTOR_CLUSTER_ID', index=14, number=29,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_POLL_CONTROL_CLUSTER_ID', index=15, number=32,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_BRIDGED_ACTIONS_CLUSTER_ID', index=16, number=37,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_BASIC_CLUSTER_ID', index=17, number=40,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_OTA_PROVIDER_CLUSTER_ID', index=18, number=41,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_OTA_REQUESTOR_CLUSTER_ID', index=19, number=42,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_UNIT_LOCALIZATION_CLUSTER_ID', index=20, number=45,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_POWER_SOURCE_CLUSTER_ID', index=21, number=47,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_GENERAL_COMMISSIONING_CLUSTER_ID', index=22, number=48,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_NETWORK_COMMISSIONING_CLUSTER_ID', index=23, number=49,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_DIAGNOSTIC_LOGS_CLUSTER_ID', index=24, number=50,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_GENERAL_DIAGNOSTICS_CLUSTER_ID', index=25, number=51,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_SOFTWARE_DIAGNOSTICS_CLUSTER_ID', index=26, number=52,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_THREAD_NETWORK_DIAGNOSTICS_CLUSTER_ID', index=27, number=53,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_WIFI_NETWORK_DIAGNOSTICS_CLUSTER_ID', index=28, number=54,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_ETHERNET_NETWORK_DIAGNOSTICS_CLUSTER_ID', index=29, number=55,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_BRIDGED_DEVICE_BASIC_CLUSTER_ID', index=30, number=57,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_SWITCH_CLUSTER_ID', index=31, number=59,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_ADMINISTRATOR_COMMISSIONING_CLUSTER_ID', index=32, number=60,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_OPERATIONAL_CREDENTIALS_CLUSTER_ID', index=33, number=62,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_FIXED_LABEL_CLUSTER_ID', index=34, number=64,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_BOOLEAN_STATE_CLUSTER_ID', index=35, number=69,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_MODE_SELECT_CLUSTER_ID', index=36, number=80,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_SHADE_CONFIG_CLUSTER_ID', index=37, number=256,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_DOOR_LOCK_CLUSTER_ID', index=38, number=257,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_WINDOW_COVERING_CLUSTER_ID', index=39, number=258,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_BARRIER_CONTROL_CLUSTER_ID', index=40, number=259,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_PUMP_CONFIG_CONTROL_CLUSTER_ID', index=41, number=512,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_THERMOSTAT_CLUSTER_ID', index=42, number=513,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_FAN_CONTROL_CLUSTER_ID', index=43, number=514,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_DEHUMID_CONTROL_CLUSTER_ID', index=44, number=515,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_THERMOSTAT_UI_CONFIG_CLUSTER_ID', index=45, number=516,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_COLOR_CONTROL_CLUSTER_ID', index=46, number=768,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_BALLAST_CONFIGURATION_CLUSTER_ID', index=47, number=769,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_ILLUMINANCE_MEASUREMENT_CLUSTER_ID', index=48, number=1024,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_TEMP_MEASUREMENT_CLUSTER_ID', index=49, number=1026,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_PRESSURE_MEASUREMENT_CLUSTER_ID', index=50, number=1027,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_FLOW_MEASUREMENT_CLUSTER_ID', index=51, number=1028,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_RELATIVE_HUMIDITY_MEASUREMENT_CLUSTER_ID', index=52, number=1029,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_OCCUPANCY_SENSING_CLUSTER_ID', index=53, number=1030,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_CARBON_MONOXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=54, number=1036,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_CARBON_DIOXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=55, number=1037,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_ETHYLENE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=56, number=1038,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_ETHYLENE_OXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=57, number=1039,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_HYDROGEN_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=58, number=1040,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_HYDROGEN_SULPHIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=59, number=1041,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_NITRIC_OXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=60, number=1042,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_NITROGEN_DIOXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=61, number=1043,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_OXYGEN_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=62, number=1044,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_OZONE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=63, number=1045,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_SULFUR_DIOXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=64, number=1046,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_DISSOLVED_OXYGEN_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=65, number=1047,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_BROMATE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=66, number=1048,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_CHLORAMINES_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=67, number=1049,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_CHLORINE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=68, number=1050,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_FECAL_COLIFORM_AND_E_COLI_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=69, number=1051,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_FLUORIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=70, number=1052,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_HALOACETIC_ACIDS_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=71, number=1053,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_TOTAL_TRIHALOMETHANES_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=72, number=1054,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_TOTAL_COLIFORM_BACTERIA_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=73, number=1055,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_TURBIDITY_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=74, number=1056,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_COPPER_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=75, number=1057,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_LEAD_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=76, number=1058,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_MANGANESE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=77, number=1059,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_SULFATE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=78, number=1060,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_BROMODICHLOROMETHANE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=79, number=1061,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_BROMOFORM_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=80, number=1062,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_CHLORODIBROMOMETHANE_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=81, number=1063,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_CHLOROFORM_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=82, number=1064,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_SODIUM_CONCENTRATION_MEASUREMENT_CLUSTER_ID', index=83, number=1065,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_IAS_ZONE_CLUSTER_ID', index=84, number=1280,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_IAS_ACE_CLUSTER_ID', index=85, number=1281,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_IAS_WD_CLUSTER_ID', index=86, number=1282,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_WAKE_ON_LAN_CLUSTER_ID', index=87, number=1283,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_CHANNEL_CLUSTER_ID', index=88, number=1284,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_TARGET_NAVIGATOR_CLUSTER_ID', index=89, number=1285,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_MEDIA_PLAYBACK_CLUSTER_ID', index=90, number=1286,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_MEDIA_INPUT_CLUSTER_ID', index=91, number=1287,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_LOW_POWER_CLUSTER_ID', index=92, number=1288,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_KEYPAD_INPUT_CLUSTER_ID', index=93, number=1289,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_CONTENT_LAUNCH_CLUSTER_ID', index=94, number=1290,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_AUDIO_OUTPUT_CLUSTER_ID', index=95, number=1291,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_APPLICATION_LAUNCHER_CLUSTER_ID', index=96, number=1292,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_APPLICATION_BASIC_CLUSTER_ID', index=97, number=1293,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_ACCOUNT_LOGIN_CLUSTER_ID', index=98, number=1294,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_TEST_CLUSTER_ID', index=99, number=1295,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_MESSAGING_CLUSTER_ID', index=100, number=1795,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_APPLIANCE_IDENTIFICATION_CLUSTER_ID', index=101, number=2816,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_METER_IDENTIFICATION_CLUSTER_ID', index=102, number=2817,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_APPLIANCE_EVENTS_AND_ALERT_CLUSTER_ID', index=103, number=2818,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_APPLIANCE_STATISTICS_CLUSTER_ID', index=104, number=2819,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_ELECTRICAL_MEASUREMENT_CLUSTER_ID', index=105, number=2820,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_BINDING_CLUSTER_ID', index=106, number=61440,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_GROUP_KEY_MANAGEMENT_CLUSTER_ID', index=107, number=61444,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ZCL_SAMPLE_MFG_SPECIFIC_CLUSTER_ID', index=108, number=64512,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+  ],
+  containing_type=None,
+  serialized_options=None,
+  serialized_start=2594,
+  serialized_end=7271,
+)
+_sym_db.RegisterEnumDescriptor(_CLUSTERTYPE)
+
+ClusterType = enum_type_wrapper.EnumTypeWrapper(_CLUSTERTYPE)
 ZCL_NO_DATA_ATTRIBUTE_TYPE = 0
 ZCL_BOOLEAN_ATTRIBUTE_TYPE = 16
 ZCL_BITMAP8_ATTRIBUTE_TYPE = 24
@@ -420,6 +981,115 @@ ZCL_IPV6ADR_ATTRIBUTE_TYPE = 252
 ZCL_IPV6PRE_ATTRIBUTE_TYPE = 253
 ZCL_HWADR_ATTRIBUTE_TYPE = 254
 ZCL_UNKNOWN_ATTRIBUTE_TYPE = 255
+ZCL_INVALID_CLUSTER_ID = 0
+ZCL_POWER_CONFIG_CLUSTER_ID = 1
+ZCL_DEVICE_TEMP_CLUSTER_ID = 2
+ZCL_IDENTIFY_CLUSTER_ID = 3
+ZCL_GROUPS_CLUSTER_ID = 4
+ZCL_SCENES_CLUSTER_ID = 5
+ZCL_ON_OFF_CLUSTER_ID = 6
+ZCL_ON_OFF_SWITCH_CONFIG_CLUSTER_ID = 7
+ZCL_LEVEL_CONTROL_CLUSTER_ID = 8
+ZCL_ALARM_CLUSTER_ID = 9
+ZCL_TIME_CLUSTER_ID = 10
+ZCL_BINARY_INPUT_BASIC_CLUSTER_ID = 15
+ZCL_POWER_PROFILE_CLUSTER_ID = 26
+ZCL_APPLIANCE_CONTROL_CLUSTER_ID = 27
+ZCL_DESCRIPTOR_CLUSTER_ID = 29
+ZCL_POLL_CONTROL_CLUSTER_ID = 32
+ZCL_BRIDGED_ACTIONS_CLUSTER_ID = 37
+ZCL_BASIC_CLUSTER_ID = 40
+ZCL_OTA_PROVIDER_CLUSTER_ID = 41
+ZCL_OTA_REQUESTOR_CLUSTER_ID = 42
+ZCL_UNIT_LOCALIZATION_CLUSTER_ID = 45
+ZCL_POWER_SOURCE_CLUSTER_ID = 47
+ZCL_GENERAL_COMMISSIONING_CLUSTER_ID = 48
+ZCL_NETWORK_COMMISSIONING_CLUSTER_ID = 49
+ZCL_DIAGNOSTIC_LOGS_CLUSTER_ID = 50
+ZCL_GENERAL_DIAGNOSTICS_CLUSTER_ID = 51
+ZCL_SOFTWARE_DIAGNOSTICS_CLUSTER_ID = 52
+ZCL_THREAD_NETWORK_DIAGNOSTICS_CLUSTER_ID = 53
+ZCL_WIFI_NETWORK_DIAGNOSTICS_CLUSTER_ID = 54
+ZCL_ETHERNET_NETWORK_DIAGNOSTICS_CLUSTER_ID = 55
+ZCL_BRIDGED_DEVICE_BASIC_CLUSTER_ID = 57
+ZCL_SWITCH_CLUSTER_ID = 59
+ZCL_ADMINISTRATOR_COMMISSIONING_CLUSTER_ID = 60
+ZCL_OPERATIONAL_CREDENTIALS_CLUSTER_ID = 62
+ZCL_FIXED_LABEL_CLUSTER_ID = 64
+ZCL_BOOLEAN_STATE_CLUSTER_ID = 69
+ZCL_MODE_SELECT_CLUSTER_ID = 80
+ZCL_SHADE_CONFIG_CLUSTER_ID = 256
+ZCL_DOOR_LOCK_CLUSTER_ID = 257
+ZCL_WINDOW_COVERING_CLUSTER_ID = 258
+ZCL_BARRIER_CONTROL_CLUSTER_ID = 259
+ZCL_PUMP_CONFIG_CONTROL_CLUSTER_ID = 512
+ZCL_THERMOSTAT_CLUSTER_ID = 513
+ZCL_FAN_CONTROL_CLUSTER_ID = 514
+ZCL_DEHUMID_CONTROL_CLUSTER_ID = 515
+ZCL_THERMOSTAT_UI_CONFIG_CLUSTER_ID = 516
+ZCL_COLOR_CONTROL_CLUSTER_ID = 768
+ZCL_BALLAST_CONFIGURATION_CLUSTER_ID = 769
+ZCL_ILLUMINANCE_MEASUREMENT_CLUSTER_ID = 1024
+ZCL_TEMP_MEASUREMENT_CLUSTER_ID = 1026
+ZCL_PRESSURE_MEASUREMENT_CLUSTER_ID = 1027
+ZCL_FLOW_MEASUREMENT_CLUSTER_ID = 1028
+ZCL_RELATIVE_HUMIDITY_MEASUREMENT_CLUSTER_ID = 1029
+ZCL_OCCUPANCY_SENSING_CLUSTER_ID = 1030
+ZCL_CARBON_MONOXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1036
+ZCL_CARBON_DIOXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1037
+ZCL_ETHYLENE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1038
+ZCL_ETHYLENE_OXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1039
+ZCL_HYDROGEN_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1040
+ZCL_HYDROGEN_SULPHIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1041
+ZCL_NITRIC_OXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1042
+ZCL_NITROGEN_DIOXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1043
+ZCL_OXYGEN_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1044
+ZCL_OZONE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1045
+ZCL_SULFUR_DIOXIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1046
+ZCL_DISSOLVED_OXYGEN_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1047
+ZCL_BROMATE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1048
+ZCL_CHLORAMINES_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1049
+ZCL_CHLORINE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1050
+ZCL_FECAL_COLIFORM_AND_E_COLI_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1051
+ZCL_FLUORIDE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1052
+ZCL_HALOACETIC_ACIDS_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1053
+ZCL_TOTAL_TRIHALOMETHANES_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1054
+ZCL_TOTAL_COLIFORM_BACTERIA_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1055
+ZCL_TURBIDITY_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1056
+ZCL_COPPER_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1057
+ZCL_LEAD_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1058
+ZCL_MANGANESE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1059
+ZCL_SULFATE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1060
+ZCL_BROMODICHLOROMETHANE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1061
+ZCL_BROMOFORM_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1062
+ZCL_CHLORODIBROMOMETHANE_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1063
+ZCL_CHLOROFORM_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1064
+ZCL_SODIUM_CONCENTRATION_MEASUREMENT_CLUSTER_ID = 1065
+ZCL_IAS_ZONE_CLUSTER_ID = 1280
+ZCL_IAS_ACE_CLUSTER_ID = 1281
+ZCL_IAS_WD_CLUSTER_ID = 1282
+ZCL_WAKE_ON_LAN_CLUSTER_ID = 1283
+ZCL_CHANNEL_CLUSTER_ID = 1284
+ZCL_TARGET_NAVIGATOR_CLUSTER_ID = 1285
+ZCL_MEDIA_PLAYBACK_CLUSTER_ID = 1286
+ZCL_MEDIA_INPUT_CLUSTER_ID = 1287
+ZCL_LOW_POWER_CLUSTER_ID = 1288
+ZCL_KEYPAD_INPUT_CLUSTER_ID = 1289
+ZCL_CONTENT_LAUNCH_CLUSTER_ID = 1290
+ZCL_AUDIO_OUTPUT_CLUSTER_ID = 1291
+ZCL_APPLICATION_LAUNCHER_CLUSTER_ID = 1292
+ZCL_APPLICATION_BASIC_CLUSTER_ID = 1293
+ZCL_ACCOUNT_LOGIN_CLUSTER_ID = 1294
+ZCL_TEST_CLUSTER_ID = 1295
+ZCL_MESSAGING_CLUSTER_ID = 1795
+ZCL_APPLIANCE_IDENTIFICATION_CLUSTER_ID = 2816
+ZCL_METER_IDENTIFICATION_CLUSTER_ID = 2817
+ZCL_APPLIANCE_EVENTS_AND_ALERT_CLUSTER_ID = 2818
+ZCL_APPLIANCE_STATISTICS_CLUSTER_ID = 2819
+ZCL_ELECTRICAL_MEASUREMENT_CLUSTER_ID = 2820
+ZCL_BINDING_CLUSTER_ID = 61440
+ZCL_GROUP_KEY_MANAGEMENT_CLUSTER_ID = 61444
+ZCL_SAMPLE_MFG_SPECIFIC_CLUSTER_ID = 64512
 
 
 
@@ -440,7 +1110,7 @@ _ATTRIBUTEMETADATA = _descriptor.Descriptor(
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
       name='cluster', full_name='chip.rpc.AttributeMetadata.cluster', index=1,
-      number=2, type=13, cpp_type=3, label=1,
+      number=2, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -471,8 +1141,8 @@ _ATTRIBUTEMETADATA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=52,
-  serialized_end=167,
+  serialized_start=53,
+  serialized_end=191,
 )
 
 
@@ -519,6 +1189,27 @@ _ATTRIBUTEDATA = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='data_int8', full_name='chip.rpc.AttributeData.data_int8', index=5,
+      number=6, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='data_int16', full_name='chip.rpc.AttributeData.data_int16', index=6,
+      number=7, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='data_int32', full_name='chip.rpc.AttributeData.data_int32', index=7,
+      number=8, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -536,8 +1227,8 @@ _ATTRIBUTEDATA = _descriptor.Descriptor(
       create_key=_descriptor._internal_create_key,
     fields=[]),
   ],
-  serialized_start=170,
-  serialized_end=304,
+  serialized_start=194,
+  serialized_end=393,
 )
 
 
@@ -575,10 +1266,11 @@ _ATTRIBUTEWRITE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=306,
-  serialized_end=408,
+  serialized_start=395,
+  serialized_end=497,
 )
 
+_ATTRIBUTEMETADATA.fields_by_name['cluster'].enum_type = _CLUSTERTYPE
 _ATTRIBUTEMETADATA.fields_by_name['type'].enum_type = _ATTRIBUTETYPE
 _ATTRIBUTEDATA.oneofs_by_name['data'].fields.append(
   _ATTRIBUTEDATA.fields_by_name['data_bool'])
@@ -595,12 +1287,22 @@ _ATTRIBUTEDATA.fields_by_name['data_uint32'].containing_oneof = _ATTRIBUTEDATA.o
 _ATTRIBUTEDATA.oneofs_by_name['data'].fields.append(
   _ATTRIBUTEDATA.fields_by_name['data_bytes'])
 _ATTRIBUTEDATA.fields_by_name['data_bytes'].containing_oneof = _ATTRIBUTEDATA.oneofs_by_name['data']
+_ATTRIBUTEDATA.oneofs_by_name['data'].fields.append(
+  _ATTRIBUTEDATA.fields_by_name['data_int8'])
+_ATTRIBUTEDATA.fields_by_name['data_int8'].containing_oneof = _ATTRIBUTEDATA.oneofs_by_name['data']
+_ATTRIBUTEDATA.oneofs_by_name['data'].fields.append(
+  _ATTRIBUTEDATA.fields_by_name['data_int16'])
+_ATTRIBUTEDATA.fields_by_name['data_int16'].containing_oneof = _ATTRIBUTEDATA.oneofs_by_name['data']
+_ATTRIBUTEDATA.oneofs_by_name['data'].fields.append(
+  _ATTRIBUTEDATA.fields_by_name['data_int32'])
+_ATTRIBUTEDATA.fields_by_name['data_int32'].containing_oneof = _ATTRIBUTEDATA.oneofs_by_name['data']
 _ATTRIBUTEWRITE.fields_by_name['metadata'].message_type = _ATTRIBUTEMETADATA
 _ATTRIBUTEWRITE.fields_by_name['data'].message_type = _ATTRIBUTEDATA
 DESCRIPTOR.message_types_by_name['AttributeMetadata'] = _ATTRIBUTEMETADATA
 DESCRIPTOR.message_types_by_name['AttributeData'] = _ATTRIBUTEDATA
 DESCRIPTOR.message_types_by_name['AttributeWrite'] = _ATTRIBUTEWRITE
 DESCRIPTOR.enum_types_by_name['AttributeType'] = _ATTRIBUTETYPE
+DESCRIPTOR.enum_types_by_name['ClusterType'] = _CLUSTERTYPE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 AttributeMetadata = _reflection.GeneratedProtocolMessageType('AttributeMetadata', (_message.Message,), {
@@ -633,8 +1335,8 @@ _ATTRIBUTES = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=2505,
-  serialized_end=2638,
+  serialized_start=7274,
+  serialized_end=7407,
   methods=[
   _descriptor.MethodDescriptor(
     name='Write',

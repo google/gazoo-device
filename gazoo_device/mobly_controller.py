@@ -35,7 +35,7 @@ class Test(base_test.TestCase):
 """
 import logging
 import os
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 from gazoo_device import custom_types
 from gazoo_device import errors
@@ -52,15 +52,29 @@ _LOGGER = gdm_logger.get_logger()
 _MANAGER_INSTANCE = None
 
 
+def _get_log_directory() -> Optional[str]:
+  """Returns the path to the directory where logs should be stored.
+
+  Returns:
+    Directory path, or None if the default log directory should be used.
+  """
+  return getattr(
+      logging, "log_path",  # Set by Mobly in base_test.BaseTestClass.run.
+      os.getenv("TEST_UNDECLARED_OUTPUTS_DIR"))
+
+
 def get_manager() -> manager.Manager:
   """Set up, as needed, and returns a manager instance."""
   global _MANAGER_INSTANCE
   if _MANAGER_INSTANCE is None:
-    log_path_directory = getattr(logging, "log_path", "/tmp/logs")
-    gdm_log_file = os.path.join(log_path_directory, "gdm.txt")
+    log_directory = _get_log_directory()
+    if log_directory is not None:
+      log_file = os.path.join(log_directory, "gdm.txt")
+    else:
+      log_file = None
     _MANAGER_INSTANCE = manager.Manager(
-        log_directory=log_path_directory,
-        gdm_log_file=gdm_log_file,
+        log_directory=log_directory,
+        gdm_log_file=log_file,
         stdout_logging=False)
   return _MANAGER_INSTANCE
 
@@ -88,8 +102,7 @@ def _set_auxiliary_props(properties: Dict[str, Any], device_name: str):
 
 def create(configs: List[Dict[str, Any]]) -> List[custom_types.Device]:
   """Creates gazoo device instances and returns them."""
-  # log_path is set by mobly on logging in base_test
-
+  log_directory = _get_log_directory()
   devices = []
   for entry in configs:
     name = entry["id"]
@@ -97,9 +110,10 @@ def create(configs: List[Dict[str, Any]]) -> List[custom_types.Device]:
     if entry.get("bypass_gdm_check") == "true":
       _LOGGER.info(f"bypass_gdm_check is set for {name}. "
                    "Skipping health checks")
-      device = get_manager().create_device(name, make_device_ready="off")
+      device = get_manager().create_device(
+          name, log_directory=log_directory, make_device_ready="off")
     else:
-      device = get_manager().create_device(name)
+      device = get_manager().create_device(name, log_directory=log_directory)
     devices.append(device)
   return devices
 

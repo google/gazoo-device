@@ -271,6 +271,17 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
     self._log_object_lifecycle_event("__del__")
     self.close(force=True)
 
+  def __str__(self):
+    class_string = f"{self.__module__}.{type(self).__name__}"
+    try:
+      string = f"<{self.name} controller {class_string} at {hex(id(self))}>"
+    except (AttributeError, KeyError):
+      string = f"<{class_string} at {hex(id(self))}>"
+    return string
+
+  def __repr__(self):
+    return str(self)
+
   @decorators.health_check
   def check_device_connected(self):
     """Checks that device shows up as a connection on the host machine.

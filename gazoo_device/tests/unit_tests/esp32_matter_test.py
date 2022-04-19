@@ -12,37 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for device class Efr32MatterLighting."""
-from gazoo_device.primary_devices import efr32_matter_lighting
+"""Unit tests for device class Esp32Matter."""
+from gazoo_device.primary_devices import esp32_matter
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
-_FAKE_DEVICE_ID = "efr32matterlighting-1234"
+_FAKE_DEVICE_ID = "esp32matter-1234"
 _FAKE_DEVICE_ADDRESS = "fake-device-address"
 
 
-class Efr32MatterLightingTests(fake_device_test_case.FakeDeviceTestCase):
-  """Unit tests for device class Efr32MatterLighting."""
+class Esp32MatterTests(fake_device_test_case.FakeDeviceTestCase):
+  """Unit tests for device class Esp32Matter."""
 
   def setUp(self):
     super().setUp()
     self.setup_fake_device_requirements(_FAKE_DEVICE_ID)
     self.device_config["persistent"]["console_port_name"] = _FAKE_DEVICE_ADDRESS
-    self.uut = efr32_matter_lighting.Efr32MatterLighting(
+    self.uut = esp32_matter.Esp32Matter(
         self.mock_manager,
         self.device_config,
         log_directory=self.artifacts_directory)
 
-  def test_button_rpc_capability(self):
-    """Verifies the initialization of pw_rpc_button capability."""
-    self.assertIsNotNone(self.uut.pw_rpc_button)
+  def test_os_attribute(self):
+    """Verifies the os attribute."""
+    self.assertEqual("FreeRTOS", self.uut.os)
 
-  def test_on_off_light_endpoint(self):
-    """Verifies the initialization of on_off_light endpoint."""
-    self.assertIsNotNone(self.uut.on_off_light)
+  def test_platform_attribute(self):
+    """Verfies the platform attribute."""
+    self.assertEqual("ESP32", self.uut.platform)
 
-  def test_color_temperature_light_endpoint(self):
-    """Verifies the initialization of color_temperature_light endpoint."""
-    self.assertIsNotNone(self.uut.color_temperature_light)
+  def test_pw_rpc_wifi_capability(self):
+    """Verifies the initialization of pw_rpc_wifi capability."""
+    self.assertIsNotNone(self.uut.pw_rpc_wifi)
+
+  def test_flash_build_capability(self):
+    """Verifies the initialization of flash_build capability."""
+    self.assertIsNotNone(self.uut.flash_build)
 
 
 if __name__ == "__main__":

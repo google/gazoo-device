@@ -28,8 +28,6 @@ type with the following defined clusters on this endpoint:
 The required clusters for this endpoint: Scenes, OnOff, Level and Groups.
 The optional clusters for this endpoint: Occupancy.
 """
-from typing import Any, Callable
-
 from gazoo_device import decorators
 from gazoo_device.capabilities.matter_clusters import level_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import on_off_pw_rpc
@@ -38,21 +36,6 @@ from gazoo_device.capabilities.matter_endpoints.interfaces import dimmable_light
 
 class DimmableLightEndpoint(dimmable_light_base.DimmableLightBase):
   """Matter Dimmable light endpoint."""
-
-  def __init__(self,
-               device_name: str,
-               switchboard_call: Callable[..., Any],
-               rpc_timeout_s: int):
-    """Initializes Matter Dimmable light endpoint instance.
-
-    Args:
-      device_name: Device name used for logging.
-      switchboard_call: The switchboard.call method.
-      rpc_timeout_s: Timeout (s) for RPC call.
-    """
-    super().__init__(device_name=device_name)
-    self._switchboard_call = switchboard_call
-    self._rpc_timeout_s = rpc_timeout_s
 
   @decorators.CapabilityDecorator(on_off_pw_rpc.OnOffClusterPwRpc)
   def on_off(self) -> on_off_pw_rpc.OnOffClusterPwRpc:

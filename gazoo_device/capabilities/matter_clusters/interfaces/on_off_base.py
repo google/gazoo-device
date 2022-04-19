@@ -20,6 +20,8 @@ from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 class OnOffClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
   """Matter On/Off cluster capability."""
 
+  CLUSTER_ID = 0x0006
+
   @abc.abstractmethod
   def on(self, verify: bool = True) -> None:
     """The On command to turn on the Matter device.

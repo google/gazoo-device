@@ -826,7 +826,7 @@ Here's an example of detection criteria for Raspberry Pi:
 ```python
 class RaspberryPi(raspbian_device.RaspbianDevice):
   DETECT_MATCH_CRITERIA = {
-      detect_criteria.SshQuery.is_rpi: True,
+      detect_criteria.SshQuery.IS_RPI: True,
   }
 ```
 
@@ -851,12 +851,12 @@ import immutabledict
 
 class SerialQuery(detect_criteria.QueryEnum):
   """Query names for detection of serial devices."""
-  example_serial_query = "example_serial_query"
+  EXAMPLE_SERIAL_QUERY = "example_serial_query"
 
 
 class SshQuery(detect_criteria.QueryEnum):
   """Query names for detection of SSH devices."""
-  example_ssh_query = "example_ssh_query"
+  EXAMPLE_SSH_QUERY = "example_ssh_query"
 
 
 def _hello_world_serial_query(
@@ -883,10 +883,10 @@ def export_extensions() -> Dict[str, Any]:
       # ... other exports ...
       "detect_criteria": immutabledict.immutabledict({
             "SerialComms": immutabledict.immutabledict({
-                 SerialQuery.example_serial_query: _hello_world_serial_query,
+                 SerialQuery.EXAMPLE_SERIAL_QUERY: _hello_world_serial_query,
             }),
             "SshComms": immutabledict.immutabledict({
-                 SshQuery.example_ssh_query: _hello_world_ssh_query,
+                 SshQuery.EXAMPLE_SSH_QUERY: _hello_world_ssh_query,
             }),
       }),
       # ... other exports ...

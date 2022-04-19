@@ -138,7 +138,7 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
   """
   COMMUNICATION_TYPE = "SerialComms"
   DETECT_MATCH_CRITERIA = {
-      detect_criteria.SerialQuery.product_name:
+      detect_criteria.SerialQuery.PRODUCT_NAME:
           "(ft230x basic uart)|(ps15-usb3)"
   }
   DEVICE_TYPE = "cambrionix"

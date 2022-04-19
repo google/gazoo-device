@@ -12,26 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Utility module for interaction with PwRPC (Pigweed RPC)."""
-import enum
+"""Utility module for interacting with Matter devices via Pigweed RPC."""
 import importlib
+import logging
 import os
 from typing import Callable, Generic, TypeVar
 
 from gazoo_device import errors
 from gazoo_device import gdm_logger
+from gazoo_device.capabilities.interfaces import matter_endpoints_base
 from gazoo_device.capabilities.interfaces import switchboard_base
-from gazoo_device.protos import button_service_pb2
-from gazoo_device.protos import device_service_pb2
-from gazoo_device.protos import lighting_service_pb2
-from gazoo_device.protos import locking_service_pb2
+from gazoo_device.protos import descriptor_service_pb2
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
 
-_PWRPC_PROTOS = (button_service_pb2,
-                 device_service_pb2,
-                 lighting_service_pb2,
-                 locking_service_pb2)
 _ProtobufType = TypeVar("_ProtobufType")
+_DESCRIPTOR_SERVICE_NAME = "Descriptor"
+_DESCRIPTOR_DEVICE_TYPE_RPC_NAME = "DeviceTypeList"
+_DETECT_RETRY = 2
+_RPC_TIMEOUT_SEC = 1
+
+logger = gdm_logger.get_logger()
 
 
 class PigweedProtoState(Generic[_ProtobufType]):
@@ -66,55 +66,47 @@ class PigweedProtoState(Generic[_ProtobufType]):
     return decoder(self._bytes)
 
 
-class PigweedAppType(enum.Enum):
-  NON_PIGWEED = "nonpigweed"
-  LIGHTING = "lighting"
-  LOCKING = "locking"
-
-logger = gdm_logger.get_logger()
-
-
-# Element format in _PIGWEED_APP_ENDPOINTS container:
-# tuple of 3 elements: (method_args, method_kwargs, application_type)
-# where method_args, method_kwargs are the input arguments
-# to the PigweedRPCTransport.rpc,
-# application_type is the Pigweed device type in string.
-_PIGWEED_APP_ENDPOINTS = (
-    (("Lighting", "Get"), {}, PigweedAppType.LIGHTING),
-    (("Locking", "Get"), {}, PigweedAppType.LOCKING)
-)
-
-
-def get_application_type(
+def is_matter_device(
     address: str,
     log_path: str,
-    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
-) -> str:
-  """Returns Pigweed application type of the device.
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase],
+    detect_logger: logging.Logger
+) -> bool:
+  """Returns True if the device is a Matter device.
 
   Args:
     address: Device serial address.
     log_path: Device log path.
     create_switchboard_func: Method to create the switchboard.
+    detect_logger: The logger of device interactions.
 
   Returns:
-    Pigweed application type.
+    True if the device is a Matter device, False otherwise.
   """
   switchboard = create_switchboard_func(communication_address=address,
                                         communication_type="PigweedSerialComms",
                                         device_name=os.path.basename(log_path),
                                         log_path=log_path,
-                                        protobufs=_PWRPC_PROTOS)
+                                        protobufs=(descriptor_service_pb2,))
+  rpc_method = pigweed_rpc_transport.PigweedRPCTransport.rpc
+  method_args = (_DESCRIPTOR_SERVICE_NAME, _DESCRIPTOR_DEVICE_TYPE_RPC_NAME)
+  method_kwargs = {
+      "endpoint": matter_endpoints_base.ROOT_NODE_ENDPOINT_ID,
+      "pw_rpc_timeout_s": _RPC_TIMEOUT_SEC}
+  is_matter = False
   try:
-    for method_args, method_kwargs, app_type in _PIGWEED_APP_ENDPOINTS:
+    # Retry is to avoid flakiness of the descriptor cluster on Matter devices.
+    for _ in range(_DETECT_RETRY):
       try:
-        method = pigweed_rpc_transport.PigweedRPCTransport.rpc
-        switchboard.call(method=method,
-                         method_args=method_args,
-                         method_kwargs=method_kwargs)
-        return app_type.value
-      except errors.DeviceError:
-        logger.info(f"Device {address} is not a Pigweed {app_type} device.")
+        ack, _ = switchboard.call(method=rpc_method,
+                                  method_args=method_args,
+                                  method_kwargs=method_kwargs)
+        if ack:
+          is_matter = True
+          break
+      except errors.DeviceError as e:
+        detect_logger.info(f"Pigweed RPC failure for address {address}: {e}")
   finally:
     switchboard.close()
-  return PigweedAppType.NON_PIGWEED.value
+
+  return is_matter

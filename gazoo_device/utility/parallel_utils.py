@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Utilities for interacting with devices in parallel.
 
 Usage example:
@@ -83,11 +82,11 @@ Logging behavior:
   Device logs (from device instances created in parallel processes) are stored
   in new individual device log files.
 """
+import concurrent.futures
 import dataclasses
 import importlib
 import multiprocessing
 import os
-import queue
 import time
 import traceback
 from typing import Any, Callable, List, Optional, Sequence, Tuple
@@ -138,8 +137,8 @@ class CallSpec:
         simultaneous parallel actions on the same device.
         `<device>.reset_capability("switchboard")` can be used to close device
         communication, and it will be automatically reopened on the next access.
-      - Do not modify GDM device configs (detection, set-prop) in parallel. This
-        can result in a race condition.
+        - Do not modify GDM device configs (detection, set-prop) in parallel.
+        This can result in a race condition.
     args: Positional arguments to the function. Must be serializable. In
       particular, Manager and device instances as well their instance methods
       are not serializable.
@@ -156,18 +155,14 @@ class CallSpec:
     self.kwargs = immutabledict.immutabledict(kwargs)
 
 
-def _process_wrapper(
-    return_queue: multiprocessing.Queue,
-    error_queue: multiprocessing.Queue,
+def _process_init(
     logging_queue: multiprocessing.Queue,
-    process_id: str,
     extension_package_import_paths: Sequence[str],
-    call_spec: CallSpec) -> None:
-  """Executes the provided function in a parallel process."""
+) -> None:
+  """Initializes worker process."""
   gdm_logger.initialize_child_process_logging(logging_queue)
-  short_description = f"{call_spec.function.__name__} in process {os.getpid()}"
   logger = gdm_logger.get_logger()
-  logger.debug(f"{short_description}: starting execution of {call_spec}...")
+  short_description = f"_process_init in process {os.getpid()}"
   # The state of the main process (such as registered extension packages) is not
   # copied over when using "forkserver" or "spawn" as the process start method.
   for import_path in extension_package_import_paths:
@@ -178,32 +173,22 @@ def _process_wrapper(
                    f"extension package with import path {import_path}. "
                    f"Error: {e!r}. Proceeding despite the failure.")
 
+
+def _process_wrapper(call_spec: CallSpec) -> Any:
+  """Executes the provided function in a parallel process."""
+  logger = gdm_logger.get_logger()
+  short_description = f"{call_spec.function.__name__} in process {os.getpid()}"
+  logger.debug(f"{short_description}: starting execution of {call_spec}...")
+
   manager_inst = manager.Manager()
   try:
-    return_value = call_spec.function(
-        manager_inst, *call_spec.args, **call_spec.kwargs)
+    return_value = call_spec.function(manager_inst, *call_spec.args,
+                                      **call_spec.kwargs)
     logger.debug(f"{short_description}: execution succeeded. "
                  f"Return value: {return_value}.")
-    return_queue.put((process_id, return_value))
-  except Exception as e:  # pylint: disable=broad-except
-    logger.warning(f"{short_description}: execution raised an error: {e!r}.",
-                   exc_info=True)
-    error_queue.put((process_id,
-                     (type(e).__name__, str(e), traceback.format_exc())))
+    return return_value
   finally:
     manager_inst.close()
-
-
-def _read_all_from_queue(queue_inst: multiprocessing.Queue) -> List[Any]:
-  """Reads and returns everything currently present in the queue."""
-  queue_contents = []
-  while True:
-    try:
-      queue_contents.append(
-          queue_inst.get(block=True, timeout=_QUEUE_READ_TIMEOUT))
-    except queue.Empty:
-      break
-  return queue_contents
 
 
 def _format_process_errors(
@@ -223,8 +208,9 @@ def _format_process_errors(
 
 def execute_concurrently(
     call_specs: Sequence[CallSpec],
-    timeout=TIMEOUT_PROCESS,
-    raise_on_process_error=True
+    timeout: float = TIMEOUT_PROCESS,
+    raise_on_process_error: bool = True,
+    max_processes: Optional[int] = None,
 ) -> Tuple[List[Any], List[Optional[Tuple[str, str, str]]]]:
   """Concurrently executes function calls in parallel processes.
 
@@ -234,6 +220,9 @@ def execute_concurrently(
     raise_on_process_error: If True, raise an error if any of the parallel
       processes encounters an error. If False, return a list of errors which
       occurred in the parallel processes along with the received results.
+    max_processes: Maximum number of processes to use for the tasks. If set to
+      None then os.cpu_count() is used. See docs for futures.ProcessPoolExecutor
+      https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.ProcessPoolExecutor
 
   Returns:
     A tuple of (parallel_process_return_values, parallel_process_errors).
@@ -250,8 +239,6 @@ def execute_concurrently(
     ParallelUtilsError: If raise_on_process_error is True and any of the
       parallel processes encounters an error.
   """
-  return_queue = multiprocessing_utils.get_context().Queue()
-  error_queue = multiprocessing_utils.get_context().Queue()
   gdm_logger.switch_to_multiprocess_logging()
   logging_queue = gdm_logger.get_logging_queue()
   extension_package_import_paths = [
@@ -260,45 +247,34 @@ def execute_concurrently(
       if package_name != "gazoo_device_controllers"  # Built-in controllers.
   ]
 
-  processes = []
-  for proc_id, call_spec in enumerate(call_specs):
-    processes.append(
-        multiprocessing_utils.get_context().Process(
-            target=_process_wrapper,
-            args=(return_queue, error_queue, logging_queue, proc_id,
-                  extension_package_import_paths, call_spec),
-            ))
+  proc_results = []
+  proc_errors = []
+  futures = []
+  with concurrent.futures.ProcessPoolExecutor(
+      max_workers=max_processes,
+      mp_context=multiprocessing_utils.get_context(),
+      initializer=_process_init,
+      initargs=(logging_queue, extension_package_import_paths)) as executor:
+    for call_spec in call_specs:
+      futures.append(executor.submit(_process_wrapper, call_spec=call_spec))
 
-  deadline = time.time() + timeout
-  for process in processes:
-    process.start()
-
-  for process in processes:
-    remaining_timeout = max(0, deadline - time.time())  # ensure timeout >= 0
-    process.join(timeout=remaining_timeout)
-    if process.is_alive():
-      process.terminate()
-      process.join(timeout=_TIMEOUT_TERMINATE_PROCESS)
-      if process.is_alive():
-        process.kill()
-        process.join(timeout=_TIMEOUT_TERMINATE_PROCESS)
-
-  proc_results = [NO_RESULT] * len(call_specs)
-  for proc_id, result in _read_all_from_queue(return_queue):
-    proc_results[proc_id] = result
-
-  proc_errors = [None] * len(call_specs)
-  for proc_id, error_type_message_tb in _read_all_from_queue(error_queue):
-    proc_errors[proc_id] = error_type_message_tb
-
-  # We might not receive any results from a process if it times out or dies
-  # unexpectedly. Mark such cases as errors.
-  for proc_id in range(len(call_specs)):
-    if proc_results[proc_id] == NO_RESULT and proc_errors[proc_id] is None:
-      proc_errors[proc_id] = (
-          errors.ResultNotReceivedError.__name__,
-          "Did not receive any results from the process.",
-          NO_TRACEBACK)
+    deadline = time.time() + timeout
+    # Get results and errors.
+    for future in futures:
+      try:
+        remaining_timeout = max(0, deadline - time.time())
+        proc_results.append(future.result(timeout=remaining_timeout))
+        proc_errors.append(None)
+      except concurrent.futures.TimeoutError as e:
+        future.cancel()
+        proc_results.append(NO_RESULT)
+        proc_errors.append((
+            errors.ResultNotReceivedError.__name__,
+            "Did not receive any results from the process.",
+            NO_TRACEBACK))
+      except Exception as e:  # pylint: disable=broad-except
+        proc_results.append(NO_RESULT)
+        proc_errors.append((type(e).__name__, str(e), traceback.format_exc()))
 
   if raise_on_process_error and any(proc_errors):
     raise errors.ParallelUtilsError(
@@ -317,8 +293,8 @@ def factory_reset(manager_inst: manager.Manager, device_name: str) -> None:
     device.close()
 
 
-def reboot(manager_inst: manager.Manager, device_name: str,
-           *reboot_args: Any, **reboot_kwargs: Any) -> None:
+def reboot(manager_inst: manager.Manager, device_name: str, *reboot_args: Any,
+           **reboot_kwargs: Any) -> None:
   """Convenience function for rebooting devices in parallel."""
   device = manager_inst.create_device(device_name)
   try:
@@ -327,8 +303,8 @@ def reboot(manager_inst: manager.Manager, device_name: str,
     device.close()
 
 
-def upgrade(manager_inst: manager.Manager, device_name: str,
-            *upgrade_args: Any, **upgrade_kwargs: Any) -> None:
+def upgrade(manager_inst: manager.Manager, device_name: str, *upgrade_args: Any,
+            **upgrade_kwargs: Any) -> None:
   """Convenience function for upgrading devices in parallel."""
   device = manager_inst.create_device(device_name)
   try:

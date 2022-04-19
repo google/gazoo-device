@@ -18,6 +18,7 @@ from unittest import mock
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 
 FAKE_DEVICE_NAME = "fake-device-name"
+FAKE_ENDPOINT_ID = 1
 FAKE_RPC_TIMEOUT_S = 10
 
 

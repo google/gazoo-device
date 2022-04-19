@@ -22,7 +22,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x12wifi_service.proto\x12\x08\x63hip.rpc\x1a\x0c\x63ommon.proto\"\x1a\n\x07\x43hannel\x12\x0f\n\x07\x63hannel\x18\x01 \x01(\r\"\x14\n\x04Ssid\x12\x0c\n\x04ssid\x18\x01 \x01(\x0c\"\x1a\n\x05State\x12\x11\n\tconnected\x18\x01 \x01(\x08\"!\n\nMacAddress\x12\x13\n\x0bmac_address\x18\x01 \x01(\t\"\"\n\rWiFiInterface\x12\x11\n\tinterface\x18\x01 \x01(\t\"\x1d\n\nIP4Address\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\"\x1d\n\nIP6Address\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\"\x98\x01\n\nScanConfig\x12\x0c\n\x04ssid\x18\x01 \x03(\x0c\x12\r\n\x05\x62ssid\x18\x02 \x03(\x0c\x12\x0f\n\x07\x63hannel\x18\x03 \x01(\r\x12\x13\n\x0bshow_hidden\x18\x04 \x01(\x08\x12\x13\n\x0b\x61\x63tive_scan\x18\x05 \x01(\x08\x12\x18\n\x10scan_time_min_ms\x18\x06 \x01(\r\x12\x18\n\x10scan_time_max_ms\x18\x07 \x01(\r\"\x92\x01\n\nScanResult\x12\x0c\n\x04ssid\x18\x01 \x01(\x0c\x12\r\n\x05\x62ssid\x18\x02 \x01(\x0c\x12\x33\n\rsecurity_type\x18\x03 \x01(\x0e\x32\x1c.chip.rpc.WIFI_SECURITY_TYPE\x12\x11\n\tfrequency\x18\x04 \x01(\r\x12\x0f\n\x07\x63hannel\x18\x05 \x01(\r\x12\x0e\n\x06signal\x18\x06 \x01(\x05\"0\n\x0bScanResults\x12!\n\x03\x61ps\x18\x01 \x03(\x0b\x32\x14.chip.rpc.ScanResult\"c\n\x0e\x43onnectionData\x12\x0c\n\x04ssid\x18\x01 \x01(\x0c\x12\x33\n\rsecurity_type\x18\x02 \x01(\x0e\x32\x1c.chip.rpc.WIFI_SECURITY_TYPE\x12\x0e\n\x06secret\x18\x03 \x01(\x0c\"=\n\x10\x43onnectionResult\x12)\n\x05\x65rror\x18\x01 \x01(\x0e\x32\x1a.chip.rpc.CONNECTION_ERROR*\xf2\x01\n\x12WIFI_SECURITY_TYPE\x12\x12\n\x0eWIFI_AUTH_OPEN\x10\x00\x12\x11\n\rWIFI_AUTH_WEP\x10\x01\x12\x15\n\x11WIFI_AUTH_WPA_PSK\x10\x02\x12\x16\n\x12WIFI_AUTH_WPA2_PSK\x10\x03\x12\x1a\n\x16WIFI_AUTH_WPA_WPA2_PSK\x10\x04\x12\x1d\n\x19WIFI_AUTH_WPA2_ENTERPRISE\x10\x05\x12\x16\n\x12WIFI_AUTH_WPA3_PSK\x10\x06\x12\x1b\n\x17WIFI_AUTH_WPA2_WPA3_PSK\x10\x07\x12\x16\n\x12WIFI_AUTH_WAPI_PSK\x10\x08*\xbf\x05\n\x10\x43ONNECTION_ERROR\x12\x06\n\x02OK\x10\x00\x12\x0f\n\x0bUNSPECIFIED\x10\x01\x12\x0f\n\x0b\x41UTH_EXPIRE\x10\x02\x12\x0e\n\nAUTH_LEAVE\x10\x03\x12\x10\n\x0c\x41SSOC_EXPIRE\x10\x04\x12\x11\n\rASSOC_TOOMANY\x10\x05\x12\x0e\n\nNOT_AUTHED\x10\x06\x12\x0f\n\x0bNOT_ASSOCED\x10\x07\x12\x0f\n\x0b\x41SSOC_LEAVE\x10\x08\x12\x14\n\x10\x41SSOC_NOT_AUTHED\x10\t\x12\x17\n\x13\x44ISASSOC_PWRCAP_BAD\x10\n\x12\x18\n\x14\x44ISASSOC_SUPCHAN_BAD\x10\x0b\x12\x0e\n\nIE_INVALID\x10\r\x12\x0f\n\x0bMIC_FAILURE\x10\x0e\x12\x1d\n\x19\x46OURWAY_HANDSHAKE_TIMEOUT\x10\x0f\x12\x1c\n\x18GROUP_KEY_UPDATE_TIMEOUT\x10\x10\x12\x16\n\x12IE_IN_4WAY_DIFFERS\x10\x11\x12\x18\n\x14GROUP_CIPHER_INVALID\x10\x12\x12\x1b\n\x17PAIRWISE_CIPHER_INVALID\x10\x13\x12\x10\n\x0c\x41KMP_INVALID\x10\x14\x12\x19\n\x15UNSUPP_RSN_IE_VERSION\x10\x15\x12\x16\n\x12INVALID_RSN_IE_CAP\x10\x16\x12\x1a\n\x16IEEE802_1X_AUTH_FAILED\x10\x17\x12\x19\n\x15\x43IPHER_SUITE_REJECTED\x10\x18\x12\x11\n\rINVALID_PMKID\x10\x35\x12\x13\n\x0e\x42\x45\x41\x43ON_TIMEOUT\x10\xc8\x01\x12\x10\n\x0bNO_AP_FOUND\x10\xc9\x01\x12\x0e\n\tAUTH_FAIL\x10\xca\x01\x12\x0f\n\nASSOC_FAIL\x10\xcb\x01\x12\x16\n\x11HANDSHAKE_TIMEOUT\x10\xcc\x01\x12\x14\n\x0f\x43ONNECTION_FAIL\x10\xcd\x01\x12\x11\n\x0c\x41P_TSF_RESET\x10\xce\x01\x12\x0c\n\x07ROAMING\x10\xcf\x01\x32\x8a\x05\n\x04Wifi\x12\x35\n\nGetChannel\x12\x12.pw.protobuf.Empty\x1a\x11.chip.rpc.Channel\"\x00\x12/\n\x07GetSsid\x12\x12.pw.protobuf.Empty\x1a\x0e.chip.rpc.Ssid\"\x00\x12\x31\n\x08GetState\x12\x12.pw.protobuf.Empty\x1a\x0f.chip.rpc.State\"\x00\x12;\n\rGetMacAddress\x12\x12.pw.protobuf.Empty\x1a\x14.chip.rpc.MacAddress\"\x00\x12\x41\n\x10GetWiFiInterface\x12\x12.pw.protobuf.Empty\x1a\x17.chip.rpc.WiFiInterface\"\x00\x12;\n\rGetIP4Address\x12\x12.pw.protobuf.Empty\x1a\x14.chip.rpc.IP4Address\"\x00\x12;\n\rGetIP6Address\x12\x12.pw.protobuf.Empty\x1a\x14.chip.rpc.IP6Address\"\x00\x12<\n\tStartScan\x12\x14.chip.rpc.ScanConfig\x1a\x15.chip.rpc.ScanResults\"\x00\x30\x01\x12\x34\n\x08StopScan\x12\x12.pw.protobuf.Empty\x1a\x12.pw.protobuf.Empty\"\x00\x12\x41\n\x07\x43onnect\x12\x18.chip.rpc.ConnectionData\x1a\x1a.chip.rpc.ConnectionResult\"\x00\x12\x36\n\nDisconnect\x12\x12.pw.protobuf.Empty\x1a\x12.pw.protobuf.Empty\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\x12wifi_service.proto\x12\x08\x63hip.rpc\x1a\x0c\x63ommon.proto\"\x1a\n\x07\x43hannel\x12\x0f\n\x07\x63hannel\x18\x01 \x01(\r\"\x14\n\x04Ssid\x12\x0c\n\x04ssid\x18\x01 \x01(\x0c\"\x1a\n\x05State\x12\x11\n\tconnected\x18\x01 \x01(\x08\"!\n\nMacAddress\x12\x13\n\x0bmac_address\x18\x01 \x01(\t\"\"\n\rWiFiInterface\x12\x11\n\tinterface\x18\x01 \x01(\t\"\x1d\n\nIP4Address\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\"\x1d\n\nIP6Address\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\"\x98\x01\n\nScanConfig\x12\x0c\n\x04ssid\x18\x01 \x03(\x0c\x12\r\n\x05\x62ssid\x18\x02 \x03(\x0c\x12\x0f\n\x07\x63hannel\x18\x03 \x01(\r\x12\x13\n\x0bshow_hidden\x18\x04 \x01(\x08\x12\x13\n\x0b\x61\x63tive_scan\x18\x05 \x01(\x08\x12\x18\n\x10scan_time_min_ms\x18\x06 \x01(\r\x12\x18\n\x10scan_time_max_ms\x18\x07 \x01(\r\"\x92\x01\n\nScanResult\x12\x0c\n\x04ssid\x18\x01 \x01(\x0c\x12\r\n\x05\x62ssid\x18\x02 \x01(\x0c\x12\x33\n\rsecurity_type\x18\x03 \x01(\x0e\x32\x1c.chip.rpc.WIFI_SECURITY_TYPE\x12\x11\n\tfrequency\x18\x04 \x01(\r\x12\x0f\n\x07\x63hannel\x18\x05 \x01(\r\x12\x0e\n\x06signal\x18\x06 \x01(\x05\"0\n\x0bScanResults\x12!\n\x03\x61ps\x18\x01 \x03(\x0b\x32\x14.chip.rpc.ScanResult\"c\n\x0e\x43onnectionData\x12\x0c\n\x04ssid\x18\x01 \x01(\x0c\x12\x33\n\rsecurity_type\x18\x02 \x01(\x0e\x32\x1c.chip.rpc.WIFI_SECURITY_TYPE\x12\x0e\n\x06secret\x18\x03 \x01(\x0c\"=\n\x10\x43onnectionResult\x12)\n\x05\x65rror\x18\x01 \x01(\x0e\x32\x1a.chip.rpc.CONNECTION_ERROR*\xf2\x01\n\x12WIFI_SECURITY_TYPE\x12\x12\n\x0eWIFI_AUTH_OPEN\x10\x00\x12\x11\n\rWIFI_AUTH_WEP\x10\x01\x12\x15\n\x11WIFI_AUTH_WPA_PSK\x10\x02\x12\x16\n\x12WIFI_AUTH_WPA2_PSK\x10\x03\x12\x1a\n\x16WIFI_AUTH_WPA_WPA2_PSK\x10\x04\x12\x1d\n\x19WIFI_AUTH_WPA2_ENTERPRISE\x10\x05\x12\x16\n\x12WIFI_AUTH_WPA3_PSK\x10\x06\x12\x1b\n\x17WIFI_AUTH_WPA2_WPA3_PSK\x10\x07\x12\x16\n\x12WIFI_AUTH_WAPI_PSK\x10\x08*\xbf\x05\n\x10\x43ONNECTION_ERROR\x12\x06\n\x02OK\x10\x00\x12\x0f\n\x0bUNSPECIFIED\x10\x01\x12\x0f\n\x0b\x41UTH_EXPIRE\x10\x02\x12\x0e\n\nAUTH_LEAVE\x10\x03\x12\x10\n\x0c\x41SSOC_EXPIRE\x10\x04\x12\x11\n\rASSOC_TOOMANY\x10\x05\x12\x0e\n\nNOT_AUTHED\x10\x06\x12\x0f\n\x0bNOT_ASSOCED\x10\x07\x12\x0f\n\x0b\x41SSOC_LEAVE\x10\x08\x12\x14\n\x10\x41SSOC_NOT_AUTHED\x10\t\x12\x17\n\x13\x44ISASSOC_PWRCAP_BAD\x10\n\x12\x18\n\x14\x44ISASSOC_SUPCHAN_BAD\x10\x0b\x12\x0e\n\nIE_INVALID\x10\r\x12\x0f\n\x0bMIC_FAILURE\x10\x0e\x12\x1d\n\x19\x46OURWAY_HANDSHAKE_TIMEOUT\x10\x0f\x12\x1c\n\x18GROUP_KEY_UPDATE_TIMEOUT\x10\x10\x12\x16\n\x12IE_IN_4WAY_DIFFERS\x10\x11\x12\x18\n\x14GROUP_CIPHER_INVALID\x10\x12\x12\x1b\n\x17PAIRWISE_CIPHER_INVALID\x10\x13\x12\x10\n\x0c\x41KMP_INVALID\x10\x14\x12\x19\n\x15UNSUPP_RSN_IE_VERSION\x10\x15\x12\x16\n\x12INVALID_RSN_IE_CAP\x10\x16\x12\x1a\n\x16IEEE802_1X_AUTH_FAILED\x10\x17\x12\x19\n\x15\x43IPHER_SUITE_REJECTED\x10\x18\x12\x11\n\rINVALID_PMKID\x10\x35\x12\x13\n\x0e\x42\x45\x41\x43ON_TIMEOUT\x10\xc8\x01\x12\x10\n\x0bNO_AP_FOUND\x10\xc9\x01\x12\x0e\n\tAUTH_FAIL\x10\xca\x01\x12\x0f\n\nASSOC_FAIL\x10\xcb\x01\x12\x16\n\x11HANDSHAKE_TIMEOUT\x10\xcc\x01\x12\x14\n\x0f\x43ONNECTION_FAIL\x10\xcd\x01\x12\x11\n\x0c\x41P_TSF_RESET\x10\xce\x01\x12\x0c\n\x07ROAMING\x10\xcf\x01\x32\x8a\x05\n\x04WiFi\x12\x35\n\nGetChannel\x12\x12.pw.protobuf.Empty\x1a\x11.chip.rpc.Channel\"\x00\x12/\n\x07GetSsid\x12\x12.pw.protobuf.Empty\x1a\x0e.chip.rpc.Ssid\"\x00\x12\x31\n\x08GetState\x12\x12.pw.protobuf.Empty\x1a\x0f.chip.rpc.State\"\x00\x12;\n\rGetMacAddress\x12\x12.pw.protobuf.Empty\x1a\x14.chip.rpc.MacAddress\"\x00\x12\x41\n\x10GetWiFiInterface\x12\x12.pw.protobuf.Empty\x1a\x17.chip.rpc.WiFiInterface\"\x00\x12;\n\rGetIP4Address\x12\x12.pw.protobuf.Empty\x1a\x14.chip.rpc.IP4Address\"\x00\x12;\n\rGetIP6Address\x12\x12.pw.protobuf.Empty\x1a\x14.chip.rpc.IP6Address\"\x00\x12<\n\tStartScan\x12\x14.chip.rpc.ScanConfig\x1a\x15.chip.rpc.ScanResults\"\x00\x30\x01\x12\x34\n\x08StopScan\x12\x12.pw.protobuf.Empty\x1a\x12.pw.protobuf.Empty\"\x00\x12\x41\n\x07\x43onnect\x12\x18.chip.rpc.ConnectionData\x1a\x1a.chip.rpc.ConnectionResult\"\x00\x12\x36\n\nDisconnect\x12\x12.pw.protobuf.Empty\x1a\x12.pw.protobuf.Empty\"\x00\x62\x06proto3'
   ,
   dependencies=[common__pb2.DESCRIPTOR,])
 
@@ -894,8 +894,8 @@ _sym_db.RegisterMessage(ConnectionResult)
 
 
 _WIFI = _descriptor.ServiceDescriptor(
-  name='Wifi',
-  full_name='chip.rpc.Wifi',
+  name='WiFi',
+  full_name='chip.rpc.WiFi',
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
@@ -905,7 +905,7 @@ _WIFI = _descriptor.ServiceDescriptor(
   methods=[
   _descriptor.MethodDescriptor(
     name='GetChannel',
-    full_name='chip.rpc.Wifi.GetChannel',
+    full_name='chip.rpc.WiFi.GetChannel',
     index=0,
     containing_service=None,
     input_type=common__pb2._EMPTY,
@@ -915,7 +915,7 @@ _WIFI = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='GetSsid',
-    full_name='chip.rpc.Wifi.GetSsid',
+    full_name='chip.rpc.WiFi.GetSsid',
     index=1,
     containing_service=None,
     input_type=common__pb2._EMPTY,
@@ -925,7 +925,7 @@ _WIFI = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='GetState',
-    full_name='chip.rpc.Wifi.GetState',
+    full_name='chip.rpc.WiFi.GetState',
     index=2,
     containing_service=None,
     input_type=common__pb2._EMPTY,
@@ -935,7 +935,7 @@ _WIFI = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='GetMacAddress',
-    full_name='chip.rpc.Wifi.GetMacAddress',
+    full_name='chip.rpc.WiFi.GetMacAddress',
     index=3,
     containing_service=None,
     input_type=common__pb2._EMPTY,
@@ -945,7 +945,7 @@ _WIFI = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='GetWiFiInterface',
-    full_name='chip.rpc.Wifi.GetWiFiInterface',
+    full_name='chip.rpc.WiFi.GetWiFiInterface',
     index=4,
     containing_service=None,
     input_type=common__pb2._EMPTY,
@@ -955,7 +955,7 @@ _WIFI = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='GetIP4Address',
-    full_name='chip.rpc.Wifi.GetIP4Address',
+    full_name='chip.rpc.WiFi.GetIP4Address',
     index=5,
     containing_service=None,
     input_type=common__pb2._EMPTY,
@@ -965,7 +965,7 @@ _WIFI = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='GetIP6Address',
-    full_name='chip.rpc.Wifi.GetIP6Address',
+    full_name='chip.rpc.WiFi.GetIP6Address',
     index=6,
     containing_service=None,
     input_type=common__pb2._EMPTY,
@@ -975,7 +975,7 @@ _WIFI = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='StartScan',
-    full_name='chip.rpc.Wifi.StartScan',
+    full_name='chip.rpc.WiFi.StartScan',
     index=7,
     containing_service=None,
     input_type=_SCANCONFIG,
@@ -985,7 +985,7 @@ _WIFI = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='StopScan',
-    full_name='chip.rpc.Wifi.StopScan',
+    full_name='chip.rpc.WiFi.StopScan',
     index=8,
     containing_service=None,
     input_type=common__pb2._EMPTY,
@@ -995,7 +995,7 @@ _WIFI = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='Connect',
-    full_name='chip.rpc.Wifi.Connect',
+    full_name='chip.rpc.WiFi.Connect',
     index=9,
     containing_service=None,
     input_type=_CONNECTIONDATA,
@@ -1005,7 +1005,7 @@ _WIFI = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='Disconnect',
-    full_name='chip.rpc.Wifi.Disconnect',
+    full_name='chip.rpc.WiFi.Disconnect',
     index=10,
     containing_service=None,
     input_type=common__pb2._EMPTY,
@@ -1016,6 +1016,6 @@ _WIFI = _descriptor.ServiceDescriptor(
 ])
 _sym_db.RegisterServiceDescriptor(_WIFI)
 
-DESCRIPTOR.services_by_name['Wifi'] = _WIFI
+DESCRIPTOR.services_by_name['WiFi'] = _WIFI
 
 # @@protoc_insertion_point(module_scope)

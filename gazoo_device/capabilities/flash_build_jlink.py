@@ -14,13 +14,14 @@
 
 """Default implementation of the JLink flashing capability."""
 import os
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from gazoo_device import config
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import flash_build_base
+from gazoo_device.capabilities.interfaces import switchboard_base
 from gazoo_device.utility import subprocess_utils
 import intelhex
 import pylink
@@ -37,17 +38,24 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
   def __init__(self,
                device_name: str,
                serial_number: int,
-               platform_name: str):
+               platform_name: str,
+               reset_endpoints_fn: Optional[Callable[[str], None]] = None,
+               switchboard: Optional[switchboard_base.SwitchboardBase] = None):
     """Initializes an instance of the FlashBuildJLink capability.
 
     Args:
       device_name: Device name used for logging.
       serial_number: Device serial number.
       platform_name: The target device's platform name.
+      reset_endpoints_fn: Method to reset matter_endpoint capability.
+        This method will be called after flashing is completed.
+      switchboard: A Switchboard capability instance if the device supports it.
     """
     super().__init__(device_name=device_name)
     self._serial_number = serial_number
     self._platform_name = platform_name
+    self._reset_endpoints_fn = reset_endpoints_fn
+    self._switchboard = switchboard
 
   @decorators.CapabilityLogDecorator(logger)
   def flash_device(self,
@@ -81,6 +89,11 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
       raise ValueError(f"Firmware image {image_path} does not exist.")
 
     self._jlink_flash(image_path)
+
+    # For Matter device classes, we'll need to reset the Matter endpoint mapping
+    # as the supported endpoints might change after flashing a new build.
+    if self._reset_endpoints_fn is not None:
+      self._reset_endpoints_fn()
 
   def _jlink_flash(self, image_path: str) -> None:
     """Flashes the provided image onto the device via J-Link."""

@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Pigweed RPC implementation of the Matter On/Off cluster capability."""
-from typing import Any, Callable
+"""Pigweed RPC implementation of the Matter On/Off cluster capability.
+"""
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -26,21 +26,6 @@ logger = gdm_logger.get_logger()
 
 class OnOffClusterPwRpc(on_off_base.OnOffClusterBase):
   """Matter On/Off cluster capability."""
-
-  def __init__(self,
-               device_name: str,
-               switchboard_call: Callable[..., Any],
-               rpc_timeout_s: int):
-    """Initializes an instance of the Matter On/Off cluster capability.
-
-    Args:
-      device_name: Device name used for logging.
-      switchboard_call: The switchboard.call method.
-      rpc_timeout_s: Timeout (s) for RPC call.
-    """
-    super().__init__(device_name=device_name)
-    self._switchboard_call = switchboard_call
-    self._rpc_timeout_s = rpc_timeout_s
 
   @decorators.CapabilityLogDecorator(logger)
   def on(self, verify: bool = True) -> None:

@@ -17,8 +17,10 @@ import logging
 import os
 from unittest import mock
 
+from absl.testing import parameterized
 import gazoo_device
 from gazoo_device import errors
+from gazoo_device import manager
 from gazoo_device import mobly_controller
 from gazoo_device.tests.unit_tests.utils import fake_devices
 from gazoo_device.tests.unit_tests.utils import unit_test_case
@@ -169,6 +171,44 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
     mock_device.close.assert_called()
     mock_manager.close.assert_called()
     self.assertIsNone(mobly_controller._MANAGER_INSTANCE)
+
+  @parameterized.named_parameters(
+      ("mobly_log_path", "some/mobly/log/path", "some/undeclared/outputs/dir",
+       "some/mobly/log/path"),
+      ("test_undeclared_outputs_dir", None, "some/undeclared/outputs/dir",
+       "some/undeclared/outputs/dir"),
+      ("default", None, None, None))
+  def test_get_log_directory(
+      self, mock_logging_log_path, mock_test_undeclared_outputs_dir,
+      expected_log_directory):
+    """Tests _get_log_directory."""
+    if mock_logging_log_path is None:
+      del logging.log_path
+    else:
+      logging.log_path = mock_logging_log_path
+
+    with mock.patch.object(
+        os, "getenv", return_value=mock_test_undeclared_outputs_dir):
+      self.assertEqual(
+          mobly_controller._get_log_directory(), expected_log_directory)
+
+  @parameterized.named_parameters(
+      ("log_directory_specified", "/some/log/dir", "/some/log/dir/gdm.txt"),
+      ("log_directory_not_specified", None, None))
+  @mock.patch.object(mobly_controller, "_MANAGER_INSTANCE", new=None)
+  @mock.patch.object(manager, "Manager")
+  def test_get_manager(
+      self, mock_log_directory, expected_log_file, mock_manager_class):
+    """Tests get_manager()."""
+    mock_manager = mock_manager_class.return_value
+    with mock.patch.object(
+        mobly_controller, "_get_log_directory",
+        return_value=mock_log_directory):
+      self.assertIs(mobly_controller.get_manager(), mock_manager)
+    mock_manager_class.assert_called_once_with(
+        log_directory=mock_log_directory,
+        gdm_log_file=expected_log_file,
+        stdout_logging=False)
 
 
 if __name__ == "__main__":

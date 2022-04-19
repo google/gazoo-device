@@ -65,6 +65,7 @@ class FlashBuildEsptool(flash_build_base.FlashBuildBase):
       serial_port: str,
       switchboard: Optional[switchboard_base.SwitchboardBase] = None,
       wait_for_bootup_complete_fn: Optional[Callable[[int], None]] = None,
+      reset_endpoints_fn: Optional[Callable[[str], None]] = None,
       boot_up_time: int = _DEFAULT_BOOT_UP_TIMEOUT_SECONDS,
       baud: int = _BAUDRATE,
       before: str = _BEFORE_FLASH,
@@ -90,6 +91,8 @@ class FlashBuildEsptool(flash_build_base.FlashBuildBase):
       wait_for_bootup_complete_fn: The wait_for_bootup_complete method. This
         method will be called after flashing is complete. If not specified,
         time.sleep(boot_up_time) will be used to wait for boot up.
+      reset_endpoints_fn: Method to reset matter_endpoint capability.
+        This method will be called after flashing is completed.
       boot_up_time: The time to wait for boot up sequence to complete.
       baud: Baudrate for device serial communication.
       before: Action to perform before flashing.
@@ -132,6 +135,7 @@ class FlashBuildEsptool(flash_build_base.FlashBuildBase):
     }
     self._switchboard = switchboard
     self._wait_for_bootup_complete_fn = wait_for_bootup_complete_fn
+    self._reset_endpoints_fn = reset_endpoints_fn
     self._boot_up_time = boot_up_time
 
   @decorators.CapabilityLogDecorator(logger)
@@ -239,6 +243,11 @@ class FlashBuildEsptool(flash_build_base.FlashBuildBase):
         self._wait_for_bootup_complete_fn(self._boot_up_time)
       else:
         time.sleep(self._boot_up_time)
+
+    # For Matter device classes, we'll need to reset the Matter endpoint mapping
+    # as the supported endpoints might change after flashing a new build.
+    if self._reset_endpoints_fn is not None:
+      self._reset_endpoints_fn()
 
   @decorators.CapabilityLogDecorator(logger)
   def download_build_file(self,

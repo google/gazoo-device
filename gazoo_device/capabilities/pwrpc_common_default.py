@@ -62,6 +62,16 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     return self.get_device_info().software_version
 
   @decorators.DynamicProperty
+  def qr_code(self) -> str:
+    """The pairing QR code of the device."""
+    return self.pairing_info.qr_code
+
+  @decorators.DynamicProperty
+  def qr_code_url(self) -> str:
+    """The pairing QR code URL of the device."""
+    return self.pairing_info.qr_code_url
+
+  @decorators.DynamicProperty
   def pairing_info(self) -> device_service_pb2.PairingInfo:
     """The pairing information of the device."""
     return self.get_device_info().pairing_info
@@ -106,24 +116,6 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     self._trigger_device_action(action="TriggerOta")
 
   @decorators.CapabilityLogDecorator(logger)
-  def set_pairing_info(
-      self, code: Optional[int] = None, discriminator: Optional[int] = None
-  ) -> None:
-    """Sets the pairing info of the device.
-
-    Args:
-      code: New pairing code to set.
-      discriminator: New discriminator to set.
-    """
-    new_code = self.pairing_info.code if code is None else code
-    new_discriminator = (
-        self.pairing_info.discriminator if discriminator is None
-        else discriminator)
-    self._trigger_device_action(action="SetPairingInfo",
-                                code=new_code,
-                                discriminator=new_discriminator)
-
-  @decorators.CapabilityLogDecorator(logger)
   def wait_for_bootup_complete(self, bootup_timeout: int) -> None:
     """Waits for device to boot up.
 
@@ -154,13 +146,7 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     Raises:
       DeviceError: The ack status is not true.
     """
-    ack, payload_in_bytes = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-        method_args=("Device", "GetDeviceInfo"),
-        method_kwargs={"pw_rpc_timeout_s": self._rpc_timeout_s})
-    if not ack:
-      raise errors.DeviceError(
-          f"{self._device_name} getting static info failed.")
+    payload_in_bytes = self._trigger_device_action(action="GetDeviceInfo")
     payload = device_service_pb2.DeviceInfo.FromString(payload_in_bytes)
     return payload
 
@@ -171,30 +157,62 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     Raises:
       DeviceError: The ack status is not true.
     """
-    ack, payload_in_bytes = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-        method_args=("Device", "GetDeviceState"),
-        method_kwargs={"pw_rpc_timeout_s": self._rpc_timeout_s})
-    if not ack:
-      raise errors.DeviceError(
-          f"{self._device_name} getting device state failed.")
+    payload_in_bytes = self._trigger_device_action(action="GetDeviceState")
     payload = device_service_pb2.DeviceState.FromString(payload_in_bytes)
     return payload
 
-  def _trigger_device_action(self, action: str, **kwargs: Any) -> None:
+  @decorators.CapabilityLogDecorator(logger)
+  def set_pairing_state(self, pairing_enabled: bool) -> None:
+    """Sets the pairing state of the device.
+
+    Args:
+      pairing_enabled: New pairing state to set.
+    """
+    self._trigger_device_action(action="SetPairingState",
+                                pairing_enabled=pairing_enabled)
+
+  @decorators.CapabilityLogDecorator(logger)
+  def get_pairing_state(self) -> bool:
+    """Gets the pairing state of the device."""
+    payload_in_bytes = self._trigger_device_action(action="GetPairingState")
+    payload = device_service_pb2.PairingState.FromString(payload_in_bytes)
+    return payload.pairing_enabled
+
+  @decorators.CapabilityLogDecorator(logger)
+  def set_pairing_info(
+      self, code: Optional[int] = None, discriminator: Optional[int] = None
+    ) -> None:
+    """Sets the pairing info of the device.
+
+    Args:
+      code: New pairing code to set.
+      discriminator: New discriminator to set.
+    """
+    new_code = self.pairing_info.code if code is None else code
+    new_discriminator = (
+        self.pairing_info.discriminator if discriminator is None
+        else discriminator)
+    self._trigger_device_action(action="SetPairingInfo",
+                                code=new_code,
+                                discriminator=new_discriminator)
+
+  def _trigger_device_action(self, action: str, **kwargs: Any) -> bytes:
     """Triggers specific device action.
 
     Args:
       action: Device actions including reboot, factory-reset,
-        OTA and setting pairing info.
+        OTA and setting/getting device state and pairing state.
       **kwargs: Arguments for the device action.
+
+    Returns:
+      The payload in bytes format.
 
     Raises:
       DeviceError: The ack status is not true.
     """
     device_rpc_kwargs = {"pw_rpc_timeout_s": self._rpc_timeout_s}
     device_rpc_kwargs.update(kwargs)
-    ack, _ = self._switchboard_call(
+    ack, payload_in_bytes = self._switchboard_call(
         method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
         method_args=("Device", action),
         method_kwargs=device_rpc_kwargs)
@@ -202,3 +220,5 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     if not ack:
       raise errors.DeviceError(f"{self._device_name} triggering {action} failed"
                                ": The action did not succeed")
+
+    return payload_in_bytes

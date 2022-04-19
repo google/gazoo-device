@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Unit tests for GazooDeviceBase class."""
 import os
 from unittest import mock
 
+from absl.testing import parameterized
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import extensions
@@ -96,7 +96,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
         self.device_config,
         log_directory=self.artifacts_directory)
 
-  def test_001_close_called_twice(self):
+  def test_close_called_twice(self):
     """Test that calling GazooDeviceBase.close() twice has no effect."""
     self.assertTrue(self.uut.switchboard)  # Create Switchboard
     self.uut.close()
@@ -104,35 +104,35 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     self.uut.close()
     self.mock_switchboard.close.assert_called_once()
 
-  def test_002_get_manager(self):
+  def test_get_manager(self):
     """Tests get_manager() for open and closed device."""
     self.assertTrue(self.uut.get_manager())
     self.uut.close()
     self.assertTrue(self.uut.get_manager())
 
-  def test_010_make_device_ready_must_be_a_string(self):
+  def test_make_device_ready_bool(self):
     """Verify that an exception is raised if make_device_ready is a bool."""
     self.device_config["make_device_ready"] = False
     with self.assertRaisesRegex(errors.DeviceError, "should be a string."):
       GazooDeviceBaseStub(self.mock_manager, self.device_config)
 
-  def test_011_make_device_ready_must_be_a_string(self):
+  def test_make_device_ready_invalid(self):
     """Verify that an error is raised if make_device_ready value is invalid."""
     self.device_config["make_device_ready"] = "yes"
     with self.assertRaisesRegex(errors.DeviceError,
                                 "should be 'on', 'off' or 'check_only'"):
       GazooDeviceBaseStub(self.mock_manager, self.device_config)
 
-  def test_050_gazoo_device_base_close_manager_weakref_dead(self):
+  def test_gazoo_device_base_close_manager_weakref_dead(self):
     """Verify GazooDeviceBase can close when Manager weakref is dead."""
-    with mock.patch.object(self.uut, "_manager_weakref",
-                           new=mock.Mock(return_value=None)):
+    with mock.patch.object(
+        self.uut, "_manager_weakref", new=mock.Mock(return_value=None)):
       self.uut.close()
 
   @mock.patch.object(GazooDeviceBaseStub, "check1")
   @mock.patch.object(GazooDeviceBaseStub, "check2")
-  def test_80_execute_health_check_methods(self, mock_health_check1,
-                                           mock_health_check2):
+  def test_execute_health_check_methods(self, mock_health_check1,
+                                        mock_health_check2):
     """Test _execute_health_check_methods when health checks succeed."""
     mock_health_check1.__name__ = "mock_health_check1"
     mock_health_check2.__name__ = "mock_health_check2"
@@ -141,13 +141,13 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     mock_health_check1.assert_called_once()
     mock_health_check2.assert_called_once()
 
-  def test_81_execute_health_check_methods_failure(self):
+  def test_execute_health_check_methods_failure(self):
     """Test _execute_health_check_methods when a health check fails."""
     health_checks = [self.uut.check1, self.uut.check2]
     with self.assertRaises(errors.CheckDeviceReadyError):
       self.uut._execute_health_check_methods(health_checks)
 
-  def test_101_gazoo_device_base_start_new_log(self):
+  def test_gazoo_device_base_start_new_log(self):
     """Verify start_new_log calls console_port.start_new_log."""
     self.assertTrue(self.uut.switchboard)  # Create Switchboard
     old_log_file_name = self.uut.log_file_name
@@ -160,7 +160,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     self.assertTrue(self.uut.switchboard.start_new_log.called,
                     "Expected Switchboard start_new_log to be called")
 
-  def test_102_gazoo_device_base_start_new_log_with_log_dir(self):
+  def test_gazoo_device_base_start_new_log_with_log_dir(self):
     """Verify start_new_log saves new log directory."""
     self.assertTrue(self.uut.switchboard)  # Create Switchboard
     old_log_file_name = self.uut.log_file_name
@@ -173,7 +173,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
         log_directory, self.uut.log_directory,
         "Expected log directory to change to {}".format(log_directory))
 
-  def test_110_gazoo_device_base_log_file_name(self):
+  def test_gazoo_device_base_log_file_name(self):
     """Verify log_file_name property works as expected."""
     old_log_filename = self.uut.log_file_name
     # Create fake rotated log file
@@ -185,7 +185,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
         old_log_filename, actual_log_filename,
         "Expected {} != {}".format(old_log_filename, actual_log_filename))
 
-  def test_201_gazoo_device_base_set_max_log_size(self):
+  def test_gazoo_device_base_set_max_log_size(self):
     """Verify set_max_log_size calls console_port.set_max_log_size."""
     self.assertTrue(self.uut.switchboard)  # Create Switchboard
     max_log_size = 100
@@ -193,12 +193,12 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     self.assertTrue(self.uut.switchboard.set_max_log_size.called,
                     "Expected Switchboard set_max_log_size to be called")
 
-  def test_202_gazoo_device_base_add_new_filter_bad_path(self):
+  def test_gazoo_device_base_add_new_filter_bad_path(self):
     """Verifies add_new_filter raises error if given bad path."""
     with self.assertRaisesRegex(errors.DeviceError, "Unable to access"):
       self.uut.add_new_filter("bad_path")
 
-  def test_204_gazoo_device_base_add_new_filterload_filter_file_error(self):
+  def test_gazoo_device_base_add_new_filterload_filter_file_error(self):
     """Verifies add_new_filter raises error if load_filter_file errors."""
     self.assertTrue(self.uut.switchboard)  # Create Switchboard
     with mock.patch.object(event_parser_default, "EventParserDefault"):
@@ -207,7 +207,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
       with self.assertRaisesRegex(errors.DeviceError, "some error"):
         self.uut.add_new_filter("/some/filter/file.json")
 
-  def test_210_gazoo_device_base_add_new_filter_successful(self):
+  def test_gazoo_device_base_add_new_filter_successful(self):
     """Verifies add_new_filter is successful using valid input."""
     self.assertTrue(self.uut.switchboard)  # Create Switchboard
     with mock.patch.object(event_parser_default, "EventParserDefault"):
@@ -217,7 +217,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
           filter_file)
       self.uut.switchboard.add_new_filter.assert_called_once_with(filter_file)
 
-  def test_604_expect(self):
+  def test_expect(self):
     """Verify expect() calls Switchboard.expect()."""
     self.assertTrue(self.uut.switchboard)  # Create Switchboard
     self.uut.switchboard.expect(["something"])
@@ -227,7 +227,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     self.uut.switchboard.expect.assert_called_with(["something"], 15, 10,
                                                    "response", "all")
 
-  def test_610_shell_with_regex_success_first_try(self):
+  def test_shell_with_regex_success_first_try(self):
     """Verify shell_with_regex() works when it succeeds on the first try."""
     return_value = ("asdalsd gobbly", 0)
     with mock.patch.object(
@@ -236,7 +236,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
       self.assertEqual(result, "gobbly")
       mock_shell.assert_called_once()
 
-  def test_611_shell_with_regex_success_with_retries(self):
+  def test_shell_with_regex_success_with_retries(self):
     """Verify shell_with_regex() works when it has to retry."""
     shell_responses = [
         errors.DeviceError("Error 1"),
@@ -248,7 +248,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
       self.assertEqual(result, "gobbly")
       self.assertEqual(mock_shell.call_count, 3)
 
-  def test_612_shell_with_regex_failure_error_no_raise(self):
+  def test_shell_with_regex_failure_error_no_raise(self):
     """Verify shell_with_regex(raise_error=False) warning on failure."""
     with mock.patch.object(gazoo_device_base, "logger"):
       with mock.patch.object(
@@ -258,20 +258,20 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
         self.assertEqual(result, "")
         gazoo_device_base.logger.warning.assert_called_once()
 
-  def test_613_shell_with_regex_failure_error_raise(self):
+  def test_shell_with_regex_failure_error_raise(self):
     """Verify shell_with_regex(raise_error=True) error on failure."""
     with mock.patch.object(
         self.uut, "shell", side_effect=errors.DeviceError("Some error")):
       with self.assertRaisesRegex(errors.DeviceError, "unable to retrieve"):
         self.uut.shell_with_regex("some command", r"(.*)", raise_error=True)
 
-  def test_614_shell_with_regex_failure_no_match_raise(self):
+  def test_shell_with_regex_failure_no_match_raise(self):
     """Verify shell_with_regex() raises an error when regex doesn't match."""
     with mock.patch.object(self.uut, "shell", return_value=("top kek", 0)):
       with self.assertRaisesRegex(errors.DeviceError, "unable to retrieve"):
         self.uut.shell_with_regex("some command", r"(gobbly)", raise_error=True)
 
-  def test_615_shell_with_regex_failure_group_number_too_high(self):
+  def test_shell_with_regex_failure_group_number_too_high(self):
     """Verify shell_with_regex() failure when regex group number is too high."""
     cmd = "some command"
     regex = r"(.*)"
@@ -287,7 +287,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
               cmd, regex, regex_group=2, tries=tries, raise_error=True)
         gazoo_device_base.logger.warning.assert_called()
 
-  def test_616_shell_with_regex_failure_no_groups_in_regex_raise(self):
+  def test_shell_with_regex_failure_no_groups_in_regex_raise(self):
     """Verify shell_with_regex() failure for regex without capturing groups."""
     with mock.patch.object(gazoo_device_base, "logger"):
       with mock.patch.object(
@@ -297,7 +297,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
               "some command", "gobbly", tries=2, raise_error=True)
         gazoo_device_base.logger.warning.assert_called()
 
-  def test_617_shell_with_regex_success_group_num_more_than_1(self):
+  def test_shell_with_regex_success_group_num_more_than_1(self):
     """Verify shell_with_regex() works for capturing groups >= 1."""
     return_value = ("asd1337", 0)
     with mock.patch.object(self.uut, "shell", return_value=return_value):
@@ -305,15 +305,14 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
           "some command", r"([a-z]*)(\d*)", regex_group=2)
       self.assertEqual(result, "1337")
 
-  def test_618_shell_with_regex_check_return_code_failure_nonzero_return_code(
-      self):
+  def test_shell_with_regex_check_return_code_failure_nonzero_return_code(self):
     """Verify shell_with_regex() failure due to non-zero return code."""
     with mock.patch.object(self.uut, "shell", return_value=("gobbly gook", 1)):
       with self.assertRaisesRegex(errors.DeviceError, "unable to retrieve"):
         self.uut.shell_with_regex(
             "some command", "gobbly", raise_error=True, check_return_code=True)
 
-  def test_619_shell_with_regex_check_return_code_success(self):
+  def test_shell_with_regex_check_return_code_success(self):
     """Verify shell_with_regex() checks return code and succeeds if it's 0."""
     shell_responses = [("foo", 1), ("gobbly", 0)]
     with mock.patch.object(self.uut, "shell", side_effect=shell_responses):
@@ -324,7 +323,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
           tries=2,
           check_return_code=True)
 
-  def test_642_default_event_filters(self):
+  def test_default_event_filters(self):
     """Test that default event filters are present in filter_paths."""
     test_filters = ("/path/to/folder1/name1.json", "/path/to/name2.json")
 
@@ -338,21 +337,21 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     for filter_path in test_filters:
       self.assertIn(filter_path, uut.filter_paths)
 
-  def test_660_get_private_capability_name(self):
+  def test_get_private_capability_name(self):
     """Test that private capability name generation works."""
     private_attribute_name = (
         gazoo_device_base.GazooDeviceBase._get_private_capability_name(
             comm_power_default.CommPowerDefault))
     self.assertEqual("_comm_power", private_attribute_name)
 
-  def test_661_is_capability_initialized_valid_capability(self):
+  def test_is_capability_initialized_valid_capability(self):
     """Test is_capability_initialized() with a valid capability."""
     self.assertTrue(self.uut.switchboard)  # Initialize Switchboard
     self.assertTrue(self.uut.is_capability_initialized("switchboard"))
     self.uut.reset_capability("switchboard")
     self.assertFalse(self.uut.is_capability_initialized("switchboard"))
 
-  def test_662_is_capability_initialized_invalid_capability(self):
+  def test_is_capability_initialized_invalid_capability(self):
     """Test is_capability_initialized() raises for invalid capability."""
     err_regex = "Capability foobar is not recognized"
     with self.assertRaisesRegex(errors.DeviceError, err_regex):
@@ -360,7 +359,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     with self.assertRaisesRegex(errors.DeviceError, err_regex):
       self.uut.reset_capability("foobar")
 
-  def test_663_is_capability_initialized_unsupported_capability(self):
+  def test_is_capability_initialized_unsupported_capability(self):
     """Test is_capability_initialized() raises for unsupported capability."""
     err_regex = "Capability file_transfer is not supported"
     with self.assertRaisesRegex(errors.DeviceError, err_regex):
@@ -368,7 +367,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     with self.assertRaisesRegex(errors.DeviceError, err_regex):
       self.uut.reset_capability("file_transfer")
 
-  def test_664_reset_all_capabilities(self):
+  def test_reset_all_capabilities(self):
     """Test that reset_all_capabilities resets all initialized capabilities."""
     capabilities = ["switchboard", "event_parser"]
     for capability in capabilities:
@@ -386,7 +385,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     for capability in capabilities:
       self.assertFalse(self.uut.is_capability_initialized(capability))
 
-  def test_665_get_capability_classes(self):
+  def test_get_capability_classes(self):
     """Test that get_capability_classes() returns capability flavors."""
     self.assertEqual(
         self.uut.get_capability_classes("switchboard"),
@@ -395,7 +394,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
         self.uut.get_capability_classes("event_parser"),
         [event_parser_default.EventParserDefault])
 
-  def test_670_no_reference_loops(self):
+  def test_no_reference_loops(self):
     """Test that deleting last reference to object deletes the object.
 
     If there are any reference loops, the object will not be deleted
@@ -406,7 +405,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     kwargs = {"log_directory": self.artifacts_directory}
     self.verify_no_reference_loops(GazooDeviceBaseStub, args, kwargs)
 
-  def test_1120_check_device_connected_works(self):
+  def test_check_device_connected_works(self):
     """Verify check_device_connected() calls device.is_connected()."""
     self.check_device_connected_patch_primary.stop()
     try:
@@ -422,7 +421,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     finally:
       self.check_device_connected_patch_primary.start()
 
-  def test_1130_persistent_props_works(self):
+  def test_persistent_props_works(self):
     """Verify get_persistent_properties() works."""
     expected_dict = {
         "commands": {},
@@ -446,24 +445,25 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     }
     self.assertEqual(self.uut.get_persistent_properties(), expected_dict)
 
-  def test_1131_settable_props_works(self):
+  def test_settable_props_works(self):
     """Verify get_optional_properties() works."""
     expected_dict = {"alias": None}
     self.assertEqual(self.uut.get_optional_properties(), expected_dict)
 
-  def test_1132_dynamic_props_works(self):
+  def test_dynamic_props_works(self):
     """Dynamic props works even when some property values are bad."""
     # Since log_file_name changes every run, can't assert on values.
 
     expected_keys = [
         "firmware_type", "firmware_version", "connected", "log_file_name",
         "bad_property", "dynamic_bad", "event_parser.healthy",
-        "switchboard.healthy", "switchboard.number_transports"
+        "event_parser.health_checked", "switchboard.healthy",
+        "switchboard.number_transports", "switchboard.health_checked"
     ]
     self.assertCountEqual(expected_keys,
                           list(self.uut.get_dynamic_properties().keys()))
 
-  def test_1333_get_property_handles_capability_properties(self):
+  def test_get_property_handles_capability_properties(self):
     """Verify get_property() handles capability (nested) properties."""
     self.uut.usb_hub = usb_hub_default.UsbHubDefault(
         device_name=self.uut.name,
@@ -473,33 +473,33 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
         get_switchboard_if_initialized=lambda: self.mock_switchboard)
     self.assertEqual(self.uut.get_property("usb_hub.name"), "cambrionix-1234")
 
-  def test_1334_get_property_handles_bad_properties_raise_error_off(self):
+  def test_get_property_handles_bad_properties_raise_error_off(self):
     """Verify get_property() returns a placeholder when the property raises."""
     self.assertIn(
         "devicestub-1234 does not have a known property 'fimware_version'. "
-        "Close matches:",
-        self.uut.get_property("fimware_version"))
+        "Close matches:", self.uut.get_property("fimware_version"))
     self.assertEqual(
         self.uut.get_property("bad_property"), "Exception_DeviceError")
 
-  def test_1335_get_property_handles_bad_properties_raise_error_on(self):
+  def test_get_property_handles_bad_properties_raise_error_on(self):
     """Verify get_property() raises an error when the property raises."""
     with self.assertRaisesRegex(AttributeError, "fimware_version"):
       self.uut.get_property("fimware_version", raise_error=True)
     with self.assertRaisesRegex(errors.DeviceError, "x"):
       self.uut.get_property("bad_property", raise_error=True)
 
-  def test_1340_recover_raises_error(self):
+  def test_recover_raises_error(self):
     """Test recover() raising the error."""
     error = errors.CheckDeviceReadyError(self.uut.name, "")
     with self.assertRaisesRegex(errors.CheckDeviceReadyError, str(error)):
       self.uut.recover(error)
 
-  def test_1341_recover_comm_power(self):
+  def test_recover_comm_power(self):
     """Test recovery from SwitchboardCreationError with comm_power."""
     self.uut.reset_capability("switchboard")
     with mock.patch.object(
-        gazoo_device_base.GazooDeviceBase, "has_capabilities",
+        gazoo_device_base.GazooDeviceBase,
+        "has_capabilities",
         return_value=True) as mock_has_capabilities:
       self.uut.comm_power = mock.Mock(spec=comm_power_default.CommPowerDefault)
       error = errors.SwitchboardCreationError(self.uut.name, "FtdiError")
@@ -507,18 +507,19 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
       self.uut.comm_power.cycle.assert_called_once()
       mock_has_capabilities.assert_called_once()
 
-  def test_1342_recover_no_comm_power_raises_error(self):
+  def test_recover_no_comm_power_raises_error(self):
     """Test recovery from SwitchboardCreationError without comm_power."""
     self.uut.reset_capability("switchboard")
     with mock.patch.object(
-        gazoo_device_base.GazooDeviceBase, "has_capabilities",
+        gazoo_device_base.GazooDeviceBase,
+        "has_capabilities",
         return_value=False) as mock_has_capabilities:
       error = errors.SwitchboardCreationError(self.uut.name, "FtdiError")
       with self.assertRaisesRegex(errors.SwitchboardCreationError, str(error)):
         self.uut.recover(error)
       mock_has_capabilities.assert_called_once()
 
-  def test_1343_recover_comm_power_unconfigured(self):
+  def test_recover_comm_power_unconfigured(self):
     """Test recovery with comm_power unconfigured."""
     self.uut.reset_capability("switchboard")
     with mock.patch.object(
@@ -532,8 +533,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
       with self.assertRaisesRegex(errors.SwitchboardCreationError, str(error)):
         self.uut.recover(error)
 
-  def test_1344_recover_switchboard_creation_error_failed_to_start_process(
-      self):
+  def test_recover_switchboard_creation_error_failed_to_start_process(self):
     """Tests recover() from a process start SwitchboardCreationError."""
     self.uut.reset_capability("switchboard")
     error_message = (
@@ -545,8 +545,8 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
         gazoo_device_base.GazooDeviceBase,
         "has_capabilities",
         return_value=True):
-      with self.assertRaisesRegex(
-          errors.SwitchboardCreationError, error_message):
+      with self.assertRaisesRegex(errors.SwitchboardCreationError,
+                                  error_message):
         self.uut.recover(error)
     self.uut.comm_power.cycle.assert_not_called()
 
@@ -566,14 +566,12 @@ class GazooDeviceCapabilityTests(fake_device_test_case.FakeDeviceTestCase):
     self.addCleanup(supported_interface_patcher.stop)
 
     supported_flavor_patcher = mock.patch.dict(
-        extensions.capability_flavors,
-        fake_capabilities.SUPPORTED_FLAVORS)
+        extensions.capability_flavors, fake_capabilities.SUPPORTED_FLAVORS)
     supported_flavor_patcher.start()
     self.addCleanup(supported_flavor_patcher.stop)
 
     supported_capability_patcher = mock.patch.dict(
-        extensions.capabilities,
-        fake_capabilities.CAPABILITIES)
+        extensions.capabilities, fake_capabilities.CAPABILITIES)
     supported_capability_patcher.start()
     self.addCleanup(supported_capability_patcher.stop)
 
@@ -590,7 +588,7 @@ class GazooDeviceCapabilityTests(fake_device_test_case.FakeDeviceTestCase):
         self.device_config,
         log_directory=self.artifacts_directory)
 
-  def test_671_get_supported_capability_flavors(self):
+  def test_get_supported_capability_flavors(self):
     """Test successful get_supported_capability_flavors() calls."""
     fc = fake_capabilities
     test_cases = [
@@ -624,7 +622,7 @@ class GazooDeviceCapabilityTests(fake_device_test_case.FakeDeviceTestCase):
            f"return {expected_capability_flavors}, found "
            f"{actual_capability_flavors}"))
 
-  def test_672_get_supported_capabilities(self):
+  def test_get_supported_capabilities(self):
     """Test successful get_supported_capabilities() calls."""
     fc = fake_capabilities
     test_cases = [
@@ -651,7 +649,7 @@ class GazooDeviceCapabilityTests(fake_device_test_case.FakeDeviceTestCase):
           .format(device_class, expected_capability_names,
                   actual_capability_names))
 
-  def test_673_has_capabilities_error_invalid_type(self):
+  def test_has_capabilities_error_invalid_type(self):
     """Test that has_capabilities() raises if input is not a list of strings."""
     test_cases = [
         "foo_capability", fake_capabilities.ValidCapabilityBase,
@@ -663,7 +661,7 @@ class GazooDeviceCapabilityTests(fake_device_test_case.FakeDeviceTestCase):
       with self.assertRaisesRegex(errors.DeviceError, "type"):
         fake_capabilities.DeviceOneFlavorCapability.has_capabilities(capability)
 
-  def test_674_has_capabilities_error_unknown_capability_name(self):
+  def test_has_capabilities_error_unknown_capability_name(self):
     """Test that has_capabilities() raises if capability is not supported."""
     capability = "foo_bar_baz"
     with self.assertRaisesRegex(
@@ -671,7 +669,7 @@ class GazooDeviceCapabilityTests(fake_device_test_case.FakeDeviceTestCase):
         "Capability {} is not recognized.".format(capability)):
       fake_capabilities.DeviceOneFlavorCapability.has_capabilities([capability])
 
-  def test_675_has_capabilities(self):
+  def test_has_capabilities(self):
     """Test successful has_capabilities() calls."""
     fc = fake_capabilities
     get_interface_name = fake_capabilities.get_interface_name
@@ -764,12 +762,18 @@ class GazooDeviceCapabilityTests(fake_device_test_case.FakeDeviceTestCase):
                 get_flavor_name(fc.ValidCapabilityFlavor),
                 get_flavor_name(fc.ValidOtherCapabilityFlavor)
             ], True),
-            ([fc.VALID_CAPABILITY_NAME,
-              get_interface_name(fc.ValidOtherCapabilityBase)], True),
-            ([fc.VALID_CAPABILITY_NAME,
-              get_flavor_name(fc.ValidOtherCapabilityBase)], True),
-            ([get_flavor_name(fc.ValidOtherCapabilityBase),
-              fc.VALID_CAPABILITY_NAME], True),
+            ([
+                fc.VALID_CAPABILITY_NAME,
+                get_interface_name(fc.ValidOtherCapabilityBase)
+            ], True),
+            ([
+                fc.VALID_CAPABILITY_NAME,
+                get_flavor_name(fc.ValidOtherCapabilityBase)
+            ], True),
+            ([
+                get_flavor_name(fc.ValidOtherCapabilityBase),
+                fc.VALID_CAPABILITY_NAME
+            ], True),
             (set([
                 fc.VALID_CAPABILITY_NAME, fc.OTHER_VALID_CAPABILITY_NAME,
                 fc.PARENT_CAPABILITY_NAME
@@ -797,9 +801,10 @@ class GazooDeviceCapabilityTests(fake_device_test_case.FakeDeviceTestCase):
         ],
         fc.DeviceNonConformingNameFlavor: [
             ((get_flavor_name(fc.NonConformingInterfaceNameFlavor),), True),
-            ([get_interface_name(
-                fc.NonConformingCapabilityInterfaceNameWithOverride)],
-             True), (set([fc.NONCONFORMING_CAPABILITY_NAME]), True)
+            ([
+                get_interface_name(
+                    fc.NonConformingCapabilityInterfaceNameWithOverride)
+            ], True), (set([fc.NONCONFORMING_CAPABILITY_NAME]), True)
         ]
     }
 
@@ -811,6 +816,27 @@ class GazooDeviceCapabilityTests(fake_device_test_case.FakeDeviceTestCase):
             "Expected {}.has_capabilities({}) to return {}, found {}".format(
                 device_class, capability_names, expected_return_value,
                 actual_return_value))
+
+  @parameterized.named_parameters(("str", str), ("repr", repr))
+  def test_str_handle_no_props(self, test_func):
+    """Tests that __str__ and __repr__ handle missing props attribute."""
+    with mock.patch.object(
+        gazoo_device_base.GazooDeviceBase,
+        "name",
+        new_callable=mock.PropertyMock) as mock_name:
+      mock_name.side_effect = AttributeError
+      self.assertNotIn(
+          "devicestub-1234", test_func(self.uut),
+          f"GazooDeviceBase.__{test_func.__name__}__ does not have correct "
+          "format")
+
+  @parameterized.named_parameters(("str", str), ("repr", repr))
+  def test_str_format(self, test_func):
+    """Tests that __str__ and __repr__ have correct format."""
+    self.assertIn(
+        "<devicestub-1234", test_func(self.uut),
+        f"GazooDeviceBase.__{test_func.__name__}__ does not have correct "
+        "format")
 
 
 if __name__ == "__main__":

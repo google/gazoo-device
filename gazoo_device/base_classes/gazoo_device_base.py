@@ -1030,6 +1030,17 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     if hasattr(self, "close"):
       self.close()
 
+  def __str__(self):
+    class_string = f"{self.__module__}.{type(self).__name__}"
+    try:
+      string = f"<{self.name} controller {class_string} at {hex(id(self))}>"
+    except (AttributeError, KeyError):
+      string = f"<{class_string} at {hex(id(self))}>"
+    return string
+
+  def __repr__(self):
+    return str(self)
+
 
 deprecation_utils.add_deprecated_attributes(
     GazooDeviceBase,

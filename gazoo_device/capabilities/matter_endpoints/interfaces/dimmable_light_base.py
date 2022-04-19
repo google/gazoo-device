@@ -20,6 +20,8 @@ from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 class DimmableLightBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Dimmable light endpoint interface."""
 
+  DEVICE_TYPE_ID = 0x0101
+
   @property
   @abc.abstractmethod
   def on_off(self):

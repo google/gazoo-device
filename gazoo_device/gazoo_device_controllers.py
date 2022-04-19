@@ -87,11 +87,9 @@ from gazoo_device.capabilities.matter_endpoints.interfaces import color_temperat
 from gazoo_device.capabilities.matter_endpoints.interfaces import dimmable_light_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import door_lock_base as door_lock_endpoint_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import on_off_light_base
-from gazoo_device.primary_devices import efr32_matter_lighting
-from gazoo_device.primary_devices import efr32_matter_locking
-from gazoo_device.primary_devices import esp32_matter_allclusters
-from gazoo_device.primary_devices import esp32_matter_locking
-from gazoo_device.primary_devices import nrf_matter_lighting
+from gazoo_device.primary_devices import efr32_matter
+from gazoo_device.primary_devices import esp32_matter
+from gazoo_device.primary_devices import nrf_matter
 from gazoo_device.switchboard import communication_types
 from gazoo_device.switchboard import switchboard
 
@@ -127,11 +125,9 @@ def export_extensions() -> Dict[str, Any]:
   """Exports built-in device controllers, capabilities, communication types."""
   return {
       "primary_devices": [
-          esp32_matter_allclusters.Esp32MatterAllclusters,
-          esp32_matter_locking.Esp32MatterLocking,
-          efr32_matter_lighting.Efr32MatterLighting,
-          efr32_matter_locking.Efr32MatterLocking,
-          nrf_matter_lighting.NrfMatterLighting,
+          esp32_matter.Esp32Matter,
+          efr32_matter.Efr32Matter,
+          nrf_matter.NrfMatter,
       ],
       "auxiliary_devices": [
           cambrionix.Cambrionix,

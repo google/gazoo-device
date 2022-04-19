@@ -87,7 +87,7 @@ TIMEOUTS = {"SHELL": 10, "SHUTDOWN": 60, "ONLINE": 120}
 class UnifiPoeSwitch(auxiliary_device.AuxiliaryDevice):
   """Device class for a Ubiquiti UniFi PoE Switch."""
   COMMUNICATION_TYPE = "SshComms"
-  DETECT_MATCH_CRITERIA = {detect_criteria.SshQuery.is_unifi: True}
+  DETECT_MATCH_CRITERIA = {detect_criteria.SshQuery.IS_UNIFI: True}
   DEVICE_TYPE = "unifi_switch"
   _COMMUNICATION_KWARGS = {
       "log_cmd": COMMANDS["LOGGING"],

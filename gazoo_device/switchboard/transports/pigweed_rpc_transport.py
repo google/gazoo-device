@@ -18,7 +18,7 @@ import importlib
 import queue
 import select
 import threading
-from typing import Any, Collection, Dict, Optional, Tuple
+from typing import Any, Collection, Optional, Tuple
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.switchboard.transports import transport_base
@@ -272,7 +272,7 @@ class PigweedRPCTransport(transport_base.TransportBase):
       bytes read from transport or None if no bytes were read
     """
     # Retrieving logs from queue doesn't support size configuration.
-    del size
+    del size  # not used
     try:
       return self._hdlc_client.log_queue.get(timeout=timeout)
     except queue.Empty:
@@ -288,14 +288,16 @@ class PigweedRPCTransport(transport_base.TransportBase):
       timeout: Not used.
 
     Returns:
-      int: Not used.
+      Always returns 0.
     """
+    del data  # not used
+    del timeout  # not used
     return 0
 
   def rpc(self,
           service_name: str,
           event_name: str,
-          **kwargs: Dict[str, Any]) -> Tuple[bool, bytes]:
+          **kwargs: Any) -> Tuple[bool, bytes]:
     """RPC call to the Matter endpoint with given service and event name.
 
     Args:

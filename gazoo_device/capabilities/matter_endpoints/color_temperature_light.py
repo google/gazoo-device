@@ -22,8 +22,6 @@ A Color Temperature light endpoint houses an instance of Color Temperature Light
 Matter device type with the following required clusters on this endpoint:
 Scenes, OnOff, Level, Color Control and Groups.
 """
-from typing import Any, Callable
-
 from gazoo_device import decorators
 from gazoo_device.capabilities.matter_clusters import color_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import level_control_pw_rpc
@@ -35,23 +33,8 @@ class ColorTemperatureLightEndpoint(
     color_temperature_light_base.ColorTemperatureLightBase):
   """Matter Color Temperature light endpoint."""
 
-  def __init__(self,
-               device_name: str,
-               switchboard_call: Callable[..., Any],
-               rpc_timeout_s: int):
-    """Initializes Matter Color Temperature light endpoint instance.
-
-    Args:
-      device_name: Device name used for logging.
-      switchboard_call: The switchboard.call method.
-      rpc_timeout_s: Timeout (s) for RPC call.
-    """
-    super().__init__(device_name=device_name)
-    self._switchboard_call = switchboard_call
-    self._rpc_timeout_s = rpc_timeout_s
-
   @decorators.CapabilityDecorator(on_off_pw_rpc.OnOffClusterPwRpc)
-  def on_off(self):
+  def on_off(self) -> on_off_pw_rpc.OnOffClusterPwRpc:
     """Matter OnOff cluster instance."""
     return self.cluster_lazy_init(
         on_off_pw_rpc.OnOffClusterPwRpc,
@@ -60,7 +43,7 @@ class ColorTemperatureLightEndpoint(
         rpc_timeout_s=self._rpc_timeout_s)
 
   @decorators.CapabilityDecorator(level_control_pw_rpc.LevelControlClusterPwRpc)
-  def level(self):
+  def level(self) -> level_control_pw_rpc.LevelControlClusterPwRpc:
     """Matter Level Control cluster instance."""
     return self.cluster_lazy_init(
         level_control_pw_rpc.LevelControlClusterPwRpc,
@@ -69,7 +52,7 @@ class ColorTemperatureLightEndpoint(
         rpc_timeout_s=self._rpc_timeout_s)
 
   @decorators.CapabilityDecorator(color_control_pw_rpc.ColorControlClusterPwRpc)
-  def color(self):
+  def color(self) -> color_control_pw_rpc.ColorControlClusterPwRpc:
     """Matter Color Control cluster instance."""
     return self.cluster_lazy_init(
         color_control_pw_rpc.ColorControlClusterPwRpc,

@@ -96,7 +96,10 @@ class FunctionalTestSuiteAndConfigUnitTests(configs_test.ConfigsBaseTest):
     summary_file = os.path.join(OUTPUT_DIRECTORY, "summary.yaml")
     fake_config.summary_writer = records.TestSummaryWriter(summary_file)
     test = FakeTest(fake_config)
-    test.run()
+
+    with mock.patch.object(suite_filter.mobly_base, "open"):
+      with mock.patch.object(suite_filter.mobly_base.yaml, "safe_load_all"):
+        test.run()
     self.assertTrue(test.results.skipped, "test_do_not_run should be skipped")
     self.assertEqual(
         test.results.skipped[0].test_name, "test_do_not_run",
@@ -189,13 +192,13 @@ class FunctionalTestSuiteAndConfigUnitTests(configs_test.ConfigsBaseTest):
             "A.test_volatile", "B.test_volatile_and_slow"
         ]
     }
-    with flagsaver.flagsaver(run_type=run_flag):
-      suite_filter.FLAGS.run_type = run_flag
+    with flagsaver.flagsaver((suite_filter._FLAG_RUN_TYPE, run_flag)):
       skip_reason = suite_filter._get_skip_reason(test_name, test_config)
       if skip:
         self.assertTrue(
             skip_reason,
-            "Flag is %s and supposed to be true" % suite_filter.FLAGS.run_type)
+            (f"Flag is {suite_filter._FLAG_RUN_TYPE.value} and skip_reason "
+             "should not be empty"))
       else:
         self.assertFalse(skip_reason)
 

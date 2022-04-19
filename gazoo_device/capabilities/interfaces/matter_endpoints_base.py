@@ -14,9 +14,11 @@
 
 """Interface for Matter endpoint capability wrapper."""
 import abc
-from typing import Dict
+from typing import Mapping, Type
 from gazoo_device.capabilities.interfaces import capability_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
+
+ROOT_NODE_ENDPOINT_ID = 0
 
 
 class MatterEndpointsBase(capability_base.CapabilityBase):
@@ -27,5 +29,5 @@ class MatterEndpointsBase(capability_base.CapabilityBase):
     """Gets the specific endpoint instance by endpoint ID."""
 
   @abc.abstractmethod
-  def list(self) -> Dict[int, endpoint_base.EndpointBase]:
+  def list(self) -> Mapping[int, Type[endpoint_base.EndpointBase]]:
     """Lists all supported endpoints."""

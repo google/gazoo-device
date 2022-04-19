@@ -29,8 +29,8 @@ class RaspberryPi(raspbian_device.RaspbianDevice):
       --reboot
   """
   DETECT_MATCH_CRITERIA = {
-      detect_criteria.SshQuery.is_rpi: True,
-      detect_criteria.SshQuery.is_chip_tool_present: False,
+      detect_criteria.SshQuery.IS_RPI: True,
+      detect_criteria.SshQuery.IS_CHIP_TOOL_PRESENT: False,
   }
   DEVICE_TYPE = "raspberrypi"
   _OWNER_EMAIL = "gdm-authors@google.com"

@@ -12,29 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for device class Efr32MatterLocking."""
-from gazoo_device.primary_devices import efr32_matter_locking
+"""Unit tests for device class NrfMatter."""
+from gazoo_device.primary_devices import nrf_matter
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
-_FAKE_DEVICE_ID = "efr32matterlocking-1234"
+_FAKE_DEVICE_ID = "nrfmatter-1234"
 _FAKE_DEVICE_ADDRESS = "fake-device-address"
 
 
-class Efr32MatterLockingTests(fake_device_test_case.FakeDeviceTestCase):
-  """Unit tests for device class Efr32MatterLocking."""
+class NrfMatterTests(fake_device_test_case.FakeDeviceTestCase):
+  """Unit tests for device class NrfMatter."""
 
   def setUp(self):
     super().setUp()
     self.setup_fake_device_requirements(_FAKE_DEVICE_ID)
     self.device_config["persistent"]["console_port_name"] = _FAKE_DEVICE_ADDRESS
-    self.uut = efr32_matter_locking.Efr32MatterLocking(
+    self.uut = nrf_matter.NrfMatter(
         self.mock_manager,
         self.device_config,
         log_directory=self.artifacts_directory)
 
-  def test_door_lock_endpoint(self):
-    """Verifies the initialization of door_lock endpoint."""
-    self.assertIsNotNone(self.uut.door_lock)
+  def test_os_attribute(self):
+    """Verifies the os attribute."""
+    self.assertEqual("Zephyr RTOS", self.uut.os)
+
+  def test_platform_attribute(self):
+    """Verfies the platform attribute."""
+    self.assertEqual("nRF Connect", self.uut.platform)
+
+  def test_flash_build_capability(self):
+    """Verifies the initialization of flash_build capability."""
+    self.assertIsNotNone(self.uut.flash_build)
 
 
 if __name__ == "__main__":

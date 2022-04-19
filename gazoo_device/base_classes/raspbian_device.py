@@ -141,6 +141,11 @@ class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
         self.regexes["FIRMWARE_VERSION_REGEX"],
         raise_error=True)
 
+  @decorators.PersistentProperty
+  def platform(self) -> str:
+    """Returns the platform type of the device."""
+    return "Raspbian"
+
   def get_console_configuration(self) -> console_config.ConsoleConfiguration:
     """Returns the interactive console configuration."""
     return console_config.get_log_response_separate_port_configuration(

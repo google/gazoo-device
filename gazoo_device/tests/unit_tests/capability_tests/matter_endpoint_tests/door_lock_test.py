@@ -18,6 +18,7 @@ from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
 _FAKE_DEVICE_NAME = "fake-device-name"
+FAKE_ENDPOINT_ID = 1
 _FAKE_RPC_TIMEOUT_S = 10
 
 
@@ -28,6 +29,8 @@ class DoorLockEndpointTest(fake_device_test_case.FakeDeviceTestCase):
     super().setUp()
     self.uut = door_lock.DoorLockEndpoint(
         device_name=_FAKE_DEVICE_NAME,
+        identifier=FAKE_ENDPOINT_ID,
+        supported_clusters=set(),
         switchboard_call=None,
         rpc_timeout_s=_FAKE_RPC_TIMEOUT_S)
 

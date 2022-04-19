@@ -484,8 +484,6 @@ class Manager:
     if not log_path:
       log_path = self.create_log_path(device_name)
 
-    logger.info("{} logging to file {}", device_name, log_path)
-
     comm_type_class = extensions.communication_types[communication_type]
 
     method_args = []

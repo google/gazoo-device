@@ -609,3 +609,8 @@ class CapabilityNotReadyError(CheckDeviceReadyError):
 class DependencyUnavailableError(DeviceError):
   """Exception raised when a dependency is not available."""
   err_code = 67
+
+
+class SshServerNotRunningError(CheckDeviceReadyError):
+  """Raised when a SSH server is not running."""
+  err_code = 68

@@ -23,6 +23,8 @@ package chip.rpc;
 message PairingInfo {
   uint32 code = 1;
   uint32 discriminator = 2;
+  string qr_code = 3;
+  string qr_code_url = 4;
 }
 
 // type lengths defined in chip spec 8.2.3.1
@@ -44,6 +46,10 @@ message DeviceState {
   repeated FabricInfo fabric_info = 2;
 }
 
+message PairingState {
+  bool pairing_enabled = 1;
+}
+
 service Device {
   // To factory reset the device.
   rpc FactoryReset(pw.protobuf.Empty) returns (pw.protobuf.Empty){}
@@ -60,6 +66,12 @@ service Device {
   // To get the device current state.
   rpc GetDeviceState(pw.protobuf.Empty) returns (DeviceState){}
 
-  // To set the device's pairing information.
+  // To set the device's pairing state.
+  rpc SetPairingState(PairingState) returns (pw.protobuf.Empty){}
+
+  // To get the device's pairing state.
+  rpc GetPairingState(pw.protobuf.Empty) returns (PairingState){}
+
+  // To set the device's pairing info.
   rpc SetPairingInfo(PairingInfo) returns (pw.protobuf.Empty){}
 }

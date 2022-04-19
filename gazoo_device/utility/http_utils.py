@@ -116,7 +116,7 @@ def send_http_get(url,
       url (str): HTTP URL to which HTTP GET request needs to be sent
       auth (auth.AuthBase): HTTP authentication object (i.e. HTTPDigestAuth)
       params (dict): Parameters to send as a query string.
-      data (dict): Data that is needed for this HTTP GET Request
+      data (Any): Data that is needed for this HTTP GET Request
       headers (dict): Headers that is needed for this HTTP GET Request
       ssl_version (int): SSL version to be used for secure http (https)
         requests. For example, ssl.PROTOCOL_TLSv1_2.
@@ -137,10 +137,6 @@ def send_http_get(url,
   """
   valid_return_codes = valid_return_codes or [200]
 
-  if data and not isinstance(data, dict):
-    raise TypeError("Expecting a dict value data param but received: {}".format(
-        type(data)))
-
   if headers and not isinstance(headers, dict):
     raise TypeError(
         "Expecting a dict value in headers param but received: {}".format(
@@ -149,7 +145,7 @@ def send_http_get(url,
     session = requests.Session()
     if ssl_version:
       session.mount("https://", SSLAdapter(ssl_version))
-    if data:
+    if data and isinstance(data, dict):
       data = json.dumps(data)
 
     for attempt in range(tries):

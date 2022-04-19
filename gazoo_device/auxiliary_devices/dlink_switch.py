@@ -29,7 +29,7 @@ logger = gdm_logger.get_logger()
 class DLinkSwitch(auxiliary_device.AuxiliaryDevice):
   """Device class for a D-Link Switch."""
   COMMUNICATION_TYPE = "SnmpComms"
-  DETECT_MATCH_CRITERIA = {detect_criteria.SnmpQuery.is_dlink: True}
+  DETECT_MATCH_CRITERIA = {detect_criteria.SnmpQuery.IS_DLINK: True}
   DEVICE_TYPE = "dlink_switch"
   _OWNER_EMAIL = "gdm-authors@google.com"
 

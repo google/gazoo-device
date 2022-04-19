@@ -15,7 +15,6 @@
 """nRF52840 platform device class."""
 from gazoo_device import detect_criteria
 from gazoo_device.base_classes import nrf_connect_sdk_device
-from gazoo_device.utility import pwrpc_utils
 
 
 class NRF52840(nrf_connect_sdk_device.NRFConnectSDKDevice):
@@ -26,10 +25,9 @@ class NRF52840(nrf_connect_sdk_device.NRFConnectSDKDevice):
   https://github.com/project-chip/connectedhomeip/blob/master/docs/guides/nrfconnect_platform_overview.md
   """
   DETECT_MATCH_CRITERIA = {
-      detect_criteria.PigweedQuery.product_name: "j-link",
-      detect_criteria.PigweedQuery.manufacturer_name: "segger",
-      detect_criteria.PigweedQuery.app_type:
-          pwrpc_utils.PigweedAppType.NON_PIGWEED.value,
+      detect_criteria.PigweedQuery.IS_MATTER: False,
+      detect_criteria.PigweedQuery.MANUFACTURER_NAME: "segger",
+      detect_criteria.PigweedQuery.PRODUCT_NAME: "j-link",
   }
   DEVICE_TYPE = "nrf52840"
   _OWNER_EMAIL = "gdm-authors@google.com"

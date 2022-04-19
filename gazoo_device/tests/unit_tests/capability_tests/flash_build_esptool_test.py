@@ -18,6 +18,7 @@ from unittest import mock
 from esptool import esptool
 from gazoo_device import errors
 from gazoo_device.capabilities import flash_build_esptool
+from gazoo_device.capabilities import matter_endpoints_accessor
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
 _MOCK_DEVICE_NAME = 'MOCK_DEVICE'
@@ -92,7 +93,9 @@ class FlashBuildEsptoolCapabilityTests(fake_device_test_case.FakeDeviceTestCase
         chip_type=_MOCK_CHIP_NAME,
         serial_port=_MOCK_PORT,
         switchboard=self.mock_switchboard,
-        baud=_MOCK_BAUDRATE)
+        baud=_MOCK_BAUDRATE,
+        reset_endpoints_fn=mock.Mock(
+            spec=matter_endpoints_accessor.MatterEndpointsAccessor.reset))
 
   @mock.patch.object(
       flash_build_esptool.FlashBuildEsptool, '_verify_file', autospec=True)

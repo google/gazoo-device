@@ -455,14 +455,6 @@ class LogDecoratorSuite(unit_test_case.UnitTestCase):
     self.assertIn(start_msg, file_contents)
     self.assertRegex(file_contents, success_rx)
 
-  def test_invalid_wrap_type(self):
-    """Test invalid values for wrap_type parameter."""
-    invalid_types = [RuntimeError, Exception, str]
-
-    for invalid_type in invalid_types:
-      with self.assertRaisesRegex(TypeError, "Invalid wrap_type"):
-        decorators.LogDecorator(self.test_logger, wrap_type=invalid_type)
-
   def test_cannot_decorate_non_methods(self):
     """Tests than an error is raised if a non-method is decorated."""
     decorator = decorators.LogDecorator(self.test_logger)

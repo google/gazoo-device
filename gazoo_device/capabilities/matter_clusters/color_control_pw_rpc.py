@@ -14,8 +14,6 @@
 
 """Pigweed RPC implementation of the Matter Color Control cluster capability.
 """
-
-from typing import Any, Callable
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -30,21 +28,6 @@ logger = gdm_logger.get_logger()
 
 class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
   """Matter Color Control cluster capability."""
-
-  def __init__(self,
-               device_name: str,
-               switchboard_call: Callable[..., Any],
-               rpc_timeout_s: int):
-    """Initializes an instance of the Matter Color Control cluster capability.
-
-    Args:
-      device_name: Device name used for logging.
-      switchboard_call: The switchboard.call method.
-      rpc_timeout_s: Timeout (s) for RPC call.
-    """
-    super().__init__(device_name=device_name)
-    self._switchboard_call = switchboard_call
-    self._rpc_timeout_s = rpc_timeout_s
 
   @decorators.CapabilityLogDecorator(logger)
   def move_to_hue(self, hue: int, verify: bool = True) -> None:

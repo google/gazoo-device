@@ -64,7 +64,7 @@ REGEXES = {"COMMAND_RESPONSE": ["[", '"', "]"]}
 class DliPowerSwitch(auxiliary_device.AuxiliaryDevice):
   """Device class for a DLI Power Switch."""
   COMMUNICATION_TYPE = "SshComms"
-  DETECT_MATCH_CRITERIA = {detect_criteria.SshQuery.is_dli: True}
+  DETECT_MATCH_CRITERIA = {detect_criteria.SshQuery.IS_DLI: True}
   DEVICE_TYPE = "powerswitch"
   _MODEL = "LPC9"
   _NUMBER_OF_PORTS = 8

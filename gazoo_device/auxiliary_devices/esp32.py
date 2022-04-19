@@ -15,7 +15,6 @@
 """ESP32 dev board device class."""
 from gazoo_device import detect_criteria
 from gazoo_device.base_classes import espressif_esp32_device
-from gazoo_device.utility import pwrpc_utils
 
 
 class ESP32(espressif_esp32_device.EspressifESP32Device):
@@ -25,11 +24,10 @@ class ESP32(espressif_esp32_device.EspressifESP32Device):
   see more details in https://www.espressif.com/en/products/socs/esp32.
   """
   DETECT_MATCH_CRITERIA = {
-      detect_criteria.PigweedQuery.product_name:
+      detect_criteria.PigweedQuery.IS_MATTER: False,
+      detect_criteria.PigweedQuery.MANUFACTURER_NAME: r"silicon(_| )labs",
+      detect_criteria.PigweedQuery.PRODUCT_NAME:
           "cp2104 usb to uart bridge controller",
-      detect_criteria.PigweedQuery.manufacturer_name: r"silicon(_| )labs",
-      detect_criteria.PigweedQuery.app_type:
-          pwrpc_utils.PigweedAppType.NON_PIGWEED.value,
   }
   DEVICE_TYPE = "esp32"
   _OWNER_EMAIL = "gdm-authors@google.com"

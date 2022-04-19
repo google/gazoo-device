@@ -12,40 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for gazoo_device.utility.pwrpc_utils.py."""
+"""Unit tests for module gazoo_device.utility.pwrpc_utils."""
 from unittest import mock
 
 from absl.testing import parameterized
 from gazoo_device import errors
+from gazoo_device import switchboard
+from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.utility import pwrpc_utils
-
 
 _FAKE_ADDRESS = "fake-address"
 _FAKE_LOG_PATH = "fake-log-path"
-_FAKE_CALL_GOOD_RESPONSE = (True, None)
 _FAKE_DECODER_PATH = "fake_module.fake_class"
 _FAKE_BYTES = b"fake-bytes"
+_FAKE_ERROR_MESSAGE = "fake-message"
 
 
-def _fake_matter_app_response(matter_device_type, call_args):
-  """Fake Matter application responses."""
-  for method_args, _, app_type in pwrpc_utils._PIGWEED_APP_ENDPOINTS:
-    if matter_device_type == app_type and call_args == method_args:
-      return _FAKE_CALL_GOOD_RESPONSE
-  raise errors.DeviceError("error")
-
-
-def _create_fake_app_response(matter_device_type):
-  """Creates fake Matter application responses function."""
-  def _fake_response(method, method_args, method_kwargs):
-    del method  # unused
-    del method_kwargs  # unused
-    return _fake_matter_app_response(matter_device_type, method_args)
-  return _fake_response
-
-
-class PwRPCUtilsTests(parameterized.TestCase):
-  """Unit tests for gazoo_device.utility.pwrpc_utils.py."""
+class PwRpcUtilsTests(fake_device_test_case.FakeDeviceTestCase):
+  """Unit tests for module gazoo_device.utility.pwrpc_utils."""
 
   def setUp(self):
     super().setUp()
@@ -54,24 +38,6 @@ class PwRPCUtilsTests(parameterized.TestCase):
     self.proto_state = pwrpc_utils.PigweedProtoState(
         proto_inst=fake_inst,
         decoder_path=_FAKE_DECODER_PATH)
-
-  @parameterized.named_parameters(
-      ("lighting_app", pwrpc_utils.PigweedAppType.LIGHTING),
-      ("locking_app", pwrpc_utils.PigweedAppType.LOCKING),
-      ("non-matter-app", pwrpc_utils.PigweedAppType.NON_PIGWEED))
-  def test_get_application_type_for_various_apps(self, app):
-    """Verifies get_application_type for various apps."""
-    mock_create_switchboard = mock.Mock()
-    fake_app_response = _create_fake_app_response(app)
-    mock_create_switchboard.return_value.call = (
-        mock.MagicMock(side_effect=fake_app_response))
-
-    app_type = pwrpc_utils.get_application_type(
-        address=_FAKE_ADDRESS,
-        log_path=_FAKE_LOG_PATH,
-        create_switchboard_func=mock_create_switchboard)
-
-    self.assertEqual(app.value, app_type)
 
   @mock.patch.object(pwrpc_utils.importlib, "import_module")
   def test_get_decoder(self, mock_import_module):
@@ -90,3 +56,29 @@ class PwRPCUtilsTests(parameterized.TestCase):
 
     self.assertIsNotNone(proto_inst)
     fake_decoder.assert_called_once_with(_FAKE_BYTES)
+
+  @parameterized.parameters(dict(ack=True), dict(ack=False), dict(ack=None))
+  def test_is_matter_device(self, ack):
+    """Verifies is_matter_device method."""
+    fake_switchboard_func = mock.Mock(
+        spec=switchboard.switchboard.SwitchboardDefault)
+    if ack is None:
+      fake_switchboard_func.return_value.call.side_effect = (
+          errors.DeviceError(_FAKE_ERROR_MESSAGE))
+      is_matter = False
+    else:
+      fake_switchboard_func.return_value.call.return_value = ack, None
+      is_matter = ack
+
+    self.assertEqual(is_matter,
+                     pwrpc_utils.is_matter_device(
+                         address=_FAKE_ADDRESS,
+                         log_path=_FAKE_LOG_PATH,
+                         create_switchboard_func=fake_switchboard_func,
+                         detect_logger=mock.Mock()))
+
+    fake_switchboard_func.return_value.close.assert_called_once()
+
+
+if __name__ == "__main__":
+  fake_device_test_case.main()

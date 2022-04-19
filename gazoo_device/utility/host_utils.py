@@ -13,6 +13,7 @@
 # limitations under the License.
 """Utility module for local host commands."""
 import glob
+import ipaddress
 import os
 import re
 import subprocess
@@ -494,6 +495,8 @@ def scp_to_device(ip_address: str,
   Returns:
       "scp" command output.
   """
+  if ipaddress.ip_address(ip_address).version == 6:  # If ip_address is Ipv6.
+    ip_address = "[" + ip_address + "]"
   remote_file_path = "{user}@{host}:{path}".format(
       user=user, host=ip_address, path=remote_file_path)
   return _scp(
@@ -522,6 +525,8 @@ def scp_from_device(ip_address: str,
   Returns:
       "scp" command output.
   """
+  if ipaddress.ip_address(ip_address).version == 6:  # If ip_address is Ipv6.
+    ip_address = "[" + ip_address + "]"
   remote_file_path = "{user}@{host}:{path}".format(
       user=user, host=ip_address, path=remote_file_path)
   return _scp(

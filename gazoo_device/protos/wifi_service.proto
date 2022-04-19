@@ -14,7 +14,7 @@
 //
 // RPC proto API for wifi capabilities, these roughly map to GDM's wifi
 // capabilities.
-// The source of truth of this proto can be found at https://github.com/project-chip/connectedhomeip/blob/master/examples/ipv6only-app/common/wifi_service/wifi_service.proto
+// The source of truth of this proto can be found at https://github.com/project-chip/connectedhomeip/blob/master/examples/common/pigweed/protos/wifi_service.proto
 syntax = "proto3";
 
 import "third_party/py/gazoo_device/protos/common.proto";
@@ -148,11 +148,11 @@ message ConnectionResult {
   CONNECTION_ERROR error = 1;
 }
 
-// The Wifi service provides the common RPC interface for interacting
+// The WiFi service provides the common RPC interface for interacting
 // with a WIFI capable CHIP device.
 // The current state can be retrieved using the various 'Get' RPCs.
 // A device can be connected to an AP using the StartScan, and Connect RPCs.
-service Wifi {
+service WiFi {
 
   //Gets the wifi channel used by SSID connection.
   rpc GetChannel(pw.protobuf.Empty) returns (Channel) {}
@@ -166,7 +166,7 @@ service Wifi {
   //Gets the mac address for the wifi interface.
   rpc GetMacAddress(pw.protobuf.Empty) returns (MacAddress) {}
 
-  //Gets the interface used fir wifi connection.
+  //Gets the interface used for wifi connection.
   rpc GetWiFiInterface(pw.protobuf.Empty) returns (WiFiInterface) {}
 
   //Gets the IPv4 address for wifi connection.

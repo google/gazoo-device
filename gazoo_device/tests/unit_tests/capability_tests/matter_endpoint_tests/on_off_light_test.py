@@ -27,6 +27,8 @@ class OnOffLightEndpointTest(
     super().setUp()
     self.uut = on_off_light.OnOffLightEndpoint(
         device_name=matter_endpoint_light_test.FAKE_DEVICE_NAME,
+        identifier=matter_endpoint_light_test.FAKE_ENDPOINT_ID,
+        supported_clusters=set(),
         switchboard_call=None,
         rpc_timeout_s=matter_endpoint_light_test.FAKE_RPC_TIMEOUT_S)
 

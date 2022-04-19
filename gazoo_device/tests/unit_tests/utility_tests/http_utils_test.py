@@ -210,6 +210,26 @@ class HTTPUtilsTests(unit_test_case.UnitTestCase):
         timeout=10,
         verify=False)
 
+  @mock.patch.object(requests.Session, "get")
+  def test_030_send_http_get_params_string_data(
+      self, mock_requests_get):
+    """Test executing an http get request with params and string data."""
+    test_url = "https://www.google.com"
+    test_params = {"key": ["List item 1"]}
+    test_data = "test"
+    mock_requests_get.return_value = requests.Response()
+    mock_requests_get.return_value.status_code = 200
+
+    http_utils.send_http_get(url=test_url, params=test_params, data=test_data)
+    mock_requests_get.assert_called_once_with(
+        test_url,
+        auth=None,
+        params=test_params,
+        data=test_data,
+        headers=None,
+        timeout=10,
+        verify=False)
+
   def test_30_send_http_get_retries_on_error(self):
     """Verify send_http_get retries on HTTP errors if # of attempts has not been exceeded."""
     http_err = http.client.RemoteDisconnected(

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Unit tests for device_power_default capability."""
 from unittest import mock
 
@@ -59,33 +58,52 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
         switchboard_inst=self.mock_switchboard,
         change_triggers_reboot=False)
 
-  def test_001_off(self):
+  def test_off(self):
     """Verifies device_power.off calls switch_power."""
     self.uut.off()
     self.uut._hub.switch_power.power_off.assert_called_once_with(self.port_num)
     self.mock_switchboard.close_all_transports.assert_called_once()
 
-  def test_002_power_on(self):
+  def test_power_on(self):
     """Verifies device_power.on calls switch_power."""
     self.uut.on()
     self.uut._hub.switch_power.power_on.assert_called_once_with(self.port_num)
     self.mock_switchboard.open_all_transports.assert_called_once()
     self.wait_for_connection_fn.assert_called_once()
 
-  def test_003_on_with_no_wait_true(self):
+  def test_power_on_unhealthy_switchboard(self):
+    """Verifies device_power.on doesn't call switchboard if it's not healthy."""
+    self.uut.health_check()
+    self.mock_switchboard.health_checked = False
+    self.uut._change_triggers_reboot = False
+    self.uut._wait_for_connection_fn = mock.MagicMock()
+    self.uut.on(no_wait=True)
+    self.uut._hub.switch_power.power_on.assert_called_once_with(self.port_num)
+    self.mock_switchboard.open_all_transports.assert_not_called()
+    self.uut._wait_for_connection_fn.assert_called_once()
+    self.wait_for_connection_fn.assert_not_called()
+
+  def test_power_off_noop(self):
+    """Verifies device_power.off doesn't do anything if state is already off."""
+    self.uut.health_check()
+    self.uut._hub.switch_power.get_mode.return_value = "off"
+    self.uut.off()
+    self.uut._hub.switch_power.power_off.assert_not_called()
+
+  def test_on_with_no_wait_true(self):
     """Verifies wait_for_boot_up_complete is skipped if no_wait is False."""
     self.uut.on(no_wait=True)
     self.uut._hub.switch_power.power_on.assert_called_once_with(self.port_num)
     self.wait_for_bootup_complete.assert_not_called()
 
-  def test_004_power_cycle(self):
+  def test_power_cycle(self):
     """Verifies device_power.power_cycle calls off and on methods."""
     self.uut.cycle()
     self.uut._hub.switch_power.power_off.assert_called_once()
     self.uut._hub.switch_power.power_on.assert_called_once()
     self.wait_for_bootup_complete.assert_called_once()
 
-  def test_005_off_change_triggers_reboot_true(self):
+  def test_off_change_triggers_reboot_true(self):
     """Verifies off calls switch_power and does not close transports."""
     self.uut._change_triggers_reboot = True
     self.uut.off()
@@ -93,7 +111,7 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     self.mock_switchboard.close_all_transports.assert_not_called()
     self.wait_for_bootup_complete.assert_called_once()
 
-  def test_006_power_on_change_trigger_reboot_true(self):
+  def test_power_on_change_trigger_reboot_true(self):
     """Verifies on calls switch_power and does not open transports."""
     self.uut._change_triggers_reboot = True
     self.uut.on()
@@ -101,7 +119,7 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     self.mock_switchboard.open_all_transports.assert_not_called()
     self.wait_for_bootup_complete.assert_called_once()
 
-  def test_007_missing_device_usb_hub_name_property(self):
+  def test_missing_device_usb_hub_name_property(self):
     """Verifies capability raises a error if device_usb_hub_name is not set."""
     err_msg = (f"{self.name} properties device_usb_hub_name are unset. "
                "If device is connected to cambrionix, set them")
@@ -119,7 +137,7 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     with self.assertRaisesRegex(errors.DeviceError, err_msg):
       self.uut.health_check()
 
-  def test_008_missing_manager(self):
+  def test_missing_manager(self):
     """Verifies capability raises a error if manager is not set."""
     err_msg = f"{self.name} failed to create cambrionix."
     self.mock_manager.create_device.side_effect = errors.DeviceError(

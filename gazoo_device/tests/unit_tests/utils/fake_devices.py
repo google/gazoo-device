@@ -53,9 +53,7 @@ _DEFAULT_NAME = "sshdevice-1234"
 
 class FakeSSHDevice(ssh_device.SshDevice):
   """Fake SSH device (primary device) for testing purposes."""
-  _DEFAULT_FILTERS = (
-      os.path.join(_FILTER_DIRECTORY, "basic.json"),
-  )
+  _DEFAULT_FILTERS = (os.path.join(_FILTER_DIRECTORY, "basic.json"),)
   DEVICE_TYPE = "sshdevice"
   _OWNER_EMAIL = "gdm-authors@google.com"
   DETECT_MATCH_CRITERIA = {}
@@ -130,9 +128,7 @@ class FakePtyDevice(FakeSSHDevice):
 
 class FakeGazooDeviceBase(gazoo_device_base.GazooDeviceBase):
   """A dummy valid concrete primary device class."""
-  _DEFAULT_FILTERS = (
-      os.path.join(_FILTER_DIRECTORY, "basic.json"),
-  )
+  _DEFAULT_FILTERS = (os.path.join(_FILTER_DIRECTORY, "basic.json"),)
 
   @classmethod
   def is_connected(cls, device_config):
@@ -233,6 +229,7 @@ def create_mock_switchboard(
 
   mock_switchboard = mock.MagicMock(spec=switchboard.SwitchboardDefault)
   mock_switchboard.healthy = True
+  mock_switchboard.health_checked = True
   mock_switchboard.device_name = name
   mock_switchboard.number_transports = 2
   mock_switchboard.send_and_expect.side_effect = responder.send_and_expect

@@ -24,7 +24,7 @@ class ColorTemperatureTestSuite(
     color_control_cluster_suite.ColorControlTestSuite,
     on_off_cluster_suite.OnOffClusterTestSuite,
     level_control_cluster_suite.LevelControlTestSuite):
-  """Tests for the color temperature light endpoint capability."""
+  """Tests for the color temperature light endpoint."""
 
   def setup_class(self) -> None:
     """Sets the endpoint instance."""
@@ -41,4 +41,5 @@ class ColorTemperatureTestSuite(
                        device_class: Type[gdm_test_base.DeviceType],
                        device_name: str) -> bool:
     """Determines if this test suite can run on the given device."""
-    return device_class.has_capabilities(["color_temperature_light"])
+    return gdm_test_base.whether_implements_matter_endpoint(
+        device_class, device_name, "color_temperature_light")

@@ -58,19 +58,19 @@ class RunType(enum.Enum):
   VOLATILE = "volatile"
 
 
-FLAGS = flags.FLAGS
-flags.DEFINE_string(
+_FLAG_RUN_TYPE = flags.DEFINE_enum(
     name="run_type",
     default=RunType.FULL.value,
+    enum_values=[member.value for member in RunType],
     help="Used to determine subset of tests to run in the suite.")
 
-flags.DEFINE_list(
+_FLAG_FILES = flags.DEFINE_list(
     name="files",
     default=None,
     help="Names of functional test suite files to run. Order is preserved.",
     short_name="f")
 
-flags.DEFINE_list(
+_FLAG_TESTS = flags.DEFINE_list(
     name="tests", default=None, help="Names of individual tests to run.")
 _TEST_CONFIG_TEMPLATE = "{device_type}_test_config.json"
 _TEST_RETRY_INTERVAL = 30
@@ -140,6 +140,9 @@ class SuiteFilterBase(base_test.BaseTestClass, metaclass=abc.ABCMeta):
     """Returns the full test_name."""
     return type(self).__name__ + "." + self.current_test_info.name
 
+  def get_manager(self) -> gazoo_device.Manager:
+    """Returns an instance of manager."""
+    return gazoo_device.get_manager()
   def setup_class(self) -> None:
     """Loads device-specific configs for testing."""
     super().setup_class()
@@ -207,17 +210,17 @@ def identify_tests_to_run(
   Returns:
     dictionary of suites, suite's test_list used as input to mobly_suites.
   """
-  if FLAGS.files:
+  if _FLAG_FILES.value:
     test_suites = _get_test_suites_from_files_flag(all_test_suites)
   else:
     test_suites = _get_all_supported_test_suites(all_test_suites, device_name)
     if reorder_test_suites:
       test_suites = reorder_test_suites(test_suites)
 
-  if FLAGS.tests:
+  if _FLAG_TESTS.value:
     test_suite_dict = _get_test_suite_dict_from_tests_flag(test_suites)
     logging.info("Running selected tests in the following order:")
-    for test_name in FLAGS.tests:
+    for test_name in _FLAG_TESTS.value:
       logging.info("\t%s", test_name)
   else:
     logging.info("Running all applicable test suites in the following order:")
@@ -261,13 +264,13 @@ def _get_skip_reason(test_name: str,
   """Returns skip reason if test_name is not applicable to current run."""
   if test_name in test_config[TestLabel.DO_NOT_RUN.value]:
     return "Excluding do_not_run_tests from testing"
-  elif FLAGS.run_type == RunType.PRESUBMIT:
+  elif _FLAG_RUN_TYPE.value == RunType.PRESUBMIT:
     if test_name in test_config[TestLabel.SLOW.value]:
       return "Excluding slow tests from presubmit testing"
-  elif FLAGS.run_type == RunType.STABLE:
+  elif _FLAG_RUN_TYPE.value == RunType.STABLE:
     if test_name in test_config[TestLabel.VOLATILE.value]:
       return "Excluding volatile tests from stable testing"
-  elif FLAGS.run_type == RunType.VOLATILE:
+  elif _FLAG_RUN_TYPE.value == RunType.VOLATILE:
     if test_name not in test_config[TestLabel.VOLATILE.value]:
       return "Excluding non-volatile tests from volatile testing"
   return ""
@@ -305,7 +308,7 @@ def _get_test_suites_from_files_flag(
   """Returns a list of all test suites present in those files."""
   # Strip .py file extensions if present.
   requested_module_names = [
-      name[:-3] if name.endswith(".py") else name for name in FLAGS.files
+      name[:-3] if name.endswith(".py") else name for name in _FLAG_FILES.value
   ]
   module_name_to_test_suites = collections.OrderedDict()
   for suite in all_test_suites:
@@ -333,7 +336,7 @@ def _get_test_suite_dict_from_tests_flag(
   suites_by_name = {
       test_suite.__name__: test_suite for test_suite in test_suites
   }
-  for requested_test in FLAGS.tests:
+  for requested_test in _FLAG_TESTS.value:
     suite_name, _, test_name = requested_test.partition(".")
 
     if suite_name not in suites_by_name:

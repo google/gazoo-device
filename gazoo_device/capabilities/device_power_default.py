@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Device Power Default Capability."""
 
 import time
@@ -24,7 +23,6 @@ from gazoo_device.capabilities.interfaces import device_power_base
 from gazoo_device.utility import deprecation_utils
 import immutabledict
 
-
 logger = gdm_logger.get_logger()
 
 _HUB_TYPE_PROPERTY = "device_power_hub_type"
@@ -33,7 +31,9 @@ _HUB_TYPE_POWERSWITCH = "powerswitch"
 _HUB_TYPE_UNIFI_SWITCH = "unifi_switch"
 
 SUPPORTED_HUB_TYPES = (
-    _HUB_TYPE_CAMBRIONIX, _HUB_TYPE_POWERSWITCH, _HUB_TYPE_UNIFI_SWITCH,
+    _HUB_TYPE_CAMBRIONIX,
+    _HUB_TYPE_POWERSWITCH,
+    _HUB_TYPE_UNIFI_SWITCH,
 )
 
 _HUB_TYPE_PROPS = immutabledict.immutabledict({
@@ -46,19 +46,20 @@ _HUB_TYPE_PROPS = immutabledict.immutabledict({
 class DevicePowerDefault(device_power_base.DevicePowerBase):
   """Base class for device_power."""
 
-  def __init__(self,
-               device_name: str,
-               create_device_func: Callable[..., Any],
-               default_hub_type: str,
-               props: Dict[str, Any],
-               usb_ports_discovered: bool,
-               wait_for_bootup_complete_fn: Callable[[], None],
-               switchboard_inst: Any,
-               change_triggers_reboot: bool = False,
-               usb_hub_name_prop: str = "device_usb_hub_name",
-               usb_port_prop: str = "device_usb_port",
-               wait_for_connection_fn: Optional[Callable[[], None]] = None,
-               ):
+  def __init__(
+      self,
+      device_name: str,
+      create_device_func: Callable[..., Any],
+      default_hub_type: str,
+      props: Dict[str, Any],
+      usb_ports_discovered: bool,
+      wait_for_bootup_complete_fn: Callable[[], None],
+      switchboard_inst: Any,
+      change_triggers_reboot: bool = False,
+      usb_hub_name_prop: str = "device_usb_hub_name",
+      usb_port_prop: str = "device_usb_port",
+      wait_for_connection_fn: Optional[Callable[[], None]] = None,
+  ):
     """Create an instance of the device_power capability.
 
     The power switch type can be changed by setting the 'device_power_hub_type'
@@ -81,11 +82,11 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
       default_hub_type: Type of switch for power cycling.
       props: Dictionary of device props from configuration file.
       usb_ports_discovered: True if the USB ports are discovered by gdm detect.
-      wait_for_bootup_complete_fn: A method that the capability can
-        call to wait for a reboot to complete if triggered by a change.
+      wait_for_bootup_complete_fn: A method that the capability can call to wait
+        for a reboot to complete if triggered by a change.
       switchboard_inst: Instance of switchboard capability
-      change_triggers_reboot: Set change_triggers_reboot to TRUE if
-        changing the power mode for the device causes a reboot.
+      change_triggers_reboot: Set change_triggers_reboot to TRUE if changing the
+        power mode for the device causes a reboot.
       usb_hub_name_prop: Name of the hub name property.
       usb_port_prop: Name of the hub port property.
       wait_for_connection_fn: a method to wait for the device to become
@@ -204,6 +205,10 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
     """
     if not self.healthy:
       self.health_check()
+    # No-op if port is already off.
+    status = self._hub.switch_power.get_mode(self.port_number)
+    if status == "off":
+      return
     if self._change_triggers_reboot:
       self._switchboard.add_log_note(
           f"GDM triggered reboot via {self.hub_type} power change.")
@@ -218,21 +223,32 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
   def on(self, no_wait=False):
     """Turn on power to the device.
 
+    If Switchboard hasn't been initialized then transports won't be opened
+    and GDM triggered reboot won't be logged to avoid initializing the
+    switchboard. Note that if no_wait=False then Switchboard will be initialized
+    at the end.
+
     Args:
         no_wait (bool):  Return before verifying boot up.
     """
     if not self.healthy:
       self.health_check()
+    # No-op if port is already on.
+    status = self._hub.switch_power.get_mode(self.port_number)
+    if status in ["sync", "charge", "on"]:
+      return
     if self._change_triggers_reboot:
-      self._switchboard.add_log_note(
-          f"GDM triggered reboot via {self.hub_type} power change.")
+      if self._switchboard.health_checked:
+        self._switchboard.add_log_note(
+            f"GDM triggered reboot via {self.hub_type} power change.")
     self._hub.switch_power.power_on(self.port_number)
     if not self._change_triggers_reboot:
       if self._wait_for_connection_fn is not None:
         self._wait_for_connection_fn()
       else:
         time.sleep(2)  # Small delay to give time for 'dev/tty' to populate
-      self._switchboard.open_all_transports()
+      if self._switchboard.health_checked:
+        self._switchboard.open_all_transports()
 
     if not no_wait:
       self._wait_for_bootup_complete_fn()

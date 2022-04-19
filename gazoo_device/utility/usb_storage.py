@@ -46,6 +46,9 @@ from gazoo_device.utility import usb_utils
 logger = gdm_logger.get_logger()
 
 
+_path_exists = os.path.exists  # Mocked in tests
+
+
 def _validate_suid_bit(cmd_str):
   if sys.platform == "darwin":
     return
@@ -163,7 +166,7 @@ class UsbStorage(object):
     else:
       dst_file_path = mount_point
 
-    if not os.path.exists(dst_file_path):
+    if not _path_exists(dst_file_path):
       logger.debug("Creating destination path %s", dst_file_path)
       os.makedirs(dst_file_path)
 
@@ -173,7 +176,7 @@ class UsbStorage(object):
     logger.debug(msg)
     self.add_log_note(msg)
     shutil.copyfile(source_file_path, dst_file_path)
-    if not os.path.exists(dst_file_path):
+    if not _path_exists(dst_file_path):
       raise errors.DeviceError(
           "Device copy file failed. "
           "File does not exist at destination {}"
@@ -349,7 +352,7 @@ class UsbStorage(object):
 
     source_file_path = os.path.join(self.mount_point, relative_source_file_path)
 
-    if not os.path.exists(source_file_path):
+    if not _path_exists(source_file_path):
       raise errors.DeviceError(
           "Device copy file failed. "
           "Source file {} doesn't exist. ".format(source_file_path))
@@ -363,7 +366,7 @@ class UsbStorage(object):
       logger.debug("Removing %s", source_file_path)
       os.remove(source_file_path)
 
-    if not os.path.exists(destination):
+    if not _path_exists(destination):
       raise errors.DeviceError(
           "Device copy file failed. "
           "Destination {} does not exist. "

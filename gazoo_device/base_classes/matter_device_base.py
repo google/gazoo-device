@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Matter device base class for EFR32 Silabs platform."""
+"""Matter device base class for all vendor platforms."""
 import os
-from typing import Dict, NoReturn, Optional, Tuple
+from typing import Callable, Dict, List, NoReturn, Optional, Tuple
 
 from gazoo_device import console_config
 from gazoo_device import custom_types
@@ -22,31 +22,44 @@ from gazoo_device import decorators
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.capabilities import device_power_default
-from gazoo_device.capabilities import flash_build_jlink
 from gazoo_device.capabilities import matter_endpoints_accessor
+from gazoo_device.capabilities import pwrpc_button_default
 from gazoo_device.capabilities import pwrpc_common_default
+from gazoo_device.capabilities.matter_endpoints import color_temperature_light
+from gazoo_device.capabilities.matter_endpoints import dimmable_light
+from gazoo_device.capabilities.matter_endpoints import door_lock
+from gazoo_device.capabilities.matter_endpoints import on_off_light
+from gazoo_device.protos import button_service_pb2
+from gazoo_device.protos import descriptor_service_pb2
 from gazoo_device.protos import device_service_pb2
+from gazoo_device.protos import lighting_service_pb2
+from gazoo_device.protos import locking_service_pb2
+from gazoo_device.protos import wifi_service_pb2
 from gazoo_device.utility import usb_utils
 
 
 logger = gdm_logger.get_logger()
 BAUDRATE = 115200
-_RPC_TIMEOUT = 10  # seconds
-_EFR32_RPC_TIMEOUT = 5  # seconds
-_EFR32_JLINK_NAME = "EFR32MG12PXXXF1024"
+_RPC_TIMEOUT = 5  # seconds
 _DEFAULT_BOOTUP_TIMEOUT_SECONDS = 30
 _CONNECTION_TIMEOUT_SECONDS = 10
 _REBOOT_METHODS = ("pw_rpc", "soft", "hard")
 
 
-class Efr32MatterDevice(gazoo_device_base.GazooDeviceBase):
-  """Matter device base class for EFR32 platform.
-
-  EFR32 Matter devices run on FreeRTOS with Matter functionality.
-  """
+class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
+  """Matter device base class."""
   COMMUNICATION_TYPE = "PigweedSerialComms"
-  _COMMUNICATION_KWARGS = {
-      "protobufs": (device_service_pb2,), "baudrate": BAUDRATE}
+  _OWNER_EMAIL = "gdm-authors@google.com"
+  _COMMUNICATION_KWARGS = {"protobufs": (button_service_pb2,
+                                         lighting_service_pb2,
+                                         locking_service_pb2,
+                                         descriptor_service_pb2,
+                                         device_service_pb2,
+                                         wifi_service_pb2),
+                           "baudrate": BAUDRATE}
+  # Should be overridden in the derived platform classes which support button
+  # RPCs.
+  VALID_BUTTON_IDS = ()
 
   def __init__(self,
                manager,
@@ -81,19 +94,27 @@ class Efr32MatterDevice(gazoo_device_base.GazooDeviceBase):
         usb_utils.get_usb_hub_info(self.communication_address))
     return persistent_dict, {}
 
+  @decorators.PersistentProperty
+  def health_checks(self) -> List[Callable[[], None]]:
+    """Returns list of methods to execute as health checks."""
+    return [
+        self.check_power_cycling_ready,
+        self.check_power_on,
+        self.check_device_connected,
+        self.check_create_switchboard,
+    ]
+
+  @decorators.health_check
+  def check_power_on(self) -> None:
+    """Checks that the power is on."""
+    if self.device_power.healthy:
+      self.device_power.on()
+
   @classmethod
   def is_connected(cls,
                    device_config: custom_types.ManagerDeviceConfigDict) -> bool:
     """Returns True if the device is connected to the host."""
     return os.path.exists(device_config["persistent"]["console_port_name"])
-
-  @decorators.PersistentProperty
-  def os(self) -> str:
-    return "FreeRTOS"
-
-  @decorators.PersistentProperty
-  def platform(self) -> str:
-    return "EFR32MG"
 
   @decorators.DynamicProperty
   def firmware_version(self) -> str:
@@ -129,6 +150,16 @@ class Efr32MatterDevice(gazoo_device_base.GazooDeviceBase):
   def pairing_discriminator(self) -> int:
     """Pairing discriminator of the device."""
     return self.pw_rpc_common.pairing_info.discriminator
+
+  @decorators.DynamicProperty
+  def qr_code(self) -> int:
+    """QR code of the device."""
+    return self.pw_rpc_common.qr_code
+
+  @decorators.DynamicProperty
+  def qr_code_url(self) -> int:
+    """QR code URL of the device."""
+    return self.pw_rpc_common.qr_code_url
 
   @decorators.LogDecorator(logger)
   def reboot(self, no_wait: bool = False, method: str = "pw_rpc") -> None:
@@ -182,9 +213,9 @@ class Efr32MatterDevice(gazoo_device_base.GazooDeviceBase):
 
     Raises:
       NotImplementedError:
-      shell method is not implemented for EFR32 Matter device.
+      shell method is not implemented for Matter device.
     """
-    raise NotImplementedError("shell not implemented for EFR32 Matter device.")
+    raise NotImplementedError("shell not implemented for Matter device.")
 
   @decorators.LogDecorator(logger)
   def wait_for_bootup_complete(
@@ -196,8 +227,18 @@ class Efr32MatterDevice(gazoo_device_base.GazooDeviceBase):
     """
     self.pw_rpc_common.wait_for_bootup_complete(timeout)
 
+  @decorators.CapabilityDecorator(pwrpc_button_default.PwRPCButtonDefault)
+  def pw_rpc_button(self):
+    """PwRPCButtonDefault capability to send RPC command."""
+    return self.lazy_init(
+        pwrpc_button_default.PwRPCButtonDefault,
+        device_name=self.name,
+        valid_button_ids=self.VALID_BUTTON_IDS,
+        switchboard_call=self.switchboard.call,
+        rpc_timeout_s=_RPC_TIMEOUT)
+
   @decorators.CapabilityDecorator(pwrpc_common_default.PwRPCCommonDefault)
-  def pw_rpc_common(self):
+  def pw_rpc_common(self) -> pwrpc_common_default.PwRPCCommonDefault:
     """PwRPCCommonDefault capability to send RPC command."""
     return self.lazy_init(
         pwrpc_common_default.PwRPCCommonDefault,
@@ -205,29 +246,20 @@ class Efr32MatterDevice(gazoo_device_base.GazooDeviceBase):
         switchboard_call=self.switchboard.call,
         rpc_timeout_s=_RPC_TIMEOUT)
 
-  @decorators.CapabilityDecorator(flash_build_jlink.FlashBuildJLink)
-  def flash_build(self):
-    """FlashBuildJLink capability to flash hex image."""
-    return self.lazy_init(flash_build_jlink.FlashBuildJLink,
-                          device_name=self.name,
-                          serial_number=self.serial_number,
-                          platform_name=_EFR32_JLINK_NAME)
-
   @decorators.CapabilityDecorator(
       matter_endpoints_accessor.MatterEndpointsAccessor)
-  def matter_endpoints(self):
+  def matter_endpoints(
+      self) -> matter_endpoints_accessor.MatterEndpointsAccessor:
     """Generic Matter endpoint instance."""
-    # TODO(b/209366650) Use discovery cluster and remove the hard-coded IDs.
     return self.lazy_init(
         matter_endpoints_accessor.MatterEndpointsAccessor,
-        endpoint_id_to_class=self.ENDPOINT_ID_TO_CLASS,
         device_name=self.name,
         switchboard_call=self.switchboard.call,
-        rpc_timeout_s=_EFR32_RPC_TIMEOUT
+        rpc_timeout_s=_RPC_TIMEOUT
     )
 
   @decorators.CapabilityDecorator(device_power_default.DevicePowerDefault)
-  def device_power(self):
+  def device_power(self) -> device_power_default.DevicePowerDefault:
     """Capability to manipulate device power through Cambrionix."""
     return self.lazy_init(
         device_power_default.DevicePowerDefault,
@@ -241,3 +273,64 @@ class Efr32MatterDevice(gazoo_device_base.GazooDeviceBase):
         wait_for_connection_fn=self.check_device_connected,
         usb_hub_name_prop="device_usb_hub_name",
         usb_port_prop="device_usb_port")
+
+  # ******************** Matter endpoint aliases ******************** #
+
+  @decorators.CapabilityDecorator(
+      color_temperature_light.ColorTemperatureLightEndpoint)
+  def color_temperature_light(
+      self) -> color_temperature_light.ColorTemperatureLightEndpoint:
+    """Matter Color Temperature Light endpoint instance.
+
+    Returns:
+      Color Temperature Light endpoint instance.
+
+    Raises:
+      DeviceError when Color Temperate Light endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        color_temperature_light.ColorTemperatureLightEndpoint)
+
+  @decorators.CapabilityDecorator(dimmable_light.DimmableLightEndpoint)
+  def dimmable_light(self) -> dimmable_light.DimmableLightEndpoint:
+    """Matter Dimmable Light endpoint instance.
+
+    Returns:
+      Dimmable Light endpoint instance.
+
+    Raises:
+      DeviceError when Dimmable Light endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        dimmable_light.DimmableLightEndpoint)
+
+  @decorators.CapabilityDecorator(door_lock.DoorLockEndpoint)
+  def door_lock(self) -> door_lock.DoorLockEndpoint:
+    """Matter Door Lock endpoint instance.
+
+    Returns:
+      Door Lock endpoint instance.
+
+    Raises:
+      DeviceError when Door Lock endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        door_lock.DoorLockEndpoint)
+
+  @decorators.CapabilityDecorator(on_off_light.OnOffLightEndpoint)
+  def on_off_light(self) -> on_off_light.OnOffLightEndpoint:
+    """Matter OnOff Light endpoint instance.
+
+    Returns:
+      OnOff Light endpoint instance.
+
+    Raises:
+      DeviceError when OnOff Light endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        on_off_light.OnOffLightEndpoint)
+  # ***************************************************************** #

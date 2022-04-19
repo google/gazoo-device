@@ -20,6 +20,8 @@ from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 class LevelControlClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
   """Matter Level Control cluster capability."""
 
+  CLUSTER_ID = 0x0008
+
   @abc.abstractmethod
   def move_to_level(self, level: int, verify: bool = True) -> None:
     """The MoveToLevel command.

@@ -19,7 +19,7 @@ from gazoo_device.tests.functional_tests.utils import gdm_test_base
 
 
 class DoorLockTestSuite(door_lock_cluster_suite.DoorLockTestSuite):
-  """Tests for the door lock endpoint capability."""
+  """Tests for the door lock endpoint."""
 
   def setup_class(self) -> None:
     """Sets the endpoint instance."""
@@ -36,4 +36,5 @@ class DoorLockTestSuite(door_lock_cluster_suite.DoorLockTestSuite):
                        device_class: Type[gdm_test_base.DeviceType],
                        device_name: str) -> bool:
     """Determines if this test suite can run on the given device."""
-    return device_class.has_capabilities(["door_lock"])
+    return gdm_test_base.whether_implements_matter_endpoint(
+        device_class, device_name, "door_lock")

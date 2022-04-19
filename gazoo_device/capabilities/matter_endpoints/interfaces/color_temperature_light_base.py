@@ -21,6 +21,8 @@ class ColorTemperatureLightBase(
     endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Color Temperature light endpoint interface."""
 
+  DEVICE_TYPE_ID = 0x010C
+
   @property
   @abc.abstractmethod
   def on_off(self):

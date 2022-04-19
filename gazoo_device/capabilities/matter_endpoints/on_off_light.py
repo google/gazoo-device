@@ -24,8 +24,6 @@ the following defined clusters on this endpoint:
 The required clusters for this endpoint: Scenses, OnOff and Groups.
 The optional clusters for this endpoint: Level and Occupancy.
 """
-from typing import Any, Callable
-
 from gazoo_device import decorators
 from gazoo_device.capabilities.matter_clusters import level_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import on_off_pw_rpc
@@ -35,23 +33,8 @@ from gazoo_device.capabilities.matter_endpoints.interfaces import on_off_light_b
 class OnOffLightEndpoint(on_off_light_base.OnOffLightBase):
   """Matter OnOff light endpoint."""
 
-  def __init__(self,
-               device_name: str,
-               switchboard_call: Callable[..., Any],
-               rpc_timeout_s: int):
-    """Initializes Matter OnOff light endpoint instance.
-
-    Args:
-      device_name: Device name used for logging.
-      switchboard_call: The switchboard.call method.
-      rpc_timeout_s: Timeout (s) for RPC call.
-    """
-    super().__init__(device_name=device_name)
-    self._switchboard_call = switchboard_call
-    self._rpc_timeout_s = rpc_timeout_s
-
   @decorators.CapabilityDecorator(on_off_pw_rpc.OnOffClusterPwRpc)
-  def on_off(self):
+  def on_off(self) -> on_off_pw_rpc.OnOffClusterPwRpc:
     """Matter OnOff cluster instance."""
     return self.cluster_lazy_init(
         on_off_pw_rpc.OnOffClusterPwRpc,
@@ -60,7 +43,7 @@ class OnOffLightEndpoint(on_off_light_base.OnOffLightBase):
         rpc_timeout_s=self._rpc_timeout_s)
 
   @decorators.CapabilityDecorator(level_control_pw_rpc.LevelControlClusterPwRpc)
-  def level(self):
+  def level(self) -> level_control_pw_rpc.LevelControlClusterPwRpc:
     """Matter Level Control cluster instance."""
     return self.cluster_lazy_init(
         level_control_pw_rpc.LevelControlClusterPwRpc,

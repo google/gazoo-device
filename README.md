@@ -176,35 +176,6 @@ To install GDM in a virtual environment:
 /path_to_virtual_env/bin/pip install gazoo-device
 ```
 
-Important: one of GDM's dependencies, [Pigweed](https://pigweed.dev/), is not
-available on PyPI yet. You will have to manually download and install Pigweed
-wheels in your virtual environment (the installer does this automatically for
-the GDM CLI virtual environment). You can use the following snippet to download
-Pigweed wheels:
-
-```shell
-PIGWEED_WHEELS="button_service-0.0.1-py3-none-any.whl
-device_service-0.0.1-py3-none-any.whl
-lighting_app-0.0.1-py3-none-any.whl
-lighting_service-0.0.1-py3-none-any.whl
-pw_cli-0.0.1-py3-none-any.whl
-pw_protobuf-0.0.1-py3-none-any.whl
-pw_protobuf_compiler-0.0.1-py3-none-any.whl
-pw_protobuf_protos-0.0.1-py3-none-any.whl
-pw_rpc-0.0.1-py3-none-any.whl
-pw_status-0.0.1-py3-none-any.whl
-pw_hdlc-0.0.1-py3-none-any.whl"
-
-for wheel in $PIGWEED_WHEELS; do
-  url="https://github.com/google/gazoo-device/releases/latest/download/$wheel"
-  local_file="/tmp/$wheel"
-  echo "Downloading and installing $url"
-  curl -L "$url" -o "$local_file"
-  pip3 install "$local_file"  # You might need to use a different pip path here.
-  rm "$local_file"
-done
-```
-
 ### Uninstall
 
 To uninstall GDM:

@@ -23,11 +23,15 @@ _FAKE_ACTION = "fake-action"
 _FAKE_DEVICE_NAME = "matter_device"
 _FAKE_VENDOR_ID = 1234
 _FAKE_PRODUCT_ID = 5678
+_FAKE_SOFTWARE_VERSION = 0
+_FAKE_QR_CODE = "fake-qr-code"
+_FAKE_QR_CODE_URL = "fake-qr-code-url"
+_FAKE_PAIRING_INFO = "fake-pairing-info"
+_FAKE_FABRIC_INFO = "fake-fabric-info"
+_FAKE_PAYLOAD_BYTES = b"fake-payload-bytes"
+_FAKE_PAYLOAD = "fake-payload"
 _FAKE_PAIRING_CODE = 0
 _FAKE_PAIRING_DISCRIMINATOR = 0
-_FAKE_FABRIC_ID = 0
-_FAKE_NODE_ID = 0
-_FAKE_SOFTWARE_VERSION = 0
 _FAKE_TIMEOUT = 5
 
 
@@ -43,37 +47,48 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
         switchboard_call=self.switchboard_call_mock,
         rpc_timeout_s=_FAKE_TIMEOUT)
 
-    self.fake_pairing_info = device_service_pb2.PairingInfo(
-        code=_FAKE_PAIRING_CODE, discriminator=_FAKE_PAIRING_DISCRIMINATOR)
-    fake_device_info = device_service_pb2.DeviceInfo(
-        vendor_id=_FAKE_VENDOR_ID,
-        product_id=_FAKE_PRODUCT_ID,
-        software_version=_FAKE_SOFTWARE_VERSION,
-        pairing_info=self.fake_pairing_info)
-    self.fake_device_info_in_bytes = fake_device_info.SerializeToString()
-
-    self.fake_fabric_info = device_service_pb2.FabricInfo(
-        fabric_id=_FAKE_FABRIC_ID, node_id=_FAKE_NODE_ID)
-    fake_device_state = device_service_pb2.DeviceState(
-        time_since_boot_millis=0, fabric_info=[self.fake_fabric_info])
-    self.fake_device_state_in_bytes = fake_device_state.SerializeToString()
-
-  def test_get_device_info(self):
-    """Verifies getting device static info successfully."""
-    self.switchboard_call_mock.return_value = (True,
-                                               self.fake_device_info_in_bytes)
+  @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "get_device_info")
+  def test_get_vendor_id_on_success(self, mock_get_device_info):
+    """Verifies getting vendor id on success."""
+    mock_get_device_info.return_value.vendor_id = _FAKE_VENDOR_ID
     self.assertEqual(self.uut.vendor_id, _FAKE_VENDOR_ID)
-    self.assertEqual(self.uut.product_id, _FAKE_PRODUCT_ID)
-    self.assertEqual(self.uut.software_version, _FAKE_SOFTWARE_VERSION)
-    self.assertEqual(self.uut.pairing_info, self.fake_pairing_info)
-    self.assertEqual(4, self.switchboard_call_mock.call_count)
 
-  def test_get_device_info_failed_false_ack(self):
-    """Verifies getting device static info with failure of false ack."""
-    self.switchboard_call_mock.return_value = (False, None)
-    with self.assertRaises(errors.DeviceError):
-      self.uut.vendor_id  # pylint: disable=pointless-statement
-    self.switchboard_call_mock.assert_called_once()
+  @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "get_device_info")
+  def test_get_product_id_on_success(self, mock_get_device_info):
+    """Verifies getting product id on success."""
+    mock_get_device_info.return_value.product_id = _FAKE_PRODUCT_ID
+    self.assertEqual(self.uut.product_id, _FAKE_PRODUCT_ID)
+
+  @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "get_device_info")
+  def test_get_software_version_on_success(self, mock_get_device_info):
+    """Verifies getting software version on success."""
+    mock_get_device_info.return_value.software_version = _FAKE_SOFTWARE_VERSION
+    self.assertEqual(self.uut.software_version, _FAKE_SOFTWARE_VERSION)
+
+  @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "pairing_info")
+  def test_get_qr_code_on_success(self, mock_get_pairing_info):
+    """Verifies getting QR code on success."""
+    mock_get_pairing_info.qr_code = _FAKE_QR_CODE
+    self.assertEqual(self.uut.qr_code, _FAKE_QR_CODE)
+
+  @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "pairing_info")
+  def test_get_qr_code_url_on_success(self, mock_get_pairing_info):
+    """Verifies getting QR code URL on success."""
+    mock_get_pairing_info.qr_code_url = _FAKE_QR_CODE_URL
+    self.assertEqual(self.uut.qr_code_url, _FAKE_QR_CODE_URL)
+
+  @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "get_device_info")
+  def test_get_pairing_info_on_success(self, mock_get_device_info):
+    """Verifies getting pairing info on success."""
+    mock_get_device_info.return_value.pairing_info = _FAKE_PAIRING_INFO
+    self.assertEqual(self.uut.pairing_info, _FAKE_PAIRING_INFO)
+
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "get_device_state")
+  def test_get_fabric_info_on_success(self, mock_get_device_state):
+    """Verifies getting fabric info on success."""
+    mock_get_device_state.return_value.fabric_info = _FAKE_FABRIC_INFO
+    self.assertEqual(self.uut.fabric_info, list(_FAKE_FABRIC_INFO))
 
   @mock.patch.object(
       pwrpc_common_default.PwRPCCommonDefault, "wait_for_bootup_complete")
@@ -124,11 +139,67 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
       self.uut.wait_for_bootup_complete(bootup_timeout=fake_timeout_sec)
 
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
+  def test_get_device_info_on_success(self, mock_trigger_device_action):
+    """Verifies get_device_info on success."""
+    fake_device_info = device_service_pb2.DeviceInfo(vendor_id=_FAKE_VENDOR_ID)
+    mock_trigger_device_action.return_value = (
+        fake_device_info.SerializeToString())
+
+    self.assertEqual(fake_device_info, self.uut.get_device_info())
+    mock_trigger_device_action.assert_called_once_with(action="GetDeviceInfo")
+
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
+  def test_get_device_state_on_success(self, mock_trigger_device_action):
+    """Verifies get_device_state on success."""
+    fake_device_state = device_service_pb2.DeviceState(time_since_boot_millis=0)
+    mock_trigger_device_action.return_value = (
+        fake_device_state.SerializeToString())
+
+    self.assertEqual(fake_device_state, self.uut.get_device_state())
+    mock_trigger_device_action.assert_called_once_with(action="GetDeviceState")
+
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
+  def test_set_pairing_state(self, mock_trigger_device_action):
+    """Verifies set_pairing_state on success."""
+    self.uut.set_pairing_state(pairing_enabled=True)
+
+    mock_trigger_device_action.assert_called_once_with(
+        action="SetPairingState",
+        pairing_enabled=True)
+
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
+  def test_get_pairing_state(self, mock_trigger_device_action):
+    """Verifies get_pairing_state on success."""
+    fake_pairing_state = device_service_pb2.PairingState(pairing_enabled=True)
+    mock_trigger_device_action.return_value = (
+        fake_pairing_state.SerializeToString())
+
+    self.assertTrue(self.uut.get_pairing_state())
+
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
+  def test_set_pairing_info(self, mock_trigger_device_action):
+    """Verifies set_pairing_info on success."""
+    self.uut.set_pairing_info(code=_FAKE_PAIRING_CODE,
+                              discriminator=_FAKE_PAIRING_DISCRIMINATOR)
+
+    mock_trigger_device_action.assert_called_once_with(
+        action="SetPairingInfo",
+        code=_FAKE_PAIRING_CODE,
+        discriminator=_FAKE_PAIRING_DISCRIMINATOR)
+
   def test_trigger_device_actio_on_success(self):
     """Verifies _trigger_device_action on success."""
-    self.switchboard_call_mock.return_value = True, None
+    self.switchboard_call_mock.return_value = True, _FAKE_PAYLOAD_BYTES
 
-    self.uut._trigger_device_action(action=_FAKE_ACTION)
+    self.assertEqual(
+        _FAKE_PAYLOAD_BYTES,
+        self.uut._trigger_device_action(action=_FAKE_ACTION))
 
     self.switchboard_call_mock.assert_called_once()
 
@@ -139,30 +210,6 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
 
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
       self.uut._trigger_device_action(action=_FAKE_ACTION)
-
-  def test_get_device_state_on_success(self):
-    """Verifies getting device state successfully."""
-    self.switchboard_call_mock.return_value = (True,
-                                               self.fake_device_state_in_bytes)
-    self.assertEqual(self.uut.fabric_info[0], self.fake_fabric_info)
-
-  def test_get_device_state_failed_false_ack(self):
-    """Verifies getting device state with failure of false ack."""
-    self.switchboard_call_mock.return_value = (False, None)
-    with self.assertRaises(errors.DeviceError):
-      self.uut.fabric_info  # pylint: disable=pointless-statement
-    self.switchboard_call_mock.assert_called_once()
-
-  @mock.patch.object(
-      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
-  def test_set_pairing_info_on_success(self, mock_trigger):
-    """Verifies set_pairing_info on success."""
-    self.uut.set_pairing_info(
-        code=_FAKE_PAIRING_CODE, discriminator=_FAKE_PAIRING_DISCRIMINATOR)
-    mock_trigger.assert_called_once_with(
-        action="SetPairingInfo",
-        code=_FAKE_PAIRING_CODE,
-        discriminator=_FAKE_PAIRING_DISCRIMINATOR)
 
 
 if __name__ == "__main__":

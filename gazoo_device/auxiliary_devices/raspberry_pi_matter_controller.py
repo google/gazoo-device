@@ -26,8 +26,8 @@ logger = gdm_logger.get_logger()
 class RaspberryPiMatterController(raspberry_pi.RaspberryPi):
   """Base Class for RaspberryPiMatterController Devices."""
   DETECT_MATCH_CRITERIA = {
-      detect_criteria.SshQuery.is_rpi: True,
-      detect_criteria.SshQuery.is_chip_tool_present: True,
+      detect_criteria.SshQuery.IS_RPI: True,
+      detect_criteria.SshQuery.IS_CHIP_TOOL_PRESENT: True,
   }
   DEVICE_TYPE = "rpi_matter_controller"
   _OWNER_EMAIL = "gdm-authors@google.com"
@@ -41,4 +41,5 @@ class RaspberryPiMatterController(raspberry_pi.RaspberryPi):
         matter_controller_chip_tool.MatterControllerChipTool,
         device_name=self.name,
         regex_shell_fn=self.shell_with_regex,
-        shell_fn=self.shell)
+        shell_fn=self.shell,
+        send_file_to_device=self.file_transfer.send_file_to_device)

@@ -220,22 +220,16 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
               detect_logger=mock.MagicMock(spec=logging.Logger),
               create_switchboard_func=mock.MagicMock()))
 
-  def test_pigweed_application_query(self):
-    """Tests _pigweed_application_query()."""
-    detect_logger = mock.MagicMock(spec=logging.Logger)
-    detect_logger.handlers = [
-        logging.FileHandler(
-            os.path.join(self.artifacts_directory, "pigweed_detection_log.txt"))
-    ]
-    with mock.patch.object(
-        pwrpc_utils, "get_application_type",
-        return_value=pwrpc_utils.PigweedAppType.NON_PIGWEED.value):
-      self.assertEqual(
-          "nonpigweed",
-          detect_criteria._pigweed_application_query(
-              _JLINK_ADDRESS,
-              detect_logger=detect_logger,
-              create_switchboard_func=mock.MagicMock()))
+  @mock.patch.object(pwrpc_utils, "is_matter_device", return_value=True)
+  def test_is_matter_device_query(self, mock_is_matter):
+    """Verifies _is_matter_device_query method on success."""
+    fake_detect_logger = mock.MagicMock(spec=logging.Logger)
+    fake_detect_logger.handlers = [mock.Mock()]
+    self.assertTrue(
+        detect_criteria._is_matter_device_query(
+            address=_SERIAL_ADDRESS,
+            detect_logger=fake_detect_logger,
+            create_switchboard_func=mock.MagicMock()))
 
   def _test_comms_type(
       self, comms_type, behaviors_dict, switchboard_behaviors_dict=None):

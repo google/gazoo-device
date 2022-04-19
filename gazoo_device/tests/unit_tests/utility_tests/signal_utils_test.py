@@ -17,8 +17,14 @@ import signal
 import sys
 from unittest import mock
 
+from absl.testing import parameterized
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import signal_utils
+
+
+def _mock_signal_handler(signalnum, stack_frame):
+  """A mock signal handler function."""
+  del signalnum, stack_frame  # Unused.
 
 
 class SignalUtilsTests(unit_test_case.UnitTestCase):
@@ -37,46 +43,38 @@ class SignalUtilsTests(unit_test_case.UnitTestCase):
     signal_receiver.handle_signal(signal.SIGTERM.value, None)
     self.assertTrue(signal_receiver.received)
 
-  @mock.patch.object(signal_utils, "_SignalReceiver", autospec=True)
-  @mock.patch.object(signal, "signal")
-  @mock.patch.object(signal, "getsignal")
-  @mock.patch.object(sys, "exit")
-  def test_postpone_sigterm_until_completion_no_signal(
-      self, mock_sys_exit, mock_signal_getsignal, mock_signal_signal,
-      mock_signalreceiver_class):
-    """Tests postpone_sigterm_until_completion when it doesn't get a signal."""
-    previous_handler = lambda: None
-    mock_signal_getsignal.return_value = previous_handler
-    signal_receiver = mock_signalreceiver_class.return_value
-    signal_receiver.received = False
-
-    with signal_utils.postpone_sigterm_until_completion():
-      mock_signal_signal.assert_called_once_with(
-          signal.SIGTERM, signal_receiver.handle_signal)
-
-    mock_signal_signal.assert_called_with(signal.SIGTERM, previous_handler)
-    mock_sys_exit.assert_not_called()
-
+  @parameterized.named_parameters(
+      ("no_signal_external_handler", False, None, signal.SIG_DFL),
+      ("signal_external_handler", True, None, signal.SIG_DFL),
+      ("no_signal_with_handler", False, _mock_signal_handler,
+       _mock_signal_handler),
+      ("signal_with_handler", True, _mock_signal_handler,
+       _mock_signal_handler),
+      ("no_signal_with_default_handler", False, signal.SIG_DFL, signal.SIG_DFL),
+      ("signal_with_default_handler", True, signal.SIG_DFL, signal.SIG_DFL))
   @mock.patch.object(signal_utils, "_SignalReceiver", autospec=True)
   @mock.patch.object(signal, "signal")
   @mock.patch.object(signal, "getsignal")
   @mock.patch.object(sys, "exit")
   def test_postpone_sigterm_until_completion_with_signal(
-      self, mock_sys_exit, mock_signal_getsignal, mock_signal_signal,
+      self, mock_signal_received, mock_previous_handler, expected_final_handler,
+      mock_sys_exit, mock_signal_getsignal, mock_signal_signal,
       mock_signalreceiver_class):
     """Tests postpone_sigterm_until_completion when it receives a signal."""
-    previous_handler = lambda: None
-    mock_signal_getsignal.return_value = previous_handler
+    mock_signal_getsignal.return_value = mock_previous_handler
     signal_receiver = mock_signalreceiver_class.return_value
     signal_receiver.received = False
 
     with signal_utils.postpone_sigterm_until_completion():
       mock_signal_signal.assert_called_once_with(
           signal.SIGTERM, signal_receiver.handle_signal)
-      signal_receiver.received = True
+      signal_receiver.received = mock_signal_received
 
-    mock_signal_signal.assert_called_with(signal.SIGTERM, previous_handler)
-    mock_sys_exit.assert_called_once_with(signal_utils._BASH_SIGTERM_EXIT_CODE)
+    mock_signal_signal.assert_called_with(
+        signal.SIGTERM, expected_final_handler)
+    if mock_signal_received:
+      mock_sys_exit.assert_called_once_with(
+          signal_utils._BASH_SIGTERM_EXIT_CODE)
 
 
 if __name__ == "__main__":

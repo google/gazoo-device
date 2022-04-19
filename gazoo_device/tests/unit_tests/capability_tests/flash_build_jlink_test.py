@@ -18,6 +18,7 @@ from unittest import mock
 from gazoo_device import config
 from gazoo_device import errors
 from gazoo_device.capabilities import flash_build_jlink
+from gazoo_device.capabilities import matter_endpoints_accessor
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.utility import subprocess_utils
 import intelhex
@@ -34,13 +35,18 @@ class JLinkFlashDefaultTest(fake_device_test_case.FakeDeviceTestCase):
 
   def setUp(self):
     super().setUp()
+    self.setup_fake_device_requirements("efr32matter-1234")
     jlink_patcher = mock.patch("pylink.JLink")
     mock_jlink_class = jlink_patcher.start()
     self.addCleanup(jlink_patcher.stop)
     self.mock_jlink = mock_jlink_class.return_value
-    self.uut = flash_build_jlink.FlashBuildJLink(_MOCK_DEVICE_NAME,
-                                                 _MOCK_SERIAL_NUMBER,
-                                                 _MOCK_CHIP_NAME)
+    self.mock_matter_endpoints_reset = mock.Mock(
+        spec=matter_endpoints_accessor.MatterEndpointsAccessor.reset)
+    self.uut = flash_build_jlink.FlashBuildJLink(
+        device_name=_MOCK_DEVICE_NAME,
+        serial_number=_MOCK_SERIAL_NUMBER,
+        platform_name=_MOCK_CHIP_NAME,
+        reset_endpoints_fn=self.mock_matter_endpoints_reset)
 
   def test_no_jlink_dll_raises_error(self):
     """Tests that an actionable error is raised if the J-Link DLL is missing."""
@@ -63,7 +69,7 @@ class JLinkFlashDefaultTest(fake_device_test_case.FakeDeviceTestCase):
       mock_image.tobinarray.return_value = mock_binarray
       self.uut.upgrade(build_file=_MOCK_IMAGE_PATH)
 
-    mock_exists.assert_called_once_with(_MOCK_IMAGE_PATH)
+    mock_exists.assert_any_call(_MOCK_IMAGE_PATH)
     mock_image.tobinarray.assert_has_calls(
         [mock.call(start=0, size=10), mock.call(start=10, size=10)])
     self.mock_jlink.flash_write8.assert_has_calls(
@@ -75,6 +81,7 @@ class JLinkFlashDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.mock_jlink.reset.assert_called_once()
     self.mock_jlink.restart.assert_called_once()
     self.mock_jlink.close.assert_called_once()
+    self.mock_matter_endpoints_reset.assert_called_once()
 
   def test_image_invalid(self):
     """Tests image invalid failure."""

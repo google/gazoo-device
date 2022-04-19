@@ -75,6 +75,15 @@ class CapabilityBase(abc.ABC):
     """
     self._healthy = True
 
+  @decorators.DynamicProperty
+  def health_checked(self) -> bool:
+    """Whether the health_check has been run.
+
+    Returns:
+      bool representing whether the health check has been run.
+    """
+    return self._healthy is not None
+
   @classmethod
   def get_capability_interface(cls):
     """Returns the capability interface class.

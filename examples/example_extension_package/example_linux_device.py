@@ -72,13 +72,13 @@ class ExampleLinuxDevice(ssh_device.SshDevice):
   # Therefore, detect criteria must uniquely identify a single device
   # type. A generic Linux device controller doesn't satisfy this property,
   # but we'll cheat a bit for the purpose of this example.
-  # GenericQuery.always_true query below will cause all devices GDM can SSH into
+  # GenericQuery.ALWAYS_TRUE query below will cause all devices GDM can SSH into
   # to be identified as ExampleLinuxDevice.
   DETECT_MATCH_CRITERIA = {
-      detect_criteria.GenericQuery.always_true: True,
+      detect_criteria.GenericQuery.ALWAYS_TRUE: True,
       # Real detection queries look like this:
-      # detect_criteria.SshQuery.some_query_function: "regex"
-      # detect_criteria.SshQuery.another_query_function: True
+      # detect_criteria.SshQuery.SOME_QUERY_FUNCTION: "regex"
+      # detect_criteria.SshQuery.ANOTHER_QUERY_FUNCTION: True
   }
   DEVICE_TYPE = "linuxexample"
   _COMMUNICATION_KWARGS = {

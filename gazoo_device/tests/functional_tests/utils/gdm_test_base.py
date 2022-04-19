@@ -13,9 +13,12 @@
 # limitations under the License.
 
 """Base class for GDM functional tests."""
+import contextlib
 import logging
 import os.path  # pylint: disable=unused-import
+from typing import Type
 
+from gazoo_device import manager
 from gazoo_device.tests.functional_tests.utils import suite_filter
 from gazoo_device.utility import retry
 from gazoo_device.tests import functional_tests
@@ -29,6 +32,19 @@ _CONFIG_DIRS = (os.path.join(DIRECTORY,"configs"),)
 DeviceType = suite_filter.DeviceType
 
 
+def whether_implements_matter_endpoint(
+    device_class: Type[DeviceType],
+    device_name: str,
+    endpoint_name: str) -> bool:
+  """Returns whether the device implements the matter endpoint."""
+  if not device_class.has_capabilities(["matter_endpoints"]):
+    return False
+
+  with contextlib.closing(manager.Manager()) as mgr:
+    with mgr.create_and_close_device(device_name) as device:
+      return device.matter_endpoints.has_endpoints([endpoint_name])
+
+
 class GDMTestBase(suite_filter.SuiteFilterBase):
   """Base class for GDM functional test suites."""
   _CONFIG_DIRS = _CONFIG_DIRS
@@ -36,7 +52,7 @@ class GDMTestBase(suite_filter.SuiteFilterBase):
   testing_properties = None
 
   def setup_class(self) -> None:
-    """Initiate device and upgrade as needed."""
+    """Creates a device instance."""
     super().setup_class()
     self.testing_properties = self.user_params
     self.device = retry.retry(
@@ -45,8 +61,11 @@ class GDMTestBase(suite_filter.SuiteFilterBase):
         timeout=_CREATION_TIMEOUT,
         interval=_CREATION_SLEEP,
         reraise=True)[0]
-    if hasattr(self.device, "firmware_version"):
-      firmware_version = self.device.get_property("firmware_version")
+    # Check attribute presence on the class rather than the instance to avoid
+    # accessing the property during the check.
+    if hasattr(type(self.device), "firmware_version"):
+      firmware_version = self.device.get_property(
+          "firmware_version", raise_error=False)
       logging.info("DUT: %s, firmware version: %s", self.device_name,
                    firmware_version)
 

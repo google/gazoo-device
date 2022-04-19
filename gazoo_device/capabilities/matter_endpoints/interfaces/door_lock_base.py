@@ -20,6 +20,8 @@ from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 class DoorLockBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Door Lock endpoint interface."""
 
+  DEVICE_TYPE_ID = 0x000A
+
   @property
   @abc.abstractmethod
   def door_lock(self):

@@ -44,36 +44,38 @@ _COMMAND_TIMEOUT_FAILURE = """
 
 _RESPONSES = ({
     "cmd": "which chip-tool",
-    "resp": "/usr/bin/chip-tool",
+    "resp": "/usr/local/bin/chip-tool",
     "code": 0,
 }, {
     "cmd": "cat ~/.matter_sdk_version",
     "resp": "92f834375b2075e6c1c93d12b373b663d4b9250b",
     "code": "0",
 }, {
-    "cmd": "chip-tool pairing ble-wifi 1234 hex:776966692d73736964 "
-           "hex:776966692d70617373776f7264 20202021 3840",
+    "cmd":
+        "/usr/local/bin/chip-tool pairing ble-wifi 1234 hex:776966692d73736964 "
+        "hex:776966692d70617373776f7264 20202021 3840",
     "resp": _COMMISSION_SUCCESS_RESPONSE,
     "code": 0,
 }, {
-    "cmd": "chip-tool pairing onnetwork 1234 20202021",
+    "cmd": "/usr/local/bin/chip-tool pairing onnetwork 1234 20202021",
     "resp": _COMMISSION_SUCCESS_RESPONSE,
     "code": 0,
 }, {
-    "cmd": "chip-tool pairing onnetwork-long 1234 20202021 3840",
+    "cmd": "/usr/local/bin/chip-tool pairing onnetwork-long 1234 20202021 3840",
     "resp": _COMMISSION_SUCCESS_RESPONSE,
     "code": 0,
 }, {
-    "cmd": "chip-tool pairing ble-thread 1234 hex:61626364 20202021 3840",
+    "cmd": "/usr/local/bin/chip-tool pairing ble-thread 1234 hex:61626364 "
+           "20202021 3840",
     "resp": _COMMISSION_SUCCESS_RESPONSE,
     "code": 0,
 }, {
-    "cmd": "chip-tool pairing onnetwork 1234 00000000",
+    "cmd": "/usr/local/bin/chip-tool pairing onnetwork 1234 00000000",
     "resp": _COMMAND_TIMEOUT_FAILURE,
     "code": 1,
 }, {
     "cmd":
-        "chip-tool pairing unpair 1234",
+        "/usr/local/bin/chip-tool pairing unpair 1234",
     "resp":
         textwrap.dedent("""
             [1643829558.217384][8975:8980] CHIP:DL: CHIP task running
@@ -97,12 +99,12 @@ _RESPONSES = ({
     "code":
         0,
 }, {
-    "cmd": "chip-tool pairing unpair 0000",
+    "cmd": "/usr/local/bin/chip-tool pairing unpair 0000",
     "resp": _COMMAND_TIMEOUT_FAILURE,
     "code": 1,
 }, {
     "cmd":
-        "chip-tool onoff read on-time 1234 1",
+        "/usr/local/bin/chip-tool onoff read on-time 1234 1",
     "resp":
         textwrap.dedent("""
             [1643757742.660018][6018:6023] CHIP:EM: Removed CHIP MessageCounter:7968535 from RetransTable on exchange 18935i
@@ -139,7 +141,7 @@ _RESPONSES = ({
         0,
 }, {
     "cmd":
-        "chip-tool onoff read on-off 1234 1",
+        "/usr/local/bin/chip-tool onoff read on-off 1234 1",
     "resp":
         textwrap.dedent("""
             [1643757714.466937][6008:6013] CHIP:EM: Removed CHIP MessageCounter:2881700 from RetransTable on exchange 60917i
@@ -176,7 +178,7 @@ _RESPONSES = ({
         0,
 }, {
     "cmd":
-        "chip-tool onoff write on-time 100 1234 1",
+        "/usr/local/bin/chip-tool onoff write on-time 100 1234 1",
     "resp":
         textwrap.dedent("""
             [1643757763.344638][6025:6030] CHIP:DMG: WriteClient moving to [ResponseRe]
@@ -210,7 +212,7 @@ _RESPONSES = ({
         0,
 }, {
     "cmd":
-        "chip-tool onoff toggle  1234 1",
+        "/usr/local/bin/chip-tool onoff toggle  1234 1",
     "resp":
         textwrap.dedent("""
             [1643833410.401903][9308:9313] CHIP:DMG: ICR moving to [ResponseRe]
@@ -249,7 +251,7 @@ _RESPONSES = ({
         0,
 }, {
     "cmd":
-        "chip-tool onoff write non-existent-attr 100 1234 1",
+        "/usr/local/bin/chip-tool onoff write non-existent-attr 100 1234 1",
     "resp":
         textwrap.dedent("""
             [1643757763.344638][6025:6030] CHIP:DMG: WriteClient moving to [ResponseRe]
@@ -283,7 +285,7 @@ _RESPONSES = ({
         1,
 }, {
     "cmd":
-        "chip-tool onoff non-existent-cmd  1234 1",
+        "/usr/local/bin/chip-tool onoff non-existent-cmd  1234 1",
     "resp":
         textwrap.dedent("""
             [1643833410.401903][9308:9313] CHIP:DMG: ICR moving to [ResponseRe]
@@ -320,6 +322,10 @@ _RESPONSES = ({
         """),
     "code":
         1,
+}, {
+    "cmd": "echo 1234 > ~/.matter_sdk_version",
+    "resp": "",
+    "code": 0,
 })
 
 DEFAULT_BEHAVIOR = copy.deepcopy(raspbian_device_logs.DEFAULT_BEHAVIOR)

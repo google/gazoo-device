@@ -30,7 +30,7 @@ import immutabledict
 
 logger = gdm_logger.get_logger()
 
-_CHIP_TOOL_BINARY_PATH = "chip-tool"
+_CHIP_TOOL_BINARY_PATH = "/usr/local/bin/chip-tool"
 _HEX_PREFIX = "hex:"
 
 _COMMANDS = immutabledict.immutabledict({
@@ -56,6 +56,8 @@ _COMMANDS = immutabledict.immutabledict({
         "{chip_tool} pairing unpair {node_id}",
     "CHIP_TOOL_VERSION":
         "cat ~/.matter_sdk_version",
+    "WRITE_CHIP_TOOL_VERSION":
+        "echo {chip_tool_version} > ~/.matter_sdk_version",
 })
 
 _REGEXES = immutabledict.immutabledict({
@@ -73,6 +75,11 @@ _REGEXES = immutabledict.immutabledict({
         "(CHIP:TOO: Device commissioning completed with success)",
     "DECOMMISSION_COMPLETE":
         "(CHIP:DL: System Layer shutdown)",
+})
+
+_TIMEOUTS = immutabledict.immutabledict({
+    "COMMISSION": 60,
+    "SEND_CLUSTER_COMMAND": 30,
 })
 
 
@@ -108,6 +115,7 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
                device_name: str,
                shell_fn: Callable[..., str],
                regex_shell_fn: Callable[..., str],
+               send_file_to_device: Callable[[str, str], None],
                chip_tool_path: str = _CHIP_TOOL_BINARY_PATH):
     """Creates an instance of MatterControllerChipTool capability.
 
@@ -116,6 +124,8 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
       shell_fn: Bound 'shell' method of the device class instance.
       regex_shell_fn: Bound 'shell_with_regex' method of the device class
         instance.
+      send_file_to_device: Bound 'send_file_to_device' method of the device's
+        file transfer capability instance.
       chip_tool_path: Path to chip-tool binary on the device.
     """
     super().__init__(device_name)
@@ -123,6 +133,7 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
     self._chip_tool_path = chip_tool_path
     self._shell_with_regex = regex_shell_fn
     self._shell = shell_fn
+    self._send_file_to_device = send_file_to_device
 
   @decorators.DynamicProperty
   def version(self) -> str:
@@ -186,7 +197,10 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
         operational_dataset=operational_dataset,
     )
     self._shell_with_regex(
-        command, _REGEXES["COMMISSION_SUCCESS"], raise_error=True)
+        command,
+        _REGEXES["COMMISSION_SUCCESS"],
+        raise_error=True,
+        timeout=_TIMEOUTS["COMMISSION"])
 
   @decorators.CapabilityLogDecorator(logger)
   def decommission(self, node_id: int) -> None:
@@ -281,8 +295,23 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
         arguments=" ".join(map(str, arguments)),
     )
     status_code = self._shell_with_regex(
-        command, _REGEXES["SEND_CLUSTER_COMMAND_RESPONSE"], raise_error=True)
+        command,
+        _REGEXES["SEND_CLUSTER_COMMAND_RESPONSE"],
+        raise_error=True,
+        timeout=_TIMEOUTS["SEND_CLUSTER_COMMAND"])
     if int(status_code, 0) != 0:
       raise errors.DeviceError(
           f"{self._device_name} '{command}' responded with a non-zero "
           f"status code: {status_code}")
+
+  @decorators.CapabilityLogDecorator(logger)
+  def upgrade(self, build_file: str, build_id: str) -> None:
+    """Installs chip-tool binary to the controller device.
+
+    Args:
+      build_file: Path to chip-tool binary on the host machine.
+      build_id: Commit SHA the chip-tool binary is built at.
+    """
+    self._send_file_to_device(build_file, self._chip_tool_path)
+    self._shell(
+        _COMMANDS["WRITE_CHIP_TOOL_VERSION"].format(chip_tool_version=build_id))

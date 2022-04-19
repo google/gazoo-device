@@ -20,6 +20,10 @@ import sys
 import types
 from typing import NoReturn, Optional
 
+from gazoo_device import gdm_logger
+
+_LOGGER = gdm_logger.get_logger()
+
 # Any unique exit code works here. To help indicate termination by a signal,
 # follow the "signal -> exit code" mapping employed by Bash:
 # https://tldp.org/LDP/abs/html/exitcodes.html.
@@ -53,10 +57,18 @@ def postpone_sigterm_until_completion():
   signal_receiver = _SignalReceiver()
   previous_sigterm_handler = signal.getsignal(signal.SIGTERM)
   signal.signal(signal.SIGTERM, signal_receiver.handle_signal)
+  _LOGGER.info(
+      "Postponing SIGTERM handling until completion of the critical section.")
   try:
     yield
   finally:
+    _LOGGER.info(
+        "Critical section completed. Resuming SIGTERM signal handling.")
     if previous_sigterm_handler is not None:
       signal.signal(signal.SIGTERM, previous_sigterm_handler)
+    else:
+      signal.signal(signal.SIGTERM, signal.SIG_DFL)
     if signal_receiver.received:
+      _LOGGER.info("A SIGTERM was received during the critical section. "
+                   f"Exiting with exit code {_BASH_SIGTERM_EXIT_CODE}.")
       sys.exit(_BASH_SIGTERM_EXIT_CODE)

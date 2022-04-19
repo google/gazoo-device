@@ -504,7 +504,7 @@ linuxexample-1234 closing switchboard processes
 
 Persistent Properties:
   COMMUNICATION_TYPE      SshComms
-  DETECT_MATCH_CRITERIA   {<GenericQuery.always_true: 'always_true'>: True}
+  DETECT_MATCH_CRITERIA   {<GenericQuery.ALWAYS_TRUE: 'always_true'>: True}
   DEVICE_TYPE             linuxexample
   commands
 			  BOOT_UP_COMPLETE          "echo 'gdm hello'"

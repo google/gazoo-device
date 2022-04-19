@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test suite for Matter devices with on off light endpoint capability."""
+"""Test suite for Matter devices with on off light endpoint."""
 from typing import Type
 
 from gazoo_device.tests.functional_tests.mixins import level_control_cluster_suite
@@ -24,7 +24,7 @@ from mobly import asserts
 class OnOffLightTestSuite(
     on_off_cluster_suite.OnOffClusterTestSuite,
     level_control_cluster_suite.LevelControlTestSuite):
-  """Tests for the on off light endpoint capability."""
+  """Tests for the on off light endpoint."""
 
   def setup_class(self) -> None:
     """Sets the endpoint instance."""
@@ -41,7 +41,8 @@ class OnOffLightTestSuite(
                        device_class: Type[gdm_test_base.DeviceType],
                        device_name: str) -> bool:
     """Determines if this test suite can run on the given device."""
-    return device_class.has_capabilities(["on_off_light"])
+    return gdm_test_base.whether_implements_matter_endpoint(
+        device_class, device_name, "on_off_light")
 
   def test_move_to_level_command_and_current_level_attribute(self):
     """Tests the Level Control cluster.

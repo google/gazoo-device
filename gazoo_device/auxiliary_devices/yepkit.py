@@ -87,7 +87,7 @@ def _check_yepkit_enabled():
 class Yepkit(auxiliary_device.AuxiliaryDevice):
   """This class serves as a Python interface to a Yepkit hub."""
   COMMUNICATION_TYPE = "YepkitComms"
-  DETECT_MATCH_CRITERIA = {detect_criteria.GenericQuery.always_true: True}
+  DETECT_MATCH_CRITERIA = {detect_criteria.GenericQuery.ALWAYS_TRUE: True}
   DEVICE_TYPE = "yepkit"
   _MODEL = MODEL
   _OWNER_EMAIL = "gdm-authors@google.com"

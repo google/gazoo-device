@@ -17,37 +17,30 @@
 GDM expect methods, found in switchboard.py, load results into ExpectResponse
 to permit calling routines a way to evaluate device execution and behavior.
 """
+import dataclasses
+import re
+from typing import List, Optional
 
 
+@dataclasses.dataclass
 class ExpectResponse(object):
   """Stores the values of expect Attributes.
 
   Attributes:
-      index (int): index of matching pattern in pattern list (None if
-        timeout).
-      before (str): all the characters looked at before the match.
-      after (str): all the characters after the first matching character.
-      match (re.Match): pattern match object.
-      timedout (bool): True if the expect timed out.
-      time_elapsed (float): number of seconds between start and finish.
-      remaining (list): patterns that have not been matched (after a timeout).
-      match_list (list): of re.search Match objects.
+      index: index of matching pattern in pattern list (None if timeout).
+      before: all the characters looked at before the match.
+      after: all the characters after the first matching character.
+      match: pattern match object.
+      timedout: True if the expect timed out.
+      time_elapsed: number of seconds between start and finish.
+      remaining: patterns that have not been matched (after a timeout).
+      match_list: of re.search Match objects.
   """
-
-  def __init__(self,
-               index,
-               before,
-               after,
-               match,
-               time_elapsed,
-               timedout=False,
-               remaining=None,
-               match_list=None):
-    self.index = index
-    self.before = before
-    self.after = after
-    self.match = match
-    self.timedout = timedout
-    self.time_elapsed = time_elapsed
-    self.remaining = [] if remaining is None else remaining
-    self.match_list = [] if match_list is None else match_list
+  index: Optional[int] = None
+  before: str = ""
+  after: str = ""
+  match: Optional[re.Match] = None
+  time_elapsed: float = 0
+  timedout: bool = False
+  remaining: List[str] = dataclasses.field(default_factory=list)
+  match_list: List[re.Match] = dataclasses.field(default_factory=list)

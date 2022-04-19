@@ -13,8 +13,11 @@
 # limitations under the License.
 """Unit tests for the MatterControllerChipTool capability."""
 
+from unittest import mock
+
 from gazoo_device import errors
 from gazoo_device.auxiliary_devices import raspberry_pi_matter_controller
+from gazoo_device.capabilities import file_transfer_scp
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.tests.unit_tests.utils import raspberry_pi_matter_controller_device_logs
 
@@ -128,6 +131,13 @@ class MatterControllerChipToolCapabilityTests(
     with self.assertRaises(errors.DeviceError):
       self.uut.matter_controller.write(self._node_id, self._endpoint_id,
                                        self._cluster, "non-existent-cmd", [])
+
+  def test_upgrade(self):
+    with mock.patch.object(file_transfer_scp.FileTransferScp,
+                           "send_file_to_device") as file_send:
+      self.uut.matter_controller.upgrade("path/to/chip-tool", "1234")
+      file_send.assert_called_once_with("path/to/chip-tool",
+                                        "/usr/local/bin/chip-tool")
 
 
 if __name__ == "__main__":

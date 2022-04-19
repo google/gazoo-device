@@ -25,7 +25,7 @@ from gazoo_device.switchboard.transports import pigweed_rpc_transport
 
 
 _LOGGER = gdm_logger.get_logger()
-_WIFI_RPC = "Wifi"
+_WIFI_RPC = "WiFi"
 _ASCII_NULL_BYTES = b"\x00"
 
 

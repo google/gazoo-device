@@ -103,3 +103,12 @@ class MatterControllerBase(capability_base.CapabilityBase):
       command: Name of the command to send (e.g. toggle).
       arguments: Command arguments.
     """
+
+  @abc.abstractmethod
+  def upgrade(self, build_file: str, build_id: str) -> None:
+    """Upgrades Matter SDK version of the controller.
+
+    Args:
+      build_file: Local path to build file.
+      build_id: Commit SHA the controller is built at.
+    """

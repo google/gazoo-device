@@ -13,10 +13,27 @@
 # limitations under the License.
 
 """Interface for the Matter cluster capability."""
+from typing import Any, Callable
 from gazoo_device.capabilities.interfaces import capability_base
 
 
 class ClusterBase(capability_base.CapabilityBase):
   """Matter cluster capability interface."""
 
-  # TODO(b/206894490) Add Ember API support.
+  # Cluster ID defined in the Matter spec.
+  CLUSTER_ID = None
+
+  def __init__(self,
+               device_name: str,
+               switchboard_call: Callable[..., Any],
+               rpc_timeout_s: int):
+    """Initializes an instance of the Matter cluster capability.
+
+    Args:
+      device_name: Device name used for logging.
+      switchboard_call: The switchboard.call method.
+      rpc_timeout_s: Timeout (s) for RPC call.
+    """
+    super().__init__(device_name=device_name)
+    self._switchboard_call = switchboard_call
+    self._rpc_timeout_s = rpc_timeout_s

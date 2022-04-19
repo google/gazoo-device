@@ -16,7 +16,7 @@
 import abc
 from typing import Any, Dict
 from gazoo_device.capabilities.interfaces import capability_base
-UNKNOWN = "Unknown"
+UNKNOWN = "UNKNOWN"
 
 
 class FlashBuildBase(capability_base.CapabilityBase):
