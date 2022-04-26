@@ -46,12 +46,12 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     self._switchboard_call = switchboard_call
     self._rpc_timeout_s = rpc_timeout_s
 
-  @decorators.PersistentProperty
+  @decorators.DynamicProperty
   def vendor_id(self) -> int:
     """The vendor id of the device."""
     return self.get_device_info().vendor_id
 
-  @decorators.PersistentProperty
+  @decorators.DynamicProperty
   def product_id(self) -> int:
     """The product id of the device."""
     return self.get_device_info().product_id

@@ -13,8 +13,9 @@
 # limitations under the License.
 
 """Interface for a Matter endpoint base capability."""
-from typing import Any, Callable, FrozenSet, List, Set, Type
+from typing import Any, Callable, FrozenSet, List, Optional, Set, Type
 from gazoo_device import decorators
+from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import capability_base
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
@@ -33,7 +34,8 @@ class EndpointBase(capability_base.CapabilityBase):
                identifier: int,
                supported_clusters: FrozenSet[Type[cluster_base.ClusterBase]],
                switchboard_call: Callable[..., Any],
-               rpc_timeout_s: int):
+               rpc_timeout_s: int,
+               device_type_id: Optional[int] = None):
     """Initializes Matter endpoint instance.
 
     Args:
@@ -42,22 +44,31 @@ class EndpointBase(capability_base.CapabilityBase):
       supported_clusters: Supported cluster classes on this endpoint.
       switchboard_call: The switchboard.call method.
       rpc_timeout_s: Timeout (s) for RPC call.
+      device_type_id: Device type ID of this endpoint. It's only used for
+        unsupported endpoint module, and the supported endpoints use
+        cls.DEVICE_TYPE_ID instead.
     """
     super().__init__(device_name=device_name)
     self._id = identifier
+    self._device_type_id = device_type_id
     self._supported_clusters = supported_clusters
     self._switchboard_call = switchboard_call
     self._rpc_timeout_s = rpc_timeout_s
 
-  @decorators.PersistentProperty
+  @decorators.DynamicProperty
   def id(self) -> int:
-    """The ID of the endpoint on the device."""
+    """The ID of the endpoint."""
     return self._id
 
-  @decorators.PersistentProperty
+  @decorators.DynamicProperty
   def name(self) -> str:
-    """The name of the endpoint on the device."""
+    """The name of the endpoint."""
     return self.get_capability_name()
+
+  @decorators.PersistentProperty
+  def device_type_id(self) -> int:
+    """The device type ID of the endpoint."""
+    return self.DEVICE_TYPE_ID
 
   @decorators.CapabilityLogDecorator(logger)
   def get_supported_clusters(self) -> List[str]:
@@ -73,29 +84,26 @@ class EndpointBase(capability_base.CapabilityBase):
 
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
   def cluster_lazy_init(
-      self,
-      cluster_class: Type[cluster_base.ClusterBase],
-      *args: Any,
-      **kwargs: Any) -> cluster_base.ClusterBase:
+      self, cluster_class: Type[cluster_base.ClusterBase]
+  ) -> cluster_base.ClusterBase:
     """Provides a lazy instantiation mechanism for Matter cluster.
 
     Args:
       cluster_class: cluster class to instantiate.
-      *args: positional args to the cluster's __init__. Prefer
-        using keyword arguments over positional arguments.
-      **kwargs: keyword arguments to the cluster's __init__.
 
     Returns:
       Initialized Matter cluster instance.
     """
-    # TODO(gdm-authors) Unblock the check once b/228923824 is resolved
-    # if cluster_class not in self.get_supported_cluster_flavors():
-    #  raise errors.DeviceError(
-    #      f"{self._device_name} does not support cluster {cluster_class} on "
-    #      f"endpoint {self.name} (endpoint ID {self.id}).")
+    if cluster_class not in self.get_supported_cluster_flavors():
+      raise errors.DeviceError(
+          f"{self._device_name} does not support cluster {cluster_class} on "
+          f"endpoint {self.name} (endpoint ID {self.id}).")
 
     cluster_name = cluster_class.__name__
     if not hasattr(self, cluster_name):
-      cluster_inst = cluster_class(*args, **kwargs)
+      cluster_inst = cluster_class(
+          device_name=self._device_name,
+          switchboard_call=self._switchboard_call,
+          rpc_timeout_s=self._rpc_timeout_s)
       setattr(self, cluster_name, cluster_inst)
     return getattr(self, cluster_name)

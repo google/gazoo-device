@@ -22,6 +22,7 @@ from gazoo_device import gdm_logger
 from gazoo_device.capabilities import matter_endpoints_and_clusters
 from gazoo_device.capabilities.interfaces import matter_endpoints_base
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
+from gazoo_device.capabilities.matter_endpoints import unsupported_endpoint
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 from gazoo_device.protos import descriptor_service_pb2
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
@@ -69,6 +70,9 @@ class _DescriptorServiceHandler:
     # The endpoint ID to set of cluster classes mapping.
     self._endpoint_id_to_clusters = {}
 
+    # The endpoint ID to device type ID mapping.
+    self._endpoint_id_to_device_type_id = {}
+
   @property
   def endpoint_id_to_class(
       self) -> Mapping[int, Optional[Type[endpoint_base.EndpointBase]]]:
@@ -90,11 +94,18 @@ class _DescriptorServiceHandler:
     self._fetch_endpoints_and_clusters()
     return copy.deepcopy(self._endpoint_id_to_clusters)
 
+  @property
+  def endpoint_id_to_device_type_id(self) -> Mapping[int, int]:
+    """Returns the endpoint ID to device type ID mapping."""
+    self._fetch_endpoints_and_clusters()
+    return copy.deepcopy(self._endpoint_id_to_device_type_id)
+
   def reset(self) -> None:
     """Resets the endpoint ID and endpoint class mapping."""
     self._endpoint_id_to_class.clear()
     self._endpoint_class_to_id.clear()
     self._endpoint_id_to_clusters.clear()
+    self._endpoint_id_to_device_type_id.clear()
 
   def _fetch_endpoints_and_clusters(self) -> None:
     """Retrieves the supported endpoints from the descriptor RPC service.
@@ -107,9 +118,8 @@ class _DescriptorServiceHandler:
         endpoint_cls = self._get_endpoint_class(endpoint_id)
         self._endpoint_id_to_class[endpoint_id] = endpoint_cls
         # Ensuring we store the first endpoint ID handled by this class.
-        # This mapping will be used in get_endpoint_instance_by_class method.
-        if (endpoint_cls is not None and endpoint_cls not in
-            self._endpoint_class_to_id):
+        # This mapping will be used in get_endpoint_instance_by_class method
+        if endpoint_cls not in self._endpoint_class_to_id:
           self._endpoint_class_to_id[endpoint_cls] = endpoint_id
         self._endpoint_id_to_clusters[endpoint_id] = (
             self._get_supported_clusters(endpoint_id))
@@ -134,7 +144,7 @@ class _DescriptorServiceHandler:
     return supported_endpoint_ids
 
   def _get_endpoint_class(
-      self, endpoint_id: int) -> Optional[Type[endpoint_base.EndpointBase]]:
+      self, endpoint_id: int) -> Type[endpoint_base.EndpointBase]:
     """Gets the endpoint class by the given endpoint id.
 
     Args:
@@ -154,15 +164,14 @@ class _DescriptorServiceHandler:
       raise errors.DeviceError(
           f"Device {self._device_name} getting {_DESCRIPTOR_SERVICE_NAME} "
           f"{_DESCRIPTOR_DEVICE_TYPE_RPC_NAME} failed.")
-    if not device_types:
-      # Descriptor RPC bug (b/218945050): it might return an empty list.
-      logger.warning(f"Descriptor RPC bug b/218945050, endpoint {endpoint_id} "
-                     "doesn't have a device type.")
-      return None
     device_type = descriptor_service_pb2.DeviceType.FromString(device_types[0])
     device_type_id = device_type.device_type
-    return (matter_endpoints_and_clusters.
-            MATTER_DEVICE_TYPE_ID_TO_CLASS.get(device_type_id))
+
+    # Store the endpoint ID to device type ID mapping.
+    self._endpoint_id_to_device_type_id[endpoint_id] = device_type_id
+
+    return matter_endpoints_and_clusters.MATTER_DEVICE_TYPE_ID_TO_CLASS.get(
+        device_type_id, unsupported_endpoint.UnsupportedEndpoint)
 
   def _get_supported_clusters(
       self, endpoint_id: int) -> Set[Type[cluster_base.ClusterBase]]:
@@ -226,19 +235,21 @@ class MatterEndpointsAccessor(matter_endpoints_base.MatterEndpointsBase):
         raise errors.DeviceError(
             f"Endpoint ID {endpoint_id} on {self._device_name} does not exist.")
 
-      endpoint_class = (
-          self._descriptor_service_handler.endpoint_id_to_class[endpoint_id])
-      if endpoint_class is None:
-        raise errors.DeviceError(
-            f"Endpoint class for endpoint ID {endpoint_id} on "
-            f"{self._device_name} is not implemented yet.")
+      # Obtain endpoint information from the descriptor handler.
+      endpoint_class = (self._descriptor_service_handler.
+                        endpoint_id_to_class[endpoint_id])
 
       supported_clusters = (self._descriptor_service_handler.
                             endpoint_id_to_clusters[endpoint_id])
 
+      device_type_id = (self._descriptor_service_handler.
+                        endpoint_id_to_device_type_id[endpoint_id])
+
+      # Create endpoint instance.
       self._endpoints[endpoint_id] = endpoint_class(
           device_name=self._device_name,
           identifier=endpoint_id,
+          device_type_id=device_type_id,
           supported_clusters=frozenset(supported_clusters),
           **self._endpoint_kwargs)
 

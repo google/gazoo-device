@@ -36,29 +36,17 @@ class ColorTemperatureLightEndpoint(
   @decorators.CapabilityDecorator(on_off_pw_rpc.OnOffClusterPwRpc)
   def on_off(self) -> on_off_pw_rpc.OnOffClusterPwRpc:
     """Matter OnOff cluster instance."""
-    return self.cluster_lazy_init(
-        on_off_pw_rpc.OnOffClusterPwRpc,
-        device_name=self._device_name,
-        switchboard_call=self._switchboard_call,
-        rpc_timeout_s=self._rpc_timeout_s)
+    return self.cluster_lazy_init(on_off_pw_rpc.OnOffClusterPwRpc)
 
   @decorators.CapabilityDecorator(level_control_pw_rpc.LevelControlClusterPwRpc)
   def level(self) -> level_control_pw_rpc.LevelControlClusterPwRpc:
     """Matter Level Control cluster instance."""
-    return self.cluster_lazy_init(
-        level_control_pw_rpc.LevelControlClusterPwRpc,
-        device_name=self._device_name,
-        switchboard_call=self._switchboard_call,
-        rpc_timeout_s=self._rpc_timeout_s)
+    return self.cluster_lazy_init(level_control_pw_rpc.LevelControlClusterPwRpc)
 
   @decorators.CapabilityDecorator(color_control_pw_rpc.ColorControlClusterPwRpc)
   def color(self) -> color_control_pw_rpc.ColorControlClusterPwRpc:
     """Matter Color Control cluster instance."""
-    return self.cluster_lazy_init(
-        color_control_pw_rpc.ColorControlClusterPwRpc,
-        device_name=self._device_name,
-        switchboard_call=self._switchboard_call,
-        rpc_timeout_s=self._rpc_timeout_s)
+    return self.cluster_lazy_init(color_control_pw_rpc.ColorControlClusterPwRpc)
 
   # TODO(b/209362086) Add the below clusters
   # def scenes(self):

@@ -36,11 +36,7 @@ class DoorLockEndpoint(door_lock_base.DoorLockBase):
   @decorators.CapabilityDecorator(door_lock_pw_rpc.DoorLockClusterPwRpc)
   def door_lock(self) -> door_lock_pw_rpc.DoorLockClusterPwRpc:
     """Matter Door Lock cluster instance."""
-    return self.cluster_lazy_init(
-        door_lock_pw_rpc.DoorLockClusterPwRpc,
-        device_name=self._device_name,
-        switchboard_call=self._switchboard_call,
-        rpc_timeout_s=self._rpc_timeout_s)
+    return self.cluster_lazy_init(door_lock_pw_rpc.DoorLockClusterPwRpc)
 
   # TODO(b/209362086) Add the below clusters
 

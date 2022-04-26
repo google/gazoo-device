@@ -83,10 +83,12 @@ from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.capabilities.matter_endpoints import on_off_light
+from gazoo_device.capabilities.matter_endpoints import unsupported_endpoint
 from gazoo_device.capabilities.matter_endpoints.interfaces import color_temperature_light_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import dimmable_light_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import door_lock_base as door_lock_endpoint_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import on_off_light_base
+from gazoo_device.capabilities.matter_endpoints.interfaces import unsupported_endpoint_base
 from gazoo_device.primary_devices import efr32_matter
 from gazoo_device.primary_devices import esp32_matter
 from gazoo_device.primary_devices import nrf_matter
@@ -180,6 +182,7 @@ def export_extensions() -> Dict[str, Any]:
           shell_base.ShellBase,
           switchboard_base.SwitchboardBase,
           switch_power_base.SwitchPowerBase,
+          unsupported_endpoint_base.UnsupportedBase,
           usb_hub_base.UsbHubBase,
       ],
       "capability_flavors": [
@@ -216,6 +219,7 @@ def export_extensions() -> Dict[str, Any]:
           switch_power_usb_default.SwitchPowerUsbDefault,
           switch_power_usb_with_charge.SwitchPowerUsbWithCharge,
           switchboard.SwitchboardDefault,
+          unsupported_endpoint.UnsupportedEndpoint,
           usb_hub_default.UsbHubDefault,
       ],
       "keys": list(config.KEYS.values()),

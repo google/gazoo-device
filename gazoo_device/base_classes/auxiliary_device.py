@@ -30,6 +30,7 @@ from gazoo_device import extensions
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import auxiliary_device_base
 from gazoo_device.capabilities.interfaces import capability_base
+from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 from gazoo_device.switchboard import log_process
 from gazoo_device.utility import common_utils
 from gazoo_device.utility import deprecation_utils
@@ -824,6 +825,10 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
     classes.add(cls)
     property_names = []
     for a_class in classes:
+      # Skip the Matter endpoints: accessing Matter endpoint aliases checks if
+      # the endpoint is supported, which requires device communication.
+      if issubclass(a_class, endpoint_base.EndpointBase):
+        continue
       # pytype: disable=attribute-error
       prefix = "" if a_class == cls else a_class.get_capability_name() + "."
       # pytype: enable=attribute-error

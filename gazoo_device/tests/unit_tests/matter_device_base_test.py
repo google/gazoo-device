@@ -23,6 +23,7 @@ from gazoo_device.base_classes import matter_device_base
 from gazoo_device.capabilities import device_power_default
 from gazoo_device.capabilities import matter_endpoints_accessor
 from gazoo_device.capabilities import pwrpc_common_default
+from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.capabilities.matter_endpoints import on_off_light
@@ -223,18 +224,29 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
     """Verifies the initialization of pw_rpc_button capability."""
     self.assertIsNotNone(self.uut.pw_rpc_button)
 
+  # *************** Test cases for Matter endpoint aliases *************** #
   @mock.patch.object(
       matter_endpoints_accessor.MatterEndpointsAccessor,
       "get_endpoint_instance_by_class")
-  def test_on_off_light_alias_on_success(self, mock_get_endpoint):
-    """Verifies on_off_light endpoint alias on success."""
-    self.assertIsNotNone(self.uut.on_off_light)
-    mock_get_endpoint.assert_called_once_with(on_off_light.OnOffLightEndpoint)
+  def test_color_temperature_light_alias(self, mock_get_endpoint):
+    """Verifies color_temperature_light endpoint alias on success."""
+    self.assertIsNotNone(self.uut.color_temperature_light)
+    mock_get_endpoint.assert_called_once_with(
+        color_temperature_light.ColorTemperatureLightEndpoint)
 
   @mock.patch.object(
       matter_endpoints_accessor.MatterEndpointsAccessor,
       "get_endpoint_instance_by_class")
-  def test_door_lock_alias_on_success(self, mock_get_endpoint):
+  def test_dimmable_light_alias(self, mock_get_endpoint):
+    """Verifies dimmable_light endpoint alias on success."""
+    self.assertIsNotNone(self.uut.dimmable_light)
+    mock_get_endpoint.assert_called_once_with(
+        dimmable_light.DimmableLightEndpoint)
+
+  @mock.patch.object(
+      matter_endpoints_accessor.MatterEndpointsAccessor,
+      "get_endpoint_instance_by_class")
+  def test_door_lock_alias(self, mock_get_endpoint):
     """Verifies door_lock endpoint alias on success."""
     self.assertIsNotNone(self.uut.door_lock)
     mock_get_endpoint.assert_called_once_with(door_lock.DoorLockEndpoint)
@@ -242,11 +254,11 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
   @mock.patch.object(
       matter_endpoints_accessor.MatterEndpointsAccessor,
       "get_endpoint_instance_by_class")
-  def test_dimmable_light_alias_on_success(self, mock_get_endpoint):
-    """Verifies dimmable_light endpoint alias on success."""
-    self.assertIsNotNone(self.uut.dimmable_light)
-    mock_get_endpoint.assert_called_once_with(
-        dimmable_light.DimmableLightEndpoint)
+  def test_on_off_light_alias(self, mock_get_endpoint):
+    """Verifies on_off_light endpoint alias on success."""
+    self.assertIsNotNone(self.uut.on_off_light)
+    mock_get_endpoint.assert_called_once_with(on_off_light.OnOffLightEndpoint)
+  # ***************************************************************** #
 
 
 if __name__ == "__main__":

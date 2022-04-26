@@ -838,6 +838,11 @@ class GazooDeviceCapabilityTests(fake_device_test_case.FakeDeviceTestCase):
         f"GazooDeviceBase.__{test_func.__name__}__ does not have correct "
         "format")
 
+  @mock.patch.object(gazoo_device_base, "issubclass", return_value=True)
+  def test_get_property_names_skip_matter_endpoints(self, mock_issubclass):
+    """Verifies _get_property_names skipping Matter endpoints."""
+    self.assertEqual(0, len(self.uut._get_property_names("")))
+
 
 if __name__ == "__main__":
   fake_device_test_case.main()

@@ -38,6 +38,7 @@ _FAKE_FRAME = b"fake-frame"
 _FAKE_FRAME_ADDRESS = 0
 _STDOUT_ADDRESS = 1
 _DEFAULT_ADDRESS = ord("R")
+_FAKE_FILENO = 0
 
 _FAKE_PROTO_MODULE_PATH = (
     "gazoo_device.switchboard.transports.pigweed_rpc_transport.python_protos")
@@ -235,6 +236,7 @@ class PigweedRPCTransportTest(unit_test_case.UnitTestCase):
     serial_class = serial_patcher.start()
     self.fake_client = client_class.return_value
     self.fake_serial = serial_class.return_value
+    self.fake_serial.fileno.return_value = _FAKE_FILENO
     self.addCleanup(client_patcher.stop)
     self.addCleanup(serial_patcher.stop)
     self.uut = pigweed_rpc_transport.PigweedRPCTransport(
@@ -258,7 +260,7 @@ class PigweedRPCTransportTest(unit_test_case.UnitTestCase):
     mock_flock.assert_called_once()
 
   @mock.patch.object(fcntl, "fcntl")
-  def test_transport_open(self, mock_fcntl):
+  def test_transport_open_on_success(self, mock_fcntl):
     """Verifies PwRPC transport open method on success."""
     self.uut._open()
     self.fake_serial.open.assert_called_once()
@@ -277,12 +279,13 @@ class PigweedRPCTransportTest(unit_test_case.UnitTestCase):
     self.assertEqual(0, self.uut._write(""))
 
   @mock.patch.object(pigweed_rpc_transport, "_serialize")
-  def test_transport_rpc(self, mock_serialize):
-    """Verifies PwRPC transport general rpc method."""
+  def test_transport_rpc_hdlc_client_alive(self, mock_serialize):
+    """Verifies PwRPC transport rpc call with alive hdlc client."""
     fake_ack = mock.Mock()
     fake_ack.ok.return_value = True
     fake_channel = mock.Mock()
     fake_channel.fake_service.fake_event.return_value = fake_ack, None
+    self.fake_client.is_alive.return_value = True
     self.fake_client.rpcs.return_value.chip.rpc = fake_channel
     mock_serialize.return_value = _FAKE_SERIALIZED_BYTES
 
@@ -291,6 +294,16 @@ class PigweedRPCTransportTest(unit_test_case.UnitTestCase):
 
     self.assertTrue(ack)
     self.assertEqual(_FAKE_SERIALIZED_BYTES, payload)
+
+  def test_transport_rpc_hdlc_client_not_alive(self):
+    """Verifies PwRPC transport rpc call with not alive hdlc client."""
+    self.fake_client.is_alive.return_value = False
+
+    ack, payload = self.uut.rpc(service_name=_FAKE_SERVICE,
+                                event_name=_FAKE_EVENT)
+
+    self.assertFalse(ack)
+    self.assertIsNone(payload)
 
   def test_is_primitive_return_true(self):
     """Verifies _is_primitive method returning true for primitive data type."""

@@ -33,6 +33,7 @@ from gazoo_device import gdm_logger
 from gazoo_device.base_classes import primary_device_base
 from gazoo_device.capabilities import event_parser_default
 from gazoo_device.capabilities.interfaces import capability_base
+from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 from gazoo_device.switchboard import log_process
 from gazoo_device.switchboard import switchboard
 from gazoo_device.utility import common_utils
@@ -972,6 +973,10 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     classes.add(cls)
     property_names = []
     for a_class in classes:
+      # Skip the Matter endpoints: accessing Matter endpoint aliases checks if
+      # the endpoint is supported, which requires device communication.
+      if issubclass(a_class, endpoint_base.EndpointBase):
+        continue
       # pytype: disable=attribute-error
       prefix = "" if a_class == cls else a_class.get_capability_name() + "."
       # pytype: enable=attribute-error

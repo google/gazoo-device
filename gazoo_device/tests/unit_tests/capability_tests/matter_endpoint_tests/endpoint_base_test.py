@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Matter endpoint capability unit test for endpoint_base module."""
-import unittest
 from unittest import mock
 
 from gazoo_device import errors
@@ -54,6 +53,10 @@ class EndpointBaseTest(fake_device_test_case.FakeDeviceTestCase):
     """Verifies endpoint name property."""
     self.assertEqual(_FAKE_ENDPOINT_NAME, self.uut.name)
 
+  def test_device_type_id(self):
+    """Verifies device_type_id property."""
+    self.assertIsNone(self.uut.device_type_id)
+
   @mock.patch.object(
       endpoint_base.EndpointBase, "get_supported_cluster_flavors")
   def test_cluster_lazy_init_on_success(self, mock_get_supported_clusters):
@@ -66,8 +69,6 @@ class EndpointBaseTest(fake_device_test_case.FakeDeviceTestCase):
     self.assertEqual(fake_cluster_inst,
                      self.uut.cluster_lazy_init(fake_cluster_cls))
 
-  # TODO(gdm-authors) Unblock the check once b/228923824 is resolved
-  @unittest.skip("Temporarily skip due to firmware issue.")
   @mock.patch.object(
       endpoint_base.EndpointBase,
       "get_capability_name",

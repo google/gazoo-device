@@ -12,5 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Gazoo Device Manager version."""
-version = "1.65.0"
+"""Interface for a Matter unsupported endpoint."""
+import abc
+from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
+
+
+class UnsupportedBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
+  """Matter unsupported endpoint interface."""

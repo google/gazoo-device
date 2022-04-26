@@ -121,12 +121,12 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
     """Firmware version of the device."""
     return str(self.pw_rpc_common.software_version)
 
-  @decorators.PersistentProperty
+  @decorators.DynamicProperty
   def vendor_id(self) -> int:
     """Vendor ID of the device."""
     return self.pw_rpc_common.vendor_id
 
-  @decorators.PersistentProperty
+  @decorators.DynamicProperty
   def product_id(self) -> int:
     """Product ID of the device."""
     return self.pw_rpc_common.product_id
@@ -275,7 +275,6 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
         usb_port_prop="device_usb_port")
 
   # ******************** Matter endpoint aliases ******************** #
-
   @decorators.CapabilityDecorator(
       color_temperature_light.ColorTemperatureLightEndpoint)
   def color_temperature_light(

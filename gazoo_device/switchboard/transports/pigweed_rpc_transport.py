@@ -297,7 +297,7 @@ class PigweedRPCTransport(transport_base.TransportBase):
   def rpc(self,
           service_name: str,
           event_name: str,
-          **kwargs: Any) -> Tuple[bool, bytes]:
+          **kwargs: Any) -> Tuple[bool, Optional[bytes]]:
     """RPC call to the Matter endpoint with given service and event name.
 
     Args:
@@ -308,6 +308,9 @@ class PigweedRPCTransport(transport_base.TransportBase):
     Returns:
       (RPC ack value, RPC encoded payload in bytes)
     """
+    if not self._hdlc_client.is_alive():
+      return False, None
+
     client_channel = self._hdlc_client.rpcs().chip.rpc
     service = getattr(client_channel, service_name)
     event = getattr(service, event_name)

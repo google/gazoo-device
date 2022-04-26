@@ -20,6 +20,7 @@ from gazoo_device import errors
 from gazoo_device.capabilities import matter_endpoints_accessor
 from gazoo_device.capabilities import matter_endpoints_and_clusters
 from gazoo_device.capabilities.matter_endpoints import on_off_light
+from gazoo_device.capabilities.matter_endpoints import unsupported_endpoint
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 from gazoo_device.protos import descriptor_service_pb2
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
@@ -111,6 +112,9 @@ class DescriptorServiceHandlerTest(fake_device_test_case.FakeDeviceTestCase):
 
     self.assertEqual(_FAKE_ENDPOINT_CLS,
                      self.handler._get_endpoint_class(_FAKE_ENDPOINT_ID))
+    self.assertEqual(
+        _FAKE_DEVICE_TYPE_ID,
+        self.handler.endpoint_id_to_device_type_id[_FAKE_ENDPOINT_ID])
 
   def test_get_endpoint_class_on_failure_false_ack(self):
     """Verifies _get_endpoint_class on failure with false ack."""
@@ -119,12 +123,6 @@ class DescriptorServiceHandlerTest(fake_device_test_case.FakeDeviceTestCase):
     with self.assertRaisesRegex(
         errors.DeviceError, "getting Descriptor DeviceTypeList failed"):
       self.handler._get_endpoint_class(_FAKE_ENDPOINT_ID)
-
-  def test_get_endpoint_class_return_empty(self):
-    """Verifies _get_endpoint_class returns empty list."""
-    self.fake_switchboard_call.return_value = True, []
-
-    self.assertIsNone(self.handler._get_endpoint_class(_FAKE_ENDPOINT_ID))
 
   def test_reset_method_on_success(self):
     """Verifies reset method on success."""
@@ -172,15 +170,26 @@ class MatterEndpointsAccessorTest(fake_device_test_case.FakeDeviceTestCase):
     self.addCleanup(handler_patcher.stop)
     self.fake_handler = handler_class.return_value
     self.uut = matter_endpoints_accessor.MatterEndpointsAccessor(
-        device_name=_FAKE_DEVICE_NAME)
+        device_name=_FAKE_DEVICE_NAME,
+        switchboard_call=None,
+        rpc_timeout_s=_FAKE_RPC_TIMEOUT_S)
     _FAKE_ENDPOINT_CLS.return_value = _FAKE_ENDPOINT_INST
 
-  def test_get_method_on_success(self):
-    """Verifies the get endpoint method on success."""
+  def test_get_method_on_success_with_supported_endpoint(self):
+    """Verifies the get endpoint method on success with supported endpoint."""
     self.fake_handler.endpoint_id_to_class = _FAKE_ENDPOINT_ID_TO_CLS
     self.uut._endpoints.clear()
 
     self.assertEqual(_FAKE_ENDPOINT_INST, self.uut.get(_FAKE_ENDPOINT_ID))
+
+  def test_get_method_on_success_with_unsupported_endpoint(self):
+    """Verifies the get endpoint method on success with unsupported endpoint."""
+    self.fake_handler.endpoint_id_to_class = {
+        _FAKE_ENDPOINT_ID: unsupported_endpoint.UnsupportedEndpoint}
+    self.uut._endpoints.clear()
+
+    self.assertIsInstance(self.uut.get(_FAKE_ENDPOINT_ID),
+                          unsupported_endpoint.UnsupportedEndpoint)
 
   def test_get_method_on_failure_invalid_id(self):
     """Verifies get endpoint method on failure for invalid endpoint ID."""
@@ -190,16 +199,6 @@ class MatterEndpointsAccessorTest(fake_device_test_case.FakeDeviceTestCase):
     with self.assertRaisesRegex(
         errors.DeviceError, f"Endpoint ID {_FAKE_ENDPOINT_ID} on "
         f"{_FAKE_DEVICE_NAME} does not exist"):
-      self.uut.get(_FAKE_ENDPOINT_ID)
-
-  def test_get_method_on_failure_unimplemented_endpoint(self):
-    """Verifies get endpoint method on failure for unimplemented endpoint."""
-    self.fake_handler.endpoint_id_to_class = {_FAKE_ENDPOINT_ID: None}
-    self.uut._endpoints.clear()
-
-    with self.assertRaisesRegex(
-        errors.DeviceError, f"endpoint ID {_FAKE_ENDPOINT_ID} on "
-        f"{_FAKE_DEVICE_NAME} is not implemented yet"):
       self.uut.get(_FAKE_ENDPOINT_ID)
 
   def test_list_endpoints(self):
