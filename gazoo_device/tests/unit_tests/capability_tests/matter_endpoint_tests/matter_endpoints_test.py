@@ -50,8 +50,8 @@ class MatterEndpointsTest(fake_device_test_case.FakeDeviceTestCase):
         device_name=_FAKE_DEVICE_NAME,
         identifier=_FAKE_ENDPOINT_ID,
         supported_clusters=set(),
-        switchboard_call=None,
-        rpc_timeout_s=_FAKE_RPC_TIMEOUT_S)
+        read=None,
+        write=None)
     if hasattr(uut, cluster_name):
       fake_cluster_instance = mock.Mock(spec=cluster_base.ClusterBase)
       mock_cluster_lazy_init.return_value = fake_cluster_instance

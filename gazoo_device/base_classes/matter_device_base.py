@@ -29,11 +29,10 @@ from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.capabilities.matter_endpoints import on_off_light
+from gazoo_device.protos import attributes_service_pb2
 from gazoo_device.protos import button_service_pb2
 from gazoo_device.protos import descriptor_service_pb2
 from gazoo_device.protos import device_service_pb2
-from gazoo_device.protos import lighting_service_pb2
-from gazoo_device.protos import locking_service_pb2
 from gazoo_device.protos import wifi_service_pb2
 from gazoo_device.utility import usb_utils
 
@@ -50,9 +49,8 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
   """Matter device base class."""
   COMMUNICATION_TYPE = "PigweedSerialComms"
   _OWNER_EMAIL = "gdm-authors@google.com"
-  _COMMUNICATION_KWARGS = {"protobufs": (button_service_pb2,
-                                         lighting_service_pb2,
-                                         locking_service_pb2,
+  _COMMUNICATION_KWARGS = {"protobufs": (attributes_service_pb2,
+                                         button_service_pb2,
                                          descriptor_service_pb2,
                                          device_service_pb2,
                                          wifi_service_pb2),

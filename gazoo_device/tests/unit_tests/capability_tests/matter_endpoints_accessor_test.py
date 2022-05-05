@@ -22,7 +22,9 @@ from gazoo_device.capabilities import matter_endpoints_and_clusters
 from gazoo_device.capabilities.matter_endpoints import on_off_light
 from gazoo_device.capabilities.matter_endpoints import unsupported_endpoint
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
+from gazoo_device.protos import attributes_service_pb2
 from gazoo_device.protos import descriptor_service_pb2
+from gazoo_device.switchboard import switchboard
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
 _FAKE_ENDPOINT_ID = 0
@@ -39,6 +41,8 @@ _FAKE_ENDPOINT_CLS_TO_ID = {_FAKE_ENDPOINT_CLS: _FAKE_ENDPOINT_ID}
 _FAKE_CLUSTER_ID = 0
 _FAKE_NOT_IMPLEMENTED_CLUSTER_ID = 1
 _FAKE_CLUSTER_CLS = mock.Mock(CLUSTER_ID=_FAKE_CLUSTER_ID)
+_FAKE_ATTRIBUTE_ID = 0
+_FAKE_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_BOOLEAN_ATTRIBUTE_TYPE
 
 
 class DescriptorServiceHandlerTest(fake_device_test_case.FakeDeviceTestCase):
@@ -169,9 +173,11 @@ class MatterEndpointsAccessorTest(fake_device_test_case.FakeDeviceTestCase):
     handler_class = handler_patcher.start()
     self.addCleanup(handler_patcher.stop)
     self.fake_handler = handler_class.return_value
+    self.fake_swtichboard_call = mock.Mock(
+        spec=switchboard.SwitchboardDefault.call)
     self.uut = matter_endpoints_accessor.MatterEndpointsAccessor(
         device_name=_FAKE_DEVICE_NAME,
-        switchboard_call=None,
+        switchboard_call=self.fake_swtichboard_call,
         rpc_timeout_s=_FAKE_RPC_TIMEOUT_S)
     _FAKE_ENDPOINT_CLS.return_value = _FAKE_ENDPOINT_INST
 
@@ -296,6 +302,53 @@ class MatterEndpointsAccessorTest(fake_device_test_case.FakeDeviceTestCase):
     self.assertEqual(
         expected_mapping,
         self.uut.get_supported_endpoint_instances_and_cluster_flavors())
+
+  def test_ember_api_read_on_success(self):
+    """Verifies Ember API read method on success."""
+    data = attributes_service_pb2.AttributeData(data_bool=True)
+    self.fake_swtichboard_call.return_value = True, data.SerializeToString()
+
+    self.assertEqual(data,
+                     self.uut.read(
+                         endpoint_id=_FAKE_ENDPOINT_ID,
+                         cluster_id=_FAKE_CLUSTER_ID,
+                         attribute_id=_FAKE_ATTRIBUTE_ID,
+                         attribute_type=_FAKE_ATTRIBUTE_TYPE))
+
+  def test_ember_api_read_on_failure(self):
+    """Verifies Ember API read method on failure."""
+    self.fake_swtichboard_call.return_value = False, None
+    error_message = f"Device {_FAKE_DEVICE_NAME} reading attribute"
+
+    with self.assertRaisesRegex(errors.DeviceError, error_message):
+      self.uut.read(endpoint_id=_FAKE_ENDPOINT_ID,
+                    cluster_id=_FAKE_CLUSTER_ID,
+                    attribute_id=_FAKE_ATTRIBUTE_ID,
+                    attribute_type=_FAKE_ATTRIBUTE_TYPE)
+
+  def test_ember_api_write_on_success(self):
+    """Verifies Ember API write method on success."""
+    self.fake_swtichboard_call.return_value = True, None
+
+    self.uut.write(endpoint_id=_FAKE_ENDPOINT_ID,
+                   cluster_id=_FAKE_CLUSTER_ID,
+                   attribute_id=_FAKE_ATTRIBUTE_ID,
+                   attribute_type=_FAKE_ATTRIBUTE_TYPE,
+                   data_bool=True)
+
+    self.fake_swtichboard_call.assert_called_once()
+
+  def test_ember_api_write_on_failure(self):
+    """Verifies Ember API write method on failure."""
+    self.fake_swtichboard_call.return_value = False, None
+    error_message = f"Device {_FAKE_DEVICE_NAME} writing data"
+
+    with self.assertRaisesRegex(errors.DeviceError, error_message):
+      self.uut.write(endpoint_id=_FAKE_ENDPOINT_ID,
+                     cluster_id=_FAKE_CLUSTER_ID,
+                     attribute_id=_FAKE_ATTRIBUTE_ID,
+                     attribute_type=_FAKE_ATTRIBUTE_TYPE,
+                     data_bool=True)
 
 
 if __name__ == "__main__":

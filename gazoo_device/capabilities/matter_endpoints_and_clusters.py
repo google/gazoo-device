@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Matter endpoint and cluster modules."""
+
 from gazoo_device.capabilities.matter_clusters import color_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import door_lock_pw_rpc
 from gazoo_device.capabilities.matter_clusters import level_control_pw_rpc

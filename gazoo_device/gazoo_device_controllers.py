@@ -20,6 +20,7 @@ from gazoo_device import data_types
 from gazoo_device import detect_criteria
 from gazoo_device import gdm_logger
 from gazoo_device.auxiliary_devices import cambrionix
+from gazoo_device.auxiliary_devices import dc2200
 from gazoo_device.auxiliary_devices import dli_powerswitch
 from gazoo_device.auxiliary_devices import dlink_switch
 from gazoo_device.auxiliary_devices import efr32
@@ -40,6 +41,7 @@ from gazoo_device.capabilities import file_transfer_echo
 from gazoo_device.capabilities import file_transfer_scp
 from gazoo_device.capabilities import flash_build_esptool
 from gazoo_device.capabilities import flash_build_jlink
+from gazoo_device.capabilities import led_driver_default
 from gazoo_device.capabilities import matter_controller_chip_tool
 from gazoo_device.capabilities import matter_endpoints_accessor
 from gazoo_device.capabilities import package_management_android
@@ -61,6 +63,7 @@ from gazoo_device.capabilities.interfaces import event_parser_base
 from gazoo_device.capabilities.interfaces import fastboot_base
 from gazoo_device.capabilities.interfaces import file_transfer_base
 from gazoo_device.capabilities.interfaces import flash_build_base
+from gazoo_device.capabilities.interfaces import led_driver_base
 from gazoo_device.capabilities.interfaces import matter_controller_base
 from gazoo_device.capabilities.interfaces import matter_endpoints_base
 from gazoo_device.capabilities.interfaces import package_management_base
@@ -132,6 +135,7 @@ def export_extensions() -> Dict[str, Any]:
           nrf_matter.NrfMatter,
       ],
       "auxiliary_devices": [
+          dc2200.DC2200,
           cambrionix.Cambrionix,
           dli_powerswitch.DliPowerSwitch,
           dlink_switch.DLinkSwitch,
@@ -170,6 +174,7 @@ def export_extensions() -> Dict[str, Any]:
           fastboot_base.FastbootBase,
           file_transfer_base.FileTransferBase,
           flash_build_base.FlashBuildBase,
+          led_driver_base.LedDriverBase,
           level_control_base.LevelControlClusterBase,
           matter_controller_base.MatterControllerBase,
           matter_endpoints_base.MatterEndpointsBase,
@@ -202,6 +207,7 @@ def export_extensions() -> Dict[str, Any]:
           file_transfer_scp.FileTransferScp,
           flash_build_esptool.FlashBuildEsptool,
           flash_build_jlink.FlashBuildJLink,
+          led_driver_default.LedDriverDefault,
           level_control_pw_rpc.LevelControlClusterPwRpc,
           matter_controller_chip_tool.MatterControllerChipTool,
           matter_endpoints_accessor.MatterEndpointsAccessor,

@@ -17,11 +17,13 @@
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
+from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import level_control_base
-from gazoo_device.protos import lighting_service_pb2
-from gazoo_device.switchboard.transports import pigweed_rpc_transport
+from gazoo_device.protos import attributes_service_pb2
 
 logger = gdm_logger.get_logger()
+LevelControlCluster = matter_enums.LevelControlCluster
+INT8U_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_INT8U_ATTRIBUTE_TYPE
 
 
 class LevelControlClusterPwRpc(level_control_base.LevelControlClusterBase):
@@ -40,16 +42,15 @@ class LevelControlClusterPwRpc(level_control_base.LevelControlClusterBase):
       level: The level that the device should move to.
       verify: If true, verifies the level changes before returning.
     """
-    # TODO(b/206894490) Use Ember API instead of the Lighting endpoint.
     previous_level = self.current_level
-    set_level_kwargs = {"level": level, "pw_rpc_timeout_s": self._rpc_timeout_s}
-    ack, _ = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-        method_args=("Lighting", "Set"),
-        method_kwargs=set_level_kwargs)
-    if not ack:
-      raise errors.DeviceError(
-          f"Device {self._device_name} moving current level to {level} failed.")
+
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster_id=LevelControlCluster.ID.value,
+        attribute_id=LevelControlCluster.ATTRIBUTE_CURRENT_LEVEL.value,
+        attribute_type=INT8U_ATTRIBUTE_TYPE,
+        data_uint8=level)
+
     if verify:
       if self.current_level != level:  # pylint: disable=comparison-with-callable
         raise errors.DeviceError(
@@ -66,13 +67,9 @@ class LevelControlClusterPwRpc(level_control_base.LevelControlClusterBase):
     Returns:
       The current level.
     """
-    # TODO(b/206894490) Use Ember API instead of the Lighting endpoint.
-    ack, state_in_bytes = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-        method_args=("Lighting", "Get"),
-        method_kwargs={"pw_rpc_timeout_s": self._rpc_timeout_s})
-    if not ack:
-      raise errors.DeviceError(
-          f"Device {self._device_name} getting CurrentLevel attribute failed.")
-    state = lighting_service_pb2.LightingState.FromString(state_in_bytes)
-    return state.level
+    level_data = self._read(
+        endpoint_id=self._endpoint_id,
+        cluster_id=LevelControlCluster.ID.value,
+        attribute_id=LevelControlCluster.ATTRIBUTE_CURRENT_LEVEL.value,
+        attribute_type=INT8U_ATTRIBUTE_TYPE)
+    return level_data.data_uint8

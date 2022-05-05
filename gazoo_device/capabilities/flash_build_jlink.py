@@ -22,6 +22,8 @@ from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import flash_build_base
 from gazoo_device.capabilities.interfaces import switchboard_base
+from gazoo_device.switchboard.transports import pigweed_rpc_transport
+from gazoo_device.utility import retry
 from gazoo_device.utility import subprocess_utils
 import intelhex
 import pylink
@@ -30,6 +32,9 @@ logger = gdm_logger.get_logger()
 UNKNOWN = flash_build_base.UNKNOWN
 _FLASH_TIMEOUT_S = 60
 _JLINK_NO_DLL_ERROR = "Expected to be given a valid DLL."
+_RPC_DEVICE_SERVICE_NAME = "Device"
+_RPC_GET_DEVICE_INFO_NAME = "GetDeviceInfo"
+_RPC_TIMEOUT_S = 1
 
 
 class FlashBuildJLink(flash_build_base.FlashBuildBase):
@@ -71,7 +76,7 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
         only one hex file at a time.
       expected_version: Not used.
       expected_build_type: Not used.
-      verify_flash: Not used.
+      verify_flash: Check if we should verify build after flashing.
       method: Not used.
 
     Raises:
@@ -79,7 +84,7 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
       DeviceError: If flashing fails.
       DependencyUnavailableError: If J-Link SDK is not installed.
     """
-    del expected_version, expected_build_type, verify_flash, method  # Unused.
+    del expected_version, expected_build_type, method  # Unused.
     if len(list_of_files) != 1:
       raise ValueError("Only one hex file can be flashed via JLink.")
     image_path = list_of_files[0]
@@ -94,6 +99,28 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
     # as the supported endpoints might change after flashing a new build.
     if self._reset_endpoints_fn is not None:
       self._reset_endpoints_fn()
+    if verify_flash:
+      self._poll_until_device_is_ready()
+
+  def _poll_until_device_is_ready(self) -> None:
+    """Polls the device until it's responsive to the RPCs."""
+    # No need to poll if it's not a Matter device.
+    if self._switchboard is None:
+      return
+
+    def is_ack_true(rpc_response):
+      ack, _ = rpc_response
+      return ack
+
+    switchboard_kwargs = {
+        "method": pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        "method_args": (_RPC_DEVICE_SERVICE_NAME, _RPC_GET_DEVICE_INFO_NAME),
+        "method_kwargs": {"pw_rpc_timeout_s": _RPC_TIMEOUT_S}}
+    retry.retry(
+        func=self._switchboard.call,
+        func_kwargs=switchboard_kwargs,
+        is_successful=is_ack_true,
+        reraise=False)
 
   def _jlink_flash(self, image_path: str) -> None:
     """Flashes the provided image onto the device via J-Link."""

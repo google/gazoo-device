@@ -10,6 +10,8 @@ pylink-square>=0.3.0
 pyserial>=3.5
 pyudev==0.21.0
 pyusb>=1.2.1
+pyvisa>=1.11.3
+pyvisa-py>=0.5.2
 requests>=2.25.0
 typing_extensions>=3.7
 urllib3>=1.26.3

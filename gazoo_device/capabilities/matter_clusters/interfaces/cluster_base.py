@@ -25,15 +25,18 @@ class ClusterBase(capability_base.CapabilityBase):
 
   def __init__(self,
                device_name: str,
-               switchboard_call: Callable[..., Any],
-               rpc_timeout_s: int):
+               endpoint_id: int,
+               read: Callable[..., Any],
+               write: Callable[..., Any]):
     """Initializes an instance of the Matter cluster capability.
 
     Args:
       device_name: Device name used for logging.
-      switchboard_call: The switchboard.call method.
-      rpc_timeout_s: Timeout (s) for RPC call.
+      endpoint_id: Endpoint ID of endpoint which hosts this cluster.
+      read: The Ember API read method.
+      write: The Ember API write method.
     """
     super().__init__(device_name=device_name)
-    self._switchboard_call = switchboard_call
-    self._rpc_timeout_s = rpc_timeout_s
+    self._endpoint_id = endpoint_id
+    self._read = read
+    self._write = write

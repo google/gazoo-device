@@ -87,7 +87,15 @@ SSH_DEVICE_BEHAVIORS = immutabledict.immutabledict({
     },
 })
 
-USB_DEVICE_BEHAVIORS = immutabledict.immutabledict({})
+USB_DEVICE_BEHAVIORS = immutabledict.immutabledict({
+    "dc2200": {
+        "address": "123456",
+        "product": "DC2200",
+        "product_id": 0x80c8,
+        "serial_number": "123456",
+        "vendor_id": 0x1313,
+    },
+})
 
 
 class ResponseObject:

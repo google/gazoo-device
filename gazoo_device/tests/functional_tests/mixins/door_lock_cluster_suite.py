@@ -13,12 +13,12 @@
 # limitations under the License.
 
 """Mixin for Matter Door Lock test suite."""
-from gazoo_device.capabilities.matter_clusters import door_lock_pw_rpc
+from gazoo_device.capabilities import matter_enums
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
 
-_LOCK_VALUE = door_lock_pw_rpc.LockState.LOCKED.value
-_UNLOCK_VALUE = door_lock_pw_rpc.LockState.UNLOCKED.value
+_LOCK_VALUE = matter_enums.LockState.LOCKED.value
+_UNLOCK_VALUE = matter_enums.LockState.UNLOCKED.value
 
 
 class DoorLockTestSuite(gdm_test_base.GDMTestBase):

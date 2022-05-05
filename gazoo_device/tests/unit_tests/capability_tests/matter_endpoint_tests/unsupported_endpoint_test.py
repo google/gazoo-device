@@ -19,7 +19,6 @@ from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 _FAKE_DEVICE_NAME = "fake-device-name"
 _FAKE_ENDPOINT_ID = 1
 _FAKE_DEVICE_TYPE_ID = 1
-_FAKE_RPC_TIMEOUT_S = 10
 
 
 class UnsupportedEndpointTest(fake_device_test_case.FakeDeviceTestCase):
@@ -32,8 +31,8 @@ class UnsupportedEndpointTest(fake_device_test_case.FakeDeviceTestCase):
         identifier=_FAKE_ENDPOINT_ID,
         device_type_id=_FAKE_DEVICE_TYPE_ID,
         supported_clusters=set(),
-        switchboard_call=None,
-        rpc_timeout_s=_FAKE_RPC_TIMEOUT_S)
+        read=None,
+        write=None)
 
   def test_name_property(self):
     """Verifies the name property on success."""

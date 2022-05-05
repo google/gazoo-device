@@ -19,7 +19,9 @@ from gazoo_device import config
 from gazoo_device import errors
 from gazoo_device.capabilities import flash_build_jlink
 from gazoo_device.capabilities import matter_endpoints_accessor
+from gazoo_device.switchboard import switchboard
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
+from gazoo_device.utility import retry
 from gazoo_device.utility import subprocess_utils
 import intelhex
 import pylink
@@ -58,8 +60,10 @@ class JLinkFlashDefaultTest(fake_device_test_case.FakeDeviceTestCase):
           "No J-Link DLL found. Install the J-Link SDK"):
         self.uut._jlink_flash(_MOCK_IMAGE_PATH)
 
+  @mock.patch.object(
+      flash_build_jlink.FlashBuildJLink, "_poll_until_device_is_ready")
   @mock.patch.object(os.path, "exists", return_value=True)
-  def test_flash(self, mock_exists):
+  def test_flash(self, mock_exists, mock_poll_until_device_is_ready):
     """Tests JLinkFlashDefault.flash."""
     mock_image = mock.Mock()
     mock_segments = [(0, 10), (10, 20)]
@@ -82,6 +86,7 @@ class JLinkFlashDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.mock_jlink.restart.assert_called_once()
     self.mock_jlink.close.assert_called_once()
     self.mock_matter_endpoints_reset.assert_called_once()
+    mock_poll_until_device_is_ready.assert_called_once()
 
   def test_image_invalid(self):
     """Tests image invalid failure."""
@@ -99,6 +104,26 @@ class JLinkFlashDefaultTest(fake_device_test_case.FakeDeviceTestCase):
   def test_get_firmware_type(self):
     """Tests that get_firmware_type() returns UNKNOWN."""
     self.assertEqual(self.uut.get_firmware_type(), flash_build_jlink.UNKNOWN)
+
+  @mock.patch.object(retry, "retry")
+  def test_poll_until_device_is_ready_on_success(self, mock_retry):
+    """Verifies _poll_until_device_is_ready method on success."""
+    mock_switchboard = mock.Mock(spec=switchboard.SwitchboardDefault)
+    mock_switchboard.call.return_value = True, None
+    self.uut._switchboard = mock_switchboard
+
+    self.uut._poll_until_device_is_ready()
+
+    mock_retry.assert_called_once()
+
+  @mock.patch.object(retry, "retry")
+  def test_poll_until_device_is_ready_bypass(self, mock_retry):
+    """Verifies _poll_until_device_is_ready bypasses for non-Matter device."""
+    self.uut._switchboard = None
+
+    self.uut._poll_until_device_is_ready()
+
+    mock_retry.assert_not_called()
 
 
 if __name__ == "__main__":

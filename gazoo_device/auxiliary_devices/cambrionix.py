@@ -116,13 +116,13 @@ COMMANDS = {
 }
 
 REGEXES = {
-    "GET_MODE_REGEX": r"\s*\d{1,2},\s+\w+,\s+([A-Z0-9\s]+),",
+    "GET_MODE_REGEX": r"\s*\d{1,2},\s+\w+,\s+([a-zA-Z0-9\s]+),",
 }
 
 TIMEOUTS = {
     "OPEN":
-        30,  # Waits for other interactions. (reboot with watchdog=True takes ~16
-    # seconds and is likely the longest running command)
+        30,  # Waits for other interactions. (reboot with watchdog=True takes
+             # ~16 seconds and is likely the longest running command)
     "PING": 3,
     "REBOOT": 3,
     "REBOOT_WATCHDOG": 15
@@ -538,7 +538,7 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
         if not self._serial_port.is_open:
           self._serial_port.open()
         return
-      except Exception as err:
+      except Exception as err:  # pylint: disable=broad-except
         error = err
     raise errors.DeviceError("Device {} open failed. "
                              "Unable to open control serial port in {} seconds"

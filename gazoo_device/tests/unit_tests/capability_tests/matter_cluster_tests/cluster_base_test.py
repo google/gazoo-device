@@ -18,7 +18,7 @@ from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
 _FAKE_DEVICE_NAME = "fake-device-name"
-_FAKE_RPC_TIMEOUT_S = 0
+_FAKE_ENDPOINT_ID = 1
 
 
 class ClusterBaseTest(fake_device_test_case.FakeDeviceTestCase):
@@ -28,8 +28,9 @@ class ClusterBaseTest(fake_device_test_case.FakeDeviceTestCase):
     super().setUp()
     self.uut = cluster_base.ClusterBase(
         device_name=_FAKE_DEVICE_NAME,
-        switchboard_call=None,
-        rpc_timeout_s=_FAKE_RPC_TIMEOUT_S)
+        endpoint_id=_FAKE_ENDPOINT_ID,
+        read=None,
+        write=None)
 
   def test_cluster_initialization(self):
     """Verifies cluster base is initialized successfully."""

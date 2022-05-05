@@ -17,14 +17,14 @@ from unittest import mock
 
 import gazoo_device
 from gazoo_device import errors
+from gazoo_device.capabilities import matter_endpoints_accessor
 from gazoo_device.capabilities.matter_clusters import on_off_pw_rpc
-from gazoo_device.protos import lighting_service_pb2
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
 _ON_OFF_RPC_MODULE = (
     gazoo_device.capabilities.matter_clusters.on_off_pw_rpc.OnOffClusterPwRpc)
 _FAKE_DEVICE_NAME = "fake-device-name"
-_FAKE_TIMEOUT_S = 10
+_FAKE_ENDPOINT_ID = 1
 
 
 class OnOffClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
@@ -32,11 +32,15 @@ class OnOffClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
 
   def setUp(self):
     super().setUp()
-    self.fake_switchboard_call = mock.Mock()
+    self.fake_read = mock.Mock(
+        spec=matter_endpoints_accessor.MatterEndpointsAccessor.read)
+    self.fake_write = mock.Mock(
+        spec=matter_endpoints_accessor.MatterEndpointsAccessor.write)
     self.uut = on_off_pw_rpc.OnOffClusterPwRpc(
         device_name=_FAKE_DEVICE_NAME,
-        switchboard_call=self.fake_switchboard_call,
-        rpc_timeout_s=_FAKE_TIMEOUT_S)
+        endpoint_id=_FAKE_ENDPOINT_ID,
+        read=self.fake_read,
+        write=self.fake_write)
 
   @mock.patch.object(on_off_pw_rpc.OnOffClusterPwRpc, "_onoff_command")
   def test_on_command(self, mock_on_off):
@@ -63,21 +67,9 @@ class OnOffClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
 
   def test_onoff_attribute_on_success(self):
     """Verifies the onoff attribute on success."""
-    fake_on_state = lighting_service_pb2.LightingState(on=True)
-    fake_on_state_in_bytes = fake_on_state.SerializeToString()
-    self.fake_switchboard_call.return_value = (True, fake_on_state_in_bytes)
+    self.fake_read.return_value = mock.Mock(data_bool=True)
 
     self.assertTrue(self.uut.onoff)
-
-  def test_onoff_attribute_failure_false_ack(self):
-    """Verifies the onoff attribute on failure with false ack value."""
-    self.fake_switchboard_call.return_value = (False, "")
-    error_regex = f"Device {_FAKE_DEVICE_NAME} getting OnOff state failed."
-
-    with self.assertRaisesRegex(errors.DeviceError, error_regex):
-      self.uut.onoff  # pylint: disable=pointless-statement
-
-    self.fake_switchboard_call.assert_called_once()
 
   @mock.patch.object(
       _ON_OFF_RPC_MODULE,
@@ -85,19 +77,9 @@ class OnOffClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
       new_callable=mock.PropertyMock(return_value=True))
   def test_on_off_method_success(self, mock_state):
     """Verifies _on_off method on success."""
-    self.fake_switchboard_call.return_value = (True, None)
-
     self.uut._onoff_command(on=True, verify=True)
 
-    self.fake_switchboard_call.assert_called_once()
-
-  def test_on_off_method_failure_false_ack(self):
-    """Verifies _on_off method on failure with false ack value."""
-    self.fake_switchboard_call.return_value = (False, None)
-    error_regex = f"Device {_FAKE_DEVICE_NAME} turning off failed."
-
-    with self.assertRaisesRegex(errors.DeviceError, error_regex):
-      self.uut._onoff_command(on=False)
+    self.fake_write.assert_called_once()
 
   @mock.patch.object(
       _ON_OFF_RPC_MODULE,
@@ -105,7 +87,6 @@ class OnOffClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
       new_callable=mock.PropertyMock(return_value=True))
   def test_on_off_method_failure_incorrect_state(self, mock_state):
     """Verifies _on_off method on failure with incorrect state."""
-    self.fake_switchboard_call.return_value = (True, None)
     error_regex = f"Device {_FAKE_DEVICE_NAME} didn't turn off."
 
     with self.assertRaisesRegex(errors.DeviceError, error_regex):

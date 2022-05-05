@@ -17,13 +17,13 @@
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
+from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import color_control_base
-from gazoo_device.protos import lighting_service_pb2
-from gazoo_device.switchboard.transports import pigweed_rpc_transport
-from gazoo_device.utility import pwrpc_utils
+from gazoo_device.protos import attributes_service_pb2
 
-_LIGHTING_COLOR_PROTO_CLASS = "gazoo_device.protos.lighting_service_pb2.LightingColor"
 logger = gdm_logger.get_logger()
+ColorControlCluster = matter_enums.ColorControlCluster
+INT8U_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_INT8U_ATTRIBUTE_TYPE
 
 
 class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
@@ -41,7 +41,14 @@ class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
       verify: If true, verifies the hue changes before returning.
     """
     previous_hue = self.current_hue
-    self._set_light_color(hue=hue, saturation=self.current_saturation)
+
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster_id=ColorControlCluster.ID.value,
+        attribute_id=ColorControlCluster.ATTRIBUTE_CURRENT_HUE.value,
+        attribute_type=INT8U_ATTRIBUTE_TYPE,
+        data_uint8=hue)
+
     if verify:
       if self.current_hue != hue:  # pylint: disable=comparison-with-callable
         raise errors.DeviceError(
@@ -60,7 +67,14 @@ class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
       verify: If true, verifies the hue changes before returning.
     """
     previous_saturation = self.current_saturation
-    self._set_light_color(hue=self.current_hue, saturation=saturation)
+
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster_id=ColorControlCluster.ID.value,
+        attribute_id=ColorControlCluster.ATTRIBUTE_CURRENT_SATURATION.value,
+        attribute_type=INT8U_ATTRIBUTE_TYPE,
+        data_uint8=saturation)
+
     if verify:
       if self.current_saturation != saturation:  # pylint: disable=comparison-with-callable
         raise errors.DeviceError(
@@ -76,8 +90,12 @@ class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
     Returns:
       The current hue.
     """
-    color = self._get_light_color()
-    return color.hue
+    color_data = self._read(
+        endpoint_id=self._endpoint_id,
+        cluster_id=matter_enums.ColorControlCluster.ID.value,
+        attribute_id=ColorControlCluster.ATTRIBUTE_CURRENT_HUE.value,
+        attribute_type=INT8U_ATTRIBUTE_TYPE)
+    return color_data.data_uint8
 
   @decorators.DynamicProperty
   def current_saturation(self) -> int:
@@ -89,41 +107,9 @@ class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
     Returns:
       The current saturation.
     """
-    color = self._get_light_color()
-    return color.saturation
-
-  def _get_light_color(self) -> lighting_service_pb2.LightingColor:
-    """Returns the current lighting color.
-
-    Returns:
-      The current lighting color.
-    """
-    ack, state_in_bytes = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-        method_args=("Lighting", "Get"),
-        method_kwargs={"pw_rpc_timeout_s": self._rpc_timeout_s})
-    if not ack:
-      raise errors.DeviceError(
-          f"Device {self._device_name} getting lighting state failed.")
-    state = lighting_service_pb2.LightingState.FromString(state_in_bytes)
-    return state.color
-
-  def _set_light_color(self, hue: int, saturation: int) -> None:
-    """Updates the current lighting color.
-
-    Args:
-      hue: Color hue to update.
-      saturation: Color saturation to update.
-    """
-    color = lighting_service_pb2.LightingColor(hue=hue, saturation=saturation)
-    color_proto_state = pwrpc_utils.PigweedProtoState(
-        color, _LIGHTING_COLOR_PROTO_CLASS)
-    set_color_kwargs = {
-        "color": color_proto_state, "pw_rpc_timeout_s": self._rpc_timeout_s}
-    ack, _ = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-        method_args=("Lighting", "Set"),
-        method_kwargs=set_color_kwargs)
-    if not ack:
-      raise errors.DeviceError(
-          f"Device {self._device_name} setting lighting color failed.")
+    color_data = self._read(
+        endpoint_id=self._endpoint_id,
+        cluster_id=matter_enums.ColorControlCluster.ID.value,
+        attribute_id=ColorControlCluster.ATTRIBUTE_CURRENT_SATURATION.value,
+        attribute_type=INT8U_ATTRIBUTE_TYPE)
+    return color_data.data_uint8

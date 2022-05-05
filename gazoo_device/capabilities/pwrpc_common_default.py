@@ -21,6 +21,7 @@ from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import pwrpc_common_base
 from gazoo_device.protos import device_service_pb2
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
+from gazoo_device.utility import retry
 
 
 logger = gdm_logger.get_logger()
@@ -125,19 +126,19 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     Raises:
       DeviceError: If device did not boot up successfully in given timeout.
     """
-    start_time = time.time()
-    bootup_time = start_time + bootup_timeout
-    while time.time() < bootup_time:
-      try:
-        logger.debug(f"{self._device_name} responded to the RPC call: "
-                     f"{self.software_version}")
-        logger.info(f"{self._device_name} booted up in "
-                    f"{time.time() - start_time}s")
-        return
-      except errors.DeviceError:
-        logger.debug(f"{self._device_name} hasn't booted up yet.")
-      time.sleep(_POLL_INTERVAL_SEC)
-    raise errors.DeviceError(f"Failed to boot up within {bootup_timeout}s.")
+    try:
+      start_time = time.time()
+      retry.retry(
+          func=self.get_device_info,
+          timeout=bootup_timeout,
+          interval=_POLL_INTERVAL_SEC,
+          reraise=False)
+      logger.info(
+          f"{self._device_name} booted up in {time.time() - start_time}s.")
+    except errors.CommunicationTimeoutError as bootup_error:
+      raise errors.DeviceError(
+          f"{self._device_name} failed to boot up within {bootup_timeout}s."
+      ) from bootup_error
 
   @decorators.CapabilityLogDecorator(logger)
   def get_device_info(self) -> device_service_pb2.DeviceInfo:

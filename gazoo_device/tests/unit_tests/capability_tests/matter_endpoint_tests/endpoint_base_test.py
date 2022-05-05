@@ -38,8 +38,8 @@ class EndpointBaseTest(fake_device_test_case.FakeDeviceTestCase):
         device_name=_FAKE_DEVICE_NAME,
         identifier=_FAKE_ENDPOINT_ID,
         supported_clusters={self.fake_cluster_cls,},
-        switchboard_call=None,
-        rpc_timeout_s=_FAKE_RPC_TIMEOUT_S)
+        read=None,
+        write=None)
 
   def test_endpoint_id(self):
     """Verifies endpoint ID property."""

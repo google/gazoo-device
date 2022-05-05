@@ -14,23 +14,16 @@
 
 """Pigweed RPC implementation of the Matter Door Lock cluster capability.
 """
-import enum
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
+from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import door_lock_base
-from gazoo_device.protos import locking_service_pb2
-from gazoo_device.switchboard.transports import pigweed_rpc_transport
+from gazoo_device.protos import attributes_service_pb2
 
 logger = gdm_logger.get_logger()
-
-
-class LockState(enum.Enum):
-  """Lock state attribute values.
-  """
-  NOT_FULLY_LOCKED = 0
-  LOCKED = 1
-  UNLOCKED = 2
+DoorLockCluster = matter_enums.DoorLockCluster
+BOOLEAN_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_BOOLEAN_ATTRIBUTE_TYPE
 
 
 class DoorLockClusterPwRpc(door_lock_base.DoorLockClusterBase):
@@ -61,18 +54,13 @@ class DoorLockClusterPwRpc(door_lock_base.DoorLockClusterBase):
     Returns:
       The attribute value of the current locked state.
     """
-    ack, state_in_bytes = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-        method_args=("Locking", "Get"),
-        method_kwargs={"pw_rpc_timeout_s": self._rpc_timeout_s})
-    if not ack:
-      raise errors.DeviceError(
-          f"Device {self._device_name} getting LockState attribute failed.")
-    state = locking_service_pb2.LockingState.FromString(state_in_bytes)
-    if state.locked:
-      return LockState.LOCKED.value
-    else:
-      return LockState.UNLOCKED.value
+    locked_data = self._read(
+        endpoint_id=self._endpoint_id,
+        cluster_id=DoorLockCluster.ID.value,
+        attribute_id=DoorLockCluster.ATTRIBUTE_LOCK_STATE.value,
+        attribute_type=BOOLEAN_ATTRIBUTE_TYPE)
+    return (matter_enums.LockState.LOCKED.value if locked_data.data_bool
+            else matter_enums.LockState.UNLOCKED.value)
 
   def _lock_command(self, lock: bool, verify: bool = True) -> None:
     """Locks or unlocks the device.
@@ -85,23 +73,16 @@ class DoorLockClusterPwRpc(door_lock_base.DoorLockClusterBase):
       DeviceError: Ack value is false or the device does not transition to the
       appropriate state.
     """
-    lock_unlock_kwargs = {
-        "locked": lock, "pw_rpc_timeout_s": self._rpc_timeout_s}
-
-    ack, _ = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-        method_args=("Locking", "Set"),
-        method_kwargs=lock_unlock_kwargs)
-
-    action = "Locking" if lock else "Unlocking"
-    expected_state = (LockState.LOCKED.value if lock else
-                      LockState.UNLOCKED.value)
-
-    if not ack:
-      raise errors.DeviceError(
-          f"{action} device {self._device_name} failed.")
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster_id=DoorLockCluster.ID.value,
+        attribute_id=DoorLockCluster.ATTRIBUTE_LOCK_STATE.value,
+        attribute_type=BOOLEAN_ATTRIBUTE_TYPE,
+        data_bool=lock)
 
     if verify:
+      expected_state = (matter_enums.LockState.LOCKED.value if lock else
+                        matter_enums.LockState.UNLOCKED.value)
       if expected_state != self.lock_state:  # pylint: disable=comparison-with-callable
         raise errors.DeviceError(
             f"Device {self._device_name} lock state attribute did not change "

@@ -18,6 +18,7 @@ from gazoo_device import errors
 from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.protos import device_service_pb2
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
+from gazoo_device.utility import retry
 
 _FAKE_ACTION = "fake-action"
 _FAKE_DEVICE_NAME = "matter_device"
@@ -33,6 +34,7 @@ _FAKE_PAYLOAD = "fake-payload"
 _FAKE_PAIRING_CODE = 0
 _FAKE_PAIRING_DISCRIMINATOR = 0
 _FAKE_TIMEOUT = 5
+_FAKE_ERROR_MESSAGE = "fake-error-message"
 
 
 class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
@@ -120,24 +122,23 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
 
     mock_trigger.assert_called_once_with(action="TriggerOta")
 
-  @mock.patch.object(
-      pwrpc_common_default.PwRPCCommonDefault, "get_device_info")
-  def test_wait_for_bootup_complete_on_success(self, mock_get_info):
+  @mock.patch.object(retry, "retry")
+  def test_wait_for_bootup_complete_on_success(self, mock_retry):
     """Verifies wait_for_bootup_complete on success."""
     self.uut.wait_for_bootup_complete(bootup_timeout=_FAKE_TIMEOUT)
 
-    mock_get_info.assert_called_once()
+    mock_retry.assert_called_once()
 
   @mock.patch.object(
-      pwrpc_common_default.PwRPCCommonDefault,
-      "get_device_info",
-      side_effect=errors.DeviceError(""))
-  def test_wait_for_bootup_complete_on_failure(self, mock_get_info):
+      retry,
+      "retry",
+      side_effect=errors.CommunicationTimeoutError(_FAKE_ERROR_MESSAGE))
+  def test_wait_for_bootup_complete_on_failure(self, mock_retry):
     """Verifies wait_for_bootup_complete on failure."""
-    fake_timeout_sec = 1
-    error_regex = f"Failed to boot up within {fake_timeout_sec}s"
+    error_regex = (
+        f"{_FAKE_DEVICE_NAME} failed to boot up within {_FAKE_TIMEOUT}s")
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
-      self.uut.wait_for_bootup_complete(bootup_timeout=fake_timeout_sec)
+      self.uut.wait_for_bootup_complete(bootup_timeout=_FAKE_TIMEOUT)
 
   @mock.patch.object(
       pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")

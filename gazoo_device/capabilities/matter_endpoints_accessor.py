@@ -24,8 +24,10 @@ from gazoo_device.capabilities.interfaces import matter_endpoints_base
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 from gazoo_device.capabilities.matter_endpoints import unsupported_endpoint
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
+from gazoo_device.protos import attributes_service_pb2
 from gazoo_device.protos import descriptor_service_pb2
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
+from gazoo_device.utility import pwrpc_utils
 
 import immutabledict
 
@@ -33,6 +35,11 @@ _DESCRIPTOR_SERVICE_NAME = "Descriptor"
 _DESCRIPTOR_GET_ENDPOINTS_RPC_NAME = "PartsList"
 _DESCRIPTOR_DEVICE_TYPE_RPC_NAME = "DeviceTypeList"
 _DESCRIPTOR_GET_CLUSTERS_RPC_NAME = "ServerList"
+_ATTRIBUTE_SERVICE_NAME = "Attributes"
+_ATTRIBUTE_READ_RPC_NAME = "Read"
+_ATTRIBUTE_WRITE_RPC_NAME = "Write"
+_ATTRIBUTE_DATA_MODULE_PATH = "gazoo_device.protos.attributes_service_pb2.AttributeData"
+_ATTRIBUTE_METADATA_MODULE_PATH = "gazoo_device.protos.attributes_service_pb2.AttributeMetadata"
 
 logger = gdm_logger.get_logger()
 
@@ -203,16 +210,39 @@ class _DescriptorServiceHandler:
 class MatterEndpointsAccessor(matter_endpoints_base.MatterEndpointsBase):
   """Capability wrapper for accessing the Matter endpoint instances."""
 
-  def __init__(self, device_name: str, **endpoint_kwargs: Any):
+  def __init__(
+      self,
+      device_name: str,
+      switchboard_call: Callable[..., Any],
+      rpc_timeout_s: int):
+    """Constructor of MatterEndpointsAccessor.
+
+    Creates the following instances:
+    DescriptorServiceHandler instance for accessing endpoints and clusters
+      information via Matter descriptor cluster.
+    An empty endpoint ID to endpoint instance mapping.
+    A fixed endpoint name to endpoint class mapping for has_endpoints method.
+
+    Args:
+      device_name: Device name used for logging.
+      switchboard_call: The switchboard.call method.
+      rpc_timeout_s: Timeout (s) for RPC calls.
+    """
     super().__init__(device_name=device_name)
+
     self._descriptor_service_handler = _DescriptorServiceHandler(
-        device_name=device_name, **endpoint_kwargs)
-    self._endpoint_kwargs = endpoint_kwargs
+        device_name=device_name,
+        switchboard_call=switchboard_call,
+        rpc_timeout_s=rpc_timeout_s)
+
     self._endpoints = {}
     self._endpoint_name_to_class = immutabledict.immutabledict({
         endpoint_class.get_capability_name(): endpoint_class
         for endpoint_class in
         matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS})
+
+    self._switchboard_call = switchboard_call
+    self._rpc_timeout_s = rpc_timeout_s
 
   @decorators.CapabilityLogDecorator(logger)
   def get(self, endpoint_id: int) -> endpoint_base.EndpointBase:
@@ -251,7 +281,8 @@ class MatterEndpointsAccessor(matter_endpoints_base.MatterEndpointsBase):
           identifier=endpoint_id,
           device_type_id=device_type_id,
           supported_clusters=frozenset(supported_clusters),
-          **self._endpoint_kwargs)
+          read=self.read,
+          write=self.write)
 
     return self._endpoints[endpoint_id]
 
@@ -344,3 +375,101 @@ class MatterEndpointsAccessor(matter_endpoints_base.MatterEndpointsBase):
       endpoint = self.get(endpoint_id)
       mapping[endpoint] = endpoint.get_supported_cluster_flavors()
     return mapping
+
+  @decorators.CapabilityLogDecorator(logger)
+  def read(
+      self,
+      endpoint_id: int,
+      cluster_id: attributes_service_pb2.ClusterType,
+      attribute_id: int,
+      attribute_type: attributes_service_pb2.AttributeType
+  ) -> attributes_service_pb2.AttributeData:
+    """Ember API read method.
+
+    Reads attribute data from the given endpoint ID, cluster ID and
+    attribute ID with the given attribute type. The endpoint ID is retrieved
+    via descriptor cluster. The attribute type is defined in the
+    attributes_service.proto, while cluster ID and attribute ID are defined in
+    the Matter spec.
+
+    Args:
+      endpoint_id: Endpoint ID to read from.
+      cluster_id: Cluster ID to read from.
+      attribute_id: Attribute ID to read from.
+      attribute_type: Attribute data type to read.
+
+    Returns:
+      Attribute data.
+
+    Raises:
+      Device error when ack value is false.
+    """
+    read_kwargs = {
+        "endpoint": endpoint_id, "cluster": cluster_id,
+        "attribute_id": attribute_id, "type": attribute_type,
+        "pw_rpc_timeout_s": self._rpc_timeout_s}
+
+    ack, data_in_bytes = self._switchboard_call(
+        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_args=(_ATTRIBUTE_SERVICE_NAME, _ATTRIBUTE_READ_RPC_NAME),
+        method_kwargs=read_kwargs)
+    if not ack:
+      error_message = (
+          f"Device {self._device_name} reading attribute (endpoint ID = "
+          f"{endpoint_id}, cluster ID = {cluster_id}, attribute ID = "
+          f"{attribute_id}) with attribute type {attribute_type} failed.")
+      raise errors.DeviceError(error_message)
+
+    return attributes_service_pb2.AttributeData.FromString(data_in_bytes)
+
+  @decorators.CapabilityLogDecorator(logger)
+  def write(
+      self,
+      endpoint_id: int,
+      cluster_id: attributes_service_pb2.ClusterType,
+      attribute_id: int,
+      attribute_type: attributes_service_pb2.AttributeType,
+      **data_kwargs: Any) -> None:
+    """Ember API write method.
+
+    Write attribute data to the given endpoint ID, cluster ID and
+    attribute ID with the given attribute type. The endpoint ID is retrieved
+    via descriptor cluster. The attribute type is defined in the
+    attributes_service.proto, while cluster ID and attribute ID are defined in
+    the Matter spec. data_kwargs is the data we want to write to the device, the
+    supported data types are defined in AttributeData enum of
+    attributes_service.proto.
+
+    Args:
+      endpoint_id: Endpoint ID to write to.
+      cluster_id: Cluster ID to write to.
+      attribute_id: Attribute ID to write to.
+      attribute_type: Attribute data type to write.
+      **data_kwargs: Attribute data to write.
+
+    Raises:
+      Device error when ack value is false.
+    """
+    data = attributes_service_pb2.AttributeData(**data_kwargs)
+    metadata = attributes_service_pb2.AttributeMetadata(
+        endpoint=endpoint_id,
+        cluster=cluster_id,
+        attribute_id=attribute_id,
+        type=attribute_type)
+
+    serialized_data = pwrpc_utils.PigweedProtoState(
+        data, _ATTRIBUTE_DATA_MODULE_PATH)
+    serialized_metadata = pwrpc_utils.PigweedProtoState(
+        metadata, _ATTRIBUTE_METADATA_MODULE_PATH)
+    write_kwargs = {"data": serialized_data, "metadata": serialized_metadata}
+
+    ack, _ = self._switchboard_call(
+        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_args=(_ATTRIBUTE_SERVICE_NAME, _ATTRIBUTE_WRITE_RPC_NAME),
+        method_kwargs=write_kwargs)
+    if not ack:
+      error_message = (
+          f"Device {self._device_name} writing data: {data} to attribute ("
+          f"endpoint ID = {endpoint_id}, cluster ID = {cluster_id}, attribute "
+          f"ID = {attribute_id}) with attribute type {attribute_type} failed.")
+      raise errors.DeviceError(error_message)

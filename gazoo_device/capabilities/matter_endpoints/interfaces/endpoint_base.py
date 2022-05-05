@@ -33,8 +33,8 @@ class EndpointBase(capability_base.CapabilityBase):
                device_name: str,
                identifier: int,
                supported_clusters: FrozenSet[Type[cluster_base.ClusterBase]],
-               switchboard_call: Callable[..., Any],
-               rpc_timeout_s: int,
+               read: Callable[..., Any],
+               write: Callable[..., Any],
                device_type_id: Optional[int] = None):
     """Initializes Matter endpoint instance.
 
@@ -42,8 +42,8 @@ class EndpointBase(capability_base.CapabilityBase):
       device_name: Device name used for logging.
       identifier: ID of this endpoint.
       supported_clusters: Supported cluster classes on this endpoint.
-      switchboard_call: The switchboard.call method.
-      rpc_timeout_s: Timeout (s) for RPC call.
+      read: Ember API read method.
+      write: Ember API write method.
       device_type_id: Device type ID of this endpoint. It's only used for
         unsupported endpoint module, and the supported endpoints use
         cls.DEVICE_TYPE_ID instead.
@@ -52,8 +52,8 @@ class EndpointBase(capability_base.CapabilityBase):
     self._id = identifier
     self._device_type_id = device_type_id
     self._supported_clusters = supported_clusters
-    self._switchboard_call = switchboard_call
-    self._rpc_timeout_s = rpc_timeout_s
+    self._read = read
+    self._write = write
 
   @decorators.DynamicProperty
   def id(self) -> int:
@@ -103,7 +103,8 @@ class EndpointBase(capability_base.CapabilityBase):
     if not hasattr(self, cluster_name):
       cluster_inst = cluster_class(
           device_name=self._device_name,
-          switchboard_call=self._switchboard_call,
-          rpc_timeout_s=self._rpc_timeout_s)
+          endpoint_id=self.id,
+          read=self._read,
+          write=self._write)
       setattr(self, cluster_name, cluster_inst)
     return getattr(self, cluster_name)

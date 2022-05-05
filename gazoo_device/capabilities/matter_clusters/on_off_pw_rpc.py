@@ -17,11 +17,13 @@
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
+from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import on_off_base
-from gazoo_device.protos import lighting_service_pb2
-from gazoo_device.switchboard.transports import pigweed_rpc_transport
+from gazoo_device.protos import attributes_service_pb2
 
 logger = gdm_logger.get_logger()
+OnOffCluster = matter_enums.OnOffCluster
+BOOLEAN_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_BOOLEAN_ATTRIBUTE_TYPE
 
 
 class OnOffClusterPwRpc(on_off_base.OnOffClusterBase):
@@ -71,16 +73,12 @@ class OnOffClusterPwRpc(on_off_base.OnOffClusterBase):
     Raises:
       DeviceError: when the ack value is false.
     """
-    # TODO(b/206894490) Use Ember API for the state attribute.
-    ack, state_in_bytes = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-        method_args=("Lighting", "Get"),
-        method_kwargs={"pw_rpc_timeout_s": self._rpc_timeout_s})
-    if not ack:
-      raise errors.DeviceError(
-          f"Device {self._device_name} getting OnOff state failed.")
-    state = lighting_service_pb2.LightingState.FromString(state_in_bytes)
-    return state.on
+    onoff_data = self._read(
+        endpoint_id=self._endpoint_id,
+        cluster_id=OnOffCluster.ID.value,
+        attribute_id=OnOffCluster.ATTRIBUTE_ON_OFF.value,
+        attribute_type=BOOLEAN_ATTRIBUTE_TYPE)
+    return onoff_data.data_bool
 
   def _onoff_command(self, on: bool, verify: bool = True) -> None:
     """Turn on/off the device.
@@ -93,20 +91,15 @@ class OnOffClusterPwRpc(on_off_base.OnOffClusterBase):
       DeviceError: when the ack value if false or the device does not transition
       to the appropriate OnOff state.
     """
-    # TODO(b/206894490) Use Ember API for the On/Off commands.
-    set_onoff_kwargs = {"on": on, "pw_rpc_timeout_s": self._rpc_timeout_s}
-
-    ack, _ = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
-        method_args=("Lighting", "Set"),
-        method_kwargs=set_onoff_kwargs)
-
-    action = "on" if on else "off"
-    if not ack:
-      raise errors.DeviceError(
-          f"Device {self._device_name} turning {action} failed.")
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster_id=OnOffCluster.ID.value,
+        attribute_id=OnOffCluster.ATTRIBUTE_ON_OFF.value,
+        attribute_type=BOOLEAN_ATTRIBUTE_TYPE,
+        data_bool=on)
 
     if verify:
       if on != self.onoff:  # pylint: disable=comparison-with-callable
+        action = "on" if on else "off"
         raise errors.DeviceError(
             f"Device {self._device_name} didn't turn {action}.")

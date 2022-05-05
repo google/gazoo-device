@@ -29,6 +29,7 @@ import serial
 _CAMBRIONIX_CMD_DICT = immutabledict.immutabledict({
     "state": [],
     "state 1": "1, 0000, D O, 0, 0, x, 0.00",
+    "state 4": "4, 0175, e A S, 0, 0, x, 0.00",
     "system": cambrionix_logs.CAMBRIONIX_SYSTEM,
     "reboot watchdog": [],
     "reboot": [],
@@ -194,9 +195,14 @@ class CambrionixTest(fake_device_test_case.FakeDeviceTestCase):
                      "Expected '' result instead found {}".format(result))
 
   @mock.patch.object(cambrionix.Cambrionix, "_command", side_effect=_mock_shell)
-  def test_30_get_usb_mode(self, mock_command):
+  def test_030_get_usb_mode(self, mock_command):
     """Get the usb mode using the switch_power capability."""
     self.assertEqual(self.uut.switch_power.get_mode(port=1), "off")
+
+  @mock.patch.object(cambrionix.Cambrionix, "_command", side_effect=_mock_shell)
+  def test_031_get_usb_mode_with_error_flag(self, mock_command):
+    """Verify get_mode returns the correct state when error flag is set."""
+    self.assertEqual(self.uut.switch_power.get_mode(port=4), "sync")
 
   @mock.patch.object(
       cambrionix.Cambrionix, "_command", return_value=_mock_shell("system"))

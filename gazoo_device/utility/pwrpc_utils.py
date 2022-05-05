@@ -47,9 +47,9 @@ class PigweedProtoState(Generic[_ProtobufType]):
 
     Args:
       proto_inst: Protobuf instance.
-        (ex: lighting_service_pb2.LightingColor(hue=0, saturation=0))
+        (ex: device_service_pb2.DeviceInfo(vendor_id=0, product_id=0))
       decoder_path: The import path of the protobuf class.
-        (ex: gazoo_device.protos.lighting_service_pb2.LightingColor)
+        (ex: gazoo_device.protos.device_service_pb2.DeviceInfo)
     """
     self._bytes = proto_inst.SerializeToString()
     self._decoder_path = decoder_path
