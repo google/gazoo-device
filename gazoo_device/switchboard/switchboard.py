@@ -283,6 +283,8 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     self._log_writer_process_cache = None
     self._log_filter_process_cache = None
 
+    self._stored_health_check_error: Optional[Exception] = None
+
   def __del__(self):
     self.close()
 
@@ -846,7 +848,8 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     """
     if not self._healthy and self._healthy is not None:
       raise errors.CapabilityNotReadyError(
-          msg="Switchboard has been closed.", device_name=self._device_name)
+          msg="Switchboard has been closed or failed to start.",
+          device_name=self._device_name) from self._stored_health_check_error
     elif self._healthy is None:
       try:
         # Populate self._transport_processes and set self._transport_process_id
@@ -855,12 +858,13 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
         # Set self._log_writer_process and self._log_filter_process
         self._add_log_writer_process(self.log_path, self._max_log_size)
         self._add_log_filter_process(self._parser, self.log_path)
-        logger.info("{} logging to file {}", self._device_name, self.log_path)
+        logger.info("%s logging to file %s", self._device_name, self.log_path)
         self._start_processes()
         self._healthy = True
 
       except Exception as err:
         self._healthy = False
+        self._stored_health_check_error = err
         raise errors.CapabilityNotReadyError(
             msg=repr(err), device_name=self._device_name) from err
 

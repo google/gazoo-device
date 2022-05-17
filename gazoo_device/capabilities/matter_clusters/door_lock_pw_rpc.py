@@ -56,11 +56,11 @@ class DoorLockClusterPwRpc(door_lock_base.DoorLockClusterBase):
     """
     locked_data = self._read(
         endpoint_id=self._endpoint_id,
-        cluster_id=DoorLockCluster.ID.value,
-        attribute_id=DoorLockCluster.ATTRIBUTE_LOCK_STATE.value,
+        cluster_id=DoorLockCluster.ID,
+        attribute_id=DoorLockCluster.ATTRIBUTE_LOCK_STATE,
         attribute_type=BOOLEAN_ATTRIBUTE_TYPE)
-    return (matter_enums.LockState.LOCKED.value if locked_data.data_bool
-            else matter_enums.LockState.UNLOCKED.value)
+    return (matter_enums.LockState.LOCKED if locked_data.data_bool
+            else matter_enums.LockState.UNLOCKED)
 
   def _lock_command(self, lock: bool, verify: bool = True) -> None:
     """Locks or unlocks the device.
@@ -75,14 +75,14 @@ class DoorLockClusterPwRpc(door_lock_base.DoorLockClusterBase):
     """
     self._write(
         endpoint_id=self._endpoint_id,
-        cluster_id=DoorLockCluster.ID.value,
-        attribute_id=DoorLockCluster.ATTRIBUTE_LOCK_STATE.value,
+        cluster_id=DoorLockCluster.ID,
+        attribute_id=DoorLockCluster.ATTRIBUTE_LOCK_STATE,
         attribute_type=BOOLEAN_ATTRIBUTE_TYPE,
         data_bool=lock)
 
     if verify:
-      expected_state = (matter_enums.LockState.LOCKED.value if lock else
-                        matter_enums.LockState.UNLOCKED.value)
+      expected_state = (matter_enums.LockState.LOCKED if lock else
+                        matter_enums.LockState.UNLOCKED)
       if expected_state != self.lock_state:  # pylint: disable=comparison-with-callable
         raise errors.DeviceError(
             f"Device {self._device_name} lock state attribute did not change "

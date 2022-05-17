@@ -29,7 +29,7 @@ import gc
 import logging
 import sys
 import threading
-from typing import List
+from typing import List, Optional
 
 SYNC_TIMEOUT = 0.25
 TERMINATE_TIMEOUT = 2
@@ -100,6 +100,8 @@ class LoggingThread(object):
 
   def __init__(self, queue):
     self._handlers = []
+    self._propagate = False
+    self._parent = None
     self._queue = queue
     self._thread = None
     self._synchonize_event = threading.Event()
@@ -126,6 +128,23 @@ class LoggingThread(object):
       self._handlers.remove(handler)
     except ValueError:
       pass
+
+  @property
+  def propagate(self) -> bool:
+    """Whether the LoggingThread propagates messages to ancestor loggers."""
+    return self._propagate
+
+  @property
+  def parent(self) -> Optional[logging.Logger]:
+    """The LoggingThread's parent Logger, or None if not configured."""
+    return self._parent
+
+  def configure_propagate(
+      self, propagate: bool, parent: logging.Logger) -> None:
+    """Configures the LoggingThread's propagation setup."""
+
+    self._propagate = propagate
+    self._parent = parent
 
   def start(self):
     """Starts the child thread, which pulls messages from the queue."""
@@ -194,6 +213,11 @@ class LoggingThread(object):
       elif record == _Sentinel.SYNC:
         synchronize_event.set()
       else:
-        for handler in self._handlers:
-          if record.levelno >= handler.level:
-            handler.handle(record)
+        # This is basically logging.Logger.callHandlers(), but handled from
+        # within a LoggingThread. See b/227232743.
+        curr_logger = self
+        while curr_logger is not None:
+          for handler in curr_logger.handlers:
+            if record.levelno >= handler.level:
+              handler.handle(record)
+          curr_logger = curr_logger.parent if curr_logger.propagate else None

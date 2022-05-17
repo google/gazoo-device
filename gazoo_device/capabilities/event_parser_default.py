@@ -1218,7 +1218,7 @@ class EventParserDefault(event_parser_base.EventParserBase):
                 ]
             }
         """
-    logger.debug("Adding filter file {}", filter_path)
+    logger.debug("Adding filter file %s", filter_path)
     try:
       with open(filter_path, "r") as filter_file:
         try:
@@ -1462,7 +1462,7 @@ class EventParserDefault(event_parser_base.EventParserBase):
     try:
       self._filters_dict[full_filter_name] = re.compile(
           filter_list["regex_match"])
-      logger.debug("Added filter {} from filter file {}", full_filter_name,
+      logger.debug("Added filter %s from filter file %s", full_filter_name,
                    filter_path)
     except re.error as err:
       raise errors.ParserError(
@@ -1503,13 +1503,13 @@ class EventParserDefault(event_parser_base.EventParserBase):
         load_filter_file method for an example)
     """
     try:
-      logger.debug("Adding filters from directory {}", filter_path)
+      logger.debug("Adding filters from directory %s", filter_path)
       for filter_file in os.listdir(filter_path):
         if filter_file.endswith(".json"):
           filter_file_path = os.path.join(filter_path, filter_file)
           self.load_filter_file(filter_file_path)
         else:
-          logger.debug("Skipping file {} missing .json extension", filter_path)
+          logger.debug("Skipping file %s missing .json extension", filter_path)
     except OSError:
       raise errors.ParserError(
           "Unable to access filter path '{}'".format(filter_path))

@@ -17,11 +17,14 @@
 from gazoo_device.capabilities.matter_clusters import color_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import door_lock_pw_rpc
 from gazoo_device.capabilities.matter_clusters import level_control_pw_rpc
+from gazoo_device.capabilities.matter_clusters import occupancy_pw_rpc
 from gazoo_device.capabilities.matter_clusters import on_off_pw_rpc
+from gazoo_device.capabilities.matter_clusters import temperature_measurement_pw_rpc
 from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.capabilities.matter_endpoints import on_off_light
+from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 import immutabledict
 
 
@@ -29,13 +32,16 @@ SUPPORTED_ENDPOINTS = (
     color_temperature_light.ColorTemperatureLightEndpoint,
     dimmable_light.DimmableLightEndpoint,
     door_lock.DoorLockEndpoint,
-    on_off_light.OnOffLightEndpoint)
+    on_off_light.OnOffLightEndpoint,
+    temperature_sensor.TemperatureSensorEndpoint)
 
 SUPPORTED_CLUSTERS = (
     color_control_pw_rpc.ColorControlClusterPwRpc,
     door_lock_pw_rpc.DoorLockClusterPwRpc,
     level_control_pw_rpc.LevelControlClusterPwRpc,
-    on_off_pw_rpc.OnOffClusterPwRpc)
+    occupancy_pw_rpc.OccupancyClusterPwRpc,
+    on_off_pw_rpc.OnOffClusterPwRpc,
+    temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc)
 
 MATTER_DEVICE_TYPE_ID_TO_CLASS = immutabledict.immutabledict({
     endpoint_class.DEVICE_TYPE_ID: endpoint_class

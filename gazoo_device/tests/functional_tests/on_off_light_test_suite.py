@@ -16,14 +16,15 @@
 from typing import Type
 
 from gazoo_device.tests.functional_tests.mixins import level_control_cluster_suite
+from gazoo_device.tests.functional_tests.mixins import occupancy_cluster_suite
 from gazoo_device.tests.functional_tests.mixins import on_off_cluster_suite
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
-from mobly import asserts
 
 
 class OnOffLightTestSuite(
+    occupancy_cluster_suite.OccupancyClusterTestSuite,
     on_off_cluster_suite.OnOffClusterTestSuite,
-    level_control_cluster_suite.LevelControlTestSuite):
+    level_control_cluster_suite.LevelControlClusterTestSuite):
   """Tests for the on off light endpoint."""
 
   def setup_class(self) -> None:
@@ -43,15 +44,3 @@ class OnOffLightTestSuite(
     """Determines if this test suite can run on the given device."""
     return gdm_test_base.whether_implements_matter_endpoint(
         device_class, device_name, "on_off_light")
-
-  def test_move_to_level_command_and_current_level_attribute(self):
-    """Tests the Level Control cluster.
-
-    Wraps exception handler for testing level control cluster as level control
-    cluster is an optional cluster for on_off_light.
-    """
-    try:
-      super().test_move_to_level_command_and_current_level_attribute()
-    except NotImplementedError:
-      asserts.skip(
-          f"{self.device.name} does not implement the Level Control cluster.")

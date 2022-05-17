@@ -96,7 +96,7 @@ class ShellSSH(shell_base.ShellBase):
     command_start_regex = re.escape(command)
     command_end_regex = r"Return Code: (-?\d+)"
 
-    logger.debug("{} sending {!r} to generate {} in {}s on port {}",
+    logger.debug("%s sending %r to generate %s in %ds on port %d",
                  self._device_name, command, command_name, timeout, port)
 
     for attempt in range(self._tries):

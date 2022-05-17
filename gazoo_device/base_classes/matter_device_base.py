@@ -29,6 +29,7 @@ from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.capabilities.matter_endpoints import on_off_light
+from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.protos import attributes_service_pb2
 from gazoo_device.protos import button_service_pb2
 from gazoo_device.protos import descriptor_service_pb2
@@ -148,6 +149,11 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
   def pairing_discriminator(self) -> int:
     """Pairing discriminator of the device."""
     return self.pw_rpc_common.pairing_info.discriminator
+
+  @decorators.DynamicProperty
+  def pairing_state(self) -> bool:
+    """Pairing state of the device."""
+    return self.pw_rpc_common.pairing_state
 
   @decorators.DynamicProperty
   def qr_code(self) -> int:
@@ -330,4 +336,18 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
     """
     return self.matter_endpoints.get_endpoint_instance_by_class(
         on_off_light.OnOffLightEndpoint)
+
+  @decorators.CapabilityDecorator(temperature_sensor.TemperatureSensorEndpoint)
+  def temperature_sensor(self) -> temperature_sensor.TemperatureSensorEndpoint:
+    """Matter Temperature Sensor endpoint instance.
+
+    Returns:
+      Temperature Sensor endpoint instance.
+
+    Raises:
+      DeviceError when Temperature Sensor endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        temperature_sensor.TemperatureSensorEndpoint)
   # ***************************************************************** #

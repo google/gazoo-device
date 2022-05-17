@@ -75,8 +75,8 @@ class OnOffClusterPwRpc(on_off_base.OnOffClusterBase):
     """
     onoff_data = self._read(
         endpoint_id=self._endpoint_id,
-        cluster_id=OnOffCluster.ID.value,
-        attribute_id=OnOffCluster.ATTRIBUTE_ON_OFF.value,
+        cluster_id=OnOffCluster.ID,
+        attribute_id=OnOffCluster.ATTRIBUTE_ON_OFF,
         attribute_type=BOOLEAN_ATTRIBUTE_TYPE)
     return onoff_data.data_bool
 
@@ -93,8 +93,8 @@ class OnOffClusterPwRpc(on_off_base.OnOffClusterBase):
     """
     self._write(
         endpoint_id=self._endpoint_id,
-        cluster_id=OnOffCluster.ID.value,
-        attribute_id=OnOffCluster.ATTRIBUTE_ON_OFF.value,
+        cluster_id=OnOffCluster.ID,
+        attribute_id=OnOffCluster.ATTRIBUTE_ON_OFF,
         attribute_type=BOOLEAN_ATTRIBUTE_TYPE,
         data_bool=on)
 

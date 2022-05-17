@@ -432,7 +432,7 @@ class LogParser(object):
     Note:
         With large log files, this process may take a large amount of time.
     """
-    logger.info("Parsing log file {} into event file {}, please wait", log_path,
+    logger.info("Parsing log file %s into event file %s, please wait", log_path,
                 self.event_filename)
     start_time = time.time()
     with codecs.open(self.event_filename, "a", encoding="utf-8") as event_file:
@@ -455,8 +455,8 @@ class LogParser(object):
             if time.time() - process_time > display_refresh:
               process_time = time.time()
               bytes_processed = log_file.tell()
-              logger.info("{:.2%} complete - bytes processed: {} of {}",
-                          bytes_processed / total_bytes, bytes_processed,
+              logger.info("%.2f%% complete - bytes processed: %d of %d",
+                          100 * bytes_processed / total_bytes, bytes_processed,
                           total_bytes)
             if not log_data:
               break
@@ -481,6 +481,6 @@ class LogParser(object):
           logger.debug("log_parser encountered error: {!r}".format(err))
           raise errors.ParserError("Log file processing failed. "
                                    "IOError: {!r}".format(err))
-    logger.info("Parsing log file {} into event file {} finished in {}s",
+    logger.info("Parsing log file %s into event file %s finished in %ds",
                 log_path, self.event_filename,
                 time.time() - start_time)

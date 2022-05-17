@@ -14,9 +14,12 @@
 
 """Capability unit test for pwrpc_common_default module."""
 from unittest import mock
+
+from absl.testing import parameterized
 from gazoo_device import errors
 from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.protos import device_service_pb2
+from gazoo_device.switchboard import switchboard
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.utility import retry
 
@@ -35,6 +38,8 @@ _FAKE_PAIRING_CODE = 0
 _FAKE_PAIRING_DISCRIMINATOR = 0
 _FAKE_TIMEOUT = 5
 _FAKE_ERROR_MESSAGE = "fake-error-message"
+_FAKE_FABRIC_INFO_INST = mock.Mock(spec=device_service_pb2.FabricInfo,
+                                   node_id="fake-node-id")
 
 
 class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
@@ -43,7 +48,8 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
   def setUp(self):
     super().setUp()
     self.add_time_mocks()
-    self.switchboard_call_mock = mock.Mock()
+    self.switchboard_call_mock = mock.Mock(
+        spec=switchboard.SwitchboardDefault.call)
     self.uut = pwrpc_common_default.PwRPCCommonDefault(
         device_name=_FAKE_DEVICE_NAME,
         switchboard_call=self.switchboard_call_mock,
@@ -164,26 +170,6 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
 
   @mock.patch.object(
       pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
-  def test_set_pairing_state(self, mock_trigger_device_action):
-    """Verifies set_pairing_state on success."""
-    self.uut.set_pairing_state(pairing_enabled=True)
-
-    mock_trigger_device_action.assert_called_once_with(
-        action="SetPairingState",
-        pairing_enabled=True)
-
-  @mock.patch.object(
-      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
-  def test_get_pairing_state(self, mock_trigger_device_action):
-    """Verifies get_pairing_state on success."""
-    fake_pairing_state = device_service_pb2.PairingState(pairing_enabled=True)
-    mock_trigger_device_action.return_value = (
-        fake_pairing_state.SerializeToString())
-
-    self.assertTrue(self.uut.get_pairing_state())
-
-  @mock.patch.object(
-      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
   def test_set_pairing_info(self, mock_trigger_device_action):
     """Verifies set_pairing_info on success."""
     self.uut.set_pairing_info(code=_FAKE_PAIRING_CODE,
@@ -193,6 +179,16 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
         action="SetPairingInfo",
         code=_FAKE_PAIRING_CODE,
         discriminator=_FAKE_PAIRING_DISCRIMINATOR)
+
+  @parameterized.parameters(([_FAKE_FABRIC_INFO_INST], True), ([], False))
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "get_device_state")
+  def test_pairing_state(
+      self, ret_fabric_info, expected_pairing_state, fake_get_device_state):
+    """Verifies pairing_state on success."""
+    fake_get_device_state.return_value.fabric_info = ret_fabric_info
+
+    self.assertEqual(expected_pairing_state, self.uut.pairing_state)
 
   def test_trigger_device_actio_on_success(self):
     """Verifies _trigger_device_action on success."""

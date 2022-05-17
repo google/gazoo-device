@@ -13,9 +13,10 @@
 # limitations under the License.
 
 """Interface for a Matter endpoint base capability."""
-from typing import Any, Callable, FrozenSet, List, Optional, Set, Type
+from typing import Any, Callable, Collection, FrozenSet, List, Optional, Set, Type
 from gazoo_device import decorators
 from gazoo_device import errors
+from gazoo_device import extensions
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import capability_base
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
@@ -55,6 +56,10 @@ class EndpointBase(capability_base.CapabilityBase):
     self._read = read
     self._write = write
 
+  def __str__(self) -> str:
+    """Overrides string representation of the endpoint."""
+    return f"{self.name} (endpoint ID: {self.id}) on {self._device_name}"
+
   @decorators.DynamicProperty
   def id(self) -> int:
     """The ID of the endpoint."""
@@ -69,6 +74,37 @@ class EndpointBase(capability_base.CapabilityBase):
   def device_type_id(self) -> int:
     """The device type ID of the endpoint."""
     return self.DEVICE_TYPE_ID
+
+  @decorators.CapabilityLogDecorator(logger)
+  def has_clusters(self, cluster_names: Collection[str]) -> bool:
+    """Checks whether the endpoint supports all the given cluster names.
+
+    Args:
+      cluster_names: The collection of cluster names. The names are
+        case-insensitive. Some valid examples are: "color_control",
+        "Color_Control".
+    Raises:
+      ValueError when the given cluster name is invalid or not supported in
+      GDM.
+
+    Returns:
+      True if the device supports all the clusters, false otherwise.
+    """
+    valid_cluster_names = {
+        cluster_name.replace("_pw_rpc", "")
+        for cluster_name, cluster_class in extensions.capability_flavors.items()
+        if issubclass(cluster_class, cluster_base.ClusterBase)}
+
+    for cluster_name in cluster_names:
+      cluster_name = cluster_name.lower()
+      if not cluster_name.endswith("_cluster"):
+        cluster_name += "_cluster"
+      if cluster_name not in valid_cluster_names:
+        raise ValueError(f"Cluster {cluster_name} is not recognized. "
+                         f"Supported clusters are {list(valid_cluster_names)}")
+      if cluster_name not in self.get_supported_clusters():
+        return False
+    return True
 
   @decorators.CapabilityLogDecorator(logger)
   def get_supported_clusters(self) -> List[str]:

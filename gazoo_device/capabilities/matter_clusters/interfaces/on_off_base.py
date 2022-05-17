@@ -14,13 +14,14 @@
 
 """Interface for the Matter On/Off cluster capability."""
 import abc
+from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 
 
 class OnOffClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
   """Matter On/Off cluster capability."""
 
-  CLUSTER_ID = 0x0006
+  CLUSTER_ID = matter_enums.OnOffCluster.ID
 
   @abc.abstractmethod
   def on(self, verify: bool = True) -> None:

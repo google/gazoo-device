@@ -15,13 +15,14 @@
 """Interface for the Matter Color Control cluster capability."""
 
 import abc
+from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 
 
 class ColorControlClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
   """Matter Color Control cluster capability."""
 
-  CLUSTER_ID = 0x0300
+  CLUSTER_ID = matter_enums.ColorControlCluster.ID
 
   @abc.abstractmethod
   def move_to_hue(self, hue: int, verify: bool = True) -> None:

@@ -18,7 +18,7 @@ from gazoo_device.tests.functional_tests.mixins import door_lock_cluster_suite
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 
 
-class DoorLockTestSuite(door_lock_cluster_suite.DoorLockTestSuite):
+class DoorLockTestSuite(door_lock_cluster_suite.DoorLockClusterTestSuite):
   """Tests for the door lock endpoint."""
 
   def setup_class(self) -> None:

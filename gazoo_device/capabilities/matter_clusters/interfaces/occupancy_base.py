@@ -12,34 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Interface for the Matter Level Control cluster capability."""
+"""Interface for the Matter Occupancy Sensing cluster capability."""
 import abc
 from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
+from gazoo_device.protos import attributes_service_pb2
+
+BITMAP_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_BITMAP8_ATTRIBUTE_TYPE
 
 
-class LevelControlClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
-  """Matter Level Control cluster capability."""
+class OccupancyClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
+  """Matter Occupancy Sensing cluster capability."""
 
-  CLUSTER_ID = matter_enums.LevelControlCluster.ID
+  CLUSTER_ID = matter_enums.OccupancySensingCluster.ID
 
   @abc.abstractmethod
-  def move_to_level(self, level: int, verify: bool = True) -> None:
-    """The MoveToLevel command.
+  def occupancy(self) -> BITMAP_ATTRIBUTE_TYPE:
+    """The Occupancy attribute."""
 
-    Args:
-      level: The level that the device should move to.
-      verify: If true, verifies the level changes before returning.
-    """
-
-  @property
   @abc.abstractmethod
-  def current_level(self) -> int:
-    """The CurrentLevel attribute.
+  def occupancy_sensor_type(self) -> int:
+    """The OccupancySensorType attribute."""
 
-    Returns:
-      The current level.
-    """
-
-  # TODO(b/212193200)
-  # Add additional attributes / commands for level control cluster
+  @abc.abstractmethod
+  def occupancy_sensor_type_bitmap(self) -> BITMAP_ATTRIBUTE_TYPE:
+    """The OccupancySensorTypeBitmap attribute."""

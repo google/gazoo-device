@@ -12,34 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Interface for the Matter Level Control cluster capability."""
+"""Interface for the Matter Temperature Measurement cluster capability."""
 import abc
 from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 
 
-class LevelControlClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
-  """Matter Level Control cluster capability."""
+class TemperatureMeasurementClusterBase(
+    cluster_base.ClusterBase, metaclass=abc.ABCMeta):
+  """Matter Temperature Measurement cluster capability."""
 
-  CLUSTER_ID = matter_enums.LevelControlCluster.ID
+  CLUSTER_ID = matter_enums.TemperatureMeasurementCluster.ID
 
   @abc.abstractmethod
-  def move_to_level(self, level: int, verify: bool = True) -> None:
-    """The MoveToLevel command.
+  def measured_value(self) -> int:
+    """The MeasuredValue attribute."""
 
-    Args:
-      level: The level that the device should move to.
-      verify: If true, verifies the level changes before returning.
-    """
-
-  @property
   @abc.abstractmethod
-  def current_level(self) -> int:
-    """The CurrentLevel attribute.
+  def min_measured_value(self) -> int:
+    """The MinMeasuredValue attribute."""
 
-    Returns:
-      The current level.
-    """
-
-  # TODO(b/212193200)
-  # Add additional attributes / commands for level control cluster
+  @abc.abstractmethod
+  def max_measured_value(self) -> int:
+    """The MaxMeasuredValue attribute."""

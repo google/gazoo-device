@@ -77,20 +77,26 @@ from gazoo_device.capabilities.interfaces import usb_hub_base
 from gazoo_device.capabilities.matter_clusters import color_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import door_lock_pw_rpc
 from gazoo_device.capabilities.matter_clusters import level_control_pw_rpc
+from gazoo_device.capabilities.matter_clusters import occupancy_pw_rpc
 from gazoo_device.capabilities.matter_clusters import on_off_pw_rpc
+from gazoo_device.capabilities.matter_clusters import temperature_measurement_pw_rpc
 from gazoo_device.capabilities.matter_clusters.interfaces import color_control_base
 from gazoo_device.capabilities.matter_clusters.interfaces import door_lock_base
 from gazoo_device.capabilities.matter_clusters.interfaces import level_control_base
+from gazoo_device.capabilities.matter_clusters.interfaces import occupancy_base
 from gazoo_device.capabilities.matter_clusters.interfaces import on_off_base
+from gazoo_device.capabilities.matter_clusters.interfaces import temperature_measurement_base
 from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.capabilities.matter_endpoints import on_off_light
+from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.capabilities.matter_endpoints import unsupported_endpoint
 from gazoo_device.capabilities.matter_endpoints.interfaces import color_temperature_light_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import dimmable_light_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import door_lock_base as door_lock_endpoint_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import on_off_light_base
+from gazoo_device.capabilities.matter_endpoints.interfaces import temperature_sensor_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import unsupported_endpoint_base
 from gazoo_device.primary_devices import efr32_matter
 from gazoo_device.primary_devices import esp32_matter
@@ -178,8 +184,11 @@ def export_extensions() -> Dict[str, Any]:
           level_control_base.LevelControlClusterBase,
           matter_controller_base.MatterControllerBase,
           matter_endpoints_base.MatterEndpointsBase,
+          occupancy_base.OccupancyClusterBase,
           on_off_base.OnOffClusterBase,
+          temperature_measurement_base.TemperatureMeasurementClusterBase,
           on_off_light_base.OnOffLightBase,
+          temperature_sensor_base.TemperatureSensorBase,
           package_management_base.PackageManagementBase,
           pwrpc_button_base.PwRPCButtonBase,
           pwrpc_common_base.PwRPCCommonBase,
@@ -212,7 +221,10 @@ def export_extensions() -> Dict[str, Any]:
           matter_controller_chip_tool.MatterControllerChipTool,
           matter_endpoints_accessor.MatterEndpointsAccessor,
           on_off_light.OnOffLightEndpoint,
+          temperature_sensor.TemperatureSensorEndpoint,
           on_off_pw_rpc.OnOffClusterPwRpc,
+          occupancy_pw_rpc.OccupancyClusterPwRpc,
+          temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc,
           package_management_android.PackageManagementAndroid,
           pwrpc_button_default.PwRPCButtonDefault,
           pwrpc_common_default.PwRPCCommonDefault,

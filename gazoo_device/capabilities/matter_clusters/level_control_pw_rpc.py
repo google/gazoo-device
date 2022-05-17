@@ -46,8 +46,8 @@ class LevelControlClusterPwRpc(level_control_base.LevelControlClusterBase):
 
     self._write(
         endpoint_id=self._endpoint_id,
-        cluster_id=LevelControlCluster.ID.value,
-        attribute_id=LevelControlCluster.ATTRIBUTE_CURRENT_LEVEL.value,
+        cluster_id=LevelControlCluster.ID,
+        attribute_id=LevelControlCluster.ATTRIBUTE_CURRENT_LEVEL,
         attribute_type=INT8U_ATTRIBUTE_TYPE,
         data_uint8=level)
 
@@ -69,7 +69,7 @@ class LevelControlClusterPwRpc(level_control_base.LevelControlClusterBase):
     """
     level_data = self._read(
         endpoint_id=self._endpoint_id,
-        cluster_id=LevelControlCluster.ID.value,
-        attribute_id=LevelControlCluster.ATTRIBUTE_CURRENT_LEVEL.value,
+        cluster_id=LevelControlCluster.ID,
+        attribute_id=LevelControlCluster.ATTRIBUTE_CURRENT_LEVEL,
         attribute_type=INT8U_ATTRIBUTE_TYPE)
     return level_data.data_uint8

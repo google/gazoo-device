@@ -1299,7 +1299,7 @@ class Manager:
     if name in devices:
       return devices[name]
     else:
-      logger.debug("Unable to find device {}", name)
+      logger.debug("Unable to find device %s", name)
       return None
 
   def _get_device_name(self, identifier, category="all", raise_error=False):
@@ -1330,7 +1330,7 @@ class Manager:
     aliases = self._get_aliases(category)
     identifier = identifier.lower()
     if identifier not in aliases:
-      logger.debug("Unable to find device {}", identifier)
+      logger.debug("Unable to find device %s", identifier)
       if not raise_error:
         return None
       close_matches = difflib.get_close_matches(identifier, aliases)
@@ -1836,7 +1836,7 @@ class Manager:
 
   def _save_config_to_file(self, a_dict, file_path):
     """Saves the dictionary to the given file."""
-    logger.debug("Overwriting {}", file_path)
+    logger.debug("Overwriting %s", file_path)
     config_directory = os.path.dirname(file_path)
     temp_file_path = os.path.join(config_directory,
                                   "temp_config_{}.json".format(os.getpid()))

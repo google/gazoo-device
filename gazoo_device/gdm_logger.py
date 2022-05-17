@@ -28,7 +28,6 @@ import logging
 import logging.handlers
 import os
 import sys
-import types
 from typing import List
 
 from gazoo_device import config
@@ -111,14 +110,7 @@ def get_logger(component_name=None):
   else:
     name = 'gazoo_device_manager'
 
-  logger = logging.getLogger(name)
-
-  # Override _log with our own _brace_format_log
-  if not hasattr(logger, '_original_log'):
-    logger._original_log = logger._log
-    logger._log = types.MethodType(_brace_format_log, logger)
-
-  return logger
+  return logging.getLogger(name)
 
 
 def initialize_logger():
@@ -179,6 +171,9 @@ def switch_to_multiprocess_logging() -> None:
   for handler in logger.handlers:  # Transfer log handlers to queue handler.
     _logging_thread.add_handler(handler)
   logger.handlers = [queue_handler]
+  if logger.propagate:  # Transfer message propagation to LoggingThread.
+    _logging_thread.configure_propagate(logger.propagate, logger.parent)
+    logger.propagate = False
 
   _logging_thread.start()
   atexit.register(common_utils.MethodWeakRef(_logging_thread.stop))
@@ -252,23 +247,3 @@ def stream_debug():
     fmt = logging.Formatter(FMT, datefmt=DATEFMT)
     _stdout_handler.setFormatter(fmt)
     _stdout_handler.setLevel(logging.DEBUG)
-
-
-def _brace_format_log(self,
-                      level,
-                      msg,
-                      args,
-                      exc_info=None,
-                      extra=None,
-                      **kwargs):
-  """Enables brace logging for GDM Loggers (by overriding Logger._log)."""
-  # Combines msg with args and kwargs using .format(),
-  # saving special kwargs exc_info and extra for original _log method
-  if args or kwargs:
-    formatted_msg = str(msg).format(*args, **kwargs)
-  else:
-    formatted_msg = str(msg)
-
-  new_kwargs = dict(exc_info=exc_info, extra=extra)
-
-  self._original_log(level, formatted_msg, (), **new_kwargs)

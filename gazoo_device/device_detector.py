@@ -375,14 +375,14 @@ class DeviceDetector:
         no_id_cons: list of undetected connections.
     """
     logger.info("\n##### Detection Summary #####\n")
-    logger.info("\t{} new devices detected:{}", len(names),
+    logger.info("\t%d new devices detected:%s", len(names),
                 "\n\t\t" + "\n\t\t".join(names))
     if errs:
-      logger.info("\n\t{} errors/warnings:{}", len(errs),
+      logger.info("\n\t%d errors/warnings:%s", len(errs),
                   "\n\t\t" + "\n\t\t".join(errs))
     if no_id_cons:
-      logger.info("\n\t{} connections found but not detected:{}",
+      logger.info("\n\t%d connections found but not detected:%s",
                   len(no_id_cons), "\n\t\t" + "\n\t\t".join(no_id_cons))
     if errs or no_id_cons:
-      logger.info("\nIf a connection failed detection, check {} for tips\n",
+      logger.info("\nIf a connection failed detection, check %s for tips\n",
                   WIKI_URL)

@@ -142,6 +142,26 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
     super().tearDown()
 
+  def test_switchboard_health_check_error_propagation(self):
+    """Tests that an error in health_check method gets surfaced."""
+    self.fake_transport = fake_transport.FakeTransport()
+    self.uut = switchboard.SwitchboardDefault("test_device",
+                                              self.exception_queue,
+                                              [self.fake_transport],
+                                              self.log_path)
+    # self.uut._healthy = False
+    with mock.patch.object(
+        self.uut, "_add_transport_processes") as mock_add_transports:
+      mock_add_transports.side_effect = RuntimeError("A very bad error")
+      with self.assertRaisesRegex(
+          errors.CapabilityNotReadyError, "A very bad error") as cm:
+        self.uut.health_check()
+      error_cause = cm.exception.__cause__
+
+    self.assertIsNotNone(error_cause, "Error cause is not being set.")
+    self.assertIn(
+        "A very bad error", str(error_cause), "Error is not propagated")
+
   def test_switchboard_close_with_no_transports(self):
     """Test switchboard close with no transports."""
     transport_list = []
@@ -1850,7 +1870,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
             fake_transport.FakeTransport.test_method, method_args=(False,)),
         "Some return")
 
-  def test_131a_call_error(self):
+  def test_call_error(self):
     """Test a Switchboard.call() transport method call which raises an error."""
     self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
@@ -1866,7 +1886,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
           fake_transport.FakeTransport.test_method,
           method_kwargs={"raise_error": True})
 
-  def test_131b_call_error_mismatching_transport(self):
+  def test_call_error_mismatching_transport(self):
     """Test a Switchboard.call() when transport type is not matching."""
     self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",

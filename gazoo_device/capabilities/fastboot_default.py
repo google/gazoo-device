@@ -96,7 +96,7 @@ class FastbootDefault(fastboot_base.FastbootBase):
     if output:
       for line in output.splitlines():
         self._add_log_note_fn(line + "\n")
-      logger.info("{} fastboot reboot took {}s.", self._device_name,
+      logger.info("%s fastboot reboot took %ds.", self._device_name,
                   time.time() - start_time)
     self._verify_reboot_fn()
     self._root_device_fn()
@@ -126,7 +126,7 @@ class FastbootDefault(fastboot_base.FastbootBase):
           is_successful=bool,
           timeout=timeout,
           interval=0.5)
-      logger.info("{} is in fastboot mode.", self._device_name)
+      logger.info("%s is in fastboot mode.", self._device_name)
       return True
     except errors.CommunicationTimeoutError:
       return False

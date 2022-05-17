@@ -78,7 +78,7 @@ class FileTransferEcho(file_transfer_base.FileTransferBase):
               self._device_name, destination_dir))
     if os.path.isdir(dest):
       dest = os.path.join(dest, os.path.basename(src))
-    logger.info("{} receiving file from device. Source: {} Destination: {}",
+    logger.info("%s receiving file from device. Source: %s Destination: %s",
                 self._device_name, src, dest)
 
     output, ret_code = self._shell_fn(
@@ -116,7 +116,7 @@ class FileTransferEcho(file_transfer_base.FileTransferBase):
 
     if self._is_valid_device_directory(dest):
       dest = os.path.join(dest, os.path.basename(src))
-    logger.info("{} sending file to device. Source: {} Destination: {}",
+    logger.info("%s sending file to device. Source: %s Destination: %s",
                 self._device_name, src, dest)
 
     for try_num in range(self._send_tries):

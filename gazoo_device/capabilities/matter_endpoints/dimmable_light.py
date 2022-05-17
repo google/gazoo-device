@@ -30,12 +30,18 @@ The optional clusters for this endpoint: Occupancy.
 """
 from gazoo_device import decorators
 from gazoo_device.capabilities.matter_clusters import level_control_pw_rpc
+from gazoo_device.capabilities.matter_clusters import occupancy_pw_rpc
 from gazoo_device.capabilities.matter_clusters import on_off_pw_rpc
 from gazoo_device.capabilities.matter_endpoints.interfaces import dimmable_light_base
 
 
 class DimmableLightEndpoint(dimmable_light_base.DimmableLightBase):
   """Matter Dimmable light endpoint."""
+
+  @decorators.CapabilityDecorator(occupancy_pw_rpc.OccupancyClusterPwRpc)
+  def occupancy(self) -> occupancy_pw_rpc.OccupancyClusterPwRpc:
+    """Matter Occupancy cluster instance."""
+    return self.cluster_lazy_init(occupancy_pw_rpc.OccupancyClusterPwRpc)
 
   @decorators.CapabilityDecorator(on_off_pw_rpc.OnOffClusterPwRpc)
   def on_off(self) -> on_off_pw_rpc.OnOffClusterPwRpc:
@@ -57,8 +63,3 @@ class DimmableLightEndpoint(dimmable_light_base.DimmableLightBase):
   #   """Matter Groups cluster instance."""
   #   # TODO(b/206741536): Implement Groups cluster.
   #   raise NotImplementedError("Groups cluster isn't implemented.")
-
-  # def occupancy(self):
-  #   """Matter Occupancy cluster instance."""
-  #   # TODO(b/206741536): Implement Occupancy cluster.
-  #   raise NotImplementedError("Occupancy cluster isn't implemented.")

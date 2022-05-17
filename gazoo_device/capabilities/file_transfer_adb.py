@@ -61,7 +61,7 @@ class FileTransferAdb(file_transfer_base.FileTransferBase):
           "Destination directory {} doesn't appear to exist.".format(
               self._device_name, destination_dir))
 
-    logger.info("{} receiving from device. Source: {} Destination: {}",
+    logger.info("%s receiving from device. Source: %s Destination: %s",
                 self._device_name, src, dest)
     self._check_adb_mode(self._communication_address)
     output = adb_utils.pull_from_device(
@@ -87,7 +87,7 @@ class FileTransferAdb(file_transfer_base.FileTransferBase):
                                "Source file {} doesn't appear to exist.".format(
                                    self._device_name, src))
 
-    logger.info("{} sending file(s) to device. Source: {} Destination: {}",
+    logger.info("%s sending file(s) to device. Source: %s Destination: %s",
                 self._device_name, src, dest)
     self._check_adb_mode(self._communication_address)
     try:

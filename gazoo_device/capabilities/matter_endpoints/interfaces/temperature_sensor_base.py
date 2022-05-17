@@ -12,5 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Gazoo Device Manager version."""
-version = "1.69.0"
+"""Interface for a Matter Temperature Sensor endpoint."""
+import abc
+from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
+
+
+class TemperatureSensorBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
+  """Matter Temperature Sensor endpoint interface."""
+
+  DEVICE_TYPE_ID = 0x0302
+
+  @property
+  @abc.abstractmethod
+  def temperature_measurement(self):
+    """Required cluster: temperature_measurement cluster."""

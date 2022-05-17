@@ -14,13 +14,14 @@
 
 """Interface for the Matter Door Lock cluster capability."""
 import abc
+from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 
 
 class DoorLockClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
   """Matter Door Lock cluster capability."""
 
-  CLUSTER_ID = 0x0101
+  CLUSTER_ID = matter_enums.DoorLockCluster.ID
 
   @abc.abstractmethod
   def lock_door(self, verify: bool = True) -> None:

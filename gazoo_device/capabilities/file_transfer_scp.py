@@ -71,7 +71,7 @@ class FileTransferScp(file_transfer_base.FileTransferBase):
           "Destination directory {} doesn't appear to exist.".format(
               self._device_name, dest_dir))
     ip_address = self._get_valid_ip_address()
-    logger.info("{} receiving from device. Source(s): {} Destination: {}",
+    logger.info("%s receiving from device. Source(s): %s Destination: %s",
                 self._device_name, src, dest)
     try:
       output = host_utils.scp_from_device(

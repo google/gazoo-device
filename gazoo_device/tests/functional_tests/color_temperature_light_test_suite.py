@@ -21,9 +21,9 @@ from gazoo_device.tests.functional_tests.utils import gdm_test_base
 
 
 class ColorTemperatureTestSuite(
-    color_control_cluster_suite.ColorControlTestSuite,
+    color_control_cluster_suite.ColorControlClusterTestSuite,
     on_off_cluster_suite.OnOffClusterTestSuite,
-    level_control_cluster_suite.LevelControlTestSuite):
+    level_control_cluster_suite.LevelControlClusterTestSuite):
   """Tests for the color temperature light endpoint."""
 
   def setup_class(self) -> None:

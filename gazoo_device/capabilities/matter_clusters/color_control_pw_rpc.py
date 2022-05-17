@@ -44,8 +44,8 @@ class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
 
     self._write(
         endpoint_id=self._endpoint_id,
-        cluster_id=ColorControlCluster.ID.value,
-        attribute_id=ColorControlCluster.ATTRIBUTE_CURRENT_HUE.value,
+        cluster_id=ColorControlCluster.ID,
+        attribute_id=ColorControlCluster.ATTRIBUTE_CURRENT_HUE,
         attribute_type=INT8U_ATTRIBUTE_TYPE,
         data_uint8=hue)
 
@@ -70,8 +70,8 @@ class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
 
     self._write(
         endpoint_id=self._endpoint_id,
-        cluster_id=ColorControlCluster.ID.value,
-        attribute_id=ColorControlCluster.ATTRIBUTE_CURRENT_SATURATION.value,
+        cluster_id=ColorControlCluster.ID,
+        attribute_id=ColorControlCluster.ATTRIBUTE_CURRENT_SATURATION,
         attribute_type=INT8U_ATTRIBUTE_TYPE,
         data_uint8=saturation)
 
@@ -92,8 +92,8 @@ class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
     """
     color_data = self._read(
         endpoint_id=self._endpoint_id,
-        cluster_id=matter_enums.ColorControlCluster.ID.value,
-        attribute_id=ColorControlCluster.ATTRIBUTE_CURRENT_HUE.value,
+        cluster_id=matter_enums.ColorControlCluster.ID,
+        attribute_id=ColorControlCluster.ATTRIBUTE_CURRENT_HUE,
         attribute_type=INT8U_ATTRIBUTE_TYPE)
     return color_data.data_uint8
 
@@ -109,7 +109,7 @@ class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
     """
     color_data = self._read(
         endpoint_id=self._endpoint_id,
-        cluster_id=matter_enums.ColorControlCluster.ID.value,
-        attribute_id=ColorControlCluster.ATTRIBUTE_CURRENT_SATURATION.value,
+        cluster_id=matter_enums.ColorControlCluster.ID,
+        attribute_id=ColorControlCluster.ATTRIBUTE_CURRENT_SATURATION,
         attribute_type=INT8U_ATTRIBUTE_TYPE)
     return color_data.data_uint8

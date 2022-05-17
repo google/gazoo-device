@@ -114,9 +114,9 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
         "persistent_identifiers": device_config["persistent"],
         "optional": device_config["options"]
     }
-    logger.debug("{} device_config: {}", self.name,
+    logger.debug("%s device_config: %s", self.name,
                  self.props["persistent_identifiers"])
-    logger.debug("{} device_options: {}", self.name, self.props["optional"])
+    logger.debug("%s device_options: %s", self.name, self.props["optional"])
 
     self._make_device_ready_setting = device_config.get("make_device_ready",
                                                         "on")

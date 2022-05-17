@@ -59,7 +59,7 @@ class FileTransferDocker(file_transfer_base.FileTransferBase):
                                "Source file {} doesn't appear to exist.".format(
                                    self._device_name, src))
 
-    logger.info("{} sending file to device. Source: {} Destination: {}",
+    logger.info("%s sending file to device. Source: %s Destination: %s",
                 self._device_name, src, dest)
     host_utils.docker_cp_to_device(
         docker_container=self._docker_container,
@@ -88,7 +88,7 @@ class FileTransferDocker(file_transfer_base.FileTransferBase):
           "Destination directory {} doesn't appear to exist.".format(
               self._device_name, dest_dir))
 
-    logger.info("{} receiving file from device. Source: {} Destination: {}",
+    logger.info("%s receiving file from device. Source: %s Destination: %s",
                 self._device_name, src, dest)
     host_utils.docker_cp_from_device(
         docker_container=self._docker_container,

@@ -64,7 +64,7 @@ class DoorLockClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
     """Verifies the lock_state attribute on success."""
     self.fake_read.return_value = mock.Mock(data_bool=lock_action)
 
-    self.assertEqual(expected_state.value, self.uut.lock_state)
+    self.assertEqual(expected_state, self.uut.lock_state)
 
   @mock.patch.object(
       _DOOR_LOCK_RPC_MODULE,
@@ -81,7 +81,7 @@ class DoorLockClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
       _DOOR_LOCK_RPC_MODULE,
       "lock_state",
       new_callable=mock.PropertyMock(
-          return_value=matter_enums.LockState.LOCKED.value))
+          return_value=matter_enums.LockState.LOCKED))
   def test_lock_command_failure_incorrect_state(self, mock_state):
     """Verifies _lock_command on failure with incorrect state."""
     error_regex = (

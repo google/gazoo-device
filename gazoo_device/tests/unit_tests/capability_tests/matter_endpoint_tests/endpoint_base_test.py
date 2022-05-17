@@ -20,7 +20,7 @@ from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
-_FAKE_CLUSTER_NAME = "fake-cluster-name"
+_FAKE_CLUSTER_NAME = "on_off_cluster"
 _FAKE_DEVICE_NAME = "fake-device-name"
 _FAKE_ENDPOINT_ID = 1
 _FAKE_ENDPOINT_NAME = "fake-endpoint-name"
@@ -94,6 +94,27 @@ class EndpointBaseTest(fake_device_test_case.FakeDeviceTestCase):
     """Verifies get_supported_cluster_flavors on success."""
     self.assertEqual(
         {self.fake_cluster_cls,}, self.uut.get_supported_cluster_flavors())
+
+  def test_has_clusters_on_success(self):
+    """Verifies has_clusters on success."""
+    self.assertTrue(self.uut.has_clusters(["on_off"]))
+    self.assertFalse(self.uut.has_clusters(["door_lock"]))
+
+  def test_has_clusters_on_failure(self):
+    """Verifies has_clusters on failure."""
+    error_message = "Cluster invalid_cluster is not recognized"
+    with self.assertRaisesRegex(errors.DeviceError, error_message):
+      self.uut.has_clusters(["invalid_cluster"])
+
+  @mock.patch.object(
+      endpoint_base.EndpointBase,
+      "get_capability_name",
+      return_value=_FAKE_ENDPOINT_NAME)
+  def test_str_representation(self, mock_get_capability_name):
+    """Verifies __str__ representation on success."""
+    expected_str = (f"{_FAKE_ENDPOINT_NAME} (endpoint ID: {_FAKE_ENDPOINT_ID})"
+                    f" on {_FAKE_DEVICE_NAME}")
+    self.assertEqual(expected_str, str(self.uut))
 
 
 if __name__ == "__main__":

@@ -200,7 +200,7 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
         the error argument, it will be re-raised directly.
     """
     if isinstance(error, errors.DeviceNotBootupCompleteError):
-      logger.info("{} not fully booted up. Waiting for complete bootup.",
+      logger.info("%s not fully booted up. Waiting for complete bootup.",
                   self.name)
       self.wait_for_bootup_complete()
     else:

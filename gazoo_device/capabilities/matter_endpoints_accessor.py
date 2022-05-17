@@ -29,8 +29,6 @@ from gazoo_device.protos import descriptor_service_pb2
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
 from gazoo_device.utility import pwrpc_utils
 
-import immutabledict
-
 _DESCRIPTOR_SERVICE_NAME = "Descriptor"
 _DESCRIPTOR_GET_ENDPOINTS_RPC_NAME = "PartsList"
 _DESCRIPTOR_DEVICE_TYPE_RPC_NAME = "DeviceTypeList"
@@ -217,12 +215,6 @@ class MatterEndpointsAccessor(matter_endpoints_base.MatterEndpointsBase):
       rpc_timeout_s: int):
     """Constructor of MatterEndpointsAccessor.
 
-    Creates the following instances:
-    DescriptorServiceHandler instance for accessing endpoints and clusters
-      information via Matter descriptor cluster.
-    An empty endpoint ID to endpoint instance mapping.
-    A fixed endpoint name to endpoint class mapping for has_endpoints method.
-
     Args:
       device_name: Device name used for logging.
       switchboard_call: The switchboard.call method.
@@ -230,17 +222,17 @@ class MatterEndpointsAccessor(matter_endpoints_base.MatterEndpointsBase):
     """
     super().__init__(device_name=device_name)
 
+    # DescriptorServiceHandler instance for accessing endpoints and clusters
+    # information via Matter descriptor cluster.
     self._descriptor_service_handler = _DescriptorServiceHandler(
         device_name=device_name,
         switchboard_call=switchboard_call,
         rpc_timeout_s=rpc_timeout_s)
 
+    # Endpoint ID to endpoint instance mapping
     self._endpoints = {}
-    self._endpoint_name_to_class = immutabledict.immutabledict({
-        endpoint_class.get_capability_name(): endpoint_class
-        for endpoint_class in
-        matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS})
 
+    # Arguments for Ember APIs.
     self._switchboard_call = switchboard_call
     self._rpc_timeout_s = rpc_timeout_s
 
@@ -335,13 +327,16 @@ class MatterEndpointsAccessor(matter_endpoints_base.MatterEndpointsBase):
     Returns:
       True if the device supports all the endpoints, false otherwise.
     """
+    valid_endpoint_name_to_class = {
+        endpoint_class.get_capability_name(): endpoint_class
+        for endpoint_class in matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS}
     supported_endpoints = set(self.list().values())
     for endpoint_name in endpoint_names:
-      endpoint = self._endpoint_name_to_class.get(endpoint_name.lower())
+      endpoint = valid_endpoint_name_to_class.get(endpoint_name.lower())
       if endpoint is None:
         raise ValueError(f"Endpoint {endpoint_name} is not recognized. "
-                         "Supported endpoints are: "
-                         f"{list(self._endpoint_name_to_class.keys())}")
+                         "Valid endpoints are: "
+                         f"{list(valid_endpoint_name_to_class.keys())}")
       if endpoint not in supported_endpoints:
         return False
     return True

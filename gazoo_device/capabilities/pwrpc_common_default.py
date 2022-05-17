@@ -73,6 +73,18 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     return self.pairing_info.qr_code_url
 
   @decorators.DynamicProperty
+  def pairing_state(self) -> bool:
+    """The pairing state of the device.
+
+    The device is paired if it has at least one fabric ID and the fabric
+    contains a node ID.
+
+    Returns:
+      The pairing state.
+    """
+    return bool(self.fabric_info) and hasattr(self.fabric_info[0], "node_id")
+
+  @decorators.DynamicProperty
   def pairing_info(self) -> device_service_pb2.PairingInfo:
     """The pairing information of the device."""
     return self.get_device_info().pairing_info
@@ -161,23 +173,6 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     payload_in_bytes = self._trigger_device_action(action="GetDeviceState")
     payload = device_service_pb2.DeviceState.FromString(payload_in_bytes)
     return payload
-
-  @decorators.CapabilityLogDecorator(logger)
-  def set_pairing_state(self, pairing_enabled: bool) -> None:
-    """Sets the pairing state of the device.
-
-    Args:
-      pairing_enabled: New pairing state to set.
-    """
-    self._trigger_device_action(action="SetPairingState",
-                                pairing_enabled=pairing_enabled)
-
-  @decorators.CapabilityLogDecorator(logger)
-  def get_pairing_state(self) -> bool:
-    """Gets the pairing state of the device."""
-    payload_in_bytes = self._trigger_device_action(action="GetPairingState")
-    payload = device_service_pb2.PairingState.FromString(payload_in_bytes)
-    return payload.pairing_enabled
 
   @decorators.CapabilityLogDecorator(logger)
   def set_pairing_info(

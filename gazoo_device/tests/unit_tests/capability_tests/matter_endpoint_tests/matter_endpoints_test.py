@@ -26,13 +26,16 @@ _FAKE_DEVICE_NAME = "fake-device-name"
 _FAKE_ENDPOINT_ID = 1
 _FAKE_RPC_TIMEOUT_S = 10
 
-
-CLUSTER_NAMES = ("color", "door_lock", "level", "on_off")
+# Trim the cluster capability names into alias names.
+_CLUSTER_NAMES = (
+    cluster.get_capability_name().replace("_control_cluster", "").
+    replace("_cluster", "") for cluster in
+    matter_endpoints_and_clusters.SUPPORTED_CLUSTERS)
 
 ENDPOINT_AND_CLUSTER_PAIR = [
     dict(endpoint_class=endpoint_class, cluster_name=cluster_name)
     for endpoint_class, cluster_name in itertools.product(
-        matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS, CLUSTER_NAMES)]
+        matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS, _CLUSTER_NAMES)]
 
 
 class MatterEndpointsTest(fake_device_test_case.FakeDeviceTestCase):

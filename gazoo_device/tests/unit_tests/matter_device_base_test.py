@@ -27,6 +27,7 @@ from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.capabilities.matter_endpoints import on_off_light
+from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 import immutabledict
 
@@ -209,6 +210,12 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
         self.uut.pairing_discriminator, _FAKE_PAIRING_DISCRIMINATOR)
 
   @mock.patch.object(matter_device_base.MatterDeviceBase, "pw_rpc_common")
+  def test_pairing_state(self, fake_pw_rpc_common):
+    """Verifies pairing_state on success."""
+    fake_pw_rpc_common.pairing_state = True
+    self.assertTrue(self.uut.pairing_state)
+
+  @mock.patch.object(matter_device_base.MatterDeviceBase, "pw_rpc_common")
   def test_qr_code(self, fake_pw_rpc_common):
     """Verifies get qr_code on success."""
     fake_pw_rpc_common.qr_code = _FAKE_QR_CODE
@@ -258,6 +265,15 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
     """Verifies on_off_light endpoint alias on success."""
     self.assertIsNotNone(self.uut.on_off_light)
     mock_get_endpoint.assert_called_once_with(on_off_light.OnOffLightEndpoint)
+
+  @mock.patch.object(
+      matter_endpoints_accessor.MatterEndpointsAccessor,
+      "get_endpoint_instance_by_class")
+  def test_temperature_sensor_alias(self, mock_get_endpoint):
+    """Verifies temperature_sensor endpoint alias on success."""
+    self.assertIsNotNone(self.uut.temperature_sensor)
+    mock_get_endpoint.assert_called_once_with(
+        temperature_sensor.TemperatureSensorEndpoint)
   # ***************************************************************** #
 
 

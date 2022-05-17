@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Mixin for Matter Color Control test suite."""
+"""Mixin for Matter Color Control cluster test suite."""
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
 
@@ -20,8 +20,8 @@ _TARGET_HUE = 70
 _TARGET_SATURATION = 90
 
 
-class ColorControlTestSuite(gdm_test_base.GDMTestBase):
-  """Mixin for Matter Color Control test suite.
+class ColorControlClusterTestSuite(gdm_test_base.GDMTestBase):
+  """Mixin for Matter Color Control cluster test suite.
 
   The mixin assumes self.endpoint is set.
   """

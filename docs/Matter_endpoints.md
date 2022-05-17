@@ -141,7 +141,7 @@ Alias for accessing `OnOffLight` endpoint and its supported clusters.
 The supported clusters can be found in the
 [GDM OnOffLight implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/on_off_light.py).
 
-### APIs
+### APIs of the Matter Endpoints capability
 
 #### `list()`
 
@@ -228,4 +228,83 @@ frozenset({<class 'gazoo_device.capabilities.matter_clusters.level_control_pw_rp
 <class 'gazoo_device.capabilities.matter_clusters.door_lock_pw_rpc.DoorLockClusterPwRpc'>}),
 <gazoo_device.capabilities.matter_endpoints.on_off_light.OnOffLightEndpoint object at 0x7f70b1501f40>:
 frozenset({<class 'gazoo_device.capabilities.matter_clusters.on_off_pw_rpc.OnOffClusterPwRpc'>})})
+```
+
+#### `read(endpoint_id, cluster_id, attribute_id, attribute_type)`
+
+Ember API read method to read the data from a specific endpoint with given
+cluster ID, attribute ID and attribute type. The Ember API can be used to
+interact with any Matter endpoint, including ones that don't have GDM support
+yet. It's mostly called by the cluster instance and generally doesn't need to be
+called by the users.
+
+```
+>>> dut.matter_endpoints.read(endpoint_id=1. cluster_id=6, attribute_id=0, attribute_type=16)
+data_bool: false
+```
+
+#### `write(endpoint_id, cluster_id, attribute_id, attribute_type, **data_kwargs)`
+
+Ember API write method to write the data to a specific endpoint with given
+cluster ID, attribute ID and attribute type. The Ember API can be used to
+interact with any Matter endpoint, including ones that don't have GDM support
+yet. It's mostly called by the cluster instance and generally doesn't need to be
+called by the users.
+
+```
+>>> dut.matter_endpoints.write(endpoint_id=1. cluster_id=6, attribute_id=0, attribute_type=16, data_bool=True)
+```
+
+### APIs / properties of endpoint instances
+
+The APIs and properties that exist on all endpoint instances. The below code
+snippets use `on_off_light` as examples.
+
+#### `id`
+
+Return the endpoint ID of the instance.
+
+```
+>>> dut.on_off_light.id
+1
+```
+
+#### `name`
+
+Return the endpoint name of the instance.
+
+```
+>>> dut.on_off_light.name
+'on_off_light'
+```
+
+#### `has_clusters(cluster_names)`
+
+Return if the device supports all of the given cluster names.
+
+```
+>>> dut.on_off_light.has_clusters(['level_control', 'on_off'])
+True
+>>> dut.on_off_light.has_clusters(['door_lock'])
+False
+```
+
+#### `get_supported_clusters()`
+
+Return a list of the supported cluster names on the endpoint.
+
+```
+>>> dut.on_off_light.get_supported_clusters()
+['level_control_cluster', 'occupancy_cluster', 'on_off_cluster']
+```
+
+#### `get_supported_cluster_flavors()`
+
+Return a list of the supported cluster flavors on the endpoint.
+
+```
+>>> dut.on_off_light.get_supported_cluster_flavors()
+frozenset({<class 'gazoo_device.capabilities.matter_clusters.occupancy_pw_rpc.OccupancyClusterPwRpc'>,
+<class 'gazoo_device.capabilities.matter_clusters.level_control_pw_rpc.LevelControlClusterPwRpc'>,
+<class 'gazoo_device.capabilities.matter_clusters.on_off_pw_rpc.OnOffClusterPwRpc'>})
 ```
