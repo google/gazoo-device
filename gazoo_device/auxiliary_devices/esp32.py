@@ -25,9 +25,10 @@ class ESP32(espressif_esp32_device.EspressifESP32Device):
   """
   DETECT_MATCH_CRITERIA = {
       detect_criteria.PigweedQuery.IS_MATTER: False,
-      detect_criteria.PigweedQuery.MANUFACTURER_NAME: r"silicon(_| )labs",
+      detect_criteria.PigweedQuery.MANUFACTURER_NAME:
+          r"(silicon(_| )labs|1a86)",
       detect_criteria.PigweedQuery.PRODUCT_NAME:
-          "cp2104 usb to uart bridge controller",
+          r"(cp2104 usb to uart bridge controller|usb single serial)",
   }
   DEVICE_TYPE = "esp32"
   _OWNER_EMAIL = "gdm-authors@google.com"

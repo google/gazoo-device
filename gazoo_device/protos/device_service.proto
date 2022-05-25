@@ -61,7 +61,7 @@ service Device {
   rpc TriggerOta(pw.protobuf.Empty) returns (pw.protobuf.Empty){}
 
   // To get the device static information.
-  rpc GetDeviceInfo(pw.protobuf.Empty) returns (pw.protobuf.Empty){}
+  rpc GetDeviceInfo(pw.protobuf.Empty) returns (DeviceInfo){}
 
   // To get the device current state.
   rpc GetDeviceState(pw.protobuf.Empty) returns (DeviceState){}

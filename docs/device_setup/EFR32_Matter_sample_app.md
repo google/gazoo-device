@@ -125,6 +125,20 @@ Detect the EFR32 Matter sample app: `gdm detect`
     -------------------------- --------------- -------------------- -------------------- ----------
 ```
 
+**6. (Recommended) Remove on-board coin cell battery**
+
+The coin cell [battery](images/efr32_battery.jpg)
+besides the USB port is an alternate power source for the board. When used in a
+testbed setup, the battery is not needed. Removing the battery enables the board
+to be power cycled programmatically using
+
+```
+device.device_power.off()
+device.device_power.on()
+```
+
+Which is useful to recover the device from unresponsiveness.
+
 ## Usage
 
 Using GDM CLI
@@ -190,8 +204,8 @@ The sample app on the dev board supports various Pigweed RPC calls:
 
 The Matter sample app uses Descriptor cluster to list the supported endpoints on
 the device, users can use `matter_endpoints.get` or alias to access the
-supported endpoint. Accessing an invalid endpoint will raise a `DeviceError`. (
-Invalid endpoint means either: the given endpoint id is not available on the
+supported endpoint. Accessing an invalid endpoint will raise a `DeviceError`.
+(Invalid endpoint means either: the given endpoint id is not available on the
 device, or the endpoint alias is not supported on the device.)
 
 Please visit [Matter Endpoint Doc](../Matter_endpoints.md) for more information.

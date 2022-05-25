@@ -37,9 +37,10 @@ class Esp32Matter(matter_device_base.MatterDeviceBase):
   """ESP32 Matter device controller."""
   DETECT_MATCH_CRITERIA = {
       detect_criteria.PigweedQuery.IS_MATTER: True,
-      detect_criteria.PigweedQuery.MANUFACTURER_NAME: r"silicon(_| )labs",
+      detect_criteria.PigweedQuery.MANUFACTURER_NAME:
+          r"(silicon(_| )labs|1a86)",
       detect_criteria.PigweedQuery.PRODUCT_NAME:
-          "cp2104 usb to uart bridge controller",
+          r"(cp2104 usb to uart bridge controller|usb single serial)",
   }
   # Button definition on ESP32 M5Stack dev board:
   # 0 --> Left button on M5Stack, Button 1

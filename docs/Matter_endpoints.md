@@ -127,7 +127,7 @@ Alias for accessing `DoorLock` endpoint and its supported clusters.
 ```
 
 The supported clusters can be found in the
-[GDM DimmableLight implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/door_lock.py).
+[GDM DoorLock implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/door_lock.py).
 
 #### `on_off_light`
 
@@ -140,6 +140,18 @@ Alias for accessing `OnOffLight` endpoint and its supported clusters.
 
 The supported clusters can be found in the
 [GDM OnOffLight implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/on_off_light.py).
+
+#### `temperature_sensor`
+
+Alias for accessing `TemperatureSensor` endpoint and its supported clusters.
+
+```
+# Check the MeasuredValue attribute on the TemperatureMeasurement cluster on the TemperatureSensor endpoint.
+>>> dut.temperature_sensor.temperature_measurement.measured_value
+```
+
+The supported clusters can be found in the
+[GDM TemperatureSensor implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/temperature_sensor.py).
 
 ### APIs of the Matter Endpoints capability
 

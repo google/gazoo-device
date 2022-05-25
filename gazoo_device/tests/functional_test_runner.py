@@ -40,6 +40,7 @@ from gazoo_device.tests.functional_tests import pw_rpc_wifi_test_suite
 from gazoo_device.tests.functional_tests import shell_ssh_test_suite
 from gazoo_device.tests.functional_tests import switch_power_test_suite
 from gazoo_device.tests.functional_tests import switchboard_test_suite
+from gazoo_device.tests.functional_tests import temperature_sensor_test_suite
 from gazoo_device.tests.functional_tests.utils import suite_filter
 from mobly import config_parser
 from mobly import suite_runner
@@ -72,6 +73,7 @@ TEST_SUITES = (
     shell_ssh_test_suite.ShellSshTestSuite,
     switch_power_test_suite.SwitchPowerTestSuite,
     switchboard_test_suite.SwitchboardTestSuite,
+    temperature_sensor_test_suite.TemperatureSensorTestSuite,
 )
 
 
