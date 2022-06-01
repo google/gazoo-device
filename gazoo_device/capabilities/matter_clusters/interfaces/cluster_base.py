@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Interface for the Matter cluster capability."""
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 from gazoo_device.capabilities.interfaces import capability_base
 
 
@@ -27,16 +27,19 @@ class ClusterBase(capability_base.CapabilityBase):
                device_name: str,
                endpoint_id: int,
                read: Callable[..., Any],
-               write: Callable[..., Any]):
+               write: Callable[..., Any],
+               send: Optional[Callable[..., Any]] = None):
     """Initializes an instance of the Matter cluster capability.
 
     Args:
       device_name: Device name used for logging.
       endpoint_id: Endpoint ID of endpoint which hosts this cluster.
-      read: The Ember API read method.
-      write: The Ember API write method.
+      read: The Ember API or MatterController read method.
+      write: The Ember API or MatterController write method.
+      send: The MatterController command send method.
     """
     super().__init__(device_name=device_name)
     self._endpoint_id = endpoint_id
     self._read = read
     self._write = write
+    self._send = send

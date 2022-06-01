@@ -18,6 +18,7 @@ from unittest import mock
 from gazoo_device import errors
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
+from gazoo_device.protos import attributes_service_pb2
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
 _FAKE_CLUSTER_NAME = "on_off_cluster"
@@ -61,13 +62,14 @@ class EndpointBaseTest(fake_device_test_case.FakeDeviceTestCase):
       endpoint_base.EndpointBase, "get_supported_cluster_flavors")
   def test_cluster_lazy_init_on_success(self, mock_get_supported_clusters):
     """Verifies cluster_lazy_init method on success."""
+    cluster_id = attributes_service_pb2.ClusterType.ZCL_COLOR_CONTROL_CLUSTER_ID
     fake_cluster_inst = mock.Mock(spec=cluster_base.ClusterBase)
     fake_cluster_cls = mock.Mock(__name__=_FAKE_CLUSTER_NAME,
                                  return_value=fake_cluster_inst)
+    fake_cluster_cls.CLUSTER_ID = cluster_id
     mock_get_supported_clusters.return_value = {fake_cluster_cls,}
 
-    self.assertEqual(fake_cluster_inst,
-                     self.uut.cluster_lazy_init(fake_cluster_cls))
+    self.assertEqual(fake_cluster_inst, self.uut.cluster_lazy_init(cluster_id))
 
   @mock.patch.object(
       endpoint_base.EndpointBase,

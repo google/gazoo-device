@@ -78,24 +78,29 @@ from gazoo_device.capabilities.matter_clusters import color_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import door_lock_pw_rpc
 from gazoo_device.capabilities.matter_clusters import level_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import occupancy_pw_rpc
+from gazoo_device.capabilities.matter_clusters import on_off_chip_tool
 from gazoo_device.capabilities.matter_clusters import on_off_pw_rpc
+from gazoo_device.capabilities.matter_clusters import pressure_measurement_pw_rpc
 from gazoo_device.capabilities.matter_clusters import temperature_measurement_pw_rpc
 from gazoo_device.capabilities.matter_clusters.interfaces import color_control_base
 from gazoo_device.capabilities.matter_clusters.interfaces import door_lock_base
 from gazoo_device.capabilities.matter_clusters.interfaces import level_control_base
 from gazoo_device.capabilities.matter_clusters.interfaces import occupancy_base
 from gazoo_device.capabilities.matter_clusters.interfaces import on_off_base
+from gazoo_device.capabilities.matter_clusters.interfaces import pressure_measurement_base
 from gazoo_device.capabilities.matter_clusters.interfaces import temperature_measurement_base
 from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.capabilities.matter_endpoints import on_off_light
+from gazoo_device.capabilities.matter_endpoints import pressure_sensor
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.capabilities.matter_endpoints import unsupported_endpoint
 from gazoo_device.capabilities.matter_endpoints.interfaces import color_temperature_light_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import dimmable_light_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import door_lock_base as door_lock_endpoint_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import on_off_light_base
+from gazoo_device.capabilities.matter_endpoints.interfaces import pressure_sensor_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import temperature_sensor_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import unsupported_endpoint_base
 from gazoo_device.primary_devices import efr32_matter
@@ -186,16 +191,18 @@ def export_extensions() -> Dict[str, Any]:
           matter_endpoints_base.MatterEndpointsBase,
           occupancy_base.OccupancyClusterBase,
           on_off_base.OnOffClusterBase,
-          temperature_measurement_base.TemperatureMeasurementClusterBase,
           on_off_light_base.OnOffLightBase,
-          temperature_sensor_base.TemperatureSensorBase,
           package_management_base.PackageManagementBase,
+          pressure_measurement_base.PressureMeasurementClusterBase,
+          pressure_sensor_base.PressureSensorBase,
           pwrpc_button_base.PwRPCButtonBase,
           pwrpc_common_base.PwRPCCommonBase,
           pwrpc_wifi_base.PwRPCWifiBase,
           shell_base.ShellBase,
           switchboard_base.SwitchboardBase,
           switch_power_base.SwitchPowerBase,
+          temperature_measurement_base.TemperatureMeasurementClusterBase,
+          temperature_sensor_base.TemperatureSensorBase,
           unsupported_endpoint_base.UnsupportedBase,
           usb_hub_base.UsbHubBase,
       ],
@@ -220,12 +227,13 @@ def export_extensions() -> Dict[str, Any]:
           level_control_pw_rpc.LevelControlClusterPwRpc,
           matter_controller_chip_tool.MatterControllerChipTool,
           matter_endpoints_accessor.MatterEndpointsAccessor,
-          on_off_light.OnOffLightEndpoint,
-          temperature_sensor.TemperatureSensorEndpoint,
-          on_off_pw_rpc.OnOffClusterPwRpc,
           occupancy_pw_rpc.OccupancyClusterPwRpc,
-          temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc,
+          on_off_light.OnOffLightEndpoint,
+          on_off_chip_tool.OnOffClusterChipTool,
+          on_off_pw_rpc.OnOffClusterPwRpc,
           package_management_android.PackageManagementAndroid,
+          pressure_sensor.PressureSensorEndpoint,
+          pressure_measurement_pw_rpc.PressureMeasurementClusterPwRpc,
           pwrpc_button_default.PwRPCButtonDefault,
           pwrpc_common_default.PwRPCCommonDefault,
           pwrpc_wifi_default.PwRPCWifiDefault,
@@ -237,6 +245,8 @@ def export_extensions() -> Dict[str, Any]:
           switch_power_usb_default.SwitchPowerUsbDefault,
           switch_power_usb_with_charge.SwitchPowerUsbWithCharge,
           switchboard.SwitchboardDefault,
+          temperature_sensor.TemperatureSensorEndpoint,
+          temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc,
           unsupported_endpoint.UnsupportedEndpoint,
           usb_hub_default.UsbHubDefault,
       ],

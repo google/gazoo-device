@@ -29,6 +29,7 @@ from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.capabilities.matter_endpoints import on_off_light
+from gazoo_device.capabilities.matter_endpoints import pressure_sensor
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.protos import attributes_service_pb2
 from gazoo_device.protos import button_service_pb2
@@ -89,6 +90,9 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
     persistent_dict["serial_number"] = (
         usb_utils.get_serial_number_from_path(address))
     persistent_dict["model"] = "PROTO"
+    device_info = usb_utils.get_device_info(self.communication_address)
+    persistent_dict["vendor_id"] = device_info.vendor_id
+    persistent_dict["product_id"] = device_info.product_id
     persistent_dict.update(
         usb_utils.get_usb_hub_info(self.communication_address))
     return persistent_dict, {}
@@ -120,15 +124,15 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
     """Firmware version of the device."""
     return str(self.pw_rpc_common.software_version)
 
-  @decorators.DynamicProperty
-  def vendor_id(self) -> int:
-    """Vendor ID of the device."""
-    return self.pw_rpc_common.vendor_id
+  @decorators.PersistentProperty
+  def vendor_id(self) -> str:
+    """Vendor ID of the USB-UART controller."""
+    return self.props["persistent_identifiers"]["vendor_id"]
 
-  @decorators.DynamicProperty
-  def product_id(self) -> int:
-    """Product ID of the device."""
-    return self.pw_rpc_common.product_id
+  @decorators.PersistentProperty
+  def product_id(self) -> str:
+    """Product ID of the USB-UART controller."""
+    return self.props["persistent_identifiers"]["product_id"]
 
   @decorators.PersistentProperty
   def device_usb_hub_name(self) -> Optional[str]:
@@ -350,4 +354,18 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
     """
     return self.matter_endpoints.get_endpoint_instance_by_class(
         temperature_sensor.TemperatureSensorEndpoint)
+
+  @decorators.CapabilityDecorator(pressure_sensor.PressureSensorEndpoint)
+  def pressure_sensor(self) -> pressure_sensor.PressureSensorEndpoint:
+    """Matter Pressure Sensor endpoint instance.
+
+    Returns:
+      Pressure Sensor endpoint instance.
+
+    Raises:
+      DeviceError when Pressure Sensor endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        pressure_sensor.PressureSensorEndpoint)
   # ***************************************************************** #

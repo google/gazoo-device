@@ -22,9 +22,14 @@ A Color Temperature light endpoint houses an instance of Color Temperature Light
 Matter device type with the following required clusters on this endpoint:
 Scenes, OnOff, Level, Color Control and Groups.
 """
+
+from typing import Union
+
 from gazoo_device import decorators
+from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters import color_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import level_control_pw_rpc
+from gazoo_device.capabilities.matter_clusters import on_off_chip_tool
 from gazoo_device.capabilities.matter_clusters import on_off_pw_rpc
 from gazoo_device.capabilities.matter_endpoints.interfaces import color_temperature_light_base
 
@@ -33,20 +38,24 @@ class ColorTemperatureLightEndpoint(
     color_temperature_light_base.ColorTemperatureLightBase):
   """Matter Color Temperature light endpoint."""
 
-  @decorators.CapabilityDecorator(on_off_pw_rpc.OnOffClusterPwRpc)
-  def on_off(self) -> on_off_pw_rpc.OnOffClusterPwRpc:
+  @decorators.CapabilityDecorator(
+      [on_off_chip_tool.OnOffClusterChipTool, on_off_pw_rpc.OnOffClusterPwRpc])
+  def on_off(
+      self
+  ) -> Union[on_off_chip_tool.OnOffClusterChipTool,
+             on_off_pw_rpc.OnOffClusterPwRpc]:
     """Matter OnOff cluster instance."""
-    return self.cluster_lazy_init(on_off_pw_rpc.OnOffClusterPwRpc)
+    return self.cluster_lazy_init(matter_enums.OnOffCluster.ID)
 
   @decorators.CapabilityDecorator(level_control_pw_rpc.LevelControlClusterPwRpc)
   def level(self) -> level_control_pw_rpc.LevelControlClusterPwRpc:
     """Matter Level Control cluster instance."""
-    return self.cluster_lazy_init(level_control_pw_rpc.LevelControlClusterPwRpc)
+    return self.cluster_lazy_init(matter_enums.LevelControlCluster.ID)
 
   @decorators.CapabilityDecorator(color_control_pw_rpc.ColorControlClusterPwRpc)
   def color(self) -> color_control_pw_rpc.ColorControlClusterPwRpc:
     """Matter Color Control cluster instance."""
-    return self.cluster_lazy_init(color_control_pw_rpc.ColorControlClusterPwRpc)
+    return self.cluster_lazy_init(matter_enums.ColorControlCluster.ID)
 
   # TODO(b/209362086) Add the below clusters
   # def scenes(self):

@@ -12,27 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Interface for an PwRPC (Pigweed RPC) device common capability."""
+"""Interface for the Matter Pressure Measurement cluster capability."""
 import abc
-from gazoo_device.capabilities.interfaces import capability_base
+from gazoo_device.capabilities import matter_enums
+from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 
 
-class PwRPCCommonBase(capability_base.CapabilityBase):
-  """Pigweed RPC common capability for devices communicating over PwRPC."""
+class PressureMeasurementClusterBase(
+    cluster_base.ClusterBase, metaclass=abc.ABCMeta):
+  """Matter Pressure Measurement cluster capability."""
 
-  @property
-  @abc.abstractmethod
-  def software_version(self) -> int:
-    """The software version of the device."""
-
-  @abc.abstractmethod
-  def reboot(self) -> None:
-    """Reboots the device."""
+  CLUSTER_ID = matter_enums.PressureMeasurementCluster.ID
 
   @abc.abstractmethod
-  def factory_reset(self) -> None:
-    """Factory resets the device."""
+  def measured_value(self) -> int:
+    """The MeasuredValue attribute."""
 
   @abc.abstractmethod
-  def ota(self) -> None:
-    """Triggers OTA to the device."""
+  def min_measured_value(self) -> int:
+    """The MinMeasuredValue attribute."""
+
+  @abc.abstractmethod
+  def max_measured_value(self) -> int:
+    """The MaxMeasuredValue attribute."""

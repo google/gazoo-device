@@ -77,6 +77,19 @@ class OnOffCluster(enum.IntEnum):
   ATTRIBUTE_ON_OFF = 0x0000
 
 
+class PressureMeasurementCluster(enum.IntEnum):
+  """Pressure Measurement cluster ID and its attribute IDs.
+
+  The enum values are defined in the Matter spec.
+  """
+  ID = attributes_service_pb2.ClusterType.ZCL_PRESSURE_MEASUREMENT_CLUSTER_ID
+
+  # Attribute IDs
+  ATTRIBUTE_MEASURED_VALUE = 0
+  ATTRIBUTE_MIN_MEASURED_VALUE = 1
+  ATTRIBUTE_MAX_MEASURED_VALUE = 2
+
+
 class TemperatureMeasurementCluster(enum.IntEnum):
   """Temperature Measurement cluster ID and its attribute IDs.
 

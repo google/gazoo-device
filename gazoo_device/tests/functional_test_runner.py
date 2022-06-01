@@ -34,6 +34,7 @@ from gazoo_device.tests.functional_tests import file_transfer_test_suite
 from gazoo_device.tests.functional_tests import on_off_light_test_suite
 from gazoo_device.tests.functional_tests import optional_properties_test_suite
 from gazoo_device.tests.functional_tests import package_management_test_suite
+from gazoo_device.tests.functional_tests import pressure_sensor_test_suite
 from gazoo_device.tests.functional_tests import pw_rpc_button_test_suite
 from gazoo_device.tests.functional_tests import pw_rpc_common_test_suite
 from gazoo_device.tests.functional_tests import pw_rpc_wifi_test_suite
@@ -67,6 +68,7 @@ TEST_SUITES = (
     on_off_light_test_suite.OnOffLightTestSuite,
     optional_properties_test_suite.OptionalPropertiesTestSuite,
     package_management_test_suite.PackageManagementTestSuite,
+    pressure_sensor_test_suite.PressureSensorTestSuite,
     pw_rpc_button_test_suite.PwRPCButtonTestSuite,
     pw_rpc_common_test_suite.PwRPCCommonTestSuite,
     pw_rpc_wifi_test_suite.PwRPCWifiTestSuite,

@@ -135,20 +135,41 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
       else:
         raise
 
+    self._pre_flashing(jlink)
+
+    try:
+      self._flash_image(jlink, image_path)
+    except pylink.errors.JLinkFlashException as err:
+      # Unexpected programming error when flashing a new build
+      # Reflashing the board resolves the issue: b/233997222
+      logger.info(
+          f"{self._device_name} encountered an error during flashing: {err!r}."
+          " Performing a second flash attempt.")
+      self._post_flashing(jlink)
+      self._pre_flashing(jlink)
+      self._flash_image(jlink, image_path)
+    finally:
+      self._post_flashing(jlink)
+
+  def _pre_flashing(self, jlink: pylink.jlink.JLink) -> None:
+    """Opens Jlink connection and connects to the board."""
     jlink.open(serial_no=self._serial_number)
     jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
     jlink.connect(chip_name=self._platform_name, speed="auto")
     jlink.halt()
 
-    image = intelhex.IntelHex(os.path.abspath(image_path))
-    for segment_start, segment_end in image.segments():
-      segment_size = segment_end - segment_start
-      segment = image.tobinarray(start=segment_start, size=segment_size)
-      jlink.flash_write8(segment_start, segment)
-
+  def _post_flashing(self, jlink: pylink.jlink.JLink) -> None:
+    """Resets and closes the Jlink connection."""
     jlink.reset()
     jlink.restart()
     jlink.close()
+
+  def _flash_image(self, jlink: pylink.jlink.JLink, image_path: str) -> None:
+    """Flashes image onto the board."""
+    image = intelhex.IntelHex(os.path.abspath(image_path))
+    # Find the first segment
+    segment_start, _ = image.segments()[0]
+    jlink.flash_file(image_path, segment_start)
 
   @decorators.CapabilityLogDecorator(logger)
   def download_build_file(self, remote_build_folder, local_folder):

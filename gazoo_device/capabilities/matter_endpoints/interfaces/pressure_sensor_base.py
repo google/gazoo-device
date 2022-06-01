@@ -12,5 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Gazoo Device Manager version."""
-version = "1.72.0"
+"""Interface for a Matter Pressure Sensor endpoint."""
+import abc
+from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
+
+
+class PressureSensorBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
+  """Matter Pressure Sensor endpoint interface."""
+
+  DEVICE_TYPE_ID = 0x0305
+
+  @property
+  @abc.abstractmethod
+  def pressure_measurement(self):
+    """Required cluster: pressure_measurement cluster."""

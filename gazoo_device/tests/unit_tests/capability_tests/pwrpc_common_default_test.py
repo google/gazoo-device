@@ -25,8 +25,6 @@ from gazoo_device.utility import retry
 
 _FAKE_ACTION = "fake-action"
 _FAKE_DEVICE_NAME = "matter_device"
-_FAKE_VENDOR_ID = 1234
-_FAKE_PRODUCT_ID = 5678
 _FAKE_SOFTWARE_VERSION = 0
 _FAKE_QR_CODE = "fake-qr-code"
 _FAKE_QR_CODE_URL = "fake-qr-code-url"
@@ -54,18 +52,6 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
         device_name=_FAKE_DEVICE_NAME,
         switchboard_call=self.switchboard_call_mock,
         rpc_timeout_s=_FAKE_TIMEOUT)
-
-  @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "get_device_info")
-  def test_get_vendor_id_on_success(self, mock_get_device_info):
-    """Verifies getting vendor id on success."""
-    mock_get_device_info.return_value.vendor_id = _FAKE_VENDOR_ID
-    self.assertEqual(self.uut.vendor_id, _FAKE_VENDOR_ID)
-
-  @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "get_device_info")
-  def test_get_product_id_on_success(self, mock_get_device_info):
-    """Verifies getting product id on success."""
-    mock_get_device_info.return_value.product_id = _FAKE_PRODUCT_ID
-    self.assertEqual(self.uut.product_id, _FAKE_PRODUCT_ID)
 
   @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "get_device_info")
   def test_get_software_version_on_success(self, mock_get_device_info):
@@ -150,7 +136,8 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
       pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
   def test_get_device_info_on_success(self, mock_trigger_device_action):
     """Verifies get_device_info on success."""
-    fake_device_info = device_service_pb2.DeviceInfo(vendor_id=_FAKE_VENDOR_ID)
+    fake_device_info = device_service_pb2.DeviceInfo(
+        software_version=_FAKE_SOFTWARE_VERSION)
     mock_trigger_device_action.return_value = (
         fake_device_info.SerializeToString())
 

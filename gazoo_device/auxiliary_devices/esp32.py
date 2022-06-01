@@ -26,7 +26,8 @@ class ESP32(espressif_esp32_device.EspressifESP32Device):
   DETECT_MATCH_CRITERIA = {
       detect_criteria.PigweedQuery.IS_MATTER: False,
       detect_criteria.PigweedQuery.MANUFACTURER_NAME:
-          r"(silicon(_| )labs|1a86)",
+      # CH9102F model has an empty string for MANUFACTURER_NAME
+          r"(silicon(_| )labs|1a86|)",
       detect_criteria.PigweedQuery.PRODUCT_NAME:
           r"(cp2104 usb to uart bridge controller|usb single serial)",
   }

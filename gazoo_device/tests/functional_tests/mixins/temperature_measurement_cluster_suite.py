@@ -28,7 +28,7 @@ class TemperatureMeasurementClusterTestSuite(gdm_test_base.GDMTestBase):
     if self.endpoint.has_clusters(["temperature_measurement"]):
       asserts.assert_is_instance(
           self.endpoint.temperature_measurement.measured_value, int,
-          "Occupancy attribute must be the int type.")
+          "MeasuredValue attribute must be the int type.")
     else:
       asserts.skip(
           f"Endpoint {self.endpoint} does not implement the Temperature "

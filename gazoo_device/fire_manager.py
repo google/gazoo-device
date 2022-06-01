@@ -796,6 +796,7 @@ class FireManager(manager.Manager):
         methods_and_props = [
             name for name, member in inspect.getmembers(cap_class)
             if cls._classify_attribute(member) in _VISIBLE_CAPABILITY_ATTRIBUTES
+            and not name.startswith("_")
         ]
         indented_lines = [
             " " * _DOC_INDENT_SIZE + line for line in methods_and_props

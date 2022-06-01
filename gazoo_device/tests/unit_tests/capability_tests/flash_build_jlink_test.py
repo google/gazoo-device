@@ -30,6 +30,8 @@ _MOCK_DEVICE_NAME = "MOCK_DEVICE"
 _MOCK_SERIAL_NUMBER = 123456789
 _MOCK_CHIP_NAME = "TARGET_CHIP_NAME"
 _MOCK_IMAGE_PATH = "MOCK/IMAGE/PATH/HEX.hex"
+_MOCK_SEGMENT_START = 0
+_MOCK_SEGMENT_END = 10
 
 
 class JLinkFlashDefaultTest(fake_device_test_case.FakeDeviceTestCase):
@@ -60,42 +62,62 @@ class JLinkFlashDefaultTest(fake_device_test_case.FakeDeviceTestCase):
           "No J-Link DLL found. Install the J-Link SDK"):
         self.uut._jlink_flash(_MOCK_IMAGE_PATH)
 
+  @mock.patch.object(flash_build_jlink.FlashBuildJLink, "_jlink_flash")
   @mock.patch.object(
       flash_build_jlink.FlashBuildJLink, "_poll_until_device_is_ready")
   @mock.patch.object(os.path, "exists", return_value=True)
-  def test_flash(self, mock_exists, mock_poll_until_device_is_ready):
-    """Tests JLinkFlashDefault.flash."""
-    mock_image = mock.Mock()
-    mock_segments = [(0, 10), (10, 20)]
-    mock_binarray = mock.Mock()
-    with mock.patch.object(intelhex, "IntelHex", return_value=mock_image):
-      mock_image.segments.return_value = mock_segments
-      mock_image.tobinarray.return_value = mock_binarray
-      self.uut.upgrade(build_file=_MOCK_IMAGE_PATH)
+  def test_upgrade(
+      self, mock_exists, mock_poll_until_device_is_ready, mock_jlink_flash):
+    """Tests upgrade() success."""
+    self.uut.upgrade(build_file=_MOCK_IMAGE_PATH)
 
     mock_exists.assert_any_call(_MOCK_IMAGE_PATH)
-    mock_image.tobinarray.assert_has_calls(
-        [mock.call(start=0, size=10), mock.call(start=10, size=10)])
-    self.mock_jlink.flash_write8.assert_has_calls(
-        [mock.call(0, mock_binarray), mock.call(10, mock_binarray)])
+    mock_jlink_flash.assert_called_once()
+    self.mock_matter_endpoints_reset.assert_called_once()
+    mock_poll_until_device_is_ready.assert_called_once()
+
+  @mock.patch.object(flash_build_jlink.FlashBuildJLink, "_post_flashing")
+  @mock.patch.object(
+      flash_build_jlink.FlashBuildJLink,
+      "_flash_image", side_effect=(
+          pylink.errors.JLinkFlashException(
+              code=pylink.enums.JLinkGlobalErrors.FLASH_PROG_PROGRAM_FAILED),
+          None))
+  @mock.patch.object(flash_build_jlink.FlashBuildJLink, "_pre_flashing")
+  def test_jlink_flash_2_attemps(
+      self, mock_pre_flash, mock_flash_image, mock_post_flash):
+    """Tests _jlink_flash flashing for 2 attemps on success."""
+    self.uut._jlink_flash(_MOCK_IMAGE_PATH)
+
+    self.assertEqual(2, mock_pre_flash.call_count)
+    self.assertEqual(2, mock_flash_image.call_count)
+    self.assertEqual(2, mock_post_flash.call_count)
+
+  def test_pre_flashing(self):
+    """Tests _pre_flashing on success."""
+    self.uut._pre_flashing(self.mock_jlink)
+
     self.mock_jlink.open.assert_called_once()
     self.mock_jlink.set_tif.assert_called_once()
     self.mock_jlink.connect.assert_called_once()
     self.mock_jlink.halt.assert_called_once()
+
+  def test_post_flashing(self):
+    """Tests _post_flashing on success."""
+    self.uut._post_flashing(self.mock_jlink)
+
     self.mock_jlink.reset.assert_called_once()
     self.mock_jlink.restart.assert_called_once()
     self.mock_jlink.close.assert_called_once()
-    self.mock_matter_endpoints_reset.assert_called_once()
-    mock_poll_until_device_is_ready.assert_called_once()
 
-  def test_image_invalid(self):
-    """Tests image invalid failure."""
-    with self.assertRaises(errors.DeviceError):
-      self.uut.upgrade(build_file=_MOCK_IMAGE_PATH)
-    with self.assertRaises(errors.DeviceError):
-      self.uut.upgrade(build_file="invalid.txt")
-    with self.assertRaises(errors.DeviceError):
-      self.uut.flash_device(["h1.hex", "h2.hex"])
+  @mock.patch.object(intelhex, "IntelHex")
+  def test_flash_image(self, mock_intelhex):
+    """Tests _flash_image on success."""
+    mock_intelhex.return_value.segments.return_value = [
+        (_MOCK_SEGMENT_START, _MOCK_SEGMENT_END)]
+
+    self.uut._flash_image(self.mock_jlink, _MOCK_IMAGE_PATH)
+    self.mock_jlink.flash_file.assert_called_once()
 
   def test_get_firmware_version(self):
     """Tests that get_firmware_version() returns UNKNOWN."""

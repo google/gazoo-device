@@ -26,6 +26,7 @@ device type with the following defined clusters on this endpoint:
 The required clusters for this endpoint: Temperature Measurement
 """
 from gazoo_device import decorators
+from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters import temperature_measurement_pw_rpc
 from gazoo_device.capabilities.matter_endpoints.interfaces import temperature_sensor_base
 
@@ -39,5 +40,4 @@ class TemperatureSensorEndpoint(temperature_sensor_base.TemperatureSensorBase):
       self
   ) -> temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc:
     """Matter Occupancy cluster instance."""
-    return self.cluster_lazy_init(
-        temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc)
+    return self.cluster_lazy_init(matter_enums.TemperatureMeasurementCluster.ID)

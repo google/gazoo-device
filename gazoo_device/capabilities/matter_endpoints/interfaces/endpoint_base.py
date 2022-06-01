@@ -12,14 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Interface for a Matter endpoint base capability."""
-from typing import Any, Callable, Collection, FrozenSet, List, Optional, Set, Type
+"""Interface for a Matter endpoint base capability.
+
+Matter endpoint capability houses different required or optional cluster
+capabilities, based on the Matter device type the endpoint corresponds to.
+The capability is initialized with a set of GDM supported cluster capability
+classes, which can be one of the following flavors depending on the device
+this capability belongs to:
+
+  - PigweedRPC (e.g. OnOffClusterPwRpc) for Matter devices (ESP32Matter, etc.)
+
+    Directly controls the end devices over PwRpc, bypassing Matter protocol.
+    The end devices do not need to be commissioned.
+
+  - ChipTool (e.g. OnOffClusterChipTool) for RaspberryPiMatterController
+
+    Mimics a Matter controller/hub by using chip-tool running on a raspberry pi
+    to control commissioned end devices via Matter protocol. The end devices do
+    not need to support PigweedRPC.
+
+See https://github.com/google/gazoo-device/blob/master/docs/Matter_endpoints.md
+for more details.
+"""
+
+from typing import Collection, FrozenSet, List, Optional, Set, Type
+
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import extensions
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import capability_base
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
+from gazoo_device.protos import attributes_service_pb2
 
 logger = gdm_logger.get_logger()
 
@@ -34,27 +58,25 @@ class EndpointBase(capability_base.CapabilityBase):
                device_name: str,
                identifier: int,
                supported_clusters: FrozenSet[Type[cluster_base.ClusterBase]],
-               read: Callable[..., Any],
-               write: Callable[..., Any],
-               device_type_id: Optional[int] = None):
+               device_type_id: Optional[int] = None,
+               **cluster_kwargs):
     """Initializes Matter endpoint instance.
 
     Args:
       device_name: Device name used for logging.
       identifier: ID of this endpoint.
       supported_clusters: Supported cluster classes on this endpoint.
-      read: Ember API read method.
-      write: Ember API write method.
       device_type_id: Device type ID of this endpoint. It's only used for
         unsupported endpoint module, and the supported endpoints use
         cls.DEVICE_TYPE_ID instead.
+      **cluster_kwargs: Keyword arguments for PigweedRPC or ChipTool cluster
+        initialization.
     """
     super().__init__(device_name=device_name)
     self._id = identifier
     self._device_type_id = device_type_id
     self._supported_clusters = supported_clusters
-    self._read = read
-    self._write = write
+    self._cluster_kwargs = cluster_kwargs
 
   def __str__(self) -> str:
     """Overrides string representation of the endpoint."""
@@ -90,10 +112,11 @@ class EndpointBase(capability_base.CapabilityBase):
     Returns:
       True if the device supports all the clusters, false otherwise.
     """
-    valid_cluster_names = {
-        cluster_name.replace("_pw_rpc", "")
-        for cluster_name, cluster_class in extensions.capability_flavors.items()
-        if issubclass(cluster_class, cluster_base.ClusterBase)}
+    valid_cluster_names = set()
+    for cluster_name, cluster_class in extensions.capability_flavors.items():
+      if issubclass(cluster_class, cluster_base.ClusterBase):
+        valid_cluster_names.add(
+            cluster_name.replace("_pw_rpc", "").replace("_chip_tool", ""))
 
     for cluster_name in cluster_names:
       cluster_name = cluster_name.lower()
@@ -120,27 +143,31 @@ class EndpointBase(capability_base.CapabilityBase):
 
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
   def cluster_lazy_init(
-      self, cluster_class: Type[cluster_base.ClusterBase]
+      self, cluster_id: attributes_service_pb2.ClusterType
   ) -> cluster_base.ClusterBase:
     """Provides a lazy instantiation mechanism for Matter cluster.
 
     Args:
-      cluster_class: cluster class to instantiate.
+      cluster_id: cluster ID to instantiate.
 
     Returns:
       Initialized Matter cluster instance.
     """
-    if cluster_class not in self.get_supported_cluster_flavors():
+    cluster_id_to_class = {
+        cluster.CLUSTER_ID: cluster
+        for cluster in self.get_supported_cluster_flavors()
+    }
+    if cluster_id not in cluster_id_to_class:
       raise errors.DeviceError(
-          f"{self._device_name} does not support cluster {cluster_class} on "
+          f"{self._device_name} does not support cluster {cluster_id} on "
           f"endpoint {self.name} (endpoint ID {self.id}).")
 
+    cluster_class = cluster_id_to_class[cluster_id]
     cluster_name = cluster_class.__name__
     if not hasattr(self, cluster_name):
       cluster_inst = cluster_class(
           device_name=self._device_name,
           endpoint_id=self.id,
-          read=self._read,
-          write=self._write)
+          **self._cluster_kwargs)
       setattr(self, cluster_name, cluster_inst)
     return getattr(self, cluster_name)

@@ -27,8 +27,10 @@ from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.capabilities.matter_endpoints import on_off_light
+from gazoo_device.capabilities.matter_endpoints import pressure_sensor
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
+from gazoo_device.utility import usb_utils
 import immutabledict
 
 _FAKE_DEVICE_ID = "matterdevicestub-detect"
@@ -108,12 +110,12 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
       matter_endpoints_accessor.MatterEndpointsAccessor,
       "get_endpoint_instance_by_class",
       return_value=_FAKE_ENDPOINT_INST)
-  @mock.patch.object(matter_device_base.MatterDeviceBase, "pw_rpc_common")
+  @mock.patch.object(usb_utils, "get_device_info")
   def test_get_detection_info_on_success(
-      self, mock_rpc_common, mock_get_endpoint_instance):
+      self, mock_get_device_info, mock_get_endpoint_instance_by_class):
     """Verifies persistent properties are set correctly."""
-    mock_rpc_common.vendor_id = _FAKE_VENDOR_ID
-    mock_rpc_common.product_id = _FAKE_PRODUCT_ID
+    mock_get_device_info.return_value.vendor_id = _FAKE_VENDOR_ID
+    mock_get_device_info.return_value.product_id = _FAKE_PRODUCT_ID
     self._test_get_detection_info(
         console_port_name=_FAKE_DEVICE_ADDRESS,
         device_class=MatterDeviceStub,
@@ -265,6 +267,15 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
     """Verifies on_off_light endpoint alias on success."""
     self.assertIsNotNone(self.uut.on_off_light)
     mock_get_endpoint.assert_called_once_with(on_off_light.OnOffLightEndpoint)
+
+  @mock.patch.object(
+      matter_endpoints_accessor.MatterEndpointsAccessor,
+      "get_endpoint_instance_by_class")
+  def test_pressure_sensor_alias(self, mock_get_endpoint):
+    """Verifies pressure_sensor endpoint alias on success."""
+    self.assertIsNotNone(self.uut.pressure_sensor)
+    mock_get_endpoint.assert_called_once_with(
+        pressure_sensor.PressureSensorEndpoint)
 
   @mock.patch.object(
       matter_endpoints_accessor.MatterEndpointsAccessor,

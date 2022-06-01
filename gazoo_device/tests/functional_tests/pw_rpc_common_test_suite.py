@@ -36,14 +36,6 @@ class PwRPCCommonTestSuite(gdm_test_base.GDMTestBase):
     """Returns True if the device must be paired to run this test suite."""
     return False
 
-  def test_vendor_id(self):
-    """Tests the vendor_id property."""
-    asserts.assert_is_instance(self.device.pw_rpc_common.vendor_id, int)
-
-  def test_product_id(self):
-    """Tests product_id property."""
-    asserts.assert_is_instance(self.device.pw_rpc_common.product_id, int)
-
   def test_software_version(self):
     """Tests software_version property."""
     asserts.assert_is_instance(self.device.pw_rpc_common.software_version, int)

@@ -141,6 +141,18 @@ Alias for accessing `OnOffLight` endpoint and its supported clusters.
 The supported clusters can be found in the
 [GDM OnOffLight implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/on_off_light.py).
 
+#### `pressure_sensor`
+
+Alias for accessing `PressureSensor` endpoint and its supported clusters.
+
+```
+# Check the MeasuredValue attribute on the PressureMeasurement cluster on the PressureSensor endpoint.
+>>> dut.pressure_sensor.pressure_measurement.measured_value
+```
+
+The supported clusters can be found in the
+[GDM PressureSensor implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/pressure_sensor.py).
+
 #### `temperature_sensor`
 
 Alias for accessing `TemperatureSensor` endpoint and its supported clusters.
