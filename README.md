@@ -14,7 +14,7 @@ GDM runs on the test host and communicates with the physical devices via one or
 more device transports (such as SSH, ADB, HTTPS, UART). GDM does not require any
 additional support from the device firmware.
 
-GDM is used for on-device testing at Google Nest.
+GDM is used for on-device testing at Google Gazoo.
 
 ## Table of contents
 
@@ -122,7 +122,7 @@ Installation steps:
     To enable flashing ESP32 dev boards through GDM, install `esptool`:
 
     ```shell
-    ~/gazoo/gdm/virtual_env/bin/pip install esptool>=3.2
+    ~/gazoo/gdm/virtual_env/bin/pip install esptool==4.1
     ```
 
 GDM installation creates a virtual environment for the CLI at

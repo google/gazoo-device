@@ -13,12 +13,12 @@
 # limitations under the License.
 
 """Matter cluster capability unit test for cluster_base module."""
-
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
 _FAKE_DEVICE_NAME = "fake-device-name"
 _FAKE_ENDPOINT_ID = 1
+_FAKE_ATTRIBUTE = "fake_attribute"
 
 
 class ClusterBaseTest(fake_device_test_case.FakeDeviceTestCase):
@@ -32,10 +32,14 @@ class ClusterBaseTest(fake_device_test_case.FakeDeviceTestCase):
         read=None,
         write=None)
 
-  def test_cluster_initialization(self):
-    """Verifies cluster base is initialized successfully."""
-    # TODO(b/206894490) Remove this test once the other unit tests are added.
-    self.assertIsNotNone(self.uut)
+  def test_setattr_method_on_failure(self):
+    """Verifies the overridden __setattr__ on failure.
+
+    The on success scenarios are covered by the other cluster unit tests.
+    """
+    with self.assertRaisesRegex(
+        AttributeError, f"Invalid attribute '{_FAKE_ATTRIBUTE}' to set"):
+      self.uut.fake_attribute = 0
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@ from gazoo_device.capabilities.matter_clusters import color_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import door_lock_pw_rpc
 from gazoo_device.capabilities.matter_clusters import level_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import occupancy_pw_rpc
+from gazoo_device.capabilities.matter_clusters import on_off_chip_tool
 from gazoo_device.capabilities.matter_clusters import on_off_pw_rpc
 from gazoo_device.capabilities.matter_clusters import pressure_measurement_pw_rpc
 from gazoo_device.capabilities.matter_clusters import temperature_measurement_pw_rpc
@@ -30,7 +31,7 @@ from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 import immutabledict
 
 
-SUPPORTED_ENDPOINTS = (
+SUPPORTED_ENDPOINTS_PW_RPC = (
     color_temperature_light.ColorTemperatureLightEndpoint,
     dimmable_light.DimmableLightEndpoint,
     door_lock.DoorLockEndpoint,
@@ -38,7 +39,7 @@ SUPPORTED_ENDPOINTS = (
     pressure_sensor.PressureSensorEndpoint,
     temperature_sensor.TemperatureSensorEndpoint)
 
-SUPPORTED_CLUSTERS = (
+SUPPORTED_CLUSTERS_PW_RPC = (
     color_control_pw_rpc.ColorControlClusterPwRpc,
     door_lock_pw_rpc.DoorLockClusterPwRpc,
     level_control_pw_rpc.LevelControlClusterPwRpc,
@@ -47,12 +48,26 @@ SUPPORTED_CLUSTERS = (
     pressure_measurement_pw_rpc.PressureMeasurementClusterPwRpc,
     temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc)
 
-MATTER_DEVICE_TYPE_ID_TO_CLASS = immutabledict.immutabledict({
+MATTER_DEVICE_TYPE_ID_TO_CLASS_PW_RPC = immutabledict.immutabledict({
     endpoint_class.DEVICE_TYPE_ID: endpoint_class
-    for endpoint_class in SUPPORTED_ENDPOINTS
+    for endpoint_class in SUPPORTED_ENDPOINTS_PW_RPC
 })
 
-CLUSTER_ID_TO_CLASS = immutabledict.immutabledict({
+CLUSTER_ID_TO_CLASS_PW_RPC = immutabledict.immutabledict({
     cluster_class.CLUSTER_ID: cluster_class
-    for cluster_class in SUPPORTED_CLUSTERS
+    for cluster_class in SUPPORTED_CLUSTERS_PW_RPC
+})
+
+SUPPORTED_ENDPOINTS_CHIP_TOOL = (on_off_light.OnOffLightEndpoint,)
+
+SUPPORTED_CLUSTERS_CHIP_TOOL = (on_off_chip_tool.OnOffClusterChipTool,)
+
+MATTER_DEVICE_TYPE_ID_TO_CLASS_CHIP_TOOL = immutabledict.immutabledict({
+    endpoint_class.DEVICE_TYPE_ID: endpoint_class
+    for endpoint_class in SUPPORTED_ENDPOINTS_CHIP_TOOL
+})
+
+CLUSTER_ID_TO_CLASS_CHIP_TOOL = immutabledict.immutabledict({
+    cluster_class.CLUSTER_ID: cluster_class
+    for cluster_class in SUPPORTED_CLUSTERS_CHIP_TOOL
 })

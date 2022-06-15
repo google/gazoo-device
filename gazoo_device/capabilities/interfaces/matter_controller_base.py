@@ -56,20 +56,14 @@ class MatterControllerBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def decommission(self, node_id: int) -> None:
-    """Forgets a commissioned device with the given node id.
-
-    Args:
-      node_id: Assigned node id to decommission.
-    """
+  def decommission(self) -> None:
+    """Forgets a commissioned device with the given node id."""
 
   @abc.abstractmethod
-  def read(self, node_id: int, endpoint_id: int, cluster: str,
-           attribute: str) -> Any:
+  def read(self, endpoint_id: int, cluster: str, attribute: str) -> Any:
     """Reads a cluster's attribute for the given node id and endpoint.
 
     Args:
-      node_id: Node ID assigned to the commissioned end device.
       endpoint_id: Endpoint ID within the node to read attribute from.
       cluster: Name of the cluster to read the attribute value from.
       attribute: Name of the cluster attribute to read.
@@ -79,12 +73,11 @@ class MatterControllerBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def write(self, node_id: int, endpoint_id: int, cluster: str, attribute: str,
+  def write(self, endpoint_id: int, cluster: str, attribute: str,
             value: Any) -> None:
     """Writes a cluster's attribute for the given node id and endpoint.
 
     Args:
-      node_id: Node ID assigned to the commissioned end device.
       endpoint_id: Endpoint ID within the node to write attribute to.
       cluster: Name of the cluster to write the attribute value to (e.g. onoff).
       attribute: Name of the cluster attribute to write (e.g. on-time).
@@ -92,12 +85,11 @@ class MatterControllerBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def send(self, node_id: int, endpoint_id: int, cluster: str, command: str,
+  def send(self, endpoint_id: int, cluster: str, command: str,
            arguments: Sequence[Any]) -> None:
     """Sends a command to a device with the given node id and endpoint.
 
     Args:
-      node_id: Node ID assigned to the commissioned end device.
       endpoint_id: Endpoint ID within the node to read attribute from.
       cluster: Name of the cluster to send the command to (e.g. onoff).
       command: Name of the command to send (e.g. toggle).

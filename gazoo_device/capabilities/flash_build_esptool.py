@@ -26,18 +26,12 @@ from gazoo_device.capabilities.interfaces import switchboard_base
 
 logger = gdm_logger.get_logger()
 
-# Import path differs for esptool internally and externally.
 try:
   # pylint: disable=g-import-not-at-top
-  from esptool import esptool
+  import esptool
   _ESPTOOL_AVAILABLE = True
 except ImportError:
-  try:
-    # pylint: disable=g-import-not-at-top
-    import esptool
-    _ESPTOOL_AVAILABLE = True
-  except ImportError:
-    _ESPTOOL_AVAILABLE = False
+  _ESPTOOL_AVAILABLE = False
 
 _DEFAULT_BOOT_UP_TIMEOUT_SECONDS = 30
 _SWITCHBOARD_CAPABILITY = 'switchboard'
@@ -116,7 +110,7 @@ class FlashBuildEsptool(flash_build_base.FlashBuildBase):
           'licensing restrictions. To enable flashing for this device type, '
           'install "esptool": "pip install esptool>=3.2".')
 
-    if chip_type not in esptool.SUPPORTED_CHIPS:  # pytype: disable=module-attr
+    if chip_type not in esptool.CHIP_LIST:  # pytype: disable=module-attr
       raise ValueError(f'Chip {chip_type} not supported by esptool.')
 
     super().__init__(device_name=device_name)

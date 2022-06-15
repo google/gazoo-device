@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Interface for the Matter cluster capability."""
+import inspect
 from typing import Any, Callable, Optional
 from gazoo_device.capabilities.interfaces import capability_base
 
@@ -43,3 +44,20 @@ class ClusterBase(capability_base.CapabilityBase):
     self._read = read
     self._write = write
     self._send = send
+
+  def __setattr__(self, name: str, value: Any) -> None:
+    """Overrides the __setattr__ to check if setting to the valid attribute."""
+    def is_setter_property(member):
+      return isinstance(member, property) and member.fset is not None
+
+    valid_attributes = {
+        name for name, _ in inspect.getmembers(
+            self.__class__, is_setter_property)}
+
+    # Skip the private attribute: _device_name, _healthy, _endpoint_id etc.
+    if name not in valid_attributes and not name.startswith("_"):
+      raise AttributeError(
+          f"Invalid attribute '{name}' to set. Valid attributes are "
+          f"{valid_attributes}.")
+
+    super().__setattr__(name, value)

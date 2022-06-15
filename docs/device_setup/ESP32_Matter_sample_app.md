@@ -276,8 +276,8 @@ Assume `esp` does not have a `DoorLock` endpoint.
 
 ```
 >>> esp.door_lock
-esp32matter-4585 starting MatterEndpointsAccessor.get_endpoint_instance_by_class(endpoint_class=<class 'gazoo_device.capabilities.matter_endpoints.door_lock.DoorLockEndpoint'>)
-esp32matter-4585 starting MatterEndpointsAccessor.get_endpoint_id(endpoint_class=<class 'gazoo_device.capabilities.matter_endpoints.door_lock.DoorLockEndpoint'>)
+esp32matter-4585 starting MatterEndpointsAccessorPwRpc.get_endpoint_instance_by_class(endpoint_class=<class 'gazoo_device.capabilities.matter_endpoints.door_lock.DoorLockEndpoint'>)
+esp32matter-4585 starting MatterEndpointsAccessorPwRpc.get_endpoint_id(endpoint_class=<class 'gazoo_device.capabilities.matter_endpoints.door_lock.DoorLockEndpoint'>)
 Traceback (most recent call last):
   ....
     raise errors.DeviceError(

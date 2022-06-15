@@ -17,7 +17,7 @@ from unittest import mock
 
 import gazoo_device
 from gazoo_device import errors
-from gazoo_device.capabilities import matter_endpoints_accessor
+from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities.matter_clusters import level_control_pw_rpc
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
@@ -34,10 +34,10 @@ class LevelControlClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
 
   def setUp(self):
     super().setUp()
-    self.fake_read = mock.Mock(
-        spec=matter_endpoints_accessor.MatterEndpointsAccessor.read)
-    self.fake_write = mock.Mock(
-        spec=matter_endpoints_accessor.MatterEndpointsAccessor.write)
+    self.fake_read = mock.Mock(spec=matter_endpoints_accessor_pw_rpc
+                               .MatterEndpointsAccessorPwRpc.read)
+    self.fake_write = mock.Mock(spec=matter_endpoints_accessor_pw_rpc
+                                .MatterEndpointsAccessorPwRpc.write)
     self.uut = level_control_pw_rpc.LevelControlClusterPwRpc(
         device_name=_FAKE_DEVICE_NAME,
         endpoint_id=_FAKE_ENDPOINT_ID,

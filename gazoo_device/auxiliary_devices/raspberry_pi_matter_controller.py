@@ -14,11 +14,16 @@
 
 """Raspberry Pi Matter Controller device class."""
 
+from typing import Optional
+
 from gazoo_device import decorators
 from gazoo_device import detect_criteria
+from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.auxiliary_devices import raspberry_pi
 from gazoo_device.capabilities import matter_controller_chip_tool
+from gazoo_device.capabilities import matter_endpoints_accessor_chip_tool
+from gazoo_device.capabilities.matter_endpoints import on_off_light
 
 logger = gdm_logger.get_logger()
 
@@ -42,4 +47,45 @@ class RaspberryPiMatterController(raspberry_pi.RaspberryPi):
         device_name=self.name,
         regex_shell_fn=self.shell_with_regex,
         shell_fn=self.shell,
-        send_file_to_device=self.file_transfer.send_file_to_device)
+        send_file_to_device=self.file_transfer.send_file_to_device,
+        get_property_fn=self.get_property,
+        set_property_fn=self.get_manager().set_prop)
+
+  @decorators.OptionalProperty
+  def matter_node_id(self) -> Optional[int]:
+    """Matter Node ID assigned to the currently commissioned end device."""
+    return self.props["optional"].get("matter_node_id")
+
+  @decorators.CapabilityDecorator(
+      matter_endpoints_accessor_chip_tool.MatterEndpointsAccessorChipTool)
+  def matter_endpoints(
+      self
+  ) -> matter_endpoints_accessor_chip_tool.MatterEndpointsAccessorChipTool:
+    """Matter capability to access commissioned device's endpoint instances."""
+    if self.matter_node_id is None:
+      raise errors.DeviceError(
+          "matter_endpoints requires a commissioned end device.")
+
+    return self.lazy_init(
+        matter_endpoints_accessor_chip_tool.MatterEndpointsAccessorChipTool,
+        device_name=self.name,
+        node_id_getter=lambda: self.matter_node_id,
+        shell_fn=self.shell,
+        shell_with_regex=self.shell_with_regex,
+        matter_controller=self.matter_controller)
+
+  # ******************** Matter endpoint aliases ******************** #
+
+  @decorators.CapabilityDecorator(on_off_light.OnOffLightEndpoint)
+  def on_off_light(self) -> on_off_light.OnOffLightEndpoint:
+    """Matter OnOff Light endpoint instance.
+
+    Returns:
+      OnOff Light endpoint instance.
+
+    Raises:
+      DeviceError when OnOff Light endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        on_off_light.OnOffLightEndpoint)

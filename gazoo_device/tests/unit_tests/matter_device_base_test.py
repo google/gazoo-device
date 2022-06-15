@@ -21,7 +21,7 @@ from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device.base_classes import matter_device_base
 from gazoo_device.capabilities import device_power_default
-from gazoo_device.capabilities import matter_endpoints_accessor
+from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
@@ -107,7 +107,7 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
     mock_exists.assert_called_once()
 
   @mock.patch.object(
-      matter_endpoints_accessor.MatterEndpointsAccessor,
+      matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
       "get_endpoint_instance_by_class",
       return_value=_FAKE_ENDPOINT_INST)
   @mock.patch.object(usb_utils, "get_device_info")
@@ -235,7 +235,7 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
 
   # *************** Test cases for Matter endpoint aliases *************** #
   @mock.patch.object(
-      matter_endpoints_accessor.MatterEndpointsAccessor,
+      matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
       "get_endpoint_instance_by_class")
   def test_color_temperature_light_alias(self, mock_get_endpoint):
     """Verifies color_temperature_light endpoint alias on success."""
@@ -244,7 +244,7 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
         color_temperature_light.ColorTemperatureLightEndpoint)
 
   @mock.patch.object(
-      matter_endpoints_accessor.MatterEndpointsAccessor,
+      matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
       "get_endpoint_instance_by_class")
   def test_dimmable_light_alias(self, mock_get_endpoint):
     """Verifies dimmable_light endpoint alias on success."""
@@ -253,7 +253,7 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
         dimmable_light.DimmableLightEndpoint)
 
   @mock.patch.object(
-      matter_endpoints_accessor.MatterEndpointsAccessor,
+      matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
       "get_endpoint_instance_by_class")
   def test_door_lock_alias(self, mock_get_endpoint):
     """Verifies door_lock endpoint alias on success."""
@@ -261,7 +261,7 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
     mock_get_endpoint.assert_called_once_with(door_lock.DoorLockEndpoint)
 
   @mock.patch.object(
-      matter_endpoints_accessor.MatterEndpointsAccessor,
+      matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
       "get_endpoint_instance_by_class")
   def test_on_off_light_alias(self, mock_get_endpoint):
     """Verifies on_off_light endpoint alias on success."""
@@ -269,7 +269,7 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
     mock_get_endpoint.assert_called_once_with(on_off_light.OnOffLightEndpoint)
 
   @mock.patch.object(
-      matter_endpoints_accessor.MatterEndpointsAccessor,
+      matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
       "get_endpoint_instance_by_class")
   def test_pressure_sensor_alias(self, mock_get_endpoint):
     """Verifies pressure_sensor endpoint alias on success."""
@@ -278,7 +278,7 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
         pressure_sensor.PressureSensorEndpoint)
 
   @mock.patch.object(
-      matter_endpoints_accessor.MatterEndpointsAccessor,
+      matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
       "get_endpoint_instance_by_class")
   def test_temperature_sensor_alias(self, mock_get_endpoint):
     """Verifies temperature_sensor endpoint alias on success."""

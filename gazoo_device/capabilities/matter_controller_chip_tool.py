@@ -32,6 +32,7 @@ logger = gdm_logger.get_logger()
 
 _CHIP_TOOL_BINARY_PATH = "/usr/local/bin/chip-tool"
 _HEX_PREFIX = "hex:"
+_MATTER_NODE_ID_PROPERTY = "matter_node_id"
 
 _COMMANDS = immutabledict.immutabledict({
     "READ_CLUSTER_ATTRIBUTE":
@@ -116,6 +117,8 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
                shell_fn: Callable[..., str],
                regex_shell_fn: Callable[..., str],
                send_file_to_device: Callable[[str, str], None],
+               set_property_fn: Callable[..., None],
+               get_property_fn: Callable[..., Any],
                chip_tool_path: str = _CHIP_TOOL_BINARY_PATH):
     """Creates an instance of MatterControllerChipTool capability.
 
@@ -126,6 +129,8 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
         instance.
       send_file_to_device: Bound 'send_file_to_device' method of the device's
         file transfer capability instance.
+      set_property_fn: Bound 'set_property' method of the Manager instance.
+      get_property_fn: Bound 'get_property' method of the Manager instance.
       chip_tool_path: Path to chip-tool binary on the device.
     """
     super().__init__(device_name)
@@ -134,11 +139,18 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
     self._shell_with_regex = regex_shell_fn
     self._shell = shell_fn
     self._send_file_to_device = send_file_to_device
+    self._get_property_fn = get_property_fn
+    self._set_property_fn = set_property_fn
 
   @decorators.DynamicProperty
   def version(self) -> str:
     """Matter SDK version of the controller."""
     return self._shell(_COMMANDS["CHIP_TOOL_VERSION"])
+
+  @decorators.DynamicProperty
+  def path(self) -> str:
+    """Path to chip-tool binary."""
+    return self._chip_tool_path
 
   @decorators.CapabilityLogDecorator(logger)
   def commission(self,
@@ -202,27 +214,25 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
         raise_error=True,
         timeout=_TIMEOUTS["COMMISSION"])
 
-  @decorators.CapabilityLogDecorator(logger)
-  def decommission(self, node_id: int) -> None:
-    """Forgets a commissioned device with the given node id.
+    self._set_property_fn(self._device_name, _MATTER_NODE_ID_PROPERTY, node_id)
 
-    Args:
-      node_id: Assigned node id to decommission.
-    """
+  @decorators.CapabilityLogDecorator(logger)
+  def decommission(self) -> None:
+    """Forgets a commissioned device with the given node id."""
     command = _COMMANDS["DECOMMISSION"].format(
-        chip_tool=self._chip_tool_path, node_id=node_id)
+        chip_tool=self._chip_tool_path,
+        node_id=self._get_property_fn(_MATTER_NODE_ID_PROPERTY))
     self._shell_with_regex(
         command, _REGEXES["DECOMMISSION_COMPLETE"], raise_error=True)
+    self._set_property_fn(self._device_name, _MATTER_NODE_ID_PROPERTY, None)
 
-  def read(self, node_id: int, endpoint_id: int, cluster: str,
-           attribute: str) -> Any:
+  def read(self, endpoint_id: int, cluster: str, attribute: str) -> Any:
     """Reads a cluster's attribute for the given node id and endpoint.
 
     Only primitive attribute values (integer, float, boolean and string)
     are supported.
 
     Args:
-      node_id: Node ID assigned to the commissioned end device.
       endpoint_id: Endpoint ID within the node to read attribute from.
       cluster: Name of the cluster to read the attribute value from.
       attribute: Name of the cluster attribute to read.
@@ -232,7 +242,7 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
     """
     command = _COMMANDS["READ_CLUSTER_ATTRIBUTE"].format(
         chip_tool=self._chip_tool_path,
-        node_id=node_id,
+        node_id=self._get_property_fn(_MATTER_NODE_ID_PROPERTY),
         endpoint_id=endpoint_id,
         cluster=cluster,
         attribute=attribute,
@@ -248,12 +258,11 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
     return response
 
   @decorators.CapabilityLogDecorator(logger)
-  def write(self, node_id: int, endpoint_id: int, cluster: str, attribute: str,
+  def write(self, endpoint_id: int, cluster: str, attribute: str,
             value: Any) -> None:
     """Writes a cluster's attribute for the given node id and endpoint.
 
     Args:
-      node_id: Node ID assigned to the commissioned end device.
       endpoint_id: Endpoint ID within the node to write attribute to.
       cluster: Name of the cluster to write the attribute value to (e.g. onoff).
       attribute: Name of the cluster attribute to write (e.g. on-time).
@@ -261,7 +270,7 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
     """
     command = _COMMANDS["WRITE_CLUSTER_ATTRIBUTE"].format(
         chip_tool=self._chip_tool_path,
-        node_id=node_id,
+        node_id=self._get_property_fn(_MATTER_NODE_ID_PROPERTY),
         endpoint_id=endpoint_id,
         cluster=cluster,
         attribute=attribute,
@@ -275,12 +284,11 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
           f"status code: {status_code}")
 
   @decorators.CapabilityLogDecorator(logger)
-  def send(self, node_id: int, endpoint_id: int, cluster: str, command: str,
+  def send(self, endpoint_id: int, cluster: str, command: str,
            arguments: Sequence[Any]) -> None:
     """Sends a command to a device with the given node id and endpoint.
 
     Args:
-      node_id: Node ID assigned to the commissioned end device.
       endpoint_id: Endpoint ID within the node to read attribute from.
       cluster: Name of the cluster to send the command to (e.g. onoff).
       command: Name of the command to send (e.g. toggle).
@@ -288,7 +296,7 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
     """
     command = _COMMANDS["SEND_CLUSTER_COMMMAND"].format(
         chip_tool=self._chip_tool_path,
-        node_id=node_id,
+        node_id=self._get_property_fn(_MATTER_NODE_ID_PROPERTY),
         endpoint_id=endpoint_id,
         cluster=cluster,
         command=command,

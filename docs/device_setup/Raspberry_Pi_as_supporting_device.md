@@ -50,3 +50,25 @@ echo "Example file" > /tmp/foo.txt
 gdm issue raspberrypi-1234 - file_transfer - send_file_to_device --src=/tmp/foo.txt --dest=/tmp
 gdm man raspberrypi  # To see all supported functionality
 ```
+
+## Troubleshooting
+
+If `gdm detect` detection fails (couldn't recognize your Raspberry Pi), check
+if your device is still pingable first:
+
+```
+ping <IP_ADDRESS>
+```
+
+If it's alive, try the following commands on your host:
+
+```
+ssh -T -oPasswordAuthentication=no -oStrictHostKeyChecking=no -oBatchMode=yes -oConnectTimeout=3 -i /gazoo/gdm/keys/gazoo_device_controllers/raspberrypi3_ssh_key pi@<IP_ADDRESS>
+```
+
+If it shows permission denied failure, you'll need to manually add the new host
+key to RPi's authorized keys.
+
+```
+ssh-copy-id -i ~/gazoo/gdm/keys/gazoo_device_controllers/raspberrypi3_ssh_key.pub pi@<IP_ADDRESS>
+```

@@ -15,7 +15,7 @@
 """Matter cluster capability unit test for occupancy_pw_rpc module."""
 from unittest import mock
 
-from gazoo_device.capabilities import matter_endpoints_accessor
+from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities.matter_clusters import occupancy_pw_rpc
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
@@ -30,7 +30,7 @@ class OccupancyClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
   def setUp(self):
     super().setUp()
     self.fake_read = mock.Mock(
-        spec=matter_endpoints_accessor.MatterEndpointsAccessor.read)
+        spec=matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc.read)
     self.fake_read.return_value = mock.Mock(data_uint8=_FAKE_DATA)
     self.uut = occupancy_pw_rpc.OccupancyClusterPwRpc(
         device_name=_FAKE_DEVICE_NAME,

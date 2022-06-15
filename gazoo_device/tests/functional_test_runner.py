@@ -31,6 +31,7 @@ from gazoo_device.tests.functional_tests import dimmable_light_test_suite
 from gazoo_device.tests.functional_tests import door_lock_test_suite
 from gazoo_device.tests.functional_tests import embedded_script_test_suite
 from gazoo_device.tests.functional_tests import file_transfer_test_suite
+from gazoo_device.tests.functional_tests import matter_endpoints_test_suite
 from gazoo_device.tests.functional_tests import on_off_light_test_suite
 from gazoo_device.tests.functional_tests import optional_properties_test_suite
 from gazoo_device.tests.functional_tests import package_management_test_suite
@@ -65,6 +66,7 @@ TEST_SUITES = (
     file_transfer_test_suite.FileTransferTestSuite,
     dimmable_light_test_suite.DimmableLightTestSuite,
     door_lock_test_suite.DoorLockTestSuite,
+    matter_endpoints_test_suite.MatterEndpointsPwRpcTestSuite,
     on_off_light_test_suite.OnOffLightTestSuite,
     optional_properties_test_suite.OptionalPropertiesTestSuite,
     package_management_test_suite.PackageManagementTestSuite,

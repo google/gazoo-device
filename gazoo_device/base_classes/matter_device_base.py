@@ -22,7 +22,7 @@ from gazoo_device import decorators
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.capabilities import device_power_default
-from gazoo_device.capabilities import matter_endpoints_accessor
+from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities import pwrpc_button_default
 from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.capabilities.matter_endpoints import color_temperature_light
@@ -255,12 +255,12 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
         rpc_timeout_s=_RPC_TIMEOUT)
 
   @decorators.CapabilityDecorator(
-      matter_endpoints_accessor.MatterEndpointsAccessor)
+      matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc)
   def matter_endpoints(
-      self) -> matter_endpoints_accessor.MatterEndpointsAccessor:
+      self) -> matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc:
     """Generic Matter endpoint instance."""
     return self.lazy_init(
-        matter_endpoints_accessor.MatterEndpointsAccessor,
+        matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
         device_name=self.name,
         switchboard_call=self.switchboard.call,
         rpc_timeout_s=_RPC_TIMEOUT

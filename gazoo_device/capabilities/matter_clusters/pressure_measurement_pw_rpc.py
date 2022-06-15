@@ -15,6 +15,7 @@
 """Pigweed RPC implementation of Matter Pressure Measurement cluster capability.
 """
 from gazoo_device import decorators
+from gazoo_device import errors
 from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import pressure_measurement_base
 from gazoo_device.protos import attributes_service_pb2
@@ -34,12 +35,15 @@ class PressureMeasurementClusterPwRpc(
     Returns:
       The MeasuredValue attribute.
     """
-    measured_value_data = self._read(
-        endpoint_id=self._endpoint_id,
-        cluster_id=_PressureMeasurementCluster.ID,
+    return self._read_value(
+        attribute_id=_PressureMeasurementCluster.ATTRIBUTE_MEASURED_VALUE)
+
+  @measured_value.setter
+  def measured_value(self, value: int) -> None:
+    """Updates the MeasuredValue attribute with new value."""
+    self._write_value(
         attribute_id=_PressureMeasurementCluster.ATTRIBUTE_MEASURED_VALUE,
-        attribute_type=INT16_ATTRIBUTE_TYPE)
-    return measured_value_data.data_int16
+        value=value)
 
   @decorators.DynamicProperty
   def min_measured_value(self) -> int:
@@ -51,12 +55,15 @@ class PressureMeasurementClusterPwRpc(
     Returns:
       The MinMeasuredValue attribute.
     """
-    min_measured_value_data = self._read(
-        endpoint_id=self._endpoint_id,
-        cluster_id=_PressureMeasurementCluster.ID,
+    return self._read_value(
+        attribute_id=_PressureMeasurementCluster.ATTRIBUTE_MIN_MEASURED_VALUE)
+
+  @min_measured_value.setter
+  def min_measured_value(self, value: int) -> None:
+    """Updates the MinMeasuredValue attribute with new value."""
+    self._write_value(
         attribute_id=_PressureMeasurementCluster.ATTRIBUTE_MIN_MEASURED_VALUE,
-        attribute_type=INT16_ATTRIBUTE_TYPE)
-    return min_measured_value_data.data_int16
+        value=value)
 
   @decorators.DynamicProperty
   def max_measured_value(self) -> int:
@@ -68,9 +75,49 @@ class PressureMeasurementClusterPwRpc(
     Returns:
       The MaxMeasuredValue attribute.
     """
-    max_measured_value_data = self._read(
+    return self._read_value(
+        attribute_id=_PressureMeasurementCluster.ATTRIBUTE_MAX_MEASURED_VALUE)
+
+  @max_measured_value.setter
+  def max_measured_value(self, value: int) -> None:
+    """Updates the MaxMeasuredValue attribute with new value."""
+    self._write_value(
+        attribute_id=_PressureMeasurementCluster.ATTRIBUTE_MAX_MEASURED_VALUE,
+        value=value)
+
+  def _read_value(self, attribute_id: int) -> int:
+    """Reads the value from the given attribute ID.
+
+    Args:
+      attribute_id: Attribute ID on PressureMeasurementCluster.
+
+    Returns:
+      The value read from the attribute.
+    """
+    value_data = self._read(
         endpoint_id=self._endpoint_id,
         cluster_id=_PressureMeasurementCluster.ID,
-        attribute_id=_PressureMeasurementCluster.ATTRIBUTE_MAX_MEASURED_VALUE,
+        attribute_id=attribute_id,
         attribute_type=INT16_ATTRIBUTE_TYPE)
-    return max_measured_value_data.data_int16
+    return value_data.data_int16
+
+  def _write_value(self, attribute_id: int, value: int) -> None:
+    """Writes the value to the given attribute ID.
+
+    Args:
+      attribute_id: Attribute ID on PressureMeasurementCluster.
+      value: Value to write to the attribute.
+
+    Raises:
+      DeviceError when the attribute value doesn't change.
+    """
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster_id=_PressureMeasurementCluster.ID,
+        attribute_id=attribute_id,
+        attribute_type=INT16_ATTRIBUTE_TYPE,
+        data_int16=value)
+    if self._read_value(attribute_id) != value:
+      raise errors.DeviceError(
+          f"Device {self._device_name} Attribute {attribute_id} didn't change"
+          f" to {value}")

@@ -30,6 +30,7 @@ class MatterControllerChipToolCapabilityTests(
     super().setUp()
     self.setup_fake_device_requirements("rpi_matter_controller-1234")
     self.device_config["persistent"]["console_port_name"] = "123.45.67.89"
+    self.device_config["options"]["matter_node_id"] = 1234
     self.fake_responder.behavior_dict = (
         raspberry_pi_matter_controller_device_logs.DEFAULT_BEHAVIOR.copy())
 
@@ -54,6 +55,8 @@ class MatterControllerChipToolCapabilityTests(
         password="wifi-password",
         setup_code=self._setup_code,
         long_discriminator=self._long_discriminator)
+    self.uut.get_manager().set_prop.assert_called_once_with(
+        self.uut.name, "matter_node_id", self._node_id)
 
   def test_commission_over_ble_wifi_with_hex(self):
     self.uut.matter_controller.commission(
@@ -62,16 +65,22 @@ class MatterControllerChipToolCapabilityTests(
         password="hex:776966692d70617373776f7264",
         setup_code=self._setup_code,
         long_discriminator=self._long_discriminator)
+    self.uut.get_manager().set_prop.assert_called_once_with(
+        self.uut.name, "matter_node_id", self._node_id)
 
   def test_commission_on_network(self):
     self.uut.matter_controller.commission(
         node_id=self._node_id, setup_code=self._setup_code)
+    self.uut.get_manager().set_prop.assert_called_once_with(
+        self.uut.name, "matter_node_id", self._node_id)
 
   def test_commission_on_network_long(self):
     self.uut.matter_controller.commission(
         node_id=self._node_id,
         setup_code=self._setup_code,
         long_discriminator=self._long_discriminator)
+    self.uut.get_manager().set_prop.assert_called_once_with(
+        self.uut.name, "matter_node_id", self._node_id)
 
   def test_commission_over_ble_thread(self):
     self.uut.matter_controller.commission(
@@ -79,6 +88,8 @@ class MatterControllerChipToolCapabilityTests(
         setup_code=self._setup_code,
         long_discriminator=self._long_discriminator,
         operational_dataset="abcd")
+    self.uut.get_manager().set_prop.assert_called_once_with(
+        self.uut.name, "matter_node_id", self._node_id)
 
   def test_commission_timeout_failure(self):
     """Commission method should raise DeviceError when setup code is invalid."""
@@ -96,41 +107,43 @@ class MatterControllerChipToolCapabilityTests(
           long_discriminator=self._long_discriminator)
 
   def test_decommission(self):
-    self.uut.matter_controller.decommission(node_id=self._node_id)
+    self.uut.matter_controller.decommission()
+    self.uut.get_manager().set_prop.assert_called_once_with(
+        self.uut.name, "matter_node_id", None)
 
   def test_decommission_timeout_failure(self):
     """Decommission method should raise DeviceError when node id is invalid."""
-    invalid_node_id = "0000"
+    self.device_config["options"]["matter_node_id"] = 0000
     with self.assertRaises(errors.DeviceError):
-      self.uut.matter_controller.decommission(node_id=invalid_node_id)
+      self.uut.matter_controller.decommission()
 
   def test_read_attribute_integer(self):
     self.assertEqual(
-        self.uut.matter_controller.read(self._node_id, self._endpoint_id,
-                                        self._cluster, "on-time"), 0)
+        self.uut.matter_controller.read(self._endpoint_id, self._cluster,
+                                        "on-time"), 0)
 
   def test_read_attribute_boolean(self):
     self.assertTrue(
-        self.uut.matter_controller.read(self._node_id, self._endpoint_id,
-                                        self._cluster, "on-off"))
+        self.uut.matter_controller.read(self._endpoint_id, self._cluster,
+                                        "on-off"))
 
   def test_write_attribute(self):
-    self.uut.matter_controller.write(self._node_id, self._endpoint_id,
-                                     self._cluster, "on-time", 100)
+    self.uut.matter_controller.write(self._endpoint_id, self._cluster,
+                                     "on-time", 100)
 
   def test_send_command(self):
-    self.uut.matter_controller.send(self._node_id, self._endpoint_id,
-                                    self._cluster, "toggle", [])
+    self.uut.matter_controller.send(self._endpoint_id, self._cluster, "toggle",
+                                    [])
 
   def test_write_attribute_non_zero_status_code(self):
     with self.assertRaises(errors.DeviceError):
-      self.uut.matter_controller.write(self._node_id, self._endpoint_id,
-                                       self._cluster, "non-existent-attr", 0)
+      self.uut.matter_controller.write(self._endpoint_id, self._cluster,
+                                       "non-existent-attr", 0)
 
   def test_send_command_non_zero_status_code(self):
     with self.assertRaises(errors.DeviceError):
-      self.uut.matter_controller.write(self._node_id, self._endpoint_id,
-                                       self._cluster, "non-existent-cmd", [])
+      self.uut.matter_controller.write(self._endpoint_id, self._cluster,
+                                       "non-existent-cmd", [])
 
   def test_upgrade(self):
     with mock.patch.object(file_transfer_scp.FileTransferScp,

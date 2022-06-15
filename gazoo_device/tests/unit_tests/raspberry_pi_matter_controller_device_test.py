@@ -13,8 +13,10 @@
 # limitations under the License.
 
 """Unit tests for the raspberry_pi_matter_controller module."""
+from gazoo_device import errors
 from gazoo_device.auxiliary_devices import raspberry_pi_matter_controller
 from gazoo_device.base_classes import raspbian_device
+from gazoo_device.capabilities.matter_endpoints import on_off_light
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.tests.unit_tests.utils import raspberry_pi_matter_controller_device_logs
 
@@ -27,6 +29,7 @@ class RaspberryPiMatterControllerTests(
     super().setUp()
     self.setup_fake_device_requirements("rpi_matter_controller-1234")
     self.device_config["persistent"]["console_port_name"] = "123.45.67.89"
+    self.device_config["options"]["matter_node_id"] = 1234
     self.fake_responder.behavior_dict = (
         raspberry_pi_matter_controller_device_logs.DEFAULT_BEHAVIOR.copy())
 
@@ -45,6 +48,19 @@ class RaspberryPiMatterControllerTests(
 
   def test_initialize_matter_controller_capability(self):
     self.assertIsNotNone(self.uut.matter_controller)
+
+  def test_initialize_matter_endpoints_accessor_capability(self):
+    self.assertIsNotNone(self.uut.matter_endpoints)
+
+  def test_initialize_matter_endpoints_accessor_aliases(self):
+    self.assertIsInstance(self.uut.on_off_light,
+                          on_off_light.OnOffLightEndpoint)
+
+  def test_initialize_matter_endpoints_with_no_matter_node_id(self):
+    """Tests matter_endpoints throws DeviceError with no commissioned device."""
+    del self.device_config["options"]["matter_node_id"]
+    with self.assertRaises(errors.DeviceError):
+      _ = self.uut.matter_endpoints
 
 
 if __name__ == "__main__":

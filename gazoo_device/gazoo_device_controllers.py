@@ -43,7 +43,8 @@ from gazoo_device.capabilities import flash_build_esptool
 from gazoo_device.capabilities import flash_build_jlink
 from gazoo_device.capabilities import led_driver_default
 from gazoo_device.capabilities import matter_controller_chip_tool
-from gazoo_device.capabilities import matter_endpoints_accessor
+from gazoo_device.capabilities import matter_endpoints_accessor_chip_tool
+from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities import package_management_android
 from gazoo_device.capabilities import pwrpc_button_default
 from gazoo_device.capabilities import pwrpc_common_default
@@ -226,7 +227,8 @@ def export_extensions() -> Dict[str, Any]:
           led_driver_default.LedDriverDefault,
           level_control_pw_rpc.LevelControlClusterPwRpc,
           matter_controller_chip_tool.MatterControllerChipTool,
-          matter_endpoints_accessor.MatterEndpointsAccessor,
+          matter_endpoints_accessor_chip_tool.MatterEndpointsAccessorChipTool,
+          matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
           occupancy_pw_rpc.OccupancyClusterPwRpc,
           on_off_light.OnOffLightEndpoint,
           on_off_chip_tool.OnOffClusterChipTool,

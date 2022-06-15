@@ -14,14 +14,15 @@
 
 """Matter cluster unit test for temperature_measurement_pw_rpc module."""
 from unittest import mock
-
-from gazoo_device.capabilities import matter_endpoints_accessor
+from gazoo_device import errors
+from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities.matter_clusters import temperature_measurement_pw_rpc
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
 _FAKE_DEVICE_NAME = "fake-device-name"
 _FAKE_ENDPOINT_ID = 1
 _FAKE_DATA = 1
+_FAKE_DATA2 = 2
 
 
 class TemperatureMeasurementClusterPwRpcTest(
@@ -30,36 +31,67 @@ class TemperatureMeasurementClusterPwRpcTest(
 
   def setUp(self):
     super().setUp()
-    fake_read = mock.Mock(
-        spec=matter_endpoints_accessor.MatterEndpointsAccessor.read)
+    self.fake_read = mock.Mock(
+        spec=matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc.read)
+    self.fake_read.return_value = mock.Mock(data_int16=_FAKE_DATA)
+    self.fake_write = mock.Mock(spec=matter_endpoints_accessor_pw_rpc
+                                .MatterEndpointsAccessorPwRpc.write)
     self.uut = (
         temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc(
             device_name=_FAKE_DEVICE_NAME,
             endpoint_id=_FAKE_ENDPOINT_ID,
-            read=fake_read,
-            write=None))
+            read=self.fake_read,
+            write=self.fake_write))
 
   def test_measured_value_attribute(self):
     """Verifies the measured_value attribute on success."""
-    self.uut._read.return_value = mock.Mock(data_int16=_FAKE_DATA)
-
     self.assertEqual(_FAKE_DATA, self.uut.measured_value)
+    self.fake_read.assert_called_once()
+
+  def test_writing_measured_value_attribute(self):
+    """Verifies writing measured_value attribute on success."""
+    self.uut.measured_value = _FAKE_DATA
+    self.fake_write.assert_called_once()
 
   def test_min_measured_value_attribute(self):
     """Verifies the min_measured_value attribute on success."""
+    self.assertEqual(_FAKE_DATA, self.uut.min_measured_value)
+    self.fake_read.assert_called_once()
+
+  def test_writing_min_measured_value_attribute(self):
+    """Verifies writing min_measured_value attribute on success."""
+    self.uut.min_measured_value = _FAKE_DATA
+    self.fake_write.assert_called_once()
+
+  def test_max_measured_value_attribute(self):
+    """Verifies the max_measured_value attribute on success."""
+    self.assertEqual(_FAKE_DATA, self.uut.max_measured_value)
+    self.fake_read.assert_called_once()
+
+  def test_writing_max_measured_value_attribute(self):
+    """Verifies writing max_measured_value attribute on success."""
+    self.uut.max_measured_value = _FAKE_DATA
+    self.fake_write.assert_called_once()
+
+  def test_convert_attribute_constraint_value_convert(self):
+    """Verifies convert_attribute_constraint_value converting on success."""
     fake_min_measured_value = (
         temperature_measurement_pw_rpc._MIN_MEASURED_UPPERBOUND+_FAKE_DATA)
     expected_value = (
         fake_min_measured_value - temperature_measurement_pw_rpc._ATTR_VAL_MAX)
-    self.uut._read.return_value = mock.Mock(data_int16=fake_min_measured_value)
+    self.assertEqual(
+        expected_value,
+        temperature_measurement_pw_rpc._convert_attribute_constraint_value(
+            fake_min_measured_value,
+            temperature_measurement_pw_rpc._MIN_MEASURED_UPPERBOUND))
 
-    self.assertEqual(expected_value, self.uut.min_measured_value)
-
-  def test_max_measured_value_bitmap_attribute(self):
-    """Verifies the max_measured_value attribute on success."""
-    self.uut._read.return_value = mock.Mock(data_int16=_FAKE_DATA)
-
-    self.assertEqual(_FAKE_DATA, self.uut.max_measured_value)
+  @mock.patch.object(
+      temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc,
+      "_read_value", return_value=_FAKE_DATA2)
+  def test_write_value_on_failure(self, mock_read):
+    """Verifies _write_value on failure when verification."""
+    with self.assertRaisesRegex(errors.DeviceError, "didn't change"):
+      self.uut.measured_value = _FAKE_DATA
 
 
 if __name__ == "__main__":

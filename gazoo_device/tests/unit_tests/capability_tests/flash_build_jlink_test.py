@@ -18,7 +18,7 @@ from unittest import mock
 from gazoo_device import config
 from gazoo_device import errors
 from gazoo_device.capabilities import flash_build_jlink
-from gazoo_device.capabilities import matter_endpoints_accessor
+from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.switchboard import switchboard
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.utility import retry
@@ -45,7 +45,8 @@ class JLinkFlashDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.addCleanup(jlink_patcher.stop)
     self.mock_jlink = mock_jlink_class.return_value
     self.mock_matter_endpoints_reset = mock.Mock(
-        spec=matter_endpoints_accessor.MatterEndpointsAccessor.reset)
+        spec=matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc.reset
+    )
     self.uut = flash_build_jlink.FlashBuildJLink(
         device_name=_MOCK_DEVICE_NAME,
         serial_number=_MOCK_SERIAL_NUMBER,

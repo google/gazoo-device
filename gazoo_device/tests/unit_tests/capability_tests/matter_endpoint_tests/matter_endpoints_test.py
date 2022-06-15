@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Matter endpoints unit test."""
 import itertools
 from unittest import mock
@@ -28,14 +27,17 @@ _FAKE_RPC_TIMEOUT_S = 10
 
 # Trim the cluster capability names into alias names.
 _CLUSTER_NAMES = (
-    cluster.get_capability_name().replace("_control_cluster", "").
-    replace("_cluster", "") for cluster in
-    matter_endpoints_and_clusters.SUPPORTED_CLUSTERS)
+    cluster.get_capability_name().replace("_control_cluster",
+                                          "").replace("_cluster", "")
+    for cluster in matter_endpoints_and_clusters.SUPPORTED_CLUSTERS_PW_RPC)
+
+_ENDPOINT_AND_CLUSTER_PRODUCT = itertools.product(
+    matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS_PW_RPC, _CLUSTER_NAMES)
 
 ENDPOINT_AND_CLUSTER_PAIR = [
     dict(endpoint_class=endpoint_class, cluster_name=cluster_name)
-    for endpoint_class, cluster_name in itertools.product(
-        matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS, _CLUSTER_NAMES)]
+    for endpoint_class, cluster_name in _ENDPOINT_AND_CLUSTER_PRODUCT
+]
 
 
 class MatterEndpointsTest(fake_device_test_case.FakeDeviceTestCase):
@@ -46,8 +48,8 @@ class MatterEndpointsTest(fake_device_test_case.FakeDeviceTestCase):
 
   @parameterized.parameters(ENDPOINT_AND_CLUSTER_PAIR)
   @mock.patch.object(endpoint_base.EndpointBase, "cluster_lazy_init")
-  def test_endpoint_and_cluster(
-      self, mock_cluster_lazy_init, endpoint_class, cluster_name):
+  def test_endpoint_and_cluster(self, mock_cluster_lazy_init, endpoint_class,
+                                cluster_name):
     """Verifies the endpoint and cluster instance initialization."""
     uut = endpoint_class(
         device_name=_FAKE_DEVICE_NAME,
