@@ -51,6 +51,8 @@ class LevelControlCluster(enum.IntEnum):
 
   # Attribute IDs
   ATTRIBUTE_CURRENT_LEVEL = 0x0000
+  ATTRIBUTE_MIN_LEVEL = 0x0001
+  ATTRIBUTE_MAX_LEVEL = 0x0002
 
 
 class OccupancySensingCluster(enum.IntEnum):
@@ -90,6 +92,19 @@ class PressureMeasurementCluster(enum.IntEnum):
   ATTRIBUTE_MAX_MEASURED_VALUE = 2
 
 
+class RelativeHumidityMeasurementCluster(enum.IntEnum):
+  """Relative Humidity Measurement cluster ID and its attribute IDs.
+
+  The enum values are defined in the Matter spec.
+  """
+  ID = attributes_service_pb2.ClusterType.ZCL_RELATIVE_HUMIDITY_MEASUREMENT_CLUSTER_ID
+
+  # Attribute IDs
+  ATTRIBUTE_MEASURED_VALUE = 0
+  ATTRIBUTE_MIN_MEASURED_VALUE = 1
+  ATTRIBUTE_MAX_MEASURED_VALUE = 2
+
+
 class TemperatureMeasurementCluster(enum.IntEnum):
   """Temperature Measurement cluster ID and its attribute IDs.
 
@@ -120,3 +135,71 @@ class OccupancySensorType(enum.IntEnum):
   ULTRASONIC = 1
   PIR_AND_ULTRASONIC = 2
   PHYSICAL_CONTACT = 3
+
+
+class BooleanStateCluster(enum.IntEnum):
+  """Boolean State cluster ID and its attribute IDs.
+
+  The enum values are defined in the Matter spec.
+  """
+  ID = attributes_service_pb2.ClusterType.ZCL_BOOLEAN_STATE_CLUSTER_ID
+
+  # Attribute IDs
+  ATTRIBUTE_STATE_VALUE = 0
+
+
+class ThermostatCluster(enum.IntEnum):
+  """Thermostat cluster ID and its attribute IDs.
+
+  The enum values are defined in the Matter spec.
+  """
+  ID = attributes_service_pb2.ClusterType.ZCL_THERMOSTAT_CLUSTER_ID
+
+  # Attribute IDs
+  ATTRIBUTE_LOCAL_TEMPERATURE = 0x0000
+  ATTRIBUTE_OCCUPIED_COOLING_SETPOINT = 0x0011
+  ATTRIBUTE_OCCUPIED_HEATING_SETPOINT = 0x0012
+  ATTRIBUTE_CONTROL_SEQUENCE_OF_OPERATION = 0x001b
+  ATTRIBUTE_SYSTEM_MODE = 0x001c
+
+
+class ThermostatControlSequence(enum.IntEnum):
+  """Thermostat Control Sequence.
+
+  The enum values are defined in the Matter spec.
+  """
+
+  COOLING_ONLY = 0
+  COLLING_WITH_REHEAT = 1
+  HEATING_ONLY = 2
+  HEATING_WITH_REHEAT = 3
+  COOLING_AND_HEATING = 4
+  COOLING_AND_HEATING_WITH_REHEAT = 5
+
+
+class ThermostatSystemMode(enum.IntEnum):
+  """Thermostat System Mode.
+
+  The enum values are defined in the Matter spec.
+  """
+
+  OFF = 0
+  AUTO = 1
+  COOL = 3
+  HEAT = 4
+  EMERGENCY_HEAT = 5
+  PRECOOLING = 6
+  FAN_ONLY = 7
+  DRY = 8
+  SLEEP = 9
+
+
+class ThermostatSetpointMode(enum.IntEnum):
+  """Thermostat Setpoint Mode.
+
+  The enum values are defined in the Matter spec.
+  """
+
+  HEAT = 0
+  COOL = 1
+  BOTH = 2

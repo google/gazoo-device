@@ -120,6 +120,10 @@ _RESPONSES = [{
            inet6 fe80::319b:325e:d0f2:4d78/64 scope link
            valid_lft forever preferred_lft forever""",
     "code": 0,
+}, {
+    "cmd": "sleep 10 &",
+    "resp": "",
+    "code": 0,
 }]
 
 DEFAULT_BEHAVIOR = ssh_device_logs.make_device_responses(_RESPONSES)

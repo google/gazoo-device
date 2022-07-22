@@ -25,6 +25,7 @@ from gazoo_device.auxiliary_devices import dli_powerswitch
 from gazoo_device.auxiliary_devices import dlink_switch
 from gazoo_device.auxiliary_devices import efr32
 from gazoo_device.auxiliary_devices import esp32
+from gazoo_device.auxiliary_devices import m5stick
 from gazoo_device.auxiliary_devices import nrf52840
 from gazoo_device.auxiliary_devices import raspberry_pi
 from gazoo_device.auxiliary_devices import raspberry_pi_matter_controller
@@ -75,40 +76,54 @@ from gazoo_device.capabilities.interfaces import shell_base
 from gazoo_device.capabilities.interfaces import switch_power_base
 from gazoo_device.capabilities.interfaces import switchboard_base
 from gazoo_device.capabilities.interfaces import usb_hub_base
+from gazoo_device.capabilities.matter_clusters import boolean_state_pw_rpc
 from gazoo_device.capabilities.matter_clusters import color_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import door_lock_pw_rpc
+from gazoo_device.capabilities.matter_clusters import level_control_chip_tool
 from gazoo_device.capabilities.matter_clusters import level_control_pw_rpc
-from gazoo_device.capabilities.matter_clusters import occupancy_pw_rpc
+from gazoo_device.capabilities.matter_clusters import occupancy_sensing_chip_tool
+from gazoo_device.capabilities.matter_clusters import occupancy_sensing_pw_rpc
 from gazoo_device.capabilities.matter_clusters import on_off_chip_tool
 from gazoo_device.capabilities.matter_clusters import on_off_pw_rpc
 from gazoo_device.capabilities.matter_clusters import pressure_measurement_pw_rpc
+from gazoo_device.capabilities.matter_clusters import relative_humidity_measurement_pw_rpc
 from gazoo_device.capabilities.matter_clusters import temperature_measurement_pw_rpc
+from gazoo_device.capabilities.matter_clusters.interfaces import boolean_state_base
 from gazoo_device.capabilities.matter_clusters.interfaces import color_control_base
 from gazoo_device.capabilities.matter_clusters.interfaces import door_lock_base
 from gazoo_device.capabilities.matter_clusters.interfaces import level_control_base
-from gazoo_device.capabilities.matter_clusters.interfaces import occupancy_base
+from gazoo_device.capabilities.matter_clusters.interfaces import measurement_base
+from gazoo_device.capabilities.matter_clusters.interfaces import occupancy_sensing_base
 from gazoo_device.capabilities.matter_clusters.interfaces import on_off_base
-from gazoo_device.capabilities.matter_clusters.interfaces import pressure_measurement_base
-from gazoo_device.capabilities.matter_clusters.interfaces import temperature_measurement_base
 from gazoo_device.capabilities.matter_endpoints import color_temperature_light
+from gazoo_device.capabilities.matter_endpoints import contact_sensor
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
+from gazoo_device.capabilities.matter_endpoints import humidity_sensor
+from gazoo_device.capabilities.matter_endpoints import occupancy_sensor
 from gazoo_device.capabilities.matter_endpoints import on_off_light
+from gazoo_device.capabilities.matter_endpoints import on_off_light_switch
 from gazoo_device.capabilities.matter_endpoints import pressure_sensor
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.capabilities.matter_endpoints import unsupported_endpoint
 from gazoo_device.capabilities.matter_endpoints.interfaces import color_temperature_light_base
+from gazoo_device.capabilities.matter_endpoints.interfaces import contact_sensor_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import dimmable_light_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import door_lock_base as door_lock_endpoint_base
+from gazoo_device.capabilities.matter_endpoints.interfaces import humidity_sensor_base
+from gazoo_device.capabilities.matter_endpoints.interfaces import occupancy_sensor_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import on_off_light_base
+from gazoo_device.capabilities.matter_endpoints.interfaces import on_off_light_switch_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import pressure_sensor_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import temperature_sensor_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import unsupported_endpoint_base
 from gazoo_device.primary_devices import efr32_matter
 from gazoo_device.primary_devices import esp32_matter
 from gazoo_device.primary_devices import nrf_matter
+from gazoo_device.primary_devices import raspberry_pi_matter
 from gazoo_device.switchboard import communication_types
 from gazoo_device.switchboard import switchboard
+
 
 __version__ = _version.version
 _PUBLIC_KEY_SUFFIX = ".pub"
@@ -145,6 +160,7 @@ def export_extensions() -> Dict[str, Any]:
           esp32_matter.Esp32Matter,
           efr32_matter.Efr32Matter,
           nrf_matter.NrfMatter,
+          raspberry_pi_matter.RaspberryPiMatter,
       ],
       "auxiliary_devices": [
           dc2200.DC2200,
@@ -153,6 +169,7 @@ def export_extensions() -> Dict[str, Any]:
           dlink_switch.DLinkSwitch,
           efr32.EFR32,
           esp32.ESP32,
+          m5stick.M5Stick,
           nrf52840.NRF52840,
           raspberry_pi.RaspberryPi,
           raspberry_pi_matter_controller.RaspberryPiMatterController,
@@ -165,6 +182,7 @@ def export_extensions() -> Dict[str, Any]:
           communication_types.DockerComms,
           communication_types.JlinkSerialComms,
           communication_types.PigweedSerialComms,
+          communication_types.PigweedSocketComms,
           communication_types.PtyProcessComms,
           communication_types.SerialComms,
           communication_types.SnmpComms,
@@ -174,8 +192,10 @@ def export_extensions() -> Dict[str, Any]:
       ],
       "detect_criteria": detect_criteria.DETECT_CRITERIA,
       "capability_interfaces": [
+          boolean_state_base.BooleanStateClusterBase,
           color_control_base.ColorControlClusterBase,
           color_temperature_light_base.ColorTemperatureLightBase,
+          contact_sensor_base.ContactSensorBase,
           comm_power_base.CommPowerBase,
           device_power_base.DevicePowerBase,
           dimmable_light_base.DimmableLightBase,
@@ -186,15 +206,18 @@ def export_extensions() -> Dict[str, Any]:
           fastboot_base.FastbootBase,
           file_transfer_base.FileTransferBase,
           flash_build_base.FlashBuildBase,
+          humidity_sensor_base.HumiditySensorBase,
           led_driver_base.LedDriverBase,
           level_control_base.LevelControlClusterBase,
           matter_controller_base.MatterControllerBase,
           matter_endpoints_base.MatterEndpointsBase,
-          occupancy_base.OccupancyClusterBase,
+          measurement_base.MeasurementClusterBase,
+          occupancy_sensing_base.OccupancySensingClusterBase,
+          occupancy_sensor_base.OccupancySensorBase,
           on_off_base.OnOffClusterBase,
           on_off_light_base.OnOffLightBase,
+          on_off_light_switch_base.OnOffLightSwitchBase,
           package_management_base.PackageManagementBase,
-          pressure_measurement_base.PressureMeasurementClusterBase,
           pressure_sensor_base.PressureSensorBase,
           pwrpc_button_base.PwRPCButtonBase,
           pwrpc_common_base.PwRPCCommonBase,
@@ -202,14 +225,15 @@ def export_extensions() -> Dict[str, Any]:
           shell_base.ShellBase,
           switchboard_base.SwitchboardBase,
           switch_power_base.SwitchPowerBase,
-          temperature_measurement_base.TemperatureMeasurementClusterBase,
           temperature_sensor_base.TemperatureSensorBase,
           unsupported_endpoint_base.UnsupportedBase,
           usb_hub_base.UsbHubBase,
       ],
       "capability_flavors": [
+          boolean_state_pw_rpc.BooleanStateClusterPwRpc,
           color_control_pw_rpc.ColorControlClusterPwRpc,
           color_temperature_light.ColorTemperatureLightEndpoint,
+          contact_sensor.ContactSensorEndpoint,
           comm_power_default.CommPowerDefault,
           device_power_default.DevicePowerDefault,
           dimmable_light.DimmableLightEndpoint,
@@ -224,21 +248,29 @@ def export_extensions() -> Dict[str, Any]:
           file_transfer_scp.FileTransferScp,
           flash_build_esptool.FlashBuildEsptool,
           flash_build_jlink.FlashBuildJLink,
+          humidity_sensor.HumiditySensorEndpoint,
           led_driver_default.LedDriverDefault,
+          level_control_chip_tool.LevelControlClusterChipTool,
           level_control_pw_rpc.LevelControlClusterPwRpc,
           matter_controller_chip_tool.MatterControllerChipTool,
           matter_endpoints_accessor_chip_tool.MatterEndpointsAccessorChipTool,
           matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
-          occupancy_pw_rpc.OccupancyClusterPwRpc,
+          occupancy_sensing_chip_tool.OccupancySensingClusterChipTool,
+          occupancy_sensing_pw_rpc.OccupancySensingClusterPwRpc,
+          occupancy_sensor.OccupancySensorEndpoint,
           on_off_light.OnOffLightEndpoint,
+          on_off_light_switch.OnOffLightSwitchEndpoint,
           on_off_chip_tool.OnOffClusterChipTool,
           on_off_pw_rpc.OnOffClusterPwRpc,
+          temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc,
           package_management_android.PackageManagementAndroid,
           pressure_sensor.PressureSensorEndpoint,
           pressure_measurement_pw_rpc.PressureMeasurementClusterPwRpc,
           pwrpc_button_default.PwRPCButtonDefault,
           pwrpc_common_default.PwRPCCommonDefault,
           pwrpc_wifi_default.PwRPCWifiDefault,
+          (relative_humidity_measurement_pw_rpc.
+           RelativeHumidityMeasurementClusterPwRpc),
           shell_ssh.ShellSSH,
           switch_power_dli_powerswitch.SwitchPowerDliPowerswitch,
           switch_power_ethernet.SwitchPowerEthernet,

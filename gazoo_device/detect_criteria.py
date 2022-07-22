@@ -49,6 +49,8 @@ _SSH_COMMANDS = immutabledict.immutabledict({
     "UNIFI_PRODUCT_NAME": "mca-cli-op info",
     "DLI_PRODUCT_NAME": "http://{address}/restapi/config/=brand_name/",
     "RPI_PRODUCT_NAME": "cat /proc/device-tree/model",
+    "IS_MATTER_LINUX_APP_RUNNING": (
+        f"ps -aux | grep {pwrpc_utils.MATTER_LINUX_APP_NAME} | grep -v grep")
 })
 
 _GET_DLINK_MODEL_SNMP_COMMAND = (
@@ -107,6 +109,7 @@ class SshQuery(QueryEnum):
   IS_RPI = "is_raspberry_pi"
   IS_UNIFI = "is_unifi_switch"
   IS_CHIP_TOOL_PRESENT = "is_chip_tool_installed_on_rpi"
+  IS_MATTER_LINUX_APP_RUNNING = "is_matter_linux_app_running_on_rpi"
 
 
 class UsbQuery(QueryEnum):
@@ -218,6 +221,25 @@ def _is_rpi_query(
     detect_logger.info("_is_rpi_query failed for %s: %r", address, err)
     return False
   return "Raspberry Pi" in name
+
+
+def _is_matter_app_running_query(
+    address: str, detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> bool:
+  """Determines whether Matter linux app is running on an RPi."""
+  del create_switchboard_func  # Unused by _is_matter_app_running_query
+  try:
+    host_utils.ssh_command(
+        address,
+        command=_SSH_COMMANDS["IS_MATTER_LINUX_APP_RUNNING"],
+        user="pi",
+        key_info=config.KEYS["raspberrypi3_ssh_key"])
+  except RuntimeError as err:
+    detect_logger.info(
+        "_is_matter_app_running_query failed for %s: %r", address, err)
+    return False
+  return True
 
 
 def _is_chip_tool_installed_query(
@@ -446,6 +468,7 @@ SSH_QUERY_DICT = immutabledict.immutabledict({
     SshQuery.IS_RPI: _is_rpi_query,
     SshQuery.IS_UNIFI: _is_unifi_query,
     SshQuery.IS_CHIP_TOOL_PRESENT: _is_chip_tool_installed_query,
+    SshQuery.IS_MATTER_LINUX_APP_RUNNING: _is_matter_app_running_query,
 })
 
 USB_QUERY_DICT = immutabledict.immutabledict({
@@ -459,6 +482,7 @@ DETECT_CRITERIA = immutabledict.immutabledict({
     "DockerComms": DOCKER_QUERY_DICT,
     "JlinkSerialComms": SERIAL_QUERY_DICT,
     "PigweedSerialComms": PIGWEED_QUERY_DICT,
+    "PigweedSocketComms": SSH_QUERY_DICT,
     "PtyProcessComms": PTY_PROCESS_QUERY_DICT,
     "SerialComms": SERIAL_QUERY_DICT,
     "SnmpComms": SNMP_QUERY_DICT,

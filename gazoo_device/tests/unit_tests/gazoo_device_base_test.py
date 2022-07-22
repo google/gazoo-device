@@ -38,6 +38,7 @@ class GazooDeviceBaseStub(fake_devices.FakeGazooDeviceBase):
   COMMUNICATION_TYPE = "SshComms"
   DEVICE_TYPE = "devicestub"
   _COMMUNICATION_KWARGS = {}
+  logger = gazoo_device_base.logger
 
   @decorators.DynamicProperty
   def firmware_type(self):
@@ -62,6 +63,14 @@ class GazooDeviceBaseStub(fake_devices.FakeGazooDeviceBase):
       CheckDeviceReadyError: for testing.
     """
     raise errors.CheckDeviceReadyError(self.name, "health check failed")
+
+  def check3(self):
+    """Fake health check 3.
+
+    Raises:
+      DeviceError: for testing.
+    """
+    raise errors.DeviceError("health check failed")
 
 
 class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
@@ -172,6 +181,33 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     self.assertEqual(
         log_directory, self.uut.log_directory,
         "Expected log directory to change to {}".format(log_directory))
+
+  def test_gazoo_device_base_start_new_log_with_log_prefix(self):
+    """Verify start_new_log saves new log directory."""
+    self.assertTrue(self.uut.switchboard)  # Create Switchboard
+    old_log_file_name = self.uut.log_file_name
+    self.uut.start_new_log(log_directory=None, log_name_prefix="log_prefix")
+    self.assertNotEqual(
+        old_log_file_name, self.uut.log_file_name,
+        "Expected log file name to change from {}".format(old_log_file_name))
+    self.assertIn(
+        "log_prefix", self.uut.log_file_name,
+        "Expected {} contains log_prefix".format(self.uut.log_file_name))
+
+  def test_gazoo_device_base_start_new_log_keep_event_filter(self):
+    """Verify start_new_log keep the previous event filter."""
+    self.assertTrue(self.uut.switchboard)  # Create Switchboard
+    new_filter_file = os.path.join(self.TEST_FILTER_DIR, "add_this_filter.json")
+    self.uut.add_new_filter(new_filter_file)
+    filter_before = self.uut.event_parser.get_event_label_dict()
+    event_file_path_before = self.uut.event_parser.event_file_path
+    self.uut.start_new_log()
+    filter_after = self.uut.event_parser.get_event_label_dict()
+    event_file_path_after = self.uut.event_parser.event_file_path
+    self.assertEqual(filter_before, filter_after,
+                     "Expected event filter is same")
+    self.assertNotEqual(event_file_path_before, event_file_path_after,
+                        "Expect event filename is updated.")
 
   def test_gazoo_device_base_log_file_name(self):
     """Verify log_file_name property works as expected."""
@@ -449,6 +485,14 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     """Verify get_optional_properties() works."""
     expected_dict = {"alias": None}
     self.assertEqual(self.uut.get_optional_properties(), expected_dict)
+
+  def test_optional_props_saved_to_device_configs_at_manager(self):
+    """Verify optional props saved to config at manager."""
+    optional_prop = "optional1"
+    self.uut.set_property(optional_prop, 123)
+    self.uut.get_manager(
+        ).save_property_to_config.assert_called_once_with(
+            self.uut.name, optional_prop, 123)
 
   def test_dynamic_props_works(self):
     """Dynamic props works even when some property values are bad."""

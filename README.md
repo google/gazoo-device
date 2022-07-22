@@ -14,7 +14,7 @@ GDM runs on the test host and communicates with the physical devices via one or
 more device transports (such as SSH, ADB, HTTPS, UART). GDM does not require any
 additional support from the device firmware.
 
-GDM is used for on-device testing at Google Gazoo.
+GDM is used for on-device testing at Google Nest.
 
 ## Table of contents
 

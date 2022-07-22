@@ -999,7 +999,7 @@ class Manager:
         usb_hub.switch_power.set_mode("sync", hub_port)
 
     device_configs_after_delete = self.delete(device_name, save_changes=False)
-    new_device_config, new_options_config = self.detect(
+    new_device_config, new_options_config = self.detect(  # pytype: disable=attribute-error  # dynamic-method-lookup
         static_ips=static_ips,
         log_directory=log_directory,
         save_changes=False,
@@ -1652,14 +1652,11 @@ class Manager:
         the device.
       prop (str): Public prop available in device_options.json or gdm.json.
       value (str): Input value for specific property.
-
-    Returns:
-      bool: True if set_prop operation success.
     """
     if self._is_manager_config(device_name):
-      return self._set_config_prop(prop, value)
+      self._set_config_prop(prop, value)
     else:
-      return self._set_device_prop(device_name, prop, value)
+      self._set_device_prop(device_name, prop, value)
 
   def remove_prop(self, identifier, prop):
     """Removes a property for device if it's an optional property.
@@ -1756,9 +1753,6 @@ class Manager:
 
     Raises:
       DeviceError: Device not found.
-
-    Returns:
-      bool: True if _set_device_prop operation success.
     """
     self._type_check("Property name", prop)
     self._type_check(prop, value, allowed_types=(str, type(None), int))
@@ -1770,8 +1764,18 @@ class Manager:
       if prop == "alias":
         self._realign_alias(value, device.alias, device.name)
       device.set_property(prop, value)
-      device_name = device.name
 
+  def save_property_to_config(self, device_name: str, prop: str, value: str):
+    """Save a property's value for device to config file.
+
+    Args:
+      device_name: Name, serial_number, or adb_serial of the device.
+      prop: Public prop available in device_options.json.
+      value: Input value for specific property.
+
+    Raises:
+      DeviceError: Device not found.
+    """
     if device_name in self._devices:
       a_dict = self._devices
     else:
@@ -1782,7 +1786,6 @@ class Manager:
             "device_options": self.options_dict,
             "other_device_options": self.other_options_dict
         }, self.device_options_file_name)
-    return True
 
   def _remove_device_prop(self, identifier, prop):
     """Removes prop from device config dict and file if in 'options'.

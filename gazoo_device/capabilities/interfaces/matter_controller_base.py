@@ -104,3 +104,7 @@ class MatterControllerBase(capability_base.CapabilityBase):
       build_file: Local path to build file.
       build_id: Commit SHA the controller is built at.
     """
+
+  @abc.abstractmethod
+  def factory_reset(self) -> None:
+    """Factory resets all settings stored on controller's device."""

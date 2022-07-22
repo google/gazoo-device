@@ -171,3 +171,21 @@ class CommonTestMixin(parameterized.TestCase):
         type(self.uut).flash_build = flash_build_before
       else:
         del type(self.uut).flash_build
+
+  def test_execute_health_check_methods_device_error(self):
+    """Test _execute_health_check_methods when a health check fails."""
+    with mock.patch.object(self.uut.logger, "info") as mock_info:
+      health_checks = [self.uut.check3]
+      with self.assertRaises(errors.DeviceError):
+        self.uut._execute_health_check_methods(health_checks)
+      mock_info.assert_called()
+
+  def test_make_device_ready_methods_device_error(self):
+    """Test make_device_ready when a health check fails."""
+    with mock.patch.object(
+        self.uut, "check_device_ready",
+        side_effect=errors.DeviceError("Some error")):
+      with mock.patch.object(self.uut.logger, "info") as mock_info:
+        with self.assertRaises(errors.DeviceError):
+          self.uut.make_device_ready()
+        mock_info.assert_called()

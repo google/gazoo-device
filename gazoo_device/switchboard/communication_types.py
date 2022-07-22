@@ -38,6 +38,7 @@ from gazoo_device.switchboard.transports import ssh_transport
 from gazoo_device.switchboard.transports import transport_base
 from gazoo_device.utility import adb_utils
 from gazoo_device.utility import host_utils
+from gazoo_device.utility import pwrpc_utils
 from gazoo_device.utility import usb_config
 from gazoo_device.utility import usb_utils
 
@@ -414,11 +415,14 @@ class PigweedSerialComms(CommunicationType):
   def get_transport_list(self) -> List[transport_base.TransportBase]:
     protobuf_import_paths = [module.__name__ for module in self.protobufs]
     return [
-        pigweed_rpc_transport.PigweedRPCTransport(
+        pigweed_rpc_transport.PigweedRpcSerialTransport(
             comms_address=self.comms_address,
             protobuf_import_paths=protobuf_import_paths,
             baudrate=self.baudrate)
     ]
+
+  def get_identifier(self) -> line_identifier.AllLogIdentifier:
+    return line_identifier.AllLogIdentifier()
 
 
 class PtyProcessComms(CommunicationType):
@@ -486,6 +490,42 @@ class SshComms(CommunicationType):
 
   def get_identifier(self) -> line_identifier.PortLogIdentifier:
     return line_identifier.PortLogIdentifier(log_ports=[1])
+
+
+class PigweedSocketComms(SshComms):
+  """Communication type for device communication over Pigweed RPC socket."""
+
+  def __init__(self,
+               comms_address: str,
+               protobufs: Collection[types.ModuleType],
+               port: int = pwrpc_utils.MATTER_LINUX_APP_DEFAULT_PORT,
+               log_cmd: str = "tail -F -n /var/log/messages",
+               args: str = host_utils.DEFAULT_SSH_OPTIONS,
+               key_info: Optional[data_types.KeyInfo] = None,
+               username: str = "pi") -> None:
+    super().__init__(comms_address, log_cmd, args, key_info, username)
+    self.protobufs = protobufs
+    self.port = port
+
+  def get_transport_list(self) -> List[transport_base.TransportBase]:
+    """Transports for Pigweed Socket communication types.
+
+    Port 0 and port 1 are SSHTransport, port 2 is PigweedRpcSocketTransport.
+
+    Returns:
+      The list of supported transports.
+    """
+    transport_list = super().get_transport_list()
+    protobuf_import_paths = [module.__name__ for module in self.protobufs]
+    rpc_socket_transport = pigweed_rpc_transport.PigweedRpcSocketTransport(
+        comms_address=self.comms_address,
+        protobuf_import_paths=protobuf_import_paths,
+        port=self.port)
+    transport_list.append(rpc_socket_transport)
+    return transport_list
+
+  def get_identifier(self) -> line_identifier.PortLogIdentifier:
+    return line_identifier.PortLogIdentifier(log_ports=[1, 2])
 
 
 class SnmpComms(CommunicationType):

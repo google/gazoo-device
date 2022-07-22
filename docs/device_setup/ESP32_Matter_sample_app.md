@@ -167,7 +167,7 @@ Which is useful to recover the device from unresponsiveness.
 
 ## Usage
 
-Using GDM CLI
+Using the CLI
 
 ```
 gdm issue esp32matter-6125 - factory_reset

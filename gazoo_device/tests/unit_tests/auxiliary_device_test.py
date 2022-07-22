@@ -30,6 +30,7 @@ class AuxDevTester(auxiliary_device.AuxiliaryDevice):
   _COMMUNICATION_KWARGS = {}
   _OWNER_EMAIL = "gdm-authors@google.com"
   DEVICE_TYPE = "aux"
+  logger = auxiliary_device.logger
 
   def get_console_configuration(self):
     return None
@@ -55,6 +56,14 @@ class AuxDevTester(auxiliary_device.AuxiliaryDevice):
 
   def recover(self, error):
     pass
+
+  def check3(self):
+    """Fake health check 3.
+
+    Raises:
+      DeviceError: for testing.
+    """
+    raise errors.DeviceError("health check failed")
 
   def shell(self,
             command,
@@ -291,6 +300,14 @@ class TestAuxiliaryDevice(fake_device_test_case.FakeDeviceTestCase,
     expected_dict = {"alias": None}
 
     self.assertEqual(self.uut.get_optional_properties(), expected_dict)
+
+  def test_optional_props_saved_to_device_configs_at_manager(self):
+    """Verify optional props saved to config at manager."""
+    optional_prop = "optional1"
+    self.uut.set_property(optional_prop, 123)
+    self.uut.get_manager(
+        ).save_property_to_config.assert_called_once_with(
+            self.uut.name, optional_prop, 123)
 
   def test_dynamic_props_works(self):
     """Verify retrieving dynamic props works."""

@@ -14,7 +14,7 @@
 
 """Interface for Matter endpoint capability wrapper."""
 import abc
-from typing import Any, Collection, List, Mapping, Optional, Set, Type
+from typing import Any, Collection, List, Mapping, Optional, Set, Tuple, Type
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -62,16 +62,16 @@ class MatterEndpointsBase(capability_base.CapabilityBase):
     """Gets the list of supported endpoint ids on the device."""
 
   @abc.abstractmethod
-  def get_endpoint_class(self,
-                         endpoint_id: int) -> Type[endpoint_base.EndpointBase]:
-    """Gets the endpoint class by the given endpoint ID.
+  def get_endpoint_class_and_device_type_id(
+      self, endpoint_id: int) -> Tuple[Type[endpoint_base.EndpointBase], int]:
+    """Gets the endpoint class and device type ID by the given endpoint id.
 
     Args:
       endpoint_id: The given endpoint ID on the device.
 
     Returns:
-      The endpoint class module. The method returns None if the given endpoint
-      ID does not have device type.
+      The endpoint class module (or UnsupportedEndpoint if the endpoint is not
+      yet supported in GDM) and the device type ID.
     """
 
   @abc.abstractmethod
@@ -121,14 +121,21 @@ class MatterEndpointsBase(capability_base.CapabilityBase):
     """
     if not self._endpoint_id_to_class:
       for endpoint_id in self.get_supported_endpoint_ids():
-        endpoint_cls = self.get_endpoint_class(endpoint_id)
+        endpoint_cls, device_type_id = (
+            self.get_endpoint_class_and_device_type_id(endpoint_id))
+
+        # Store the endpoint ID to endpoint class mapping.
         self._endpoint_id_to_class[endpoint_id] = endpoint_cls
-        self._endpoint_id_to_device_type_id[
-            endpoint_id] = endpoint_cls.DEVICE_TYPE_ID
+
+        # Store the endpoint ID to device type ID mapping.
+        self._endpoint_id_to_device_type_id[endpoint_id] = device_type_id
+
         # Ensuring we store the first endpoint ID handled by this class.
         # This mapping will be used in get_endpoint_instance_by_class method
         if endpoint_cls not in self._endpoint_class_to_id:
           self._endpoint_class_to_id[endpoint_cls] = endpoint_id
+
+        # Store the endpoint ID to clusters mapping.
         self._endpoint_id_to_clusters[endpoint_id] = (
             self.get_supported_clusters(endpoint_id))
 

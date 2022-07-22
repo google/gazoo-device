@@ -29,6 +29,7 @@ from gazoo_device.switchboard import line_identifier
 from gazoo_device.switchboard import log_process
 from gazoo_device.switchboard import switchboard
 from gazoo_device.switchboard import transport_process
+from gazoo_device.switchboard import transport_properties
 from gazoo_device.switchboard.transports import serial_transport
 from gazoo_device.switchboard.transports import tcp_transport
 from gazoo_device.tests.unit_tests.utils import fake_responder
@@ -1867,7 +1868,8 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
                                               self.log_path)
     self.assertEqual(
         self.uut.call(
-            fake_transport.FakeTransport.test_method, method_args=(False,)),
+            fake_transport.FakeTransport.test_method.__name__,
+            method_args=(False,)),
         "Some return")
 
   def test_call_error(self):
@@ -1878,25 +1880,83 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
                                               [self.fake_transport],
                                               self.log_path)
     full_regex = (  # (?s) sets re.DOTALL flag.
-        r"(?s)test_device switchboard\.call of method "
+        r"(?s)test_device Switchboard\.call of method "
         r"FakeTransport\.test_method in transport 0 failed\. Traceback.*"
         r"RuntimeError: Something failed")
     with self.assertRaisesRegex(errors.DeviceError, full_regex):
       self.uut.call(
-          fake_transport.FakeTransport.test_method,
+          fake_transport.FakeTransport.test_method.__name__,
           method_kwargs={"raise_error": True})
 
-  def test_call_error_mismatching_transport(self):
-    """Test a Switchboard.call() when transport type is not matching."""
+  def test_call_error_transport_doesnt_have_requested_method(self):
+    """Test a Switchboard.call() when transport doesn't have the method."""
     self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
                                               self.log_path)
-    regex = (r"Requested method 'SerialTransport\.flush_buffers', "
-             r"but transport 0 is of type 'FakeTransport'")
-    with self.assertRaisesRegex(errors.DeviceError, regex):
-      self.uut.call(serial_transport.SerialTransport.flush_buffers)
+    regex = (
+        r"Transport 0 \('FakeTransport'\) does not have method 'flush_buffers'")
+    with self.assertRaisesRegex(AttributeError, regex):
+      self.uut.call(serial_transport.SerialTransport.flush_buffers.__name__)
+
+  @mock.patch.object(switchboard.SwitchboardDefault, "_start_processes")
+  @mock.patch.object(switchboard.SwitchboardDefault, "close")
+  def test_transport_serial_set_baudrate(
+      self, mock_close, mock_start_processes):
+    """Tests transport_serial_set_baudrate()."""
+    self.uut = switchboard.SwitchboardDefault(
+        "test_device",
+        self.exception_queue,
+        [serial_transport.SerialTransport("/dev/serial/by-id/some_path")],
+        self.log_path)
+    with mock.patch.object(
+        self.uut, "call", autospec=True) as mock_switchboard_call:
+      self.uut.transport_serial_set_baudrate(115200)
+    mock_switchboard_call.assert_has_calls([
+        mock.call(
+            method_name=serial_transport.SerialTransport.flush_buffers.__name__,
+            port=0),
+        mock.call(
+            method_name=serial_transport.SerialTransport.set_property.__name__,
+            method_args=(transport_properties.BAUDRATE, 115200),
+            port=0),
+        mock.call(
+            method_name=serial_transport.SerialTransport.flush_buffers.__name__,
+            port=0),
+    ])
+
+  @mock.patch.object(switchboard.SwitchboardDefault, "_start_processes")
+  @mock.patch.object(switchboard.SwitchboardDefault, "close")
+  def test_transport_serial_send_xon(self, mock_close, mock_start_processes):
+    """Tests transport_serial_send_xon()."""
+    self.uut = switchboard.SwitchboardDefault(
+        "test_device",
+        self.exception_queue,
+        [serial_transport.SerialTransport("/dev/serial/by-id/some_path")],
+        self.log_path)
+    with mock.patch.object(
+        self.uut, "call", autospec=True) as mock_switchboard_call:
+      self.uut.transport_serial_send_xon()
+    mock_switchboard_call.assert_called_once_with(
+        method_name=serial_transport.SerialTransport.send_xon.__name__,
+        port=0)
+
+  @mock.patch.object(switchboard.SwitchboardDefault, "_start_processes")
+  @mock.patch.object(switchboard.SwitchboardDefault, "close")
+  def transport_serial_send_break_byte(self, mock_close, mock_start_processes):
+    """Tests transport_serial_send_break_byte()."""
+    self.uut = switchboard.SwitchboardDefault(
+        "test_device",
+        self.exception_queue,
+        [serial_transport.SerialTransport("/dev/serial/by-id/some_path")],
+        self.log_path)
+    with mock.patch.object(
+        self.uut, "call", autospec=True) as mock_switchboard_call:
+      self.uut.transport_serial_send_break_byte()
+    mock_switchboard_call.assert_called_once_with(
+        method_name=serial_transport.SerialTransport.send_break_byte.__name__,
+        port=0)
 
   def test_delete_last_transport_process_no_transports(self):
     """Test deleting last transport process with no transports."""
@@ -1949,7 +2009,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     self._setup_expect_test(["a"] * 24 + ["e", "d", "c", "b", "c", "d", "e"])
     target_patterns = ["e"]
     expect_response, func_response = self.uut.call_and_expect(
-        method=fake_transport.FakeTransport.test_method,
+        method_name=fake_transport.FakeTransport.test_method.__name__,
         pattern_list=target_patterns,
         timeout=_EXPECT_TIMEOUT,
         method_args=(False,))
@@ -1962,7 +2022,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     full_regex = r"call_and_expect timed out for method test_method"
     with self.assertRaisesRegex(errors.DeviceError, full_regex):
       self.uut.call_and_expect(
-          method=fake_transport.FakeTransport.test_method,
+          method_name=fake_transport.FakeTransport.test_method.__name__,
           pattern_list=["b"],
           timeout=_EXPECT_TIMEOUT,
           method_args=(False,),
@@ -1974,7 +2034,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     full_regex = r"RuntimeError: Something failed"
     with self.assertRaisesRegex(errors.DeviceError, full_regex):
       self.uut.call_and_expect(
-          method=fake_transport.FakeTransport.test_method,
+          method_name=fake_transport.FakeTransport.test_method.__name__,
           pattern_list=["a"],
           timeout=_EXPECT_TIMEOUT,
           method_kwargs={"raise_error": True})

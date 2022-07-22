@@ -13,11 +13,10 @@
 # limitations under the License.
 
 """Mixin for Matter Pressure Measurement cluster test suite."""
-from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
 
 
-class PressureMeasurementClusterTestSuite(gdm_test_base.GDMTestBase):
+class PressureMeasurementClusterTestSuite:
   """Mixin for Matter Pressure Measurement cluster test suite.
 
   The mixin assumes self.endpoint is set.

@@ -13,11 +13,10 @@
 # limitations under the License.
 
 """Mixin for Matter On/Off cluster test suite."""
-from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
 
 
-class OnOffClusterTestSuite(gdm_test_base.GDMTestBase):
+class OnOffClusterTestSuite:
   """Mixin for Matter On/Off cluster test suite.
 
   The mixin assumes self.endpoint is set.

@@ -49,6 +49,7 @@ from gazoo_device.switchboard import ftdi_buttons
 from gazoo_device.switchboard import switchboard
 from gazoo_device.switchboard.transports import adb_transport
 from gazoo_device.switchboard.transports import jlink_transport
+from gazoo_device.switchboard.transports import pigweed_rpc_transport
 from gazoo_device.switchboard.transports import pty_transport
 from gazoo_device.switchboard.transports import serial_transport
 from gazoo_device.switchboard.transports import ssh_transport
@@ -239,6 +240,8 @@ class UnitTestCase(parameterized.TestCase):
     """Mocks out all transport classes."""
     for module, a_class in [(adb_transport, "AdbTransport"),
                             (jlink_transport, "JLinkTransport"),
+                            (pigweed_rpc_transport,
+                             "PigweedRpcSocketTransport"),
                             (pty_transport, "PtyTransport"),
                             (serial_transport, "SerialTransport"),
                             (ssh_transport, "SSHTransport"),

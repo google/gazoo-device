@@ -17,6 +17,7 @@ import http.client
 import json
 import os.path
 import socket
+import ssl
 from unittest import mock
 import urllib
 
@@ -24,6 +25,8 @@ from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import http_utils
 import requests
 import urllib3
+
+SSL_VERSION = ssl.PROTOCOL_TLSv1_2
 
 
 class FakeURLResponse:
@@ -50,6 +53,11 @@ class HTTPUtilsTests(unit_test_case.UnitTestCase):
     mock_requests_get.return_value.status_code = 200
     http_utils.send_http_get(
         url="http://sometesturl:1234/some/endpoint", headers=None)
+
+    http_utils.send_http_get(
+        url="http://sometesturl:1234/some/endpoint",
+        headers=None,
+        ssl_version=SSL_VERSION)
 
     mock_requests_get.reset_mock()
 
@@ -78,6 +86,12 @@ class HTTPUtilsTests(unit_test_case.UnitTestCase):
         url="http://sometesturl:1234/some/endpoint",
         headers={"Content-Type": "application/json"},
         json_data={"params": "now"})
+
+    http_utils.send_http_post(
+        url="http://sometesturl:1234/some/endpoint",
+        headers={"Content-Type": "application/json"},
+        json_data={"params": "now"},
+        ssl_version=SSL_VERSION)
 
     mock_requests_post.reset_mock()
 

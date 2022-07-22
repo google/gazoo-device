@@ -61,7 +61,7 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
   def channel(self) -> int:
     """Wifi channel used with current ssid connection."""
     ack, channel_bytes = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_WIFI_RPC, "GetChannel"),
         method_kwargs={})
 
@@ -72,7 +72,7 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
   def ssid(self) -> str:
     """Name of the SSID to which device is connected."""
     ack, ssid_bytes = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_WIFI_RPC, "GetSsid"),
         method_kwargs={})
 
@@ -90,7 +90,7 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
       separated by colon (:). e.g. 24:0a:c4:f8:6c:d4
     """
     ack, mac_address_bytes = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_WIFI_RPC, "GetMacAddress"),
         method_kwargs={})
 
@@ -101,7 +101,7 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
   def wifi_interface(self) -> str:
     """Name of the interface used for wifi connection."""
     ack, wifi_interface_bytes = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_WIFI_RPC, "GetWiFiInterface"),
         method_kwargs={})
 
@@ -113,7 +113,7 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
   def ipv4_address(self) -> str:
     """IPv4 address for wifi interface."""
     ack, ip4_address_bytes = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_WIFI_RPC, "GetIP4Address"),
         method_kwargs={})
 
@@ -145,7 +145,7 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
     if secret is not None:
       connect_kwargs.update({"secret": secret.encode()})
     ack, connection_result_bytes = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_WIFI_RPC, "Connect"),
         method_kwargs=connect_kwargs)
 
@@ -161,7 +161,7 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
   def disconnect(self) -> None:
     """Disconnects from current wifi connection."""
     ack, _ = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_WIFI_RPC, "Disconnect"),
         method_kwargs={})
     self._verify_rpc_ack(ack)

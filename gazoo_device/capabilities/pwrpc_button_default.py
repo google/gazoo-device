@@ -59,7 +59,7 @@ class PwRPCButtonDefault(pwrpc_button_base.PwRPCButtonBase):
                                f"ids: {self._valid_button_ids}.")
 
     ack, _ = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=("Button", "Event"),
         method_kwargs={"idx": button_id,
                        "pushed": True,

@@ -11,7 +11,7 @@ for simplicity.
 """
 
 import re
-from typing import Callable, List, Set, Type
+from typing import Callable, List, Set, Tuple, Type
 
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities import matter_endpoints_and_clusters
@@ -84,16 +84,16 @@ class MatterEndpointsAccessorChipTool(matter_endpoints_base.MatterEndpointsBase
     endpoints = re.findall(_REGEXES["DESCRIPTOR_ATTRIBUTE_RESPONSE"], response)
     return [int(endpoint) for endpoint in endpoints]
 
-  def get_endpoint_class(self,
-                         endpoint_id: int) -> Type[endpoint_base.EndpointBase]:
-    """Gets the endpoint class by the given endpoint id.
+  def get_endpoint_class_and_device_type_id(
+      self, endpoint_id: int) -> Tuple[Type[endpoint_base.EndpointBase], int]:
+    """Gets the endpoint class and device type ID by the given endpoint id.
 
     Args:
       endpoint_id: The given endpoint ID on the device.
 
     Returns:
-      The endpoint class module, or UnsupportedEndpoint if the endpoint is not
-      yet supported in GDM.
+      The endpoint class module (or UnsupportedEndpoint if the endpoint is not
+      yet supported in GDM) and the device type ID.
     """
     command = _COMMANDS["READ_DESCRIPTOR_DEVICE_LIST"].format(
         chip_tool=self._matter_controller.path,
@@ -102,8 +102,11 @@ class MatterEndpointsAccessorChipTool(matter_endpoints_base.MatterEndpointsBase
     device_type_id = int(
         self._shell_with_regex(command, _REGEXES["DEVICE_LIST_RESPONSE"]))
 
-    return matter_endpoints_and_clusters.MATTER_DEVICE_TYPE_ID_TO_CLASS_CHIP_TOOL.get(
-        device_type_id, unsupported_endpoint.UnsupportedEndpoint)
+    endpoint_class = (
+        matter_endpoints_and_clusters.MATTER_DEVICE_TYPE_ID_TO_CLASS_CHIP_TOOL.
+        get(device_type_id, unsupported_endpoint.UnsupportedEndpoint))
+
+    return endpoint_class, device_type_id
 
   def get_supported_clusters(
       self, endpoint_id: int) -> Set[Type[cluster_base.ClusterBase]]:

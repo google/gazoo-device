@@ -68,8 +68,8 @@ class MatterEndpointsAccessorPwPpcTest(
       })
   @mock.patch.object(
       matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
-      "get_endpoint_class",
-      side_effect=[_FAKE_ENDPOINT_CLS])
+      "get_endpoint_class_and_device_type_id",
+      side_effect=[(_FAKE_ENDPOINT_CLS, _FAKE_DEVICE_TYPE_ID)])
   @mock.patch.object(
       matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
       "get_supported_endpoint_ids",
@@ -113,25 +113,24 @@ class MatterEndpointsAccessorPwPpcTest(
       matter_endpoints_and_clusters.MATTER_DEVICE_TYPE_ID_TO_CLASS_PW_RPC,
       "get",
       return_value=_FAKE_ENDPOINT_CLS)
-  def test_get_endpoint_class_on_success(self, mock_mapping):
-    """Verifies get_endpoint_class on success."""
+  def test_get_endpoint_class_and_device_type_id_on_success(self, mock_mapping):
+    """Verifies get_endpoint_class_and_device_type_id on success."""
     fake_device_type = descriptor_service_pb2.DeviceType(
         device_type=_FAKE_DEVICE_TYPE_ID)
     fake_device_types = [fake_device_type.SerializeToString()]
     self.fake_switchboard_call.return_value = True, fake_device_types
 
-    self.assertEqual(_FAKE_ENDPOINT_CLS,
-                     self.uut.get_endpoint_class(_FAKE_ENDPOINT_ID))
-    self.assertEqual(_FAKE_DEVICE_TYPE_ID,
-                     self.uut.endpoint_id_to_device_type_id[_FAKE_ENDPOINT_ID])
+    self.assertEqual(
+        (_FAKE_ENDPOINT_CLS, _FAKE_DEVICE_TYPE_ID),
+        self.uut.get_endpoint_class_and_device_type_id(_FAKE_ENDPOINT_ID))
 
-  def test_get_endpoint_class_on_failure_false_ack(self):
-    """Verifies get_endpoint_class on failure with false ack."""
+  def test_get_endpoint_class_and_device_type_id_on_failure_false_ack(self):
+    """Verifies get_endpoint_class_and_device_type_id failure with false ack."""
     self.fake_switchboard_call.return_value = False, []
 
     with self.assertRaisesRegex(errors.DeviceError,
                                 "getting Descriptor DeviceTypeList failed"):
-      self.uut.get_endpoint_class(_FAKE_ENDPOINT_ID)
+      self.uut.get_endpoint_class_and_device_type_id(_FAKE_ENDPOINT_ID)
 
   def test_reset_method_on_success(self):
     """Verifies reset method on success."""

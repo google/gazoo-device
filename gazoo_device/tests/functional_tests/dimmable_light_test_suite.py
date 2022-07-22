@@ -16,13 +16,14 @@
 from typing import Type
 
 from gazoo_device.tests.functional_tests.mixins import level_control_cluster_suite
-from gazoo_device.tests.functional_tests.mixins import occupancy_cluster_suite
+from gazoo_device.tests.functional_tests.mixins import occupancy_sensing_cluster_suite
 from gazoo_device.tests.functional_tests.mixins import on_off_cluster_suite
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 
 
 class DimmableLightTestSuite(
-    occupancy_cluster_suite.OccupancyClusterTestSuite,
+    gdm_test_base.GDMTestBase,
+    occupancy_sensing_cluster_suite.OccupancySensingClusterTestSuite,
     on_off_cluster_suite.OnOffClusterTestSuite,
     level_control_cluster_suite.LevelControlClusterTestSuite):
   """Tests for the dimmable light endpoint."""

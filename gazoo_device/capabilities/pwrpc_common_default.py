@@ -14,7 +14,7 @@
 
 """Default implementation of the Pigweed RPC device common capability."""
 import time
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -27,6 +27,8 @@ from gazoo_device.utility import retry
 logger = gdm_logger.get_logger()
 _POLL_INTERVAL_SEC = 0.5  # seconds
 _DEFAULT_BOOTUP_TIMEOUT = 30  # seconds
+# TODO(b/235632665) Remove this once the sample app has a default fw version.
+_DEFAULT_SW_VERSION = "0"
 
 
 class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
@@ -35,22 +37,26 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
   def __init__(self,
                device_name: str,
                switchboard_call: Callable[..., Any],
-               rpc_timeout_s: int):
+               rpc_timeout_s: int,
+               pigweed_port: int = 0):
     """Create an instance of the PwRPCCommonDefault capability.
 
     Args:
       device_name: Device name used for logging.
       switchboard_call: The switchboard.call method which calls to the endpoint.
       rpc_timeout_s: Timeout (s) for RPC call.
+      pigweed_port: Pigweed RPC transport port number.
     """
     super().__init__(device_name=device_name)
     self._switchboard_call = switchboard_call
     self._rpc_timeout_s = rpc_timeout_s
+    self._pigweed_port = pigweed_port
 
   @decorators.DynamicProperty
-  def software_version(self) -> int:
+  def software_version(self) -> str:
     """The software version of the device."""
-    return self.get_device_info().software_version
+    version = self.get_device_info().software_version_string
+    return version or _DEFAULT_SW_VERSION
 
   @decorators.DynamicProperty
   def qr_code(self) -> str:
@@ -84,6 +90,18 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     """The list of fabric information of the device."""
     repeated_fabric_info = self.get_device_state().fabric_info
     return list(repeated_fabric_info)
+
+  @decorators.CapabilityLogDecorator(logger)
+  def call(self,
+           method_name: str,
+           method_args: Tuple[Any, ...] = (),
+           method_kwargs: Optional[Dict[str, Any]] = None) -> Any:
+    """Switchboard RPC call wrapper with specific port number."""
+    return self._switchboard_call(
+        method_name=method_name,
+        method_args=method_args,
+        method_kwargs=method_kwargs,
+        port=self._pigweed_port)
 
   @decorators.CapabilityLogDecorator(logger)
   def reboot(self,
@@ -150,8 +168,7 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
       DeviceError: The ack status is not true.
     """
     payload_in_bytes = self._trigger_device_action(action="GetDeviceInfo")
-    payload = device_service_pb2.DeviceInfo.FromString(payload_in_bytes)
-    return payload
+    return device_service_pb2.DeviceInfo.FromString(payload_in_bytes)
 
   @decorators.CapabilityLogDecorator(logger)
   def get_device_state(self) -> device_service_pb2.DeviceState:
@@ -161,8 +178,7 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
       DeviceError: The ack status is not true.
     """
     payload_in_bytes = self._trigger_device_action(action="GetDeviceState")
-    payload = device_service_pb2.DeviceState.FromString(payload_in_bytes)
-    return payload
+    return device_service_pb2.DeviceState.FromString(payload_in_bytes)
 
   @decorators.CapabilityLogDecorator(logger)
   def set_pairing_info(
@@ -182,6 +198,59 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
                                 code=new_code,
                                 discriminator=new_discriminator)
 
+  @decorators.CapabilityLogDecorator(logger)
+  def get_spake_info(self) -> device_service_pb2.SpakeInfo:
+    """Returns the device spake information."""
+    payload_in_bytes = self._trigger_device_action(action="GetSpakeInfo")
+    return device_service_pb2.SpakeInfo.FromString(payload_in_bytes)
+
+  @decorators.CapabilityLogDecorator(logger)
+  def set_spake_info(
+      self,
+      verifier: Optional[bytes] = None,
+      salt: Optional[bytes] = None,
+      iteration_count: Optional[int] = None) -> None:
+    """Sets the device spake information."""
+    current_spake_info = self.get_spake_info()
+    new_verifier = current_spake_info.verifier if verifier is None else verifier
+    new_salt = current_spake_info.salt if salt is None else salt
+    new_iteration_count = (
+        current_spake_info.iteration_count if iteration_count is None
+        else iteration_count)
+    self._trigger_device_action(action="SetSpakeInfo",
+                                verifier=new_verifier,
+                                salt=new_salt,
+                                iteration_count=new_iteration_count)
+
+  @decorators.DynamicProperty
+  def is_advertising(self) -> bool:
+    """Returns if the device is advertising for commissioning."""
+    payload_in_bytes = self._trigger_device_action(action="GetPairingState")
+    payload = device_service_pb2.PairingState.FromString(payload_in_bytes)
+    return payload.pairing_enabled
+
+  @decorators.CapabilityLogDecorator(logger)
+  def start_advertising(self) -> None:
+    """Starts advertising for commissioning.
+
+    Noop if device is already paired or it's already advertising.
+    """
+    if self.pairing_state or self.is_advertising:
+      return
+    self._trigger_device_action(action="SetPairingState",
+                                pairing_enabled=True)
+
+  @decorators.CapabilityLogDecorator(logger)
+  def stop_advertising(self) -> None:
+    """Stops advertising for commissioning.
+
+    Noop if device is not advertising.
+    """
+    if not self.is_advertising:
+      return
+    self._trigger_device_action(action="SetPairingState",
+                                pairing_enabled=False)
+
   def _trigger_device_action(self, action: str, **kwargs: Any) -> bytes:
     """Triggers specific device action.
 
@@ -198,8 +267,8 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     """
     device_rpc_kwargs = {"pw_rpc_timeout_s": self._rpc_timeout_s}
     device_rpc_kwargs.update(kwargs)
-    ack, payload_in_bytes = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+    ack, payload_in_bytes = self.call(
+        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=("Device", action),
         method_kwargs=device_rpc_kwargs)
 

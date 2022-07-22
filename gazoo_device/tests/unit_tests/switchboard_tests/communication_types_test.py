@@ -14,6 +14,7 @@
 
 """Tests the communication type module."""
 import os
+import socket
 from unittest import mock
 
 import gazoo_device
@@ -22,6 +23,7 @@ from gazoo_device import errors
 from gazoo_device import extensions
 from gazoo_device.protos import device_service_pb2
 from gazoo_device.switchboard import communication_types
+from gazoo_device.switchboard.transports import pigweed_rpc_transport
 from gazoo_device.switchboard.transports import ssh_transport
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import adb_utils
@@ -39,6 +41,7 @@ _M5STACK_ADDRESS = (
 _DOCKER_ID = "123abcdefghij"
 _PTY_PROCESS_DIRECTORY = "/home/someuser/gazoo/gdm/pty_proc/some_device_dir"
 _BAUDRATE = 115200
+_PORT = 33000
 _USB_SERIAL_NUMBER = "123789"
 
 _MOCK_USB_MAP = {
@@ -96,6 +99,7 @@ CONNECTIONS_DICT = {
     "DockerComms": [_DOCKER_ID],
     "JlinkSerialComms": [],
     "PigweedSerialComms": [_J_LINK_ADDRESS, _M5STACK_ADDRESS],
+    "PigweedSocketComms": STATIC_IPS,
     "PtyProcessComms": [_PTY_PROCESS_DIRECTORY],
     "SerialComms": [_CAMBRIONIX_ADDRESS, _CAMBRIONIX_USB3_ADDRESS,
                     _M5STACK_ADDRESS],
@@ -117,8 +121,11 @@ class CommunicationTypeTests(unit_test_case.UnitTestCase):
         usb_utils, "get_address_to_usb_info_dict", return_value=_MOCK_USB_MAP))
     self.manager = gazoo_device.manager.Manager()
 
+  @mock.patch.object(pigweed_rpc_transport, "isinstance", return_value=True)
+  @mock.patch.object(socket, "socket")
   @mock.patch.object(serial, "Serial")
-  def test_001_able_to_get_args_for_all_communication_types(self, mock_serial):
+  def test_001_able_to_get_args_for_all_communication_types(
+      self, mock_serial, mock_socket, mock_isinstance):
     """Test creating Switchboard for each communication type."""
     for comms_type in extensions.communication_types:
       comms_address = _CAMBRIONIX_ADDRESS
@@ -128,6 +135,9 @@ class CommunicationTypeTests(unit_test_case.UnitTestCase):
       elif "PigweedSerial" in comms_type:
         comms_kwargs["protobufs"] = (device_service_pb2,)
         comms_kwargs["baudrate"] = _BAUDRATE
+      elif "PigweedSocket" in comms_type:
+        comms_kwargs["protobufs"] = (device_service_pb2,)
+        comms_kwargs["port"] = _PORT
 
       self.logger.info("Creating Switchboard for %s", comms_type)
       switchboard_inst = self.manager.create_switchboard(

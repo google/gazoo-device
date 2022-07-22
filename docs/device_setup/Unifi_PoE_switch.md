@@ -54,23 +54,24 @@ To provision a Unifi_Switch:
 
 Install the GDM public SSH key on the Unifi switch:
 
-1. Configure GDM SSH keys: run `gdm download-keys` on the host.
-   * If you don't have a key in
-     `~/gazoo/gdm/keys/gazoo_device_controllers/unifi_switch_ssh_key`, you'll
-     see an error prompting you to generate a key. Follow the prompt to generate
-     all required keys.
-     * Alternatively, you can copy an existing private/public SSH key pair to
-       `~/gazoo/gdm/keys/gazoo_device_controllers/unifi_switch_ssh_key` and
-       `~/gazoo/gdm/keys/gazoo_device_controllers/unifi_switch_ssh_key.pub`.
-2. Log into the Unifi Controller web interface (open
-   `<Unifi Controller host IP>:8443` in a browser).
-3. Navigate to "Settings" (gear icon) -> "Try new settings" -> "SSH keys" ->
-   "Add new SSH key".
-4. Name the key "unifi_switch_ssh_key".
-5. Copy the contents of
-   `~/gazoo/gdm/keys/gazoo_device_controllers/unifi_switch_ssh_key.pub` into the
-   "Key" field.
-6. Click "Apply" and "Apply Changes".
+1.  Configure GDM SSH keys: run `gdm download-keys` on the host.
+    *   If you don't have a key in
+        `~/gazoo/gdm/keys/gazoo_device_controllers/unifi_switch_ssh_key`, you'll
+        see an error prompting you to generate a key. Follow the prompt to
+        generate all required keys.
+        *   Alternatively, you can copy an existing private/public SSH key pair
+            to `~/gazoo/gdm/keys/gazoo_device_controllers/unifi_switch_ssh_key`
+            and
+            `~/gazoo/gdm/keys/gazoo_device_controllers/unifi_switch_ssh_key.pub`.
+2.  Log into the Unifi Controller web interface (open `<Unifi Controller host
+    IP>:8443` in a browser).
+3.  Navigate to "Settings" (gear icon) -> "Try new settings" -> "SSH keys" ->
+    "Add new SSH key".
+4.  Name the key "unifi_switch_ssh_key".
+5.  Copy the contents of
+    `~/gazoo/gdm/keys/gazoo_device_controllers/unifi_switch_ssh_key.pub` into
+    the "Key" field.
+6.  Click "Apply" and "Apply Changes".
 
 Detect the Unifi switch:
 

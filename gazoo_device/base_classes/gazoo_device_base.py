@@ -427,7 +427,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
 
   @decorators.LogDecorator(logger, decorators.DEBUG)
   def set_property(self, prop: str, value: Any) -> None:
-    """Sets an optional property without writing it to the config file.
+    """Sets an optional property and writes it to the config file.
 
     Args:
         prop: Property name.
@@ -451,6 +451,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
       setattr(instance, prop, value)
       return
     self.props["optional"][prop] = value
+    self.get_manager().save_property_to_config(self.name, prop, value)
 
   @decorators.LogDecorator(logger)
   def start_new_log(self, log_directory=None, log_name_prefix=""):
@@ -466,19 +467,21 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     """
     if not log_directory:
       log_directory = self.log_directory
-    new_log_filename = get_log_filename(
+    new_log_filename_without_counter = get_log_filename(
         log_directory, self.name, name_prefix=log_name_prefix)
+    current_log_file_name, _ = log_process.get_log_filename_and_counter(
+        self.log_file_name)
     # Make sure new log file name is different from old log file name
-    while self.log_file_name == new_log_filename:  # pylint: disable=comparison-with-callable
+    while current_log_file_name == new_log_filename_without_counter:
       time.sleep(0.5)
-      new_log_filename = get_log_filename(
+      new_log_filename_without_counter = get_log_filename(
           log_directory, self.name, name_prefix=log_name_prefix)
-    self.switchboard.start_new_log(new_log_filename)
+    self.switchboard.start_new_log(new_log_filename_without_counter)
     self.log_directory = log_directory
-    self._log_file_name = new_log_filename
+    self._log_file_name = new_log_filename_without_counter
     # Stops current log parser to allow update of event file.
-    self.reset_capability("event_parser")
     self._update_event_filename_and_symlinks()
+    self.event_parser.event_file_path = self.event_file_name
 
   def is_detected(self):
     """Returns whether or not persistent info has already been retrieved for device."""
@@ -514,7 +517,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
                   f"{attempt + 1} of {self._RECOVERY_ATTEMPTS}")
       try:
         self.check_device_ready()
-      except errors.CheckDeviceReadyError as err:
+      except (errors.CheckDeviceReadyError, errors.DeviceError) as err:
         if setting == "check_only":
           logger.info(f"{self.name} make_device_ready setting is {setting!r}. "
                       "Skipping device recovery")
@@ -932,7 +935,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
 
       try:
         health_check_method()
-      except errors.CheckDeviceReadyError as err:
+      except (errors.CheckDeviceReadyError, errors.DeviceError) as err:
         logger.info("{} health check {}/{} {!r} failed: {!r}.".format(
             self.name, step + 1, len(health_checks), health_check_name, err))
         err.checks_passed = checks_passed

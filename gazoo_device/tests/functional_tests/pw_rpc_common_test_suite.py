@@ -19,6 +19,9 @@ from mobly import asserts
 
 _PAIRING_CODE = 108
 _PAIRING_DISCRIMINATOR = 50
+_FAKE_VERIFIER = b"fake-verifier"
+_FAKE_SALT = b"fake-salt"
+_FAKE_ITERATION = 10
 
 
 class PwRPCCommonTestSuite(gdm_test_base.GDMTestBase):
@@ -38,28 +41,59 @@ class PwRPCCommonTestSuite(gdm_test_base.GDMTestBase):
 
   def test_software_version(self):
     """Tests software_version property."""
-    asserts.assert_is_instance(self.device.pw_rpc_common.software_version, int)
+    asserts.assert_is_instance(self.device.firmware_version, str)
 
   def test_qr_code(self):
     """Tests qr_code property."""
-    asserts.assert_is_instance(self.device.pw_rpc_common.qr_code, str)
+    asserts.assert_is_instance(self.device.qr_code, str)
 
   def test_qr_code_url(self):
     """Tests qr_code_url property."""
-    asserts.assert_is_instance(self.device.pw_rpc_common.qr_code_url, str)
+    asserts.assert_is_instance(self.device.qr_code_url, str)
 
   def test_set_pairing_code(self):
     """Tests set_pairing_info method for setting pairing code."""
     self.device.pw_rpc_common.set_pairing_info(code=_PAIRING_CODE)
-    asserts.assert_equal(_PAIRING_CODE,
-                         self.device.pw_rpc_common.pairing_info.code)
+    asserts.assert_equal(_PAIRING_CODE, self.device.pairing_code)
 
   def test_set_pairing_discriminator(self):
     """Tests set_pairing_info method for setting pairing discriminator."""
     self.device.pw_rpc_common.set_pairing_info(
         discriminator=_PAIRING_DISCRIMINATOR)
     asserts.assert_equal(_PAIRING_DISCRIMINATOR,
-                         self.device.pw_rpc_common.pairing_info.discriminator)
+                         self.device.pairing_discriminator)
+
+  def test_set_and_get_spake_info(self):
+    """Tests set_spake_info and get_spake_info for Spake information."""
+    self.device.pw_rpc_common.set_spake_info(
+        verifier=_FAKE_VERIFIER,
+        salt=_FAKE_SALT,
+        iteration_count=_FAKE_ITERATION)
+    spake_info = self.device.pw_rpc_common.get_spake_info()
+    asserts.assert_equal(_FAKE_VERIFIER, spake_info.verifier)
+    asserts.assert_equal(_FAKE_SALT, spake_info.salt)
+    asserts.assert_equal(_FAKE_ITERATION, spake_info.iteration_count)
+
+  def test_start_and_stop_advertising_for_commissioning(self):
+    """Tests device commissioning advertisement."""
+    if self.device.pw_rpc_common.is_advertising:
+      self._stop_advertising_and_verify()
+      self._start_advertising_and_verify()
+    else:
+      self._start_advertising_and_verify()
+      self._stop_advertising_and_verify()
+
+  def _start_advertising_and_verify(self):
+    """Starts advertsiing and verifies the state."""
+    self.device.pw_rpc_common.start_advertising()
+    asserts.assert_true(self.device.pw_rpc_common.is_advertising,
+                        "The device is not advertising.")
+
+  def _stop_advertising_and_verify(self):
+    """Stops advertsiing and verifies the state."""
+    self.device.pw_rpc_common.stop_advertising()
+    asserts.assert_false(self.device.pw_rpc_common.is_advertising,
+                         "The device is still advertising.")
 
 
 if __name__ == "__main__":

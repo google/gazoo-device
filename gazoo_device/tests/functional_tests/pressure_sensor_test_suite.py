@@ -19,6 +19,7 @@ from gazoo_device.tests.functional_tests.utils import gdm_test_base
 
 
 class PressureSensorTestSuite(
+    gdm_test_base.GDMTestBase,
     pressure_measurement_cluster_suite.PressureMeasurementClusterTestSuite):
   """Tests for the Pressure Sensor endpoint."""
 

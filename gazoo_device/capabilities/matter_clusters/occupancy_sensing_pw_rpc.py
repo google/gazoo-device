@@ -15,15 +15,17 @@
 """Pigweed RPC implementation of Matter Occupancy Sensing cluster capability.
 """
 from gazoo_device import decorators
+from gazoo_device import errors
 from gazoo_device.capabilities import matter_enums
-from gazoo_device.capabilities.matter_clusters.interfaces import occupancy_base
+from gazoo_device.capabilities.matter_clusters.interfaces import occupancy_sensing_base
 from gazoo_device.protos import attributes_service_pb2
 
-_OccupancyCluster = matter_enums.OccupancySensingCluster
+_OccupancySensingCluster = matter_enums.OccupancySensingCluster
 BITMAP_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_BITMAP8_ATTRIBUTE_TYPE
 
 
-class OccupancyClusterPwRpc(occupancy_base.OccupancyClusterBase):
+class OccupancySensingClusterPwRpc(
+    occupancy_sensing_base.OccupancySensingClusterBase):
   """Matter Occupancy Sensing cluster capability."""
 
   @decorators.DynamicProperty
@@ -38,10 +40,25 @@ class OccupancyClusterPwRpc(occupancy_base.OccupancyClusterBase):
     """
     occupancy_data = self._read(
         endpoint_id=self._endpoint_id,
-        cluster_id=_OccupancyCluster.ID,
-        attribute_id=_OccupancyCluster.ATTRIBUTE_OCCUPANCY,
+        cluster_id=_OccupancySensingCluster.ID,
+        attribute_id=_OccupancySensingCluster.ATTRIBUTE_OCCUPANCY,
         attribute_type=BITMAP_ATTRIBUTE_TYPE)
     return occupancy_data.data_uint8
+
+  @occupancy.setter
+  def occupancy(self, occupancy: BITMAP_ATTRIBUTE_TYPE) -> None:
+    """Updates the Occupancy attribute to new value."""
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster_id=_OccupancySensingCluster.ID,
+        attribute_id=_OccupancySensingCluster.ATTRIBUTE_OCCUPANCY,
+        attribute_type=BITMAP_ATTRIBUTE_TYPE,
+        data_uint8=occupancy)
+    if self.occupancy != occupancy:  # pylint: disable=comparison-with-callable
+      raise errors.DeviceError(
+          f"Device {self._device_name} "
+          f"Attribute {_OccupancySensingCluster.ATTRIBUTE_OCCUPANCY} didn't change"
+          f" to {occupancy}")
 
   @decorators.DynamicProperty
   def occupancy_sensor_type(self) -> int:
@@ -55,8 +72,8 @@ class OccupancyClusterPwRpc(occupancy_base.OccupancyClusterBase):
     """
     sensor_type_data = self._read(
         endpoint_id=self._endpoint_id,
-        cluster_id=_OccupancyCluster.ID,
-        attribute_id=_OccupancyCluster.ATTRIBUTE_OCCUPANCY_SENSOR_TYPE,
+        cluster_id=_OccupancySensingCluster.ID,
+        attribute_id=_OccupancySensingCluster.ATTRIBUTE_OCCUPANCY_SENSOR_TYPE,
         attribute_type=BITMAP_ATTRIBUTE_TYPE)
     return matter_enums.OccupancySensorType(sensor_type_data.data_uint8)
 
@@ -73,8 +90,8 @@ class OccupancyClusterPwRpc(occupancy_base.OccupancyClusterBase):
     """
     sensor_type_bitmap = self._read(
         endpoint_id=self._endpoint_id,
-        cluster_id=_OccupancyCluster.ID,
+        cluster_id=_OccupancySensingCluster.ID,
         attribute_id=
-        _OccupancyCluster.ATTRIBUTE_OCCUPANCY_SENSOR_TYPE_BITMAP,
+        _OccupancySensingCluster.ATTRIBUTE_OCCUPANCY_SENSOR_TYPE_BITMAP,
         attribute_type=BITMAP_ATTRIBUTE_TYPE)
     return sensor_type_bitmap.data_uint8

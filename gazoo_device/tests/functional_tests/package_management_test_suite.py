@@ -78,6 +78,8 @@ class PackageManagementTestSuite(gdm_test_base.GDMTestBase):
         device_name=self.device.name)
     if not os.path.isdir(download_folder):
       os.mkdir(download_folder)
+    if self.device.package_management.has_package(package_name):
+      self.device.package_management.uninstall_package(package_name)
 
     try:
       package_path = self._download_package(
@@ -92,14 +94,16 @@ class PackageManagementTestSuite(gdm_test_base.GDMTestBase):
       self.device.package_management.install_package(package_path)
       asserts.assert_true(
           self.device.package_management.has_package(package_name),
-          f"Package {package_name} was not installed.")
+          f"Package {package_name} was not installed after running "
+          f"package_management.install_package")
 
       # Uninstall the package and check if it is not in the package list.
       logging.info("Uninstalling package %s", package_name)
       self.device.package_management.uninstall_package(package_name)
       asserts.assert_false(
           self.device.package_management.has_package(package_name),
-          f"Package {package_name} was not uninstalled.")
+          f"Package {package_name} is still on the device after running "
+          "package_management.uninstall_package")
     finally:
       shutil.rmtree(download_folder)
 

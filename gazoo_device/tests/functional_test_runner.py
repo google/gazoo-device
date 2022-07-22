@@ -26,12 +26,15 @@ from gazoo_device.tests.functional_tests import auxiliary_device_common_test_sui
 from gazoo_device.tests.functional_tests import color_temperature_light_test_suite
 from gazoo_device.tests.functional_tests import comm_power_test_suite
 from gazoo_device.tests.functional_tests import common_test_suite
+from gazoo_device.tests.functional_tests import contact_sensor_test_suite
 from gazoo_device.tests.functional_tests import device_power_test_suite
 from gazoo_device.tests.functional_tests import dimmable_light_test_suite
 from gazoo_device.tests.functional_tests import door_lock_test_suite
 from gazoo_device.tests.functional_tests import embedded_script_test_suite
 from gazoo_device.tests.functional_tests import file_transfer_test_suite
+from gazoo_device.tests.functional_tests import humidity_sensor_test_suite
 from gazoo_device.tests.functional_tests import matter_endpoints_test_suite
+from gazoo_device.tests.functional_tests import occupancy_sensor_test_suite
 from gazoo_device.tests.functional_tests import on_off_light_test_suite
 from gazoo_device.tests.functional_tests import optional_properties_test_suite
 from gazoo_device.tests.functional_tests import package_management_test_suite
@@ -61,12 +64,15 @@ TEST_SUITES = (
     color_temperature_light_test_suite.ColorTemperatureTestSuite,
     comm_power_test_suite.CommPowerTestSuite,
     common_test_suite.CommonTestSuite,
+    contact_sensor_test_suite.ContactSensorTestSuite,
     device_power_test_suite.DevicePowerTestSuite,
-    embedded_script_test_suite.EmbeddedScriptTestSuite,
-    file_transfer_test_suite.FileTransferTestSuite,
     dimmable_light_test_suite.DimmableLightTestSuite,
     door_lock_test_suite.DoorLockTestSuite,
+    embedded_script_test_suite.EmbeddedScriptTestSuite,
+    file_transfer_test_suite.FileTransferTestSuite,
+    humidity_sensor_test_suite.HumiditySensorTestSuite,
     matter_endpoints_test_suite.MatterEndpointsPwRpcTestSuite,
+    occupancy_sensor_test_suite.OccupancySensorTestSuite,
     on_off_light_test_suite.OnOffLightTestSuite,
     optional_properties_test_suite.OptionalPropertiesTestSuite,
     package_management_test_suite.PackageManagementTestSuite,

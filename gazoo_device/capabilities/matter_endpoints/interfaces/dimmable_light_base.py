@@ -32,6 +32,11 @@ class DimmableLightBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   def level(self):
     """Required cluster: ZCL level cluster."""
 
+  @property
+  @abc.abstractproperty
+  def occupancy_sensing(self):
+    """Optional cluster: ZCL occupancy cluster."""
+
   # TODO(b/209362086) Add the below clusters
   # @abc.abstractproperty
   # def scenes(self) -> None:
@@ -40,7 +45,3 @@ class DimmableLightBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   # @abc.abstractproperty
   # def groups(self) -> None:
   #   """Required cluster: ZCL groups cluster."""
-
-  # @abc.abstractproperty
-  # def occupancy(self) -> None:
-  #   """Optional cluster: ZCL occupancy cluster."""

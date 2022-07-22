@@ -67,9 +67,40 @@ class LevelControlClusterPwRpc(level_control_base.LevelControlClusterBase):
     Returns:
       The current level.
     """
+    return self._get_level(
+        attribute_id=LevelControlCluster.ATTRIBUTE_CURRENT_LEVEL)
+
+  @decorators.DynamicProperty
+  def min_level(self) -> int:
+    """The MinLevel attribute.
+
+    The MinLevel attribute indicates the minimum value of CurrentLevel that is
+    capable of being assigned.
+
+    Returns:
+      The min level.
+    """
+    return self._get_level(
+        attribute_id=LevelControlCluster.ATTRIBUTE_MIN_LEVEL)
+
+  @decorators.DynamicProperty
+  def max_level(self) -> int:
+    """The MinLevel attribute.
+
+    The MaxLevel attribute indicates the maximum value of CurrentLevel that is
+    capable of being assigned.
+
+    Returns:
+      The max level.
+    """
+    return self._get_level(
+        attribute_id=LevelControlCluster.ATTRIBUTE_MAX_LEVEL)
+
+  def _get_level(self, attribute_id: int) -> int:
+    """Get level value by attribute ID."""
     level_data = self._read(
         endpoint_id=self._endpoint_id,
         cluster_id=LevelControlCluster.ID,
-        attribute_id=LevelControlCluster.ATTRIBUTE_CURRENT_LEVEL,
+        attribute_id=attribute_id,
         attribute_type=INT8U_ATTRIBUTE_TYPE)
     return level_data.data_uint8

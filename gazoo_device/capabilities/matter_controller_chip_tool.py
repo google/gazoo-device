@@ -59,6 +59,10 @@ _COMMANDS = immutabledict.immutabledict({
         "cat ~/.matter_sdk_version",
     "WRITE_CHIP_TOOL_VERSION":
         "echo {chip_tool_version} > ~/.matter_sdk_version",
+    "CLEAR_TEMP_DIRECTORY":
+        "rm -rf /tmp/chip*",
+    "CLEAR_STORAGE":
+        "{chip_tool} storage clear-all",
 })
 
 _REGEXES = immutabledict.immutabledict({
@@ -159,7 +163,8 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
                  long_discriminator: Optional[int] = None,
                  ssid: Optional[str] = None,
                  password: Optional[str] = None,
-                 operational_dataset: Optional[str] = None) -> None:
+                 operational_dataset: Optional[str] = None,
+                 paa_trust_store_path: Optional[str] = None) -> None:
     """Commissions a device into the controller's fabric.
 
     Commissioning protocol is based on specified arguments:
@@ -179,6 +184,10 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
       password: Wi-Fi password, either as a string or as hex data.
       operational_dataset: Thread dataset in base-64. This argument is mutually
         exclusive with ssid and password.
+      paa_trust_store_path: Path to directory holding PAA cert information
+        on the controller device (e.g. rpi_matter_controller).
+        See https://github.com/project-chip/connectedhomeip/tree/master/credentials/development/paa-root-certs  # pylint: disable=line-too-long
+        for an example.
     """
     if ssid and not password:
       raise ValueError("Wi-Fi password is not specified.")
@@ -199,6 +208,9 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
       # setup code.
       command = _COMMANDS["COMMISSION_ON_NETWORK"]
 
+    if paa_trust_store_path is not None:
+      command += f" --paa-trust-store-path {paa_trust_store_path}"
+
     command = command.format(
         chip_tool=self._chip_tool_path,
         node_id=node_id,
@@ -214,7 +226,7 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
         raise_error=True,
         timeout=_TIMEOUTS["COMMISSION"])
 
-    self._set_property_fn(self._device_name, _MATTER_NODE_ID_PROPERTY, node_id)
+    self._set_property_fn(_MATTER_NODE_ID_PROPERTY, node_id)
 
   @decorators.CapabilityLogDecorator(logger)
   def decommission(self) -> None:
@@ -224,7 +236,7 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
         node_id=self._get_property_fn(_MATTER_NODE_ID_PROPERTY))
     self._shell_with_regex(
         command, _REGEXES["DECOMMISSION_COMPLETE"], raise_error=True)
-    self._set_property_fn(self._device_name, _MATTER_NODE_ID_PROPERTY, None)
+    self._set_property_fn(_MATTER_NODE_ID_PROPERTY, None)
 
   def read(self, endpoint_id: int, cluster: str, attribute: str) -> Any:
     """Reads a cluster's attribute for the given node id and endpoint.
@@ -323,3 +335,10 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
     self._send_file_to_device(build_file, self._chip_tool_path)
     self._shell(
         _COMMANDS["WRITE_CHIP_TOOL_VERSION"].format(chip_tool_version=build_id))
+
+  @decorators.CapabilityLogDecorator(logger)
+  def factory_reset(self) -> None:
+    """Factory resets all settings stored on controller's device."""
+    self._shell(_COMMANDS["CLEAR_TEMP_DIRECTORY"])
+    self._shell(_COMMANDS["CLEAR_STORAGE"].format(
+        chip_tool=self._chip_tool_path))

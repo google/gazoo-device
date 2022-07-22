@@ -1,0 +1,7 @@
+{
+  "shell_cmd": "ps -aux | grep rootnode | grep -v grep",
+  "expect": ["*rootnode*"],
+  "do_not_run_tests": [],
+  "slow_tests": [],
+  "volatile_tests": []
+}

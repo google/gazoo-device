@@ -12,23 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Mixin for Matter Occupancy cluster test suite."""
+"""Mixin for Matter Occupancy Sensing cluster test suite."""
 from gazoo_device.capabilities import matter_enums
-from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
 
+_CLUSTER_NAME = "occupancy_sensing"
 
-class OccupancyClusterTestSuite(gdm_test_base.GDMTestBase):
-  """Mixin for Matter Occupancy cluster test suite.
+
+class OccupancySensingClusterTestSuite:
+  """Mixin for Matter Occupancy Sensing cluster test suite.
 
   The mixin assumes self.endpoint is set.
   """
 
   def test_occupancy_attribute(self):
     """Tests the Occupancy attribute."""
-    if self.endpoint.has_clusters(["occupancy"]):
+    if self.endpoint.has_clusters([_CLUSTER_NAME]):
       asserts.assert_is_instance(
-          self.endpoint.occupancy.occupancy, int,
+          self.endpoint.occupancy_sensing.occupancy, int,
           "Occupancy attribute must be the int type.")
     else:
       asserts.skip(
@@ -36,10 +37,11 @@ class OccupancyClusterTestSuite(gdm_test_base.GDMTestBase):
 
   def test_occupancy_sensor_type_attribute(self):
     """Tests the OccupancySensorType attribute."""
-    if self.endpoint.has_clusters(["occupancy"]):
+    if self.endpoint.has_clusters([_CLUSTER_NAME]):
       valid_sensor_types = set(matter_enums.OccupancySensorType)
       asserts.assert_in(
-          self.endpoint.occupancy.occupancy_sensor_type, valid_sensor_types,
+          self.endpoint.occupancy_sensing.occupancy_sensor_type,
+          valid_sensor_types,
           "OccupancySensorType attribute must be one of the "
           f"{valid_sensor_types}.")
     else:
@@ -48,9 +50,9 @@ class OccupancyClusterTestSuite(gdm_test_base.GDMTestBase):
 
   def test_occupancy_sensor_type_bitmap(self):
     """Tests the OccupancySensorTypeBitmap attribute."""
-    if self.endpoint.has_clusters(["occupancy"]):
+    if self.endpoint.has_clusters([_CLUSTER_NAME]):
       asserts.assert_is_instance(
-          self.endpoint.occupancy.occupancy_sensor_type_bitmap, int,
+          self.endpoint.occupancy_sensing.occupancy_sensor_type_bitmap, int,
           "OccupancySensorTypeBitmap attribute must be the int type.")
     else:
       asserts.skip(

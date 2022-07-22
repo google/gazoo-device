@@ -272,6 +272,22 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
     err_msg = ("wait_for_bootup_complete failed. "
                "Device hasn't finished booting in {}s.".format(timeout))
 
+    end_time = time.time() + timeout
+    while time.time() < end_time:
+      if host_utils.is_pingable(self.ip_address):
+        break
+      time.sleep(.5)
+    else:
+      reason = f"Device failed to become pingable in {timeout}s"
+      raise errors.DeviceNotBootupCompleteError(
+          self.name, err_msg, reason=reason)
+
+    # There's a delay between the device being responsive to ping
+    # and being able to open SSH connections
+    time.sleep(self.timeouts["PING_TO_SSH_DELAY"])
+    # Reopen ssh transport as ssh connection is once more available.
+    self.switchboard.open_all_transports()
+
     try:
       shell_resp, return_code = self.shell(
           self.commands["BOOT_UP_COMPLETE"],
@@ -365,24 +381,6 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
     self.switchboard.close_all_transports()
 
     time.sleep(5)  # wait for a bit
-    start_time = time.time()
-    while time.time() < max_disconnect_time:
-      if host_utils.is_pingable(self.ip_address):
-        logger.info("{} online in {}s".format(self.name,
-                                              int(time.time() - start_time)))
-        break
-      time.sleep(.5)
-    else:
-      raise errors.DeviceNotBootupCompleteError(
-          self.name,
-          "failed to come online {}s".format(int(time.time() - start_time)))
-
-    # There's a delay between the device being responsive to ping
-    # and being able to open SSH connections
-    time.sleep(self.timeouts["PING_TO_SSH_DELAY"])
-
-    # Reopen ssh transport as ssh connection is once more available.
-    self.switchboard.open_all_transports()
 
     self.wait_for_bootup_complete(timeout=bootup_timeout)
     logger.info("{} booted up successfully in {}s.".format(

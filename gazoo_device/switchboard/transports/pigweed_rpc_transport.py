@@ -17,34 +17,28 @@ import fcntl
 import importlib
 import queue
 import select
+import socket
 import threading
-from typing import Any, Collection, Optional, Tuple
+import typing
+from typing import Any, Collection, Optional, Tuple, Union
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.switchboard.transports import transport_base
 from gazoo_device.utility import pwrpc_utils
 import serial
 
-# TODO(b/205665429): Consolidate Pigweed import paths.
+# pylint: disable=g-import-not-at-top
+# pytype: disable=import-error
 try:
-  # pylint: disable=g-import-not-at-top
-  # pytype: disable=import-error
-  from pigweed.pw_rpc import client
-  from pigweed.pw_rpc import callback_client
-  from pigweed.pw_hdlc import rpc
-  from pigweed.pw_hdlc import decode
-  from pigweed.pw_protobuf_compiler import python_protos
-  # pytype: enable=import-error
+  raise ImportError
 except ImportError:
-  # pylint: disable=g-import-not-at-top
-  # pytype: disable=import-error
-  # PyPI Pigweed import paths.
   from pw_rpc import client
   from pw_rpc import callback_client
   from pw_hdlc import rpc
   from pw_hdlc import decode
   from pw_protobuf_compiler import python_protos
-  # pytype: enable=import-error
+# pylint: enable=g-import-not-at-top
+# pytype: enable=import-error
 
 _STDOUT_ADDRESS = 1
 _DEFAULT_ADDRESS = ord("R")
@@ -52,6 +46,8 @@ _JOIN_TIMEOUT_SEC = 1  # seconds
 _SELECT_TIMEOUT_SEC = 0.1  # seconds
 _SERIAL_TIMEOUT_SEC = 0.01  # seconds
 _RPC_CALLBACK_TIMEOUT_SEC = 1  # seconds
+_NUM_OF_READ_BYTES = 4096
+RPC_METHOD_NAME = "rpc"  # Pigweed RPC method name for switchboard call
 logger = gdm_logger.get_logger()
 
 
@@ -81,25 +77,43 @@ def _serialize(payload: Any) -> Any:
 class PwHdlcRpcClient:
   """Pigweed HDLC RPC Client.
 
+  The RPC client class for sending RPC requests and receiving RPC responses.
+  The client supports HDLC communication over serial and socket connection.
+
   Adapted from
   https://pigweed.googlesource.com/pigweed/pigweed/+/refs/heads/master/pw_hdlc/py/pw_hdlc/rpc.py.
   """
 
   def __init__(self,
-               serial_instance: serial.Serial,
+               file_object: Union[serial.Serial, socket.socket],
                protobuf_import_paths: Collection[str]):
     """Creates an RPC client configured to communicate using HDLC.
 
     Args:
-      serial_instance: Serial interface instance.
+      file_object: File descriptor object to interact, can be serial interface
+        instance or socket interface instance.
       protobuf_import_paths: Import paths of the RPC proto modules.
     """
-    self._serial = serial_instance
+    self._file_object = file_object
     self._protobuf_import_paths = protobuf_import_paths
     self._client = None
     self._stop_event = None
     self._worker = None
     self.log_queue = None
+
+    # The read / write methods for 2 types of file descriptors
+    if isinstance(self._file_object, serial.Serial):
+      self._file_object = typing.cast(serial.Serial, self._file_object)
+      self._write_method = self._file_object.write
+      self._read_method = self._file_object.read
+    elif isinstance(self._file_object, socket.socket):
+      self._file_object = typing.cast(socket.socket, self._file_object)
+      self._write_method = self._file_object.sendall
+      self._read_method = self._file_object.recv
+    else:
+      raise errors.DeviceError(
+          "Invalid file object type. Must be serial.Serial or "
+          f"socket.socket. The given object is {type(self._file_object)}.")
 
   def is_alive(self) -> bool:
     """Returns true if the worker thread has started."""
@@ -118,7 +132,7 @@ class PwHdlcRpcClient:
       client_impl = callback_client.Impl(
           default_unary_timeout_s=_RPC_CALLBACK_TIMEOUT_SEC,
           default_stream_timeout_s=_RPC_CALLBACK_TIMEOUT_SEC)
-      channels = rpc.default_channels(self._serial.write)
+      channels = rpc.default_channels(self._write_method)
       self._client = client.Client.from_modules(client_impl,
                                                 channels,
                                                 protos.modules())
@@ -148,18 +162,22 @@ class PwHdlcRpcClient:
     Returns:
       RPC instance over the specificed channel.
     """
+    if self._client is None:
+      return None
     if channel_id is None:
       return next(iter(self._client.channels())).rpcs
-    return self._client.channel(channel_id).rpcs
+    else:
+      return self._client.channel(channel_id).rpcs
 
   def read_and_process_data(self) -> None:
     """Continuously reads and handles HDLC frames."""
     decoder = decode.FrameDecoder()
     while not self._stop_event.is_set():
-      readfds, _, _ = select.select([self._serial], [], [], _SELECT_TIMEOUT_SEC)
-      for fd in readfds:
+      readfds, _, _ = select.select(
+          [self._file_object], [], [], _SELECT_TIMEOUT_SEC)
+      if readfds:
         try:
-          data = fd.read()
+          data = self._read_method(_NUM_OF_READ_BYTES)
         except Exception:  # pylint: disable=broad-except
           logger.exception(
               "Exception occurred when reading in PwHdlcRpcClient thread.")
@@ -204,8 +222,36 @@ class PwHdlcRpcClient:
       logger.exception("Exception occurred in PwHdlcRpcClient.")
 
 
-class PigweedRPCTransport(transport_base.TransportBase):
-  """Performs transport communication using the Pigweed RPC to end devices."""
+def _rpc(hdlc_client: PwHdlcRpcClient,
+         service_name: str,
+         event_name: str,
+         **kwargs: Any) -> Tuple[bool, Optional[bytes]]:
+  """RPC call to the Matter endpoint with given service and event name.
+
+  Args:
+    hdlc_client: HDLC client instance.
+    service_name: PwRPC service name.
+    event_name: Event name in the given service instance.
+    **kwargs: Arguments for the event method.
+
+  Returns:
+    RPC ack value, RPC encoded payload in bytes
+  """
+  if not hdlc_client.is_alive():
+    return False, None
+  client_channel = hdlc_client.rpcs().chip.rpc
+  service = getattr(client_channel, service_name)
+  event = getattr(service, event_name)
+  kwargs = {
+      param_name:
+      param.decode() if isinstance(param, pwrpc_utils.PigweedProtoState)
+      else param for param_name, param in kwargs.items()}
+  ack, payload = event(**kwargs)
+  return ack.ok(), _serialize(payload)
+
+
+class PigweedRpcSerialTransport(transport_base.TransportBase):
+  """Pigweed RPC transport over serial connection via UART."""
 
   def __init__(self,
                comms_address: str,
@@ -213,7 +259,7 @@ class PigweedRPCTransport(transport_base.TransportBase):
                baudrate: int,
                auto_reopen: bool = True,
                open_on_start: bool = True):
-    """Initializes a PigweedRPCTransport instance.
+    """Initializes a PigweedRpcSerialTransport instance.
 
     Args:
       comms_address: Serial port path on the host.
@@ -279,17 +325,7 @@ class PigweedRPCTransport(transport_base.TransportBase):
       return b""
 
   def _write(self, data: str, timeout: Optional[float] = None) -> int:
-    """Dummy method for Pigweed RPC.
-
-    Declared to pass the inheritance check of TransportBase.
-
-    Args:
-      data: Not used.
-      timeout: Not used.
-
-    Returns:
-      Always returns 0.
-    """
+    """Dummy method for the abstract parent class."""
     del data  # not used
     del timeout  # not used
     return 0
@@ -298,25 +334,83 @@ class PigweedRPCTransport(transport_base.TransportBase):
           service_name: str,
           event_name: str,
           **kwargs: Any) -> Tuple[bool, Optional[bytes]]:
-    """RPC call to the Matter endpoint with given service and event name.
+    """RPC call to the Matter endpoint with given service and event name."""
+    return _rpc(self._hdlc_client, service_name, event_name, **kwargs)
+
+
+class PigweedRpcSocketTransport(transport_base.TransportBase):
+  """Pigweed RPC Transport over socket connection."""
+
+  def __init__(self,
+               comms_address: str,
+               protobuf_import_paths: Collection[str],
+               port: int,
+               auto_reopen: bool = True,
+               open_on_start: bool = True):
+    """Initializes a PigweedRpcSocketTransport instance.
 
     Args:
-      service_name: PwRPC service name.
-      event_name: Event name in the given service instance.
-      **kwargs: Arguments for the event method.
+      comms_address: Serial port path on the host.
+      protobuf_import_paths: Module import paths of the compiled device
+        communication protobufs.
+      port: Socket connection port.
+      auto_reopen: Whether to automatically reopen the transport if it closes
+        unexpectedly.
+      open_on_start: Whether to open the transport during TransportProcess
+        start.
+    """
+    super().__init__(
+        auto_reopen=auto_reopen,
+        open_on_start=open_on_start)
+    self.comms_address = comms_address
+    self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    self._address = (comms_address, port)
+    self._hdlc_client = PwHdlcRpcClient(self._socket, protobuf_import_paths)
+
+  def is_open(self) -> bool:
+    """Returns True if the PwRPC transport is connected to the target.
 
     Returns:
-      (RPC ack value, RPC encoded payload in bytes)
+      True if transport is open, False otherwise.
     """
-    if not self._hdlc_client.is_alive():
-      return False, None
+    return self._hdlc_client.is_alive()
 
-    client_channel = self._hdlc_client.rpcs().chip.rpc
-    service = getattr(client_channel, service_name)
-    event = getattr(service, event_name)
-    kwargs = {
-        param_name:
-        param.decode() if isinstance(param, pwrpc_utils.PigweedProtoState)
-        else param for param_name, param in kwargs.items()}
-    ack, payload = event(**kwargs)
-    return ack.ok(), _serialize(payload)
+  def _close(self) -> None:
+    """Closes the PwRPC transport."""
+    self._hdlc_client.close()
+    self._socket.close()
+
+  def _open(self) -> None:
+    """Opens the PwRPC transport."""
+    self._socket.connect(self._address)
+    self._hdlc_client.start()
+
+  def _read(self, size: int, timeout: float) -> bytes:
+    """Returns Pigweed log from the HDLC channel 1.
+
+    Args:
+      size: Not used.
+      timeout: Maximum seconds to wait to read bytes.
+
+    Returns:
+      bytes read from transport or None if no bytes were read
+    """
+    # Retrieving logs from queue doesn't support size configuration.
+    del size  # not used
+    try:
+      return self._hdlc_client.log_queue.get(timeout=timeout)
+    except queue.Empty:
+      return b""
+
+  def _write(self, data: str, timeout: Optional[float] = None) -> int:
+    """Dummy method for the abstract parent class."""
+    del data  # not used
+    del timeout  # not used
+    return 0
+
+  def rpc(self,
+          service_name: str,
+          event_name: str,
+          **kwargs: Any) -> Tuple[bool, Optional[bytes]]:
+    """RPC call to the Matter endpoint with given service and event name."""
+    return _rpc(self._hdlc_client, service_name, event_name, **kwargs)

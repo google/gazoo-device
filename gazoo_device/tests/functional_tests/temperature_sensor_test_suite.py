@@ -19,6 +19,7 @@ from gazoo_device.tests.functional_tests.utils import gdm_test_base
 
 
 class TemperatureSensorTestSuite(
+    gdm_test_base.GDMTestBase,
     temperature_measurement_cluster_suite.
     TemperatureMeasurementClusterTestSuite):
   """Tests for the Temperature Sensor endpoint."""

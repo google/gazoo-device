@@ -39,5 +39,5 @@ class TemperatureSensorEndpoint(temperature_sensor_base.TemperatureSensorBase):
   def temperature_measurement(
       self
   ) -> temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc:
-    """Matter Occupancy cluster instance."""
+    """Matter Temperature Measurement cluster instance."""
     return self.cluster_lazy_init(matter_enums.TemperatureMeasurementCluster.ID)

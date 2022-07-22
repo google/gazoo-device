@@ -8,7 +8,7 @@ psutil>=5.0.1
 pylibftdi>=0.19.0
 pylink-square>=0.3.0
 pyserial>=3.5
-pyudev==0.21.0
+pyudev>=0.22.0
 pyusb>=1.2.1
 pyvisa>=1.11.3
 pyvisa-py>=0.5.2

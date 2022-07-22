@@ -27,7 +27,6 @@ import re
 import signal
 import subprocess
 import time
-import types
 import typing
 from typing import Any, Callable, Dict, List, Mapping, MutableSequence, Optional, Sequence, Tuple, Union
 
@@ -44,7 +43,6 @@ from gazoo_device.switchboard import log_process
 from gazoo_device.switchboard import switchboard_process
 from gazoo_device.switchboard import transport_process
 from gazoo_device.switchboard import transport_properties
-from gazoo_device.switchboard.transports import jlink_transport
 from gazoo_device.switchboard.transports import serial_transport
 from gazoo_device.switchboard.transports import tcp_transport
 from gazoo_device.switchboard.transports import transport_base
@@ -330,14 +328,14 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       time.sleep(0.001)
 
   def call(self,
-           method: types.MethodType,
+           method_name: str,
            method_args: Tuple[Any, ...] = (),
            method_kwargs: Optional[Dict[str, Any]] = None,
            port: int = 0) -> Any:
     """Calls a transport method in a transport process and returns the response.
 
     Args:
-      method: the transport method to execute.
+      method_name: the name of the transport method to execute.
       method_args: positional arguments for the call.
       method_kwargs: keyword arguments for the call.
       port: number of the transport to call the method in.
@@ -347,24 +345,21 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       Exception: exceptions encountered in the transport process are reraised.
 
     Returns:
-      object: return value of the transport method.
+      Return value of the transport method call.
 
     Note that the call is executed in a different process. Therefore all
     transport method arguments and the return value must be serializable.
     """
     method_kwargs = method_kwargs or {}
     self._validate_port(port, self.call.__name__)
-    class_name = method.__qualname__.split(".")[-2]
-    method_name = method.__qualname__.split(".")[-1]
-    transport_class_name = type(
-        self._transport_processes[port].transport).__name__
-    if (class_name != transport_base.TransportBase.__name__
-        # All transports inherit from TransportBase
-        and class_name != transport_class_name):
-      raise errors.DeviceError(
+    transport_class = type(self._transport_processes[port].transport)
+    method = getattr(transport_class, method_name, None)
+    if method is None:
+      raise AttributeError(
           f"{self._device_name} Switchboard.call failed. "
-          f"Requested method {method.__qualname__!r}, but transport {port} "
-          f"is of type {transport_class_name!r}.")
+          f"Transport {port} ({transport_class.__name__!r}) does not have "
+          f"method {method_name!r}.")
+
     self.add_log_note("Executing {!r} in transport {}".format(
         method.__qualname__, port))
     self._transport_processes[port].send_command(
@@ -374,12 +369,12 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     if success:
       return response
     raise errors.DeviceError(
-        f"{self._device_name} switchboard.call of method {method.__qualname__} "
+        f"{self._device_name} Switchboard.call of method {method.__qualname__} "
         f"in transport {port} failed. {response}")
 
   def call_and_expect(
       self,
-      method: types.MethodType,
+      method_name: str,
       pattern_list: List[str],
       timeout: float = 30.0,
       searchwindowsize: int = config.SEARCHWINDOWSIZE,
@@ -393,7 +388,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     """Calls a transport method and expects on the patterns provided.
 
     Args:
-        method: The transport method to execute.
+        method_name: The name of the transport method to execute.
         pattern_list: List of regex expressions to look for in the lines.
         timeout: Seconds to look for the patterns.
         searchwindowsize: Number of the last bytes to look at.
@@ -414,7 +409,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     expect_ret, func_ret = typing.cast(
         Tuple[expect_response.ExpectResponse, Any],
         self.do_and_expect(
-            self.call, [method], {
+            self.call, [method_name], {
                 "method_args": method_args,
                 "method_kwargs": method_kwargs,
                 "port": port
@@ -428,7 +423,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     if expect_ret and expect_ret.timedout and raise_for_timeout:
       raise errors.DeviceError(
           "Device {} call_and_expect timed out for method {} in {}s".format(
-              self._device_name, method.__name__, timeout))
+              self._device_name, method_name, timeout))
     return expect_ret, func_ret
 
   @decorators.CapabilityLogDecorator(logger)
@@ -1206,24 +1201,6 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       time.sleep(0.1)
 
   @decorators.CapabilityLogDecorator(logger)
-  def transport_jlink_flash(self, image_path: str, port: int = 0) -> None:
-    """Calls the J-Link flash method in the transport.
-
-    Args:
-      image_path: path to the image file to be flashed onto the device.
-      port: number of the transport to execute the method in.
-    """
-    self.call(
-        method=jlink_transport.JLinkTransport.flash,
-        method_args=(image_path,),
-        port=port)
-
-  @decorators.CapabilityLogDecorator(logger)
-  def transport_jlink_reset(self, port: int = 0) -> None:
-    """Calls the J-Link reset method in the transport."""
-    self.call(method=jlink_transport.JLinkTransport.reset, port=port)
-
-  @decorators.CapabilityLogDecorator(logger)
   def transport_serial_set_baudrate(self,
                                     new_baudrate: int,
                                     port: int = 0) -> None:
@@ -1233,28 +1210,30 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       new_baudrate: new baudrate to be set, generally 115200 or 921600.
       port: number of the transport to set the baudrate for.
     """
-    self.call(method=serial_transport.SerialTransport.flush_buffers, port=port)
     self.call(
-        method=serial_transport.SerialTransport.set_property,
+        method_name=serial_transport.SerialTransport.flush_buffers.__name__,
+        port=port)
+    self.call(
+        method_name=serial_transport.SerialTransport.set_property.__name__,
         method_args=(transport_properties.BAUDRATE, new_baudrate),
         port=port)
-    self.call(method=serial_transport.SerialTransport.flush_buffers, port=port)
+    self.call(
+        method_name=serial_transport.SerialTransport.flush_buffers.__name__,
+        port=port)
 
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
   def transport_serial_send_xon(self, port: int = 0) -> None:
     """Sends the XON control character to the serial transport."""
-    self.call(method=serial_transport.SerialTransport.send_xon, port=port)
-
-  @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
-  def transport_serial_send_xoff(self, port: int = 0) -> None:
-    """Sends the XOFF control character to the serial transport."""
-    self.call(method=serial_transport.SerialTransport.send_xoff, port=port)
+    self.call(
+        method_name=serial_transport.SerialTransport.send_xon.__name__,
+        port=port)
 
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
   def transport_serial_send_break_byte(self, port: int = 0) -> None:
     """Sends the break control character (Ctrl+C) to the serial transport."""
     self.call(
-        method=serial_transport.SerialTransport.send_break_byte, port=port)
+        method_name=serial_transport.SerialTransport.send_break_byte.__name__,
+        port=port)
 
   def verify_file_on_transport(self,
                                source_file: str,

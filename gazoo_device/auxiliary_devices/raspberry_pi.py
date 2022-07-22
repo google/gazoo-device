@@ -31,6 +31,7 @@ class RaspberryPi(raspbian_device.RaspbianDevice):
   DETECT_MATCH_CRITERIA = {
       detect_criteria.SshQuery.IS_RPI: True,
       detect_criteria.SshQuery.IS_CHIP_TOOL_PRESENT: False,
+      detect_criteria.SshQuery.IS_MATTER_LINUX_APP_RUNNING: False,
   }
   DEVICE_TYPE = "raspberrypi"
   _OWNER_EMAIL = "gdm-authors@google.com"

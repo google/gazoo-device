@@ -90,9 +90,10 @@ class ShellSSH(shell_base.ShellBase):
       timeout = self._timeout
 
     command = command.rstrip()  # Remove trailing newlines.
+    # Support running backgroud process
+    concatenation_operator = "" if command.endswith("&") else ";"
     command_str = ("echo '{}';".format(command.replace("'", r"'\''")) +
-                   command + ";" +
-                   "echo Return Code: $?\n")
+                   command + concatenation_operator + "echo Return Code: $?\n")
     command_start_regex = re.escape(command)
     command_end_regex = r"Return Code: (-?\d+)"
 

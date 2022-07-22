@@ -14,14 +14,13 @@
 
 """Mixin for Matter Door Lock cluster test suite."""
 from gazoo_device.capabilities import matter_enums
-from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
 
 _LOCK_VALUE = matter_enums.LockState.LOCKED
 _UNLOCK_VALUE = matter_enums.LockState.UNLOCKED
 
 
-class DoorLockClusterTestSuite(gdm_test_base.GDMTestBase):
+class DoorLockClusterTestSuite:
   """Mixin for Matter Door Lock cluster test suite.
 
   The mixin assumes self.endpoint is set.

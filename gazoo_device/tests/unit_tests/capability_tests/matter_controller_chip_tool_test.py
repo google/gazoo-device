@@ -55,7 +55,8 @@ class MatterControllerChipToolCapabilityTests(
         password="wifi-password",
         setup_code=self._setup_code,
         long_discriminator=self._long_discriminator)
-    self.uut.get_manager().set_prop.assert_called_once_with(
+    self.uut.get_manager(
+    ).save_property_to_config.assert_called_once_with(
         self.uut.name, "matter_node_id", self._node_id)
 
   def test_commission_over_ble_wifi_with_hex(self):
@@ -65,13 +66,15 @@ class MatterControllerChipToolCapabilityTests(
         password="hex:776966692d70617373776f7264",
         setup_code=self._setup_code,
         long_discriminator=self._long_discriminator)
-    self.uut.get_manager().set_prop.assert_called_once_with(
+    self.uut.get_manager(
+    ).save_property_to_config.assert_called_once_with(
         self.uut.name, "matter_node_id", self._node_id)
 
   def test_commission_on_network(self):
     self.uut.matter_controller.commission(
         node_id=self._node_id, setup_code=self._setup_code)
-    self.uut.get_manager().set_prop.assert_called_once_with(
+    self.uut.get_manager(
+    ).save_property_to_config.assert_called_once_with(
         self.uut.name, "matter_node_id", self._node_id)
 
   def test_commission_on_network_long(self):
@@ -79,7 +82,8 @@ class MatterControllerChipToolCapabilityTests(
         node_id=self._node_id,
         setup_code=self._setup_code,
         long_discriminator=self._long_discriminator)
-    self.uut.get_manager().set_prop.assert_called_once_with(
+    self.uut.get_manager(
+    ).save_property_to_config.assert_called_once_with(
         self.uut.name, "matter_node_id", self._node_id)
 
   def test_commission_over_ble_thread(self):
@@ -88,7 +92,8 @@ class MatterControllerChipToolCapabilityTests(
         setup_code=self._setup_code,
         long_discriminator=self._long_discriminator,
         operational_dataset="abcd")
-    self.uut.get_manager().set_prop.assert_called_once_with(
+    self.uut.get_manager(
+    ).save_property_to_config.assert_called_once_with(
         self.uut.name, "matter_node_id", self._node_id)
 
   def test_commission_timeout_failure(self):
@@ -106,9 +111,19 @@ class MatterControllerChipToolCapabilityTests(
           setup_code=self._setup_code,
           long_discriminator=self._long_discriminator)
 
+  def test_commission_with_paa_trust_store_path(self):
+    self.uut.matter_controller.commission(
+        node_id=self._node_id,
+        setup_code=self._setup_code,
+        paa_trust_store_path="/home/pi/credentials/development/paa-root-certs")
+    self.uut.get_manager(
+    ).save_property_to_config.assert_called_once_with(
+        self.uut.name, "matter_node_id", self._node_id)
+
   def test_decommission(self):
     self.uut.matter_controller.decommission()
-    self.uut.get_manager().set_prop.assert_called_once_with(
+    self.uut.get_manager(
+    ).save_property_to_config.assert_called_once_with(
         self.uut.name, "matter_node_id", None)
 
   def test_decommission_timeout_failure(self):
@@ -151,6 +166,15 @@ class MatterControllerChipToolCapabilityTests(
       self.uut.matter_controller.upgrade("path/to/chip-tool", "1234")
       file_send.assert_called_once_with("path/to/chip-tool",
                                         "/usr/local/bin/chip-tool")
+
+  def test_factory_reset(self):
+    with mock.patch.object(
+        self.uut, "shell", wraps=self.uut.shell) as shell_wrapper:
+      self.uut.factory_reset()
+      shell_wrapper.assert_has_calls([
+          mock.call("rm -rf /tmp/chip*"),
+          mock.call("/usr/local/bin/chip-tool storage clear-all"),
+      ])
 
 
 if __name__ == "__main__":

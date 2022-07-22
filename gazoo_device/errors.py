@@ -22,7 +22,7 @@ error codes:
     10 - 19     TimeoutError exceptions
     30 - ...    CheckDeviceReadyError exceptions
 """
-from typing import List
+from typing import List, Optional
 
 from gazoo_device import _version
 from gazoo_device import data_types
@@ -614,3 +614,22 @@ class DependencyUnavailableError(DeviceError):
 class SshServerNotRunningError(CheckDeviceReadyError):
   """Raised when a SSH server is not running."""
   err_code = 68
+
+
+class SSHNotConnectedError(CheckDeviceReadyError):
+  """Raised when the device is not available through SSH."""
+  err_code = 69
+
+  def __init__(self,
+               device_name: str,
+               msg: str,
+               recovery: Optional[str] = None):
+    """Inits a SSHNotConnectedError exception.
+
+    Args:
+        device_name: The name of the device.
+        msg: An error message string of the form <error_message> <details>.
+        recovery: An optional message string describing further recovery options
+          if attempted recover does not work.
+    """
+    super().__init__(device_name, msg, recovery=recovery)

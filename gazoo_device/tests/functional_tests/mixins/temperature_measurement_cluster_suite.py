@@ -13,11 +13,10 @@
 # limitations under the License.
 
 """Mixin for Matter Temperature Measurement cluster test suite."""
-from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
 
 
-class TemperatureMeasurementClusterTestSuite(gdm_test_base.GDMTestBase):
+class TemperatureMeasurementClusterTestSuite:
   """Mixin for Matter Temperature Measurement cluster test suite.
 
   The mixin assumes self.endpoint is set.

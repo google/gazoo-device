@@ -26,7 +26,7 @@ A Dimmable light endpoint houses an instance of Dimmable Light Matter device
 type with the following defined clusters on this endpoint:
 
 The required clusters for this endpoint: Scenes, OnOff, Level and Groups.
-The optional clusters for this endpoint: Occupancy.
+The optional clusters for this endpoint: OccupancySensing.
 """
 
 from typing import Union
@@ -34,7 +34,7 @@ from typing import Union
 from gazoo_device import decorators
 from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters import level_control_pw_rpc
-from gazoo_device.capabilities.matter_clusters import occupancy_pw_rpc
+from gazoo_device.capabilities.matter_clusters import occupancy_sensing_pw_rpc
 from gazoo_device.capabilities.matter_clusters import on_off_chip_tool
 from gazoo_device.capabilities.matter_clusters import on_off_pw_rpc
 from gazoo_device.capabilities.matter_endpoints.interfaces import dimmable_light_base
@@ -42,11 +42,6 @@ from gazoo_device.capabilities.matter_endpoints.interfaces import dimmable_light
 
 class DimmableLightEndpoint(dimmable_light_base.DimmableLightBase):
   """Matter Dimmable light endpoint."""
-
-  @decorators.CapabilityDecorator(occupancy_pw_rpc.OccupancyClusterPwRpc)
-  def occupancy(self) -> occupancy_pw_rpc.OccupancyClusterPwRpc:
-    """Matter Occupancy cluster instance."""
-    return self.cluster_lazy_init(matter_enums.OccupancySensingCluster.ID)
 
   @decorators.CapabilityDecorator(
       [on_off_chip_tool.OnOffClusterChipTool, on_off_pw_rpc.OnOffClusterPwRpc])
@@ -61,6 +56,13 @@ class DimmableLightEndpoint(dimmable_light_base.DimmableLightBase):
   def level(self) -> level_control_pw_rpc.LevelControlClusterPwRpc:
     """Matter Level Control cluster instance."""
     return self.cluster_lazy_init(matter_enums.LevelControlCluster.ID)
+
+  @decorators.CapabilityDecorator(
+      occupancy_sensing_pw_rpc.OccupancySensingClusterPwRpc)
+  def occupancy_sensing(
+      self) -> occupancy_sensing_pw_rpc.OccupancySensingClusterPwRpc:
+    """Matter Occupancy Sensing cluster instance."""
+    return self.cluster_lazy_init(matter_enums.OccupancySensingCluster.ID)
 
   # TODO(b/209362086) Add the below clusters
   # def scenes(self):

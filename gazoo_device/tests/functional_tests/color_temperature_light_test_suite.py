@@ -21,6 +21,7 @@ from gazoo_device.tests.functional_tests.utils import gdm_test_base
 
 
 class ColorTemperatureTestSuite(
+    gdm_test_base.GDMTestBase,
     color_control_cluster_suite.ColorControlClusterTestSuite,
     on_off_cluster_suite.OnOffClusterTestSuite,
     level_control_cluster_suite.LevelControlClusterTestSuite):

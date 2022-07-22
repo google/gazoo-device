@@ -25,7 +25,7 @@ from gazoo_device.utility import retry
 
 _FAKE_ACTION = "fake-action"
 _FAKE_DEVICE_NAME = "matter_device"
-_FAKE_SOFTWARE_VERSION = 0
+_FAKE_SOFTWARE_VERSION = "fake-software_version"
 _FAKE_QR_CODE = "fake-qr-code"
 _FAKE_QR_CODE_URL = "fake-qr-code-url"
 _FAKE_PAIRING_INFO = "fake-pairing-info"
@@ -38,6 +38,9 @@ _FAKE_TIMEOUT = 5
 _FAKE_ERROR_MESSAGE = "fake-error-message"
 _FAKE_FABRIC_INFO_INST = mock.Mock(spec=device_service_pb2.FabricInfo,
                                    node_id="fake-node-id")
+_FAKE_VERIFIER = b"fake-verifier"
+_FAKE_SALT = b"fake-salt"
+_FAKE_ITERATION_COUNT = 10
 
 
 class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
@@ -56,7 +59,8 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
   @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "get_device_info")
   def test_get_software_version_on_success(self, mock_get_device_info):
     """Verifies getting software version on success."""
-    mock_get_device_info.return_value.software_version = _FAKE_SOFTWARE_VERSION
+    mock_get_device_info.return_value.software_version_string = (
+        _FAKE_SOFTWARE_VERSION)
     self.assertEqual(self.uut.software_version, _FAKE_SOFTWARE_VERSION)
 
   @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "pairing_info")
@@ -137,7 +141,7 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
   def test_get_device_info_on_success(self, mock_trigger_device_action):
     """Verifies get_device_info on success."""
     fake_device_info = device_service_pb2.DeviceInfo(
-        software_version=_FAKE_SOFTWARE_VERSION)
+        software_version_string=_FAKE_SOFTWARE_VERSION)
     mock_trigger_device_action.return_value = (
         fake_device_info.SerializeToString())
 
@@ -176,6 +180,104 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     fake_get_device_state.return_value.fabric_info = ret_fabric_info
 
     self.assertEqual(expected_pairing_state, self.uut.pairing_state)
+
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
+  def test_get_spake_info_on_success(self, mock_trigger_device_action):
+    """Verifies get_spake_info on success."""
+    fake_spake_info = device_service_pb2.SpakeInfo(
+        verifier=_FAKE_VERIFIER, salt=_FAKE_SALT)
+    mock_trigger_device_action.return_value = (
+        fake_spake_info.SerializeToString())
+
+    self.assertEqual(fake_spake_info, self.uut.get_spake_info())
+    mock_trigger_device_action.assert_called_once_with(action="GetSpakeInfo")
+
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
+  @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "get_spake_info")
+  def test_set_spake_info_on_success(
+      self, mock_get_spake_info, mock_trigger_device_action):
+    """Verifies set_spake_info on success."""
+    mock_get_spake_info.return_value = mock.Mock(
+        verifier=_FAKE_VERIFIER,
+        salt=_FAKE_SALT,
+        iteration_count=_FAKE_ITERATION_COUNT)
+
+    self.uut.set_spake_info()
+
+    mock_trigger_device_action.assert_called_once_with(
+        action="SetSpakeInfo",
+        verifier=_FAKE_VERIFIER,
+        salt=_FAKE_SALT,
+        iteration_count=_FAKE_ITERATION_COUNT)
+
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
+  def test_is_advertising(self, mock_trigger_device_action):
+    """Verifies is_advertising on success."""
+    fake_advertising_state = device_service_pb2.PairingState(
+        pairing_enabled=True)
+    mock_trigger_device_action.return_value = (
+        fake_advertising_state.SerializeToString())
+
+    self.assertTrue(self.uut.is_advertising)
+
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault,
+      "pairing_state", new_callable=mock.PropertyMock(return_value=True))
+  def test_start_advertising_noop(
+      self, mock_pairing_state, mock_trigger_device_action):
+    """Verifies start_advertising noop."""
+    self.uut.start_advertising()
+
+    self.assertEqual(0, mock_trigger_device_action.call_count)
+
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault,
+      "pairing_state", new_callable=mock.PropertyMock(return_value=False))
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault,
+      "is_advertising", new_callable=mock.PropertyMock(return_value=False))
+  def test_start_advertising_on_success(
+      self,
+      mock_is_advertising,
+      mock_pairing_state,
+      mock_trigger_device_action):
+    """Verifies start_advertising on success."""
+    self.uut.start_advertising()
+
+    mock_trigger_device_action.assert_called_once_with(
+        action="SetPairingState", pairing_enabled=True)
+
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault,
+      "is_advertising", new_callable=mock.PropertyMock(return_value=False))
+  def test_stop_advertising_noop(
+      self, mock_is_advertising, mock_trigger_device_action):
+    """Verifies stop_advertising noop."""
+    self.uut.stop_advertising()
+
+    self.assertEqual(0, mock_trigger_device_action.call_count)
+
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault,
+      "is_advertising", new_callable=mock.PropertyMock(return_value=True))
+  def test_stop_advertising_on_success(
+      self, mock_is_advertising, mock_trigger_device_action):
+    """Verifies stop_advertising on success."""
+    self.uut.stop_advertising()
+
+    mock_trigger_device_action.assert_called_once_with(
+        action="SetPairingState", pairing_enabled=False)
 
   def test_trigger_device_actio_on_success(self):
     """Verifies _trigger_device_action on success."""

@@ -553,24 +553,6 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def transport_jlink_flash(self, image_path, port=0):
-    """Sends the flash command to the 'J-Link' transport.
-
-    Args:
-        image_path (str): path to the image file to be flashed onto the
-          device.
-        port (int): the transport port to send the command to.
-    """
-
-  @abc.abstractmethod
-  def transport_jlink_reset(self, port=0):
-    """Sends the reset command to the J - Link transport.
-
-    Args:
-        port(int): the transport port to send the command to.
-    """
-
-  @abc.abstractmethod
   def transport_serial_set_baudrate(self, new_baudrate, port=0):
     """Sets the serial interface baudrate to a different baudrate.
 
@@ -586,14 +568,6 @@ class SwitchboardBase(capability_base.CapabilityBase):
   @abc.abstractmethod
   def transport_serial_send_xon(self, port=0):
     """Sends the XON control character to the serial interface.
-
-    Args:
-        port(int or str): the transport port to open
-    """
-
-  @abc.abstractmethod
-  def transport_serial_send_xoff(self, port=0):
-    """Sends the XOFF control character to the serial interface.
 
     Args:
         port(int or str): the transport port to open

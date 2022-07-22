@@ -41,5 +41,29 @@ class LevelControlClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
       The current level.
     """
 
+  @property
+  @abc.abstractmethod
+  def min_level(self) -> int:
+    """The MinLevel attribute.
+
+    The MinLevel attribute indicates the minimum value of CurrentLevel that is
+    capable of being assigned.
+
+    Returns:
+      The min level.
+    """
+
+  @property
+  @abc.abstractmethod
+  def max_level(self) -> int:
+    """The MaxLevel attribute.
+
+    The MaxLevel attribute indicates the maximum value of CurrentLevel that is
+    capable of being assigned.
+
+    Returns:
+      The max level.
+    """
+
   # TODO(b/212193200)
   # Add additional attributes / commands for level control cluster

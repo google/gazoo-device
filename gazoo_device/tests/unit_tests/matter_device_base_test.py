@@ -24,9 +24,13 @@ from gazoo_device.capabilities import device_power_default
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.capabilities.matter_endpoints import color_temperature_light
+from gazoo_device.capabilities.matter_endpoints import contact_sensor
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
+from gazoo_device.capabilities.matter_endpoints import humidity_sensor
+from gazoo_device.capabilities.matter_endpoints import occupancy_sensor
 from gazoo_device.capabilities.matter_endpoints import on_off_light
+from gazoo_device.capabilities.matter_endpoints import on_off_light_switch
 from gazoo_device.capabilities.matter_endpoints import pressure_sensor
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
@@ -263,10 +267,37 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
   @mock.patch.object(
       matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
       "get_endpoint_instance_by_class")
+  def test_humidity_sensor_alias(self, mock_get_endpoint):
+    """Verifies humidity_sensor endpoint alias on success."""
+    self.assertIsNotNone(self.uut.humidity_sensor)
+    mock_get_endpoint.assert_called_once_with(
+        humidity_sensor.HumiditySensorEndpoint)
+
+  @mock.patch.object(
+      matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
+      "get_endpoint_instance_by_class")
+  def test_occupancy_sensor_alias(self, mock_get_endpoint):
+    """Verifies occupancy_sensor endpoint alias on success."""
+    self.assertIsNotNone(self.uut.occupancy_sensor)
+    mock_get_endpoint.assert_called_once_with(
+        occupancy_sensor.OccupancySensorEndpoint)
+
+  @mock.patch.object(
+      matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
+      "get_endpoint_instance_by_class")
   def test_on_off_light_alias(self, mock_get_endpoint):
     """Verifies on_off_light endpoint alias on success."""
     self.assertIsNotNone(self.uut.on_off_light)
     mock_get_endpoint.assert_called_once_with(on_off_light.OnOffLightEndpoint)
+
+  @mock.patch.object(
+      matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
+      "get_endpoint_instance_by_class")
+  def test_on_off_light_switch_alias(self, mock_get_endpoint):
+    """Verifies on_off_light_switch endpoint alias on success."""
+    self.assertIsNotNone(self.uut.on_off_light_switch)
+    mock_get_endpoint.assert_called_once_with(
+        on_off_light_switch.OnOffLightSwitchEndpoint)
 
   @mock.patch.object(
       matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
@@ -285,6 +316,15 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
     self.assertIsNotNone(self.uut.temperature_sensor)
     mock_get_endpoint.assert_called_once_with(
         temperature_sensor.TemperatureSensorEndpoint)
+
+  @mock.patch.object(
+      matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
+      "get_endpoint_instance_by_class")
+  def test_contact_sensor_alias(self, mock_get_endpoint):
+    """Verifies contact_sensor endpoint alias on success."""
+    self.assertIsNotNone(self.uut.contact_sensor)
+    mock_get_endpoint.assert_called_once_with(
+        contact_sensor.ContactSensorEndpoint)
   # ***************************************************************** #
 
 

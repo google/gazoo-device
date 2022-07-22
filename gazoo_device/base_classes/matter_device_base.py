@@ -26,9 +26,13 @@ from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities import pwrpc_button_default
 from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.capabilities.matter_endpoints import color_temperature_light
+from gazoo_device.capabilities.matter_endpoints import contact_sensor
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
+from gazoo_device.capabilities.matter_endpoints import humidity_sensor
+from gazoo_device.capabilities.matter_endpoints import occupancy_sensor
 from gazoo_device.capabilities.matter_endpoints import on_off_light
+from gazoo_device.capabilities.matter_endpoints import on_off_light_switch
 from gazoo_device.capabilities.matter_endpoints import pressure_sensor
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.protos import attributes_service_pb2
@@ -61,6 +65,11 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
   # RPCs.
   VALID_BUTTON_IDS = ()
 
+  # Default pigweed transport port number. For Matter dev board controllers,
+  # the port number should be 0. RPi Matter controller should be 2 which is
+  # overriden in the device class.
+  _PIGWEED_PORT = 0
+
   def __init__(self,
                manager,
                device_config,
@@ -82,8 +91,7 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
     """Gets the persistent and optional attributes of a device during setup.
 
     Returns:
-      Dictionary of persistent attributes and dictionary of
-      optional attributes.
+      Dictionary of persistent attributes and dictionary of optional attributes.
     """
     persistent_dict = self.props["persistent_identifiers"]
     address = persistent_dict["console_port_name"]
@@ -122,7 +130,7 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
   @decorators.DynamicProperty
   def firmware_version(self) -> str:
     """Firmware version of the device."""
-    return str(self.pw_rpc_common.software_version)
+    return self.pw_rpc_common.software_version
 
   @decorators.PersistentProperty
   def vendor_id(self) -> str:
@@ -242,7 +250,7 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
         pwrpc_button_default.PwRPCButtonDefault,
         device_name=self.name,
         valid_button_ids=self.VALID_BUTTON_IDS,
-        switchboard_call=self.switchboard.call,
+        switchboard_call=self.pw_rpc_common.call,
         rpc_timeout_s=_RPC_TIMEOUT)
 
   @decorators.CapabilityDecorator(pwrpc_common_default.PwRPCCommonDefault)
@@ -252,7 +260,8 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
         pwrpc_common_default.PwRPCCommonDefault,
         device_name=self.name,
         switchboard_call=self.switchboard.call,
-        rpc_timeout_s=_RPC_TIMEOUT)
+        rpc_timeout_s=_RPC_TIMEOUT,
+        pigweed_port=self._PIGWEED_PORT)
 
   @decorators.CapabilityDecorator(
       matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc)
@@ -262,7 +271,7 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
     return self.lazy_init(
         matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
         device_name=self.name,
-        switchboard_call=self.switchboard.call,
+        switchboard_call=self.pw_rpc_common.call,
         rpc_timeout_s=_RPC_TIMEOUT
     )
 
@@ -299,6 +308,20 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
     return self.matter_endpoints.get_endpoint_instance_by_class(
         color_temperature_light.ColorTemperatureLightEndpoint)
 
+  @decorators.CapabilityDecorator(contact_sensor.ContactSensorEndpoint)
+  def contact_sensor(self) -> contact_sensor.ContactSensorEndpoint:
+    """Matter Contact Sensor endpoint instance.
+
+    Returns:
+      Contact Sensor endpoint instance.
+
+    Raises:
+      DeviceError when Contact Sensor endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        contact_sensor.ContactSensorEndpoint)
+
   @decorators.CapabilityDecorator(dimmable_light.DimmableLightEndpoint)
   def dimmable_light(self) -> dimmable_light.DimmableLightEndpoint:
     """Matter Dimmable Light endpoint instance.
@@ -327,6 +350,34 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
     return self.matter_endpoints.get_endpoint_instance_by_class(
         door_lock.DoorLockEndpoint)
 
+  @decorators.CapabilityDecorator(occupancy_sensor.OccupancySensorEndpoint)
+  def occupancy_sensor(self) -> occupancy_sensor.OccupancySensorEndpoint:
+    """Matter Occupancy Sensor endpoint instance.
+
+    Returns:
+      Occupancy Sensor endpoint instance.
+
+    Raises:
+      DeviceError when Occupancy Sensor endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        occupancy_sensor.OccupancySensorEndpoint)
+
+  @decorators.CapabilityDecorator(humidity_sensor.HumiditySensorEndpoint)
+  def humidity_sensor(self) -> humidity_sensor.HumiditySensorEndpoint:
+    """Matter Humidity Sensor endpoint instance.
+
+    Returns:
+      Humidity Sensor endpoint instance.
+
+    Raises:
+      DeviceError when Humidity Sensor endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        humidity_sensor.HumiditySensorEndpoint)
+
   @decorators.CapabilityDecorator(on_off_light.OnOffLightEndpoint)
   def on_off_light(self) -> on_off_light.OnOffLightEndpoint:
     """Matter OnOff Light endpoint instance.
@@ -341,19 +392,19 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
     return self.matter_endpoints.get_endpoint_instance_by_class(
         on_off_light.OnOffLightEndpoint)
 
-  @decorators.CapabilityDecorator(temperature_sensor.TemperatureSensorEndpoint)
-  def temperature_sensor(self) -> temperature_sensor.TemperatureSensorEndpoint:
-    """Matter Temperature Sensor endpoint instance.
+  @decorators.CapabilityDecorator(on_off_light_switch.OnOffLightSwitchEndpoint)
+  def on_off_light_switch(self) -> on_off_light_switch.OnOffLightSwitchEndpoint:
+    """Matter OnOff Light Switch endpoint instance.
 
     Returns:
-      Temperature Sensor endpoint instance.
+      OnOff Light Switch endpoint instance.
 
     Raises:
-      DeviceError when Temperature Sensor endpoint is not supported on the
+      DeviceError when OnOff Light Switch endpoint is not supported on the
       device.
     """
     return self.matter_endpoints.get_endpoint_instance_by_class(
-        temperature_sensor.TemperatureSensorEndpoint)
+        on_off_light_switch.OnOffLightSwitchEndpoint)
 
   @decorators.CapabilityDecorator(pressure_sensor.PressureSensorEndpoint)
   def pressure_sensor(self) -> pressure_sensor.PressureSensorEndpoint:
@@ -368,4 +419,18 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
     """
     return self.matter_endpoints.get_endpoint_instance_by_class(
         pressure_sensor.PressureSensorEndpoint)
+
+  @decorators.CapabilityDecorator(temperature_sensor.TemperatureSensorEndpoint)
+  def temperature_sensor(self) -> temperature_sensor.TemperatureSensorEndpoint:
+    """Matter Temperature Sensor endpoint instance.
+
+    Returns:
+      Temperature Sensor endpoint instance.
+
+    Raises:
+      DeviceError when Temperature Sensor endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        temperature_sensor.TemperatureSensorEndpoint)
   # ***************************************************************** #

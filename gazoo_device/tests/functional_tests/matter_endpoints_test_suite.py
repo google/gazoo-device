@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test suite for devices using the matter_endpoints capability."""
+import logging
 from typing import Type
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
@@ -79,6 +80,14 @@ class MatterEndpointsPwRpcTestSuite(gdm_test_base.GDMTestBase):
         bool(endpoint_instances_and_cluster_flavors),
         "get_supported_endpoint_instances_and_cluster_flavors should not "
         "return empty mapping.")
+
+  def test_log_endpoints_and_supported_clusters(self):
+    """Logs endpoints and supported clusters for debugging purposes."""
+    logging.info("%s endpoint to clusters supported by GDM:", self.device.name)
+    for endpoint_id in self.device.matter_endpoints.list():
+      endpoint_instance = self.device.matter_endpoints.get(endpoint_id)
+      supported_cluster_names = endpoint_instance.get_supported_clusters()
+      logging.info("\t%s: %s", endpoint_instance, supported_cluster_names)
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Matter endpoint capability wrapper via Pigweed RPC."""
-from typing import Any, Callable, List, Set, Type
+from typing import Any, Callable, List, Set, Tuple, Type
 
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -62,7 +62,7 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
   def get_supported_endpoint_ids(self) -> List[int]:
     """Gets the list of supported endpoint ids on the device."""
     ack, list_of_supported_endpoints = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_DESCRIPTOR_SERVICE_NAME,
                      _DESCRIPTOR_GET_ENDPOINTS_RPC_NAME),
         method_kwargs={
@@ -78,19 +78,19 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
       supported_endpoint_ids.append(endpoint.endpoint)
     return supported_endpoint_ids
 
-  def get_endpoint_class(self,
-                         endpoint_id: int) -> Type[endpoint_base.EndpointBase]:
-    """Gets the endpoint class by the given endpoint id.
+  def get_endpoint_class_and_device_type_id(
+      self, endpoint_id: int) -> Tuple[Type[endpoint_base.EndpointBase], int]:
+    """Gets the endpoint class and device type ID by the given endpoint id.
 
     Args:
       endpoint_id: The given endpoint ID on the device.
 
     Returns:
-      The endpoint class module, or UnsupportedEndpoint if the endpoint is not
-      yet supported in GDM.
+      The endpoint class module (or UnsupportedEndpoint if the endpoint is not
+      yet supported in GDM) and the device type ID.
     """
     ack, device_types = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_DESCRIPTOR_SERVICE_NAME,
                      _DESCRIPTOR_DEVICE_TYPE_RPC_NAME),
         method_kwargs={
@@ -102,17 +102,17 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
     device_type = descriptor_service_pb2.DeviceType.FromString(device_types[0])
     device_type_id = device_type.device_type
 
-    # Store the endpoint ID to device type ID mapping.
-    self._endpoint_id_to_device_type_id[endpoint_id] = device_type_id
+    endpoint_class = (
+        matter_endpoints_and_clusters.MATTER_DEVICE_TYPE_ID_TO_CLASS_PW_RPC.
+        get(device_type_id, unsupported_endpoint.UnsupportedEndpoint))
 
-    return matter_endpoints_and_clusters.MATTER_DEVICE_TYPE_ID_TO_CLASS_PW_RPC.get(
-        device_type_id, unsupported_endpoint.UnsupportedEndpoint)
+    return endpoint_class, device_type_id
 
   def get_supported_clusters(
       self, endpoint_id: int) -> Set[Type[cluster_base.ClusterBase]]:
     """Retrieves the supported clusters from the given endpoint ID."""
     ack, clusters = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_DESCRIPTOR_SERVICE_NAME,
                      _DESCRIPTOR_GET_CLUSTERS_RPC_NAME),
         method_kwargs={
@@ -168,7 +168,7 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
         "pw_rpc_timeout_s": self._rpc_timeout_s}
 
     ack, data_in_bytes = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_ATTRIBUTE_SERVICE_NAME, _ATTRIBUTE_READ_RPC_NAME),
         method_kwargs=read_kwargs)
     if not ack:
@@ -222,7 +222,7 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
     write_kwargs = {"data": serialized_data, "metadata": serialized_metadata}
 
     ack, _ = self._switchboard_call(
-        method=pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_ATTRIBUTE_SERVICE_NAME, _ATTRIBUTE_WRITE_RPC_NAME),
         method_kwargs=write_kwargs)
     if not ack:

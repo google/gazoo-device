@@ -55,6 +55,12 @@ DEVICE_TYPE_TO_COMMS_ADDRESS = immutabledict.immutabledict({
        for adb_device_type in fake_detect_playback.ADB_DEVICE_BEHAVIORS},
     **{jlink_device_type: _JLINK_ADDRESS
        for jlink_device_type in fake_detect_playback.JLINK_DEVICE_BEHAVIORS},
+    **{pigweed_serial_device_type: _SERIAL_ADDRESS
+       for pigweed_serial_device_type in
+       fake_detect_playback.PIGWEED_SERIAL_DEVICE_BEHAVIORS},
+    **{pigweed_socket_device_type: _IP_ADDRESS
+       for pigweed_socket_device_type in
+       fake_detect_playback.PIGWEED_SOCKET_DEVICE_BEHAVIORS},
     **{serial_device_type: _SERIAL_ADDRESS
        for serial_device_type in fake_detect_playback.SERIAL_DEVICE_BEHAVIORS},
     **{singleton_device_type: _SERIAL_ADDRESS
@@ -79,9 +85,11 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
       (host_utils, "ssh_command", "ssh_command"),
       (http_utils, "is_valid_ip_address", None),
       (http_utils, "send_http_get", "send_http_get"),
+      (pwrpc_utils, "is_matter_device", "is_matter_device"),
       (subprocess, "check_output", "check_output"),
       (usb_utils, "get_product_name_from_path", "get_product_name"),
       (usb_utils, "get_serial_number_from_path", "get_serial_number"),
+      (usb_utils, "get_device_info", "get_device_manufacturer"),
       (usb_utils, "get_usb_device_from_serial_number",
        "get_usb_device_from_serial_number"),
   )
@@ -145,6 +153,18 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
     """Verifies detection criteria for the UsbComms type."""
     self._test_comms_type(
         "UsbComms", fake_detect_playback.USB_DEVICE_BEHAVIORS)
+
+  def test_pigweed_serial_devices(self):
+    """Verifies detection criteria for the PigweedSerialComms type."""
+    self._test_comms_type(
+        "PigweedSerialComms",
+        fake_detect_playback.PIGWEED_SERIAL_DEVICE_BEHAVIORS)
+
+  def test_pigweed_socket_devices(self):
+    """Verifies detection criteria for the PigweedSocketComms type."""
+    self._test_comms_type(
+        "PigweedSocketComms",
+        fake_detect_playback.PIGWEED_SOCKET_DEVICE_BEHAVIORS)
 
   def test_pty_process_name_query(self):
     """Tests _pty_process_name_query."""
@@ -229,6 +249,25 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
         detect_criteria._is_matter_device_query(
             address=_SERIAL_ADDRESS,
             detect_logger=fake_detect_logger,
+            create_switchboard_func=mock.MagicMock()))
+
+  @mock.patch.object(host_utils, "ssh_command")
+  def test_is_matter_app_running_query_return_true(self, fake_ssh_command):
+    """Verifies _is_matter_app_running_query method returns true."""
+    self.assertTrue(
+        detect_criteria._is_matter_app_running_query(
+            address=_IP_ADDRESS,
+            detect_logger=mock.MagicMock(spec=logging.Logger),
+            create_switchboard_func=mock.MagicMock()))
+    fake_ssh_command.assert_called_once()
+
+  @mock.patch.object(host_utils, "ssh_command", side_effect=RuntimeError)
+  def test_is_matter_app_running_query_return_false(self, fake_ssh_command):
+    """Verifies _is_matter_app_running_query method returns false."""
+    self.assertFalse(
+        detect_criteria._is_matter_app_running_query(
+            address=_IP_ADDRESS,
+            detect_logger=mock.MagicMock(spec=logging.Logger),
             create_switchboard_func=mock.MagicMock()))
 
   def _test_comms_type(

@@ -13,9 +13,12 @@
 # limitations under the License.
 
 """Unit tests for the raspberry_pi_matter_controller module."""
+from unittest import mock
+
 from gazoo_device import errors
 from gazoo_device.auxiliary_devices import raspberry_pi_matter_controller
 from gazoo_device.base_classes import raspbian_device
+from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import on_off_light
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.tests.unit_tests.utils import raspberry_pi_matter_controller_device_logs
@@ -52,7 +55,17 @@ class RaspberryPiMatterControllerTests(
   def test_initialize_matter_endpoints_accessor_capability(self):
     self.assertIsNotNone(self.uut.matter_endpoints)
 
-  def test_initialize_matter_endpoints_accessor_aliases(self):
+  @mock.patch.object(raspberry_pi_matter_controller.RaspberryPiMatterController,
+                     "matter_endpoints")
+  def test_initialize_dimmable_light_aliases(self, mock_matter_endpoints):
+    mock_matter_endpoints.get_endpoint_instance_by_class.return_value = (
+        dimmable_light.DimmableLightEndpoint(device_name=self.uut.name,
+                                             identifier=2,
+                                             supported_clusters=set()))
+    self.assertIsInstance(self.uut.dimmable_light,
+                          dimmable_light.DimmableLightEndpoint)
+
+  def test_initialize_on_off_light_aliases(self):
     self.assertIsInstance(self.uut.on_off_light,
                           on_off_light.OnOffLightEndpoint)
 
@@ -61,6 +74,12 @@ class RaspberryPiMatterControllerTests(
     del self.device_config["options"]["matter_node_id"]
     with self.assertRaises(errors.DeviceError):
       _ = self.uut.matter_endpoints
+
+  @mock.patch.object(raspberry_pi_matter_controller.RaspberryPiMatterController,
+                     "factory_reset")
+  def test_factory_reset(self, mock_factory_reset):
+    self.uut.factory_reset()
+    mock_factory_reset.assert_called_once()
 
 
 if __name__ == "__main__":

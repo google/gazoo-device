@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Unit tests for device class Esp32Matter."""
+import unittest
+from gazoo_device.capabilities import flash_build_esptool
 from gazoo_device.primary_devices import esp32_matter
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
@@ -44,6 +46,8 @@ class Esp32MatterTests(fake_device_test_case.FakeDeviceTestCase):
     """Verifies the initialization of pw_rpc_wifi capability."""
     self.assertIsNotNone(self.uut.pw_rpc_wifi)
 
+  @unittest.skipIf(not flash_build_esptool._ESPTOOL_AVAILABLE,
+                   "esptool is not installed")
   def test_flash_build_capability(self):
     """Verifies the initialization of flash_build capability."""
     self.assertIsNotNone(self.uut.flash_build)

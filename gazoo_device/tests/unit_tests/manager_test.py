@@ -701,7 +701,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           self.uut.get_device_prop(self.first_name, "serial_number"))
       # Device is not closed by action
       self.assertIn(device.name, self.uut.get_open_device_names())
-      self.assertTrue(self.uut.set_prop(self.first_name, "alias", "phony"))
+      self.assertIsNone(self.uut.set_prop(self.first_name, "alias", "phony"))
       self.assertIn(device.name, self.uut.get_open_device_names())
       device.close()
 

@@ -70,6 +70,12 @@ _RESPONSES = ({
     "resp": _COMMISSION_SUCCESS_RESPONSE,
     "code": 0,
 }, {
+    "cmd": "/usr/local/bin/chip-tool pairing onnetwork 1234 20202021 "
+           "--paa-trust-store-path "
+           "/home/pi/credentials/development/paa-root-certs",
+    "resp": _COMMISSION_SUCCESS_RESPONSE,
+    "code": 0,
+}, {
     "cmd": "/usr/local/bin/chip-tool pairing onnetwork 1234 00000000",
     "resp": _COMMAND_TIMEOUT_FAILURE,
     "code": 1,
@@ -521,6 +527,15 @@ _RESPONSES = ({
 }, {
     "cmd": "echo 1234 > ~/.matter_sdk_version",
     "resp": "",
+    "code": 0,
+}, {
+    "cmd": "rm -rf /tmp/chip*",
+    "resp": "",
+    "code": 0,
+}, {
+    "cmd": "/usr/local/bin/chip-tool storage clear-all",
+    "resp":
+        "[1658180504.043668][493408:493408] CHIP:TOO: Clearing Default storage",
     "code": 0,
 })
 

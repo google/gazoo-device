@@ -17,6 +17,7 @@ import fcntl
 import importlib
 import queue
 import select
+import socket
 import threading
 from unittest import mock
 
@@ -29,6 +30,7 @@ import serial
 _FAKE_DEVICE_ADDRESS = "/some/fake/device/address"
 _FAKE_PROTO_IMPORT_PATH = ("gazoo_device.protos.some_proto_pb2",)
 _FAKE_BAUDRATE = 115200
+_FAKE_PORT = 33000
 _FAKE_HDLC_LOG = "<inf> chip: 30673 [ZCL]Cluster callback: 6"
 _FAKE_SERVICE = "fake_service"
 _FAKE_EVENT = "fake_event"
@@ -39,6 +41,8 @@ _FAKE_FRAME_ADDRESS = 0
 _STDOUT_ADDRESS = 1
 _DEFAULT_ADDRESS = ord("R")
 _FAKE_FILENO = 0
+_FAKE_SIZE = 0
+_FAKE_TIMEOUT = 0.01
 
 _FAKE_PROTO_MODULE_PATH = (
     "gazoo_device.switchboard.transports.pigweed_rpc_transport.python_protos")
@@ -73,8 +77,30 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
     self.addCleanup(decode_patcher.stop)
     self.fake_decoder = fake_decode.FrameDecoder.return_value
     self.uut = pigweed_rpc_transport.PwHdlcRpcClient(
-        serial_instance=mock.Mock(spec=serial.Serial),
+        file_object=mock.Mock(spec=serial.Serial),
         protobuf_import_paths=_FAKE_PROTO_IMPORT_PATH)
+
+  def test_serial_fd_instance(self):
+    """Verifies serial instance for file descriptor."""
+    client = pigweed_rpc_transport.PwHdlcRpcClient(
+        file_object=mock.Mock(spec=serial.Serial),
+        protobuf_import_paths=_FAKE_PROTO_IMPORT_PATH)
+    self.assertIsNotNone(client)
+
+  def test_socket_fd_instance(self):
+    """Verifies socket instance for file descriptor."""
+    client = pigweed_rpc_transport.PwHdlcRpcClient(
+        file_object=mock.Mock(spec=socket.socket),
+        protobuf_import_paths=_FAKE_PROTO_IMPORT_PATH)
+    self.assertIsNotNone(client)
+
+  def test_client_initialization_failure(self):
+    """Verifies client initialization on failure with incorrect type."""
+    with self.assertRaisesRegex(errors.DeviceError,
+                                "Invalid file object type"):
+      pigweed_rpc_transport.PwHdlcRpcClient(
+          file_object=mock.Mock(),
+          protobuf_import_paths=_FAKE_PROTO_IMPORT_PATH)
 
   def test_is_alive(self):
     """Verifies is_alive method returning True."""
@@ -109,6 +135,11 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
       self.uut.close()
 
+  def test_rpcs_returns_none_when_client_is_none(self):
+    """Verifies rpcs method returns none when client is none."""
+    self.uut._client = None
+    self.assertIsNone(self.uut.rpcs())
+
   def test_rpcs_on_success_without_channel_id(self):
     """Verifies rpcs method on success without channel id."""
     self.uut._client = mock.Mock()
@@ -137,7 +168,7 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
     self.uut.read_and_process_data()
 
     self.assertEqual(2, self.uut._stop_event.is_set.call_count)
-    fake_fd.read.assert_called_once()
+    self.uut._file_object.read.assert_called_once()
     mock_select.assert_called_once()
     mock_handle.assert_called_once()
 
@@ -148,7 +179,7 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
     self.uut._stop_event = mock.Mock(threading.Event)
     self.uut._stop_event.is_set.side_effect = [False, True]
     fake_fd = mock.Mock(serial.Serial)
-    fake_fd.read.side_effect = RuntimeError
+    self.uut._file_object.read.side_effect = RuntimeError
     mock_select.return_value = [fake_fd], [], []
 
     self.uut.read_and_process_data()
@@ -225,8 +256,63 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
     mock_logger.exception.assert_called_once()
 
 
-class PigweedRPCTransportTest(unit_test_case.UnitTestCase):
-  """Unit test for Pigweed RPC Transport."""
+class PigweedRpcModuleMethodsTest(unit_test_case.UnitTestCase):
+  """Unit test for pigweed_rpc_transport module methods."""
+
+  def test_is_primitive_return_true(self):
+    """Verifies _is_primitive method returning true for primitive data type."""
+    self.assertTrue(pigweed_rpc_transport._is_primitive(_FAKE_DATA))
+
+  def test_is_primitive_return_false(self):
+    """Verifies _is_primitive method returning false for complex data type."""
+    complex_fake_data = mock.Mock()
+    self.assertFalse(pigweed_rpc_transport._is_primitive(complex_fake_data))
+
+  def test_serialize(self):
+    """Verifies _serialize method on success for a list type input."""
+    fake_protobuf_data = mock.Mock()
+    fake_protobuf_data.SerializeToString.return_value = _FAKE_SERIALIZED_BYTES
+    fake_payload = [_FAKE_DATA, fake_protobuf_data]
+
+    self.assertEqual([_FAKE_DATA, _FAKE_SERIALIZED_BYTES],
+                     pigweed_rpc_transport._serialize(fake_payload))
+
+  @mock.patch.object(pigweed_rpc_transport, "_serialize")
+  def test_rpc_hdlc_client_alive(self, mock_serialize):
+    """Verifies rpc method with alive hdlc client."""
+    fake_ack = mock.Mock()
+    fake_ack.ok.return_value = True
+    fake_channel = mock.Mock()
+    fake_channel.fake_service.fake_event.return_value = fake_ack, None
+    fake_client = mock.Mock(spec=pigweed_rpc_transport.PwHdlcRpcClient)
+    fake_client.is_alive.return_value = True
+    fake_client.rpcs.return_value.chip.rpc = fake_channel
+    mock_serialize.return_value = _FAKE_SERIALIZED_BYTES
+
+    ack, payload = pigweed_rpc_transport._rpc(
+        hdlc_client=fake_client,
+        service_name=_FAKE_SERVICE,
+        event_name=_FAKE_EVENT)
+
+    self.assertTrue(ack)
+    self.assertEqual(_FAKE_SERIALIZED_BYTES, payload)
+
+  def test_transport_rpc_hdlc_client_not_alive(self):
+    """Verifies PwRPC transport rpc call with not alive hdlc client."""
+    fake_client = mock.Mock(spec=pigweed_rpc_transport.PwHdlcRpcClient)
+    fake_client.is_alive.return_value = False
+
+    ack, payload = pigweed_rpc_transport._rpc(
+        hdlc_client=fake_client,
+        service_name=_FAKE_SERVICE,
+        event_name=_FAKE_EVENT)
+
+    self.assertFalse(ack)
+    self.assertIsNone(payload)
+
+
+class PigweedRpcSerialTransportTest(unit_test_case.UnitTestCase):
+  """Unit test for Pigweed RPC serial transport."""
 
   def setUp(self):
     super().setUp()
@@ -239,8 +325,10 @@ class PigweedRPCTransportTest(unit_test_case.UnitTestCase):
     self.fake_serial.fileno.return_value = _FAKE_FILENO
     self.addCleanup(client_patcher.stop)
     self.addCleanup(serial_patcher.stop)
-    self.uut = pigweed_rpc_transport.PigweedRPCTransport(
-        _FAKE_DEVICE_ADDRESS, _FAKE_PROTO_IMPORT_PATH, _FAKE_BAUDRATE)
+    self.uut = pigweed_rpc_transport.PigweedRpcSerialTransport(
+        comms_address=_FAKE_DEVICE_ADDRESS,
+        protobuf_import_paths=_FAKE_PROTO_IMPORT_PATH,
+        baudrate=_FAKE_BAUDRATE)
 
   def test_transport_is_open(self):
     """Verifies PwRPC transport is_open method on success."""
@@ -271,57 +359,70 @@ class PigweedRPCTransportTest(unit_test_case.UnitTestCase):
   def test_transport_read(self):
     """Verifies PwRPC transport read method."""
     self.fake_client.log_queue.get.side_effect = [_FAKE_HDLC_LOG, queue.Empty]
-    self.assertEqual(_FAKE_HDLC_LOG, self.uut.read(0, 0.01))
-    self.assertEqual(b"", self.uut.read(0, 0.01))
+    self.assertEqual(_FAKE_HDLC_LOG, self.uut.read(_FAKE_SIZE, _FAKE_TIMEOUT))
+    self.assertEqual(b"", self.uut.read(_FAKE_SIZE, _FAKE_TIMEOUT))
 
   def test_transport_write(self):
     """Verifies PwRPC transport write method."""
     self.assertEqual(0, self.uut._write(""))
 
-  @mock.patch.object(pigweed_rpc_transport, "_serialize")
-  def test_transport_rpc_hdlc_client_alive(self, mock_serialize):
-    """Verifies PwRPC transport rpc call with alive hdlc client."""
-    fake_ack = mock.Mock()
-    fake_ack.ok.return_value = True
-    fake_channel = mock.Mock()
-    fake_channel.fake_service.fake_event.return_value = fake_ack, None
+  @mock.patch.object(pigweed_rpc_transport, "_rpc")
+  def test_transport_rpc(self, mock_rpc):
+    """Verifies the transport rpc method on success."""
+    self.uut.rpc(service_name=_FAKE_SERVICE, event_name=_FAKE_EVENT)
+    mock_rpc.assert_called_once()
+
+
+class PigweedRpcSocketTransportTest(unit_test_case.UnitTestCase):
+  """Unit test for Pigweed RPC socket transport."""
+
+  def setUp(self):
+    super().setUp()
+    client_patcher = mock.patch.object(pigweed_rpc_transport, "PwHdlcRpcClient")
+    socket_patcher = mock.patch.object(socket, "socket")
+    client_class = client_patcher.start()
+    socket_class = socket_patcher.start()
+    self.fake_client = client_class.return_value
+    self.fake_socket = socket_class.return_value
+    self.addCleanup(client_patcher.stop)
+    self.addCleanup(socket_patcher.stop)
+    self.uut = pigweed_rpc_transport.PigweedRpcSocketTransport(
+        comms_address=_FAKE_DEVICE_ADDRESS,
+        protobuf_import_paths=_FAKE_PROTO_IMPORT_PATH,
+        port=_FAKE_PORT)
+
+  def test_transport_is_open(self):
+    """Verifies if the transport is_open method on success."""
     self.fake_client.is_alive.return_value = True
-    self.fake_client.rpcs.return_value.chip.rpc = fake_channel
-    mock_serialize.return_value = _FAKE_SERIALIZED_BYTES
+    self.assertTrue(self.uut.is_open())
 
-    ack, payload = self.uut.rpc(service_name=_FAKE_SERVICE,
-                                event_name=_FAKE_EVENT)
+  def test_transport_close(self):
+    """Verifies if the transport _close method on success."""
+    self.uut._close()
+    self.fake_client.close.assert_called_once()
+    self.fake_socket.close.assert_called_once()
 
-    self.assertTrue(ack)
-    self.assertEqual(_FAKE_SERIALIZED_BYTES, payload)
+  def test_transport_open(self):
+    """Verifies if the transport _open method on success."""
+    self.uut._open()
+    self.fake_client.start.assert_called_once()
+    self.fake_socket.connect.assert_called_once()
 
-  def test_transport_rpc_hdlc_client_not_alive(self):
-    """Verifies PwRPC transport rpc call with not alive hdlc client."""
-    self.fake_client.is_alive.return_value = False
+  def test_transport_read(self):
+    """Verifies the transport read method on success."""
+    self.fake_client.log_queue.get.side_effect = [_FAKE_HDLC_LOG, queue.Empty]
+    self.assertEqual(_FAKE_HDLC_LOG, self.uut.read(_FAKE_SIZE, _FAKE_TIMEOUT))
+    self.assertEqual(b"", self.uut.read(_FAKE_SIZE, _FAKE_TIMEOUT))
 
-    ack, payload = self.uut.rpc(service_name=_FAKE_SERVICE,
-                                event_name=_FAKE_EVENT)
+  def test_transport_write(self):
+    """Verifies the transport write method on success.."""
+    self.assertEqual(0, self.uut._write(""))
 
-    self.assertFalse(ack)
-    self.assertIsNone(payload)
-
-  def test_is_primitive_return_true(self):
-    """Verifies _is_primitive method returning true for primitive data type."""
-    self.assertTrue(pigweed_rpc_transport._is_primitive(_FAKE_DATA))
-
-  def test_is_primitive_return_false(self):
-    """Verifies _is_primitive method returning false for complex data type."""
-    complex_fake_data = mock.Mock()
-    self.assertFalse(pigweed_rpc_transport._is_primitive(complex_fake_data))
-
-  def test_serialize(self):
-    """Verifies _serialize method on success for a list type input."""
-    fake_protobuf_data = mock.Mock()
-    fake_protobuf_data.SerializeToString.return_value = _FAKE_SERIALIZED_BYTES
-    fake_payload = [_FAKE_DATA, fake_protobuf_data]
-
-    self.assertEqual([_FAKE_DATA, _FAKE_SERIALIZED_BYTES],
-                     pigweed_rpc_transport._serialize(fake_payload))
+  @mock.patch.object(pigweed_rpc_transport, "_rpc")
+  def test_transport_rpc(self, mock_rpc):
+    """Verifies the transport rpc method on success."""
+    self.uut.rpc(service_name=_FAKE_SERVICE, event_name=_FAKE_EVENT)
+    mock_rpc.assert_called_once()
 
 
 if __name__ == "__main__":

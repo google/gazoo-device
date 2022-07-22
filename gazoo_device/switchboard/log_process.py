@@ -42,6 +42,7 @@ import datetime
 import os
 import re
 import time
+from typing import Tuple
 
 from gazoo_device.switchboard import data_framer
 from gazoo_device.switchboard import switchboard_process
@@ -74,15 +75,37 @@ def get_event_filename(log_path):
   return os.path.splitext(log_path)[0] + "-events.txt"
 
 
-def get_next_log_filename(current_log_path):
+def get_log_filename_and_counter(log_path: str) -> Tuple[str, int]:
+  """Returns log filename without log rotation and log rotation as integer.
+
+  Args:
+      log_path:
+          Expects one of the following 2 formats.
+          (1) <name_prefix>-<device_name>-<timestamp>.txt
+          (2) <name_prefix>-<device_name>-<timestamp>.<log_rotation>.txt
+
+  Returns:
+      Tuple[str, int]:
+          str format is <name_prefix>-<device_name>-<timestamp>.txt
+          int is value of log_rotation, 0 if format (1) above.
+  """
+  log_path_no_ext, log_path_ext = os.path.splitext(log_path)
+  if re.search(r"\.\d{5}$", log_path_no_ext):
+    base_log_path, counter_str = log_path_no_ext.rsplit(".", 1)
+    return base_log_path + log_path_ext, int(counter_str)
+  else:
+    return log_path, 0
+
+
+def get_next_log_filename(current_log_path: str) -> str:
   """Returns the next log filename using the current log path as a reference.
 
   Args:
-      current_log_path (str): path to current log filename to get next name
-        from.
+      current_log_path:
+          Path to current log filename to get next name from.
 
   Returns:
-      str: Path to expected next log filename given current_log_path.
+      Path to expected next log filename given current_log_path.
 
   Note:
       If the current log file name is as follows (the first log file):
@@ -91,18 +114,12 @@ def get_next_log_filename(current_log_path):
       This method will return the following as the next log filename:
           <name_prefix>-<device_name>-<timestamp>.00001.txt
 
-      Otherwise the rotation count will be extracted and incremented:
+      Otherwise the rotation count will be extracted and incremented by 1:
           <name_prefix>-<device_name>-<timestamp>.00002.txt
   """
-  log_path_no_ext, log_path_ext = os.path.splitext(current_log_path)
-  if re.search(r"\.\d{5}$", log_path_no_ext):
-    base_log_path, counter_str = log_path_no_ext.rsplit(".", 1)
-    counter = int(counter_str)
-  else:
-    base_log_path = log_path_no_ext
-    counter = 0
-  next_counter_str = ".{:05}".format(counter + 1)
-  return base_log_path + next_counter_str + log_path_ext
+  log_filename, counter = get_log_filename_and_counter(current_log_path)
+  log_file, extension = os.path.splitext(log_filename)
+  return f"{log_file}.{counter + 1:05}{extension}"
 
 
 def log_message(log_queue, raw_log_line, port):

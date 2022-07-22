@@ -27,8 +27,8 @@ _FAKE_RPC_TIMEOUT_S = 10
 
 # Trim the cluster capability names into alias names.
 _CLUSTER_NAMES = (
-    cluster.get_capability_name().replace("_control_cluster",
-                                          "").replace("_cluster", "")
+    cluster.get_capability_name().replace("_control_cluster", "").replace(
+        "_cluster", "")
     for cluster in matter_endpoints_and_clusters.SUPPORTED_CLUSTERS_PW_RPC)
 
 _ENDPOINT_AND_CLUSTER_PRODUCT = itertools.product(

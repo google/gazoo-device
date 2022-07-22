@@ -36,6 +36,7 @@ class LevelControlClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
     super().setUp()
     self.fake_read = mock.Mock(spec=matter_endpoints_accessor_pw_rpc
                                .MatterEndpointsAccessorPwRpc.read)
+    self.fake_read.return_value = mock.Mock(data_uint8=_FAKE_LEVEL)
     self.fake_write = mock.Mock(spec=matter_endpoints_accessor_pw_rpc
                                 .MatterEndpointsAccessorPwRpc.write)
     self.uut = level_control_pw_rpc.LevelControlClusterPwRpc(
@@ -67,6 +68,12 @@ class LevelControlClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
 
   def test_current_level_method(self):
     """Verifies current_level method on success."""
-    self.fake_read.return_value = mock.Mock(data_uint8=_FAKE_LEVEL)
-
     self.assertEqual(_FAKE_LEVEL, self.uut.current_level)
+
+  def test_min_level_method(self):
+    """Verifies min_level method on success."""
+    self.assertEqual(_FAKE_LEVEL, self.uut.min_level)
+
+  def test_max_level_method(self):
+    """Verifies max_level method on success."""
+    self.assertEqual(_FAKE_LEVEL, self.uut.max_level)

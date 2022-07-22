@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Unit tests for esp32 module."""
+import unittest
 from unittest import mock
 
 from gazoo_device.auxiliary_devices import esp32
 from gazoo_device.base_classes import espressif_esp32_device
+from gazoo_device.capabilities import flash_build_esptool
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 import immutabledict
 
@@ -58,6 +60,8 @@ class ESP32DeviceTests(fake_device_test_case.FakeDeviceTestCase):
     mock_exists.return_value = True
     self.assertIsNotNone(esp32.ESP32.is_connected(self.device_config))
 
+  @unittest.skipIf(not flash_build_esptool._ESPTOOL_AVAILABLE,
+                   "esptool is not installed")
   def test_flash_build_capability(self):
     """Verifies the initialization of flash_build capability."""
     self.assertIsNotNone(self.uut.flash_build)

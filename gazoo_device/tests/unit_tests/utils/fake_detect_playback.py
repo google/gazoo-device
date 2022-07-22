@@ -41,9 +41,53 @@ ALT_POE_BEHAVIORS = immutabledict.immutabledict({
 
 JLINK_DEVICE_BEHAVIORS = immutabledict.immutabledict({})
 
+PIGWEED_SERIAL_DEVICE_BEHAVIORS = immutabledict.immutabledict({
+    "efr32": {
+        "is_matter": False,
+        "product_name": "J-Link Pro OB",
+        "manufacturer_name": "Silicon_Labs"
+    },
+    "efr32matter": {
+        "is_matter": True,
+        "product_name": "J-Link Pro OB",
+        "manufacturer_name": "Silicon_Labs"
+    },
+    "nrf52840": {
+        "is_matter": False,
+        "product_name": "J-Link",
+        "manufacturer_name": "SEGGER"
+    },
+    "nrfmatter": {
+        "is_matter": True,
+        "product_name": "J-Link",
+        "manufacturer_name": "SEGGER"
+    },
+    "esp32": {
+        "is_matter": False,
+        "product_name": "CP2104 USB to UART Bridge Controller",
+        "manufacturer_name": "Silicon_Labs"
+    },
+    "esp32matter": {
+        "is_matter": True,
+        "product_name": "CP2104 USB to UART Bridge Controller",
+        "manufacturer_name": "Silicon_Labs"
+    },
+})
+
+PIGWEED_SOCKET_DEVICE_BEHAVIORS = immutabledict.immutabledict({
+    "rpimatter": {
+        "cat /proc/device-tree/model": "Raspberry Pi 4 Model B Rev 1.4",
+        "ps -aux | grep matter-linux-app | grep -v grep":
+            "sudo ./matter-linux-app",
+    },
+})
+
 SERIAL_DEVICE_BEHAVIORS = immutabledict.immutabledict({
     "cambrionix": {
         "product_name": "FT230X Basic UART",
+    },
+    "m5stick": {
+        "product_name": "M5stack",
     },
 })
 
@@ -246,3 +290,18 @@ class FakeDetectPlayback:
         product=self.behavior["product"],
         spec=usb.core.Device,
         )
+
+  def is_matter_device(
+      self,
+      address: str,
+      log_path: str,
+      create_switchboard_func: Any,
+      detect_logger: Any):
+    """Mocks is_matter_device method."""
+    del address, log_path, create_switchboard_func, detect_logger  # Unused
+    return self.behavior["is_matter"]
+
+  def get_device_manufacturer(self, address: str) -> str:
+    """Mocks get_device_manufacturer method."""
+    del address  # Unused
+    return mock.Mock(manufacturer=self.behavior["manufacturer_name"])

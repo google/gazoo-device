@@ -113,7 +113,7 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
       return ack
 
     switchboard_kwargs = {
-        "method": pigweed_rpc_transport.PigweedRPCTransport.rpc,
+        "method_name": pigweed_rpc_transport.RPC_METHOD_NAME,
         "method_args": (_RPC_DEVICE_SERVICE_NAME, _RPC_GET_DEVICE_INFO_NAME),
         "method_kwargs": {"pw_rpc_timeout_s": _RPC_TIMEOUT_S}}
     retry.retry(

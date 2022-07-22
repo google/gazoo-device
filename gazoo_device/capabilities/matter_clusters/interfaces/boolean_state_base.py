@@ -12,26 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Interface for the Matter Pressure Measurement cluster capability."""
+"""Interface for the Matter Boolean State cluster capability."""
 import abc
 from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 
 
-class PressureMeasurementClusterBase(
+class BooleanStateClusterBase(
     cluster_base.ClusterBase, metaclass=abc.ABCMeta):
-  """Matter Pressure Measurement cluster capability."""
+  """Matter Boolean State cluster capability."""
 
-  CLUSTER_ID = matter_enums.PressureMeasurementCluster.ID
+  CLUSTER_ID = matter_enums.BooleanStateCluster.ID
 
+  @property
   @abc.abstractmethod
-  def measured_value(self) -> int:
-    """The MeasuredValue attribute."""
-
-  @abc.abstractmethod
-  def min_measured_value(self) -> int:
-    """The MinMeasuredValue attribute."""
-
-  @abc.abstractmethod
-  def max_measured_value(self) -> int:
-    """The MaxMeasuredValue attribute."""
+  def state_value(self) -> bool:
+    """The StateValue attribute."""

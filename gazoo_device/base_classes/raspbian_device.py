@@ -255,16 +255,18 @@ class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
             command_name="shell",
             timeout=None,
             port=0,
-            include_return_code=False):
+            include_return_code=False,
+            searchwindowsize=config.SEARCHWINDOWSIZE):
     """Sends command and returns response and optionally return code.
 
     Args:
         command(str): Command to send to the device.
         command_name(str): Identifier for command.
         timeout(float): Time in seconds to wait for device to respond.
-        port(int): Which port to send on, 0 or 1.
-        include_return_code(bool): flag indicating return code should be
-          returned.
+        port(int): Which port to send on. Port 0 is typically used for commands.
+        include_return_code(bool): Whether to also return the command
+          return code.
+        searchwindowsize(int): Number of the last bytes to look at.
 
     Raises:
         DeviceError: if communication fails.
@@ -286,7 +288,8 @@ class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
         command_name=command_name,
         timeout=timeout,
         port=port,
-        include_return_code=include_return_code)
+        include_return_code=include_return_code,
+        searchwindowsize=searchwindowsize)
 
   def shell_with_regex(self,
                        command,
@@ -296,7 +299,8 @@ class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
                        raise_error=False,
                        tries=1,
                        port=0,
-                       timeout=None):
+                       timeout=None,
+                       searchwindowsize=config.SEARCHWINDOWSIZE):
     """Sends a command, searches for a regex in the response, and returns a match group.
 
     Args:
@@ -310,6 +314,7 @@ class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
           failing.
         port(int): which port to send the shell command to.
         timeout(float): Time in seconds to wait for device to respond.
+        searchwindowsize(int): Number of the last bytes to look at
 
     Returns:
         str: value of the capturing group with index 'regex_group' in the

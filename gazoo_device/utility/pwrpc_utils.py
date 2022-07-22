@@ -25,16 +25,19 @@ from gazoo_device.capabilities.interfaces import switchboard_base
 from gazoo_device.protos import descriptor_service_pb2
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
 
-_ProtobufType = TypeVar("_ProtobufType")
+_ProtobufTypeVar = TypeVar("_ProtobufTypeVar")
 _DESCRIPTOR_SERVICE_NAME = "Descriptor"
 _DESCRIPTOR_DEVICE_TYPE_RPC_NAME = "DeviceTypeList"
 _DETECT_RETRY = 2
 _RPC_TIMEOUT_SEC = 1
+# Matter linux app controller recognizes the device with the specific app name.
+MATTER_LINUX_APP_NAME = "matter-linux-app"
+MATTER_LINUX_APP_DEFAULT_PORT = 33000
 
 logger = gdm_logger.get_logger()
 
 
-class PigweedProtoState(Generic[_ProtobufType]):
+class PigweedProtoState(Generic[_ProtobufTypeVar]):
   """Pigweed proto state interface.
 
   The RPC can accept proto type objects as parameters, however, protobufs aren't
@@ -42,7 +45,7 @@ class PigweedProtoState(Generic[_ProtobufType]):
   object (bytes) and decode it back to the protobuf type.
   """
 
-  def __init__(self, proto_inst: _ProtobufType, decoder_path: str) -> None:
+  def __init__(self, proto_inst: _ProtobufTypeVar, decoder_path: str) -> None:
     """Constructor of the PigweedProtoState.
 
     Args:
@@ -54,13 +57,13 @@ class PigweedProtoState(Generic[_ProtobufType]):
     self._bytes = proto_inst.SerializeToString()
     self._decoder_path = decoder_path
 
-  def _get_decoder(self) -> Callable[[bytes], _ProtobufType]:
+  def _get_decoder(self) -> Callable[[bytes], _ProtobufTypeVar]:
     """Gets decoder method from decoder path."""
     module, proto_class = self._decoder_path.rsplit(".", 1)
     mod = importlib.import_module(module)
     return getattr(mod, proto_class).FromString
 
-  def decode(self) -> _ProtobufType:
+  def decode(self) -> _ProtobufTypeVar:
     """Decodes the encoded proto instance."""
     decoder = self._get_decoder()
     return decoder(self._bytes)
@@ -88,7 +91,6 @@ def is_matter_device(
                                         device_name=os.path.basename(log_path),
                                         log_path=log_path,
                                         protobufs=(descriptor_service_pb2,))
-  rpc_method = pigweed_rpc_transport.PigweedRPCTransport.rpc
   method_args = (_DESCRIPTOR_SERVICE_NAME, _DESCRIPTOR_DEVICE_TYPE_RPC_NAME)
   method_kwargs = {
       "endpoint": matter_endpoints_base.ROOT_NODE_ENDPOINT_ID,
@@ -98,9 +100,10 @@ def is_matter_device(
     # Retry is to avoid flakiness of the descriptor cluster on Matter devices.
     for _ in range(_DETECT_RETRY):
       try:
-        ack, _ = switchboard.call(method=rpc_method,
-                                  method_args=method_args,
-                                  method_kwargs=method_kwargs)
+        ack, _ = switchboard.call(
+            method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
+            method_args=method_args,
+            method_kwargs=method_kwargs)
         if ack:
           is_matter = True
           break

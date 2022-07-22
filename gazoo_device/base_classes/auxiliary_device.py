@@ -543,7 +543,7 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
                   f"{attempt + 1} of {self._RECOVERY_ATTEMPTS}")
       try:
         self.check_device_ready()
-      except errors.CheckDeviceReadyError as err:
+      except (errors.CheckDeviceReadyError, errors.DeviceError) as err:
         if setting == "check_only":
           logger.info(f"{self.name} make_device_ready setting is {setting!r}. "
                       "Skipping device recovery")
@@ -651,7 +651,7 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
 
   @decorators.LogDecorator(logger, decorators.DEBUG)
   def set_property(self, prop: str, value: Any) -> None:
-    """Sets an optional property without writing it to the config file.
+    """Sets an optional property and writes it to the config file.
 
     Args:
         prop: Property name.
@@ -675,6 +675,7 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
       setattr(instance, prop, value)
       return
     self.props["optional"][prop] = value
+    self.get_manager().save_property_to_config(self.name, prop, value)
 
   def command_with_regex(self,
                          command,
@@ -775,7 +776,7 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
 
       try:
         health_check_method()
-      except errors.CheckDeviceReadyError as err:
+      except (errors.CheckDeviceReadyError, errors.DeviceError) as err:
         logger.info("{} health check {}/{} {!r} failed: {!r}.".format(
             self.name, step + 1, len(health_checks), health_check_name, err))
         raise

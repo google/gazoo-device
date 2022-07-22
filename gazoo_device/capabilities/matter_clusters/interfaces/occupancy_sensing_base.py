@@ -12,26 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Interface for the Matter Temperature Measurement cluster capability."""
+"""Interface for the Matter Occupancy Sensing cluster capability."""
 import abc
 from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
+from gazoo_device.protos import attributes_service_pb2
+
+BITMAP_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_BITMAP8_ATTRIBUTE_TYPE
 
 
-class TemperatureMeasurementClusterBase(
+class OccupancySensingClusterBase(
     cluster_base.ClusterBase, metaclass=abc.ABCMeta):
-  """Matter Temperature Measurement cluster capability."""
+  """Matter Occupancy Sensing cluster capability."""
 
-  CLUSTER_ID = matter_enums.TemperatureMeasurementCluster.ID
-
-  @abc.abstractmethod
-  def measured_value(self) -> int:
-    """The MeasuredValue attribute."""
+  CLUSTER_ID = matter_enums.OccupancySensingCluster.ID
 
   @abc.abstractmethod
-  def min_measured_value(self) -> int:
-    """The MinMeasuredValue attribute."""
+  def occupancy(self) -> BITMAP_ATTRIBUTE_TYPE:
+    """The Occupancy attribute."""
 
   @abc.abstractmethod
-  def max_measured_value(self) -> int:
-    """The MaxMeasuredValue attribute."""
+  def occupancy_sensor_type(self) -> int:
+    """The OccupancySensorType attribute."""
+
+  @abc.abstractmethod
+  def occupancy_sensor_type_bitmap(self) -> BITMAP_ATTRIBUTE_TYPE:
+    """The OccupancySensorTypeBitmap attribute."""

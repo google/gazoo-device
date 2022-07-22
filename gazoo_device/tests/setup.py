@@ -41,8 +41,14 @@ setuptools.setup(
     package_data={
         "gazoo_device.tests": ["functional_tests/configs/*.json"],
     },
+    ######################################################################
+    # ../requirements.txt has similar requirements.
+    # If same requirements appear at both files,
+    # These dependency version specifications must match.
+    ######################################################################
     install_requires=[
         "absl-py>=0.12.0",
+        # esptool cannot be included because of restrictive GPL v2 licence.
         "immutabledict>=2.0.0",
         "intelhex>=2.2.1",
         "mobly>=1.11.1",
@@ -51,7 +57,7 @@ setuptools.setup(
         "protobuf>=3.17.3",
         "psutil>=5.0.1",
         "pyserial>=3.5",
-        "pyudev==0.21.0",
+        "pyudev>=0.22.0",
         "websocket-client>=0.56.0",
     ]
 )

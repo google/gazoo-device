@@ -32,7 +32,7 @@ Supported kernel images: Ubuntu 21.04 or later.
 
 5.  Follow the instructions from
     [GDM device setup: Raspberry Pi (as a support device)](./Raspberry_Pi_as_supporting_device.md)
-    starting from the `Configure GDM SSH keys` step to ensure that gdm can
+    starting from the `Configure GDM SSH keys` step to ensure that GDM can
     detect the raspberry pi as a `rpi_matter_controller`. The output of `gdm
     devices` command should look like:
 

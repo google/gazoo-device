@@ -13,9 +13,9 @@
 # limitations under the License.
 """Capability unit test for Esptool flashing default capability."""
 import os
+import unittest
 from unittest import mock
 
-import esptool
 from gazoo_device import errors
 from gazoo_device.capabilities import flash_build_esptool
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
@@ -47,6 +47,8 @@ _MOCK_WRITE_COMMAND_ARGS_WITH_FLASH_FILE = [
 ]
 
 
+@unittest.skipUnless(flash_build_esptool._ESPTOOL_AVAILABLE,
+                     'requires esptool installed')
 class FlashBuildEsptoolTests(fake_device_test_case.FakeDeviceTestCase):
   """Unit test for FlashBuildEsptool capability initialization."""
 
@@ -54,7 +56,7 @@ class FlashBuildEsptoolTests(fake_device_test_case.FakeDeviceTestCase):
     super().setUp()
     self.setup_fake_device_requirements('esp32-1234')
     self.mock_esptool = self.enter_context(
-        mock.patch.object(esptool, 'main', autospec=True))
+        mock.patch.object(flash_build_esptool.esptool, 'main', autospec=True))
 
   def test_flash_build_esptool_raise_dependency_unavailable_error(self):
     """Test DependencyUnavailableError is raised if esptool is not installed."""
@@ -77,6 +79,8 @@ class FlashBuildEsptoolTests(fake_device_test_case.FakeDeviceTestCase):
             switchboard=self.mock_switchboard)
 
 
+@unittest.skipUnless(flash_build_esptool._ESPTOOL_AVAILABLE,
+                     'requires esptool installed')
 class FlashBuildEsptoolCapabilityTests(fake_device_test_case.FakeDeviceTestCase
                                       ):
   """Unit test for FlashBuildEsptool capability methods."""
@@ -87,7 +91,7 @@ class FlashBuildEsptoolCapabilityTests(fake_device_test_case.FakeDeviceTestCase
     self.mock_flash_settings_file = self.get_resource(
         os.path.join('testdata', 'esp32_flash_settings.flash'))
     self.mock_esptool = self.enter_context(
-        mock.patch.object(esptool, 'main', autospec=True))
+        mock.patch.object(flash_build_esptool.esptool, 'main', autospec=True))
     self.uut = flash_build_esptool.FlashBuildEsptool(
         device_name=_MOCK_DEVICE_NAME,
         chip_type=_MOCK_CHIP_NAME,
