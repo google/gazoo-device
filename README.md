@@ -112,12 +112,25 @@ Installation steps:
 
 4.  [Optional] Install optional dependencies
 
+    1.
+
     Some of GDM's dependencies are optional and are not installed by the
     installer automatically due to licensing restrictions.
 
     To enable flashing NRF52840 DK and EFR32 dev boards through GDM, install the
     J-Link SDK:
     https://www.segger.com/downloads/jlink/#J-LinkSoftwareAndDocumentationPack.
+
+    Additional note to Apple M1 users:
+    Make sure to download "64-bit Apple M1 Installer" under macOS.
+
+    To determine whether your Mac is using an M1 chip, run
+    ```
+    arch
+    ```
+    in terminal. If you see ```arm64```, then your Mac is using M1.
+
+    2.
 
     To enable flashing ESP32 dev boards through GDM, install `esptool`:
 

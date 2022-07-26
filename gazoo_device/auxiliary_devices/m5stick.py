@@ -32,6 +32,7 @@ class M5Stick(espressif_esp32_device.EspressifESP32Device):
   COMMUNICATION_TYPE = "SerialComms"
   _COMMUNICATION_KWARGS = {}
   DETECT_MATCH_CRITERIA = {
+      detect_criteria.SerialQuery.ADDRESS: r"/dev/serial/by-id/*",
       detect_criteria.SerialQuery.PRODUCT_NAME: "m5stack",
   }
   DEVICE_TYPE = "m5stick"

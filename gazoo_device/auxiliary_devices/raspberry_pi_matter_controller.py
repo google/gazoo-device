@@ -24,6 +24,7 @@ from gazoo_device.auxiliary_devices import raspberry_pi
 from gazoo_device.capabilities import matter_controller_chip_tool
 from gazoo_device.capabilities import matter_endpoints_accessor_chip_tool
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
+from gazoo_device.capabilities.matter_endpoints import occupancy_sensor
 from gazoo_device.capabilities.matter_endpoints import on_off_light
 
 logger = gdm_logger.get_logger()
@@ -95,6 +96,20 @@ class RaspberryPiMatterController(raspberry_pi.RaspberryPi):
     """
     return self.matter_endpoints.get_endpoint_instance_by_class(
         dimmable_light.DimmableLightEndpoint)
+
+  @decorators.CapabilityDecorator(occupancy_sensor.OccupancySensorEndpoint)
+  def occupancy_sensor(self) -> occupancy_sensor.OccupancySensorEndpoint:
+    """Matter Occupancy Sensor endpoint instance.
+
+    Returns:
+      Occupancy Sensor endpoint instance.
+
+    Raises:
+      DeviceError when Occupancy Sensor endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        occupancy_sensor.OccupancySensorEndpoint)
 
   @decorators.CapabilityDecorator(on_off_light.OnOffLightEndpoint)
   def on_off_light(self) -> on_off_light.OnOffLightEndpoint:

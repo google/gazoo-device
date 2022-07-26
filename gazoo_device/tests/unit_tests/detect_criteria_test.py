@@ -220,11 +220,11 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
               detect_logger=mock.MagicMock(spec=logging.Logger),
               create_switchboard_func=mock.MagicMock()))
 
-  def test_usb_serial_number(self):
-    """Tests _usb_serial_number()."""
+  def test_get_communication_address(self):
+    """Tests _get_communication_address()."""
     self.assertEqual(
         "12345678",
-        detect_criteria._usb_serial_number(
+        detect_criteria._get_communication_address(
             "12345678",
             detect_logger=mock.MagicMock(spec=logging.Logger),
             create_switchboard_func=mock.MagicMock()))

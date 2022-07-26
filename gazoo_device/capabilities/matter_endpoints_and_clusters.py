@@ -75,6 +75,7 @@ CLUSTER_ID_TO_CLASS_PW_RPC = immutabledict.immutabledict({
 
 SUPPORTED_ENDPOINTS_CHIP_TOOL = (
     dimmable_light.DimmableLightEndpoint,
+    occupancy_sensor.OccupancySensorEndpoint,
     on_off_light.OnOffLightEndpoint,)
 
 SUPPORTED_CLUSTERS_CHIP_TOOL = (

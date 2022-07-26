@@ -93,6 +93,7 @@ class PtyProcessQuery(QueryEnum):
 
 
 class SerialQuery(QueryEnum):
+  ADDRESS = "address"
   PRODUCT_NAME = "usb info product_name"
   SERIAL_NUMBER = "usb serial_numer"
   VENDOR_PRODUCT_ID = "VENDOR_ID:PRODUCT_ID"
@@ -374,29 +375,30 @@ def _usb_vendor_product_id_query(
   return f"{device.idVendor:04x}:{device.idProduct:04x}" if device else ""
 
 
-def _usb_serial_number(
+def _get_communication_address(
     address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> str:
-  """Returns the serial number from a USB device.
+  """Returns the communication address.
 
   This detection criteria should be used in conjunction with
   _usb_vendor_product_id_query to narrow down a match.
 
-  This function is particularly useful to matching FTDI manufacturer IDs
-  which should be consistent between products that use FTDI chipsets. The
-  manufacturer's ID is the first two characters in the serial number.
+  For USB devices, this function is particularly useful to matching FTDI
+  manufacturer IDs which should be consistent between products that use FTDI
+  chipsets. The manufacturer's ID is the first two characters in the serial
+  number.
   See:
   https://www.ftdichip.com/Support/Knowledgebase/howistheautomaticserialnu.htm
 
   Args:
-    address: Serial number of the device. USB devices are addressed by their
-      serial number.
+    address: Communication address of the device. USB devices are addressed by
+      their serial number.
     detect_logger: The logger of device interactions.
     create_switchboard_func: Method to create the switchboard.
 
   Returns:
-    Serial number.
+    Communication address.
   """
   del create_switchboard_func, detect_logger  # Unused.
   return address
@@ -454,6 +456,7 @@ PTY_PROCESS_QUERY_DICT = immutabledict.immutabledict({
 })
 
 SERIAL_QUERY_DICT = immutabledict.immutabledict({
+    SerialQuery.ADDRESS: _get_communication_address,
     SerialQuery.PRODUCT_NAME: usb_product_name_query,
     SerialQuery.SERIAL_NUMBER: _usb_serial_number_from_serial_port_path,
     SerialQuery.VENDOR_PRODUCT_ID: _usb_vendor_product_id_from_serial_port_path,
@@ -473,7 +476,7 @@ SSH_QUERY_DICT = immutabledict.immutabledict({
 
 USB_QUERY_DICT = immutabledict.immutabledict({
     UsbQuery.PRODUCT_NAME: _usb_product_name_from_serial_number,
-    UsbQuery.SERIAL_NUMBER: _usb_serial_number,
+    UsbQuery.SERIAL_NUMBER: _get_communication_address,
     UsbQuery.VENDOR_PRODUCT_ID: _usb_vendor_product_id_query,
 })
 

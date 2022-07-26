@@ -22,8 +22,11 @@ type with the following defined clusters on this endpoint:
 
 The required clusters for this endpoint: Occupancy Sensing
 """
+from typing import Union
+
 from gazoo_device import decorators
 from gazoo_device.capabilities import matter_enums
+from gazoo_device.capabilities.matter_clusters import occupancy_sensing_chip_tool
 from gazoo_device.capabilities.matter_clusters import occupancy_sensing_pw_rpc
 from gazoo_device.capabilities.matter_endpoints.interfaces import occupancy_sensor_base
 
@@ -31,9 +34,13 @@ from gazoo_device.capabilities.matter_endpoints.interfaces import occupancy_sens
 class OccupancySensorEndpoint(occupancy_sensor_base.OccupancySensorBase):
   """Matter Occupancy Sensor endpoint."""
 
-  @decorators.CapabilityDecorator(
-      occupancy_sensing_pw_rpc.OccupancySensingClusterPwRpc)
+  @decorators.CapabilityDecorator([
+      occupancy_sensing_chip_tool.OccupancySensingClusterChipTool,
+      occupancy_sensing_pw_rpc.OccupancySensingClusterPwRpc
+  ])
   def occupancy_sensing(
-      self) -> occupancy_sensing_pw_rpc.OccupancySensingClusterPwRpc:
+      self
+  ) -> Union[occupancy_sensing_chip_tool.OccupancySensingClusterChipTool,
+             occupancy_sensing_pw_rpc.OccupancySensingClusterPwRpc]:
     """Matter Occupancy Sensing cluster instance."""
     return self.cluster_lazy_init(matter_enums.OccupancySensingCluster.ID)
