@@ -507,13 +507,17 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     This is to support the case where switchboard health_check failed and a
     user wants to close/reset the switchboard and try again.
     """
+    # Prevent switchboard from re-running health check after it's closed.
+    self._healthy = False
     comms_addresses = [
         proc.transport.comms_address for proc in self._transport_processes_cache
     ]
     self._stop_processes()
     if hasattr(self, "button_list") and self.button_list:
-      for button in self.button_list:
+      for button_no, button in enumerate(self.button_list):
         button.close()
+        logger.debug("%s closed button %d of %d.",
+                     self._device_name, button_no + 1, len(self.button_list))
       self.button_list = []
     # Delete queues to release shared memory file descriptors.
     if hasattr(self, "_call_result_queue") and self._call_result_queue:
@@ -525,8 +529,6 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     if hasattr(self, "_exception_queue") and self._exception_queue:
       delattr(self, "_exception_queue")
     self.ensure_serial_paths_unlocked(comms_addresses)
-    # Prevent switchboard from re-running health check after it's closed.
-    self._healthy = False
     super().close()
 
   @decorators.CapabilityLogDecorator(logger)
@@ -825,7 +827,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     self.health_check()
     return self._log_filter_process_cache
 
-  @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
+  @decorators.CapabilityLogDecorator(logger, level=None)
   def health_check(self) -> None:
     """Initializes Switchboard.
 

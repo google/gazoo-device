@@ -393,12 +393,16 @@ class PigweedRpcSocketTransportTest(unit_test_case.UnitTestCase):
 
   def test_transport_is_open(self):
     """Verifies if the transport is_open method on success."""
+    self.uut._open()
     self.fake_client.is_alive.return_value = True
     self.assertTrue(self.uut.is_open())
 
   def test_transport_close(self):
     """Verifies if the transport _close method on success."""
+    self.uut._open()
+
     self.uut._close()
+
     self.fake_client.close.assert_called_once()
     self.fake_socket.close.assert_called_once()
 
@@ -410,6 +414,7 @@ class PigweedRpcSocketTransportTest(unit_test_case.UnitTestCase):
 
   def test_transport_read(self):
     """Verifies the transport read method on success."""
+    self.uut._open()
     self.fake_client.log_queue.get.side_effect = [_FAKE_HDLC_LOG, queue.Empty]
     self.assertEqual(_FAKE_HDLC_LOG, self.uut.read(_FAKE_SIZE, _FAKE_TIMEOUT))
     self.assertEqual(b"", self.uut.read(_FAKE_SIZE, _FAKE_TIMEOUT))

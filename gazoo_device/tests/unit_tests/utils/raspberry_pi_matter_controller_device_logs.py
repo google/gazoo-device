@@ -127,7 +127,7 @@ _RESPONSES = ({
     "resp": _COMMISSION_SUCCESS_RESPONSE,
     "code": 0,
 }, {
-    "cmd": "/usr/local/bin/chip-tool pairing ble-thread 1234 hex:61626364 "
+    "cmd": "/usr/local/bin/chip-tool pairing ble-thread 1234 hex:abcd "
            "20202021 3840",
     "resp": _COMMISSION_SUCCESS_RESPONSE,
     "code": 0,

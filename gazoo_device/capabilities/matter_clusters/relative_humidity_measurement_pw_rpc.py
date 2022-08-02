@@ -16,6 +16,7 @@
 """
 from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import measurement_base
+from gazoo_device.protos import attributes_service_pb2
 
 
 class RelativeHumidityMeasurementClusterPwRpc(
@@ -24,3 +25,5 @@ class RelativeHumidityMeasurementClusterPwRpc(
 
   CLUSTER_ID = matter_enums.RelativeHumidityMeasurementCluster.ID
   MATTER_CLUSTER = matter_enums.RelativeHumidityMeasurementCluster
+  ATTRIBUTE_TYPE = (
+      attributes_service_pb2.AttributeType.ZCL_INT16U_ATTRIBUTE_TYPE)

@@ -194,7 +194,7 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
 
     if operational_dataset:
       command = _COMMANDS["COMMISSION_OVER_BLE_THREAD"]
-      operational_dataset = _str_to_hex(operational_dataset)
+      operational_dataset = f"{_HEX_PREFIX}{operational_dataset}"
     elif ssid:
       command = _COMMANDS["COMMISSION_OVER_BLE_WIFI"]
       ssid = _str_to_hex(ssid)

@@ -22,6 +22,7 @@ from gazoo_device import detect_criteria
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import matter_device_base
 from gazoo_device.capabilities import flash_build_jlink
+from gazoo_device.capabilities.interfaces import matter_controller_base
 
 logger = gdm_logger.get_logger()
 _EFR32_JLINK_NAME = "EFR32MG12PXXXF1024"
@@ -39,6 +40,8 @@ class Efr32Matter(matter_device_base.MatterDeviceBase):
   VALID_BUTTON_IDS = (0, 1)
 
   DEVICE_TYPE = "efr32matter"
+
+  MATTER_COMMISSION_METHOD = matter_controller_base.CommissionMethod.BLE_THREAD
 
   @decorators.PersistentProperty
   def os(self) -> str:

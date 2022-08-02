@@ -15,9 +15,17 @@
 """Interface for Matter controller capability."""
 
 import abc
+import enum
 from typing import Any, Optional, Sequence
 
 from gazoo_device.capabilities.interfaces import capability_base
+
+
+@enum.unique
+class CommissionMethod(enum.Enum):
+  BLE_WIFI = enum.auto()
+  BLE_THREAD = enum.auto()
+  ON_NETWORK = enum.auto()
 
 
 class MatterControllerBase(capability_base.CapabilityBase):

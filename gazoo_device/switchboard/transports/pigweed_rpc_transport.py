@@ -363,9 +363,10 @@ class PigweedRpcSocketTransport(transport_base.TransportBase):
         auto_reopen=auto_reopen,
         open_on_start=open_on_start)
     self.comms_address = comms_address
-    self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    self._protobuf_import_paths = protobuf_import_paths
     self._address = (comms_address, port)
-    self._hdlc_client = PwHdlcRpcClient(self._socket, protobuf_import_paths)
+    self._socket = None
+    self._hdlc_client = None
 
   def is_open(self) -> bool:
     """Returns True if the PwRPC transport is connected to the target.
@@ -373,7 +374,7 @@ class PigweedRpcSocketTransport(transport_base.TransportBase):
     Returns:
       True if transport is open, False otherwise.
     """
-    return self._hdlc_client.is_alive()
+    return self._hdlc_client is not None and self._hdlc_client.is_alive()
 
   def _close(self) -> None:
     """Closes the PwRPC transport."""
@@ -382,6 +383,12 @@ class PigweedRpcSocketTransport(transport_base.TransportBase):
 
   def _open(self) -> None:
     """Opens the PwRPC transport."""
+    # We always create new socket instance given that reconnecting to a closed
+    # socket is not allowed:
+    # https://docs.python.org/2/library/socket.html#socket.socket.close
+    self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    self._hdlc_client = PwHdlcRpcClient(
+        self._socket, self._protobuf_import_paths)
     self._socket.connect(self._address)
     self._hdlc_client.start()
 

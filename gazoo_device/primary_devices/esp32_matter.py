@@ -23,6 +23,7 @@ from gazoo_device import gdm_logger
 from gazoo_device.base_classes import matter_device_base
 from gazoo_device.capabilities import flash_build_esptool
 from gazoo_device.capabilities import pwrpc_wifi_default
+from gazoo_device.capabilities.interfaces import matter_controller_base
 
 logger = gdm_logger.get_logger()
 
@@ -50,6 +51,8 @@ class Esp32Matter(matter_device_base.MatterDeviceBase):
   VALID_BUTTON_IDS = (0, 1, 2)
 
   DEVICE_TYPE = "esp32matter"
+
+  MATTER_COMMISSION_METHOD = matter_controller_base.CommissionMethod.BLE_WIFI
 
   @decorators.PersistentProperty
   def os(self) -> str:

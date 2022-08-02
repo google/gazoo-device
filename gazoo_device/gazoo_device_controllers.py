@@ -43,6 +43,7 @@ from gazoo_device.capabilities import file_transfer_scp
 from gazoo_device.capabilities import flash_build_esptool
 from gazoo_device.capabilities import flash_build_jlink
 from gazoo_device.capabilities import led_driver_default
+from gazoo_device.capabilities import matter_app_controls_shell
 from gazoo_device.capabilities import matter_controller_chip_tool
 from gazoo_device.capabilities import matter_endpoints_accessor_chip_tool
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
@@ -66,6 +67,7 @@ from gazoo_device.capabilities.interfaces import fastboot_base
 from gazoo_device.capabilities.interfaces import file_transfer_base
 from gazoo_device.capabilities.interfaces import flash_build_base
 from gazoo_device.capabilities.interfaces import led_driver_base
+from gazoo_device.capabilities.interfaces import matter_app_controls_base
 from gazoo_device.capabilities.interfaces import matter_controller_base
 from gazoo_device.capabilities.interfaces import matter_endpoints_base
 from gazoo_device.capabilities.interfaces import package_management_base
@@ -209,6 +211,7 @@ def export_extensions() -> Dict[str, Any]:
           humidity_sensor_base.HumiditySensorBase,
           led_driver_base.LedDriverBase,
           level_control_base.LevelControlClusterBase,
+          matter_app_controls_base.MatterSampleAppBase,
           matter_controller_base.MatterControllerBase,
           matter_endpoints_base.MatterEndpointsBase,
           measurement_base.MeasurementClusterBase,
@@ -252,6 +255,7 @@ def export_extensions() -> Dict[str, Any]:
           led_driver_default.LedDriverDefault,
           level_control_chip_tool.LevelControlClusterChipTool,
           level_control_pw_rpc.LevelControlClusterPwRpc,
+          matter_app_controls_shell.MatterSampleAppShell,
           matter_controller_chip_tool.MatterControllerChipTool,
           matter_endpoints_accessor_chip_tool.MatterEndpointsAccessorChipTool,
           matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,

@@ -20,7 +20,10 @@ from gazoo_device import errors
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 from gazoo_device.protos import attributes_service_pb2
 
-INT16_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_INT16S_ATTRIBUTE_TYPE
+# According to the spec, MeasuredValue, MinMeasuredValue and MaxMeasuredValue
+# attributes can only be int16 or uint16 type. The type logic is handled in
+# the Ember API below.
+_INT16SIGNED = attributes_service_pb2.AttributeType.ZCL_INT16S_ATTRIBUTE_TYPE
 
 
 class MeasurementClusterBase(
@@ -29,6 +32,7 @@ class MeasurementClusterBase(
 
   CLUSTER_ID = None
   MATTER_CLUSTER = None
+  ATTRIBUTE_TYPE = None
 
   @decorators.DynamicProperty
   def measured_value(self) -> int:
@@ -100,8 +104,11 @@ class MeasurementClusterBase(
         endpoint_id=self._endpoint_id,
         cluster_id=self.MATTER_CLUSTER.ID,
         attribute_id=attribute_id,
-        attribute_type=INT16_ATTRIBUTE_TYPE)
-    return value_data.data_int16
+        attribute_type=self.ATTRIBUTE_TYPE)
+    if self.ATTRIBUTE_TYPE == _INT16SIGNED:
+      return value_data.data_int16
+    else:
+      return value_data.data_uint16
 
   def _write_value(self, attribute_id: int, value: int) -> None:
     """Writes the value to the given attribute ID.
@@ -113,12 +120,20 @@ class MeasurementClusterBase(
     Raises:
       DeviceError when the attribute value doesn't change.
     """
-    self._write(
-        endpoint_id=self._endpoint_id,
-        cluster_id=self.MATTER_CLUSTER.ID,
-        attribute_id=attribute_id,
-        attribute_type=INT16_ATTRIBUTE_TYPE,
-        data_int16=value)
+    if self.ATTRIBUTE_TYPE == _INT16SIGNED:
+      self._write(
+          endpoint_id=self._endpoint_id,
+          cluster_id=self.MATTER_CLUSTER.ID,
+          attribute_id=attribute_id,
+          attribute_type=self.ATTRIBUTE_TYPE,
+          data_int16=value)
+    else:
+      self._write(
+          endpoint_id=self._endpoint_id,
+          cluster_id=self.MATTER_CLUSTER.ID,
+          attribute_id=attribute_id,
+          attribute_type=self.ATTRIBUTE_TYPE,
+          data_uint16=value)
     if self._read_value(attribute_id) != value:
       raise errors.DeviceError(
           f"Device {self._device_name} Attribute {attribute_id} didn't change"

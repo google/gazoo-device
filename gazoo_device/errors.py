@@ -633,3 +633,27 @@ class SSHNotConnectedError(CheckDeviceReadyError):
           if attempted recover does not work.
     """
     super().__init__(device_name, msg, recovery=recovery)
+
+
+class DeviceWifiIpUnreachableError(CheckDeviceReadyError):
+  """Raised when the device's Wi-Fi IP address is not reachable."""
+  err_code = 70
+
+  def __init__(self,
+               device_name: str,
+               msg: str,
+               recovery: Optional[str] = None):
+    """Initializes a DeviceWifiIpUnreachableError exception.
+
+    Args:
+        device_name: The name of the device.
+        msg: An error message string of the form <error_message> <details>.
+        recovery: An optional message string describing further recovery options
+          if attempted recover does not work.
+    """
+    super().__init__(device_name, msg, recovery=recovery)
+
+
+class PigweedRpcTimeoutError(DeviceNotResponsiveError):
+  """Raised when the Matter device is nonresponsive to Pigweed RPC calls."""
+  err_code = 71

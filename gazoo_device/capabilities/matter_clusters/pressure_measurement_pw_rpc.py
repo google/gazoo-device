@@ -16,6 +16,7 @@
 """
 from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import measurement_base
+from gazoo_device.protos import attributes_service_pb2
 
 
 class PressureMeasurementClusterPwRpc(measurement_base.MeasurementClusterBase):
@@ -23,3 +24,5 @@ class PressureMeasurementClusterPwRpc(measurement_base.MeasurementClusterBase):
 
   CLUSTER_ID = matter_enums.PressureMeasurementCluster.ID
   MATTER_CLUSTER = matter_enums.PressureMeasurementCluster
+  ATTRIBUTE_TYPE = (
+      attributes_service_pb2.AttributeType.ZCL_INT16S_ATTRIBUTE_TYPE)

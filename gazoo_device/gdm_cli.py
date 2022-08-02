@@ -87,6 +87,7 @@ def _execute_command(command: Optional[str] = None,
     args = command.split()
   else:
     args = sys.argv[1:]
+  logger.debug("Executing CLI command: %r", " ".join([cli_name] + args))
   flags = _get_flags(args)
   commands = [arg for arg in args if arg[len(FLAG_MARKER):] not in flags.keys()]
   manager_inst = _create_manager_for_cli(flags)

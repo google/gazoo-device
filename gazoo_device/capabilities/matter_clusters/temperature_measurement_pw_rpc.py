@@ -16,6 +16,7 @@
 """
 from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import measurement_base
+from gazoo_device.protos import attributes_service_pb2
 
 
 class TemperatureMeasurementClusterPwRpc(
@@ -24,3 +25,5 @@ class TemperatureMeasurementClusterPwRpc(
 
   CLUSTER_ID = matter_enums.TemperatureMeasurementCluster.ID
   MATTER_CLUSTER = matter_enums.TemperatureMeasurementCluster
+  ATTRIBUTE_TYPE = (
+      attributes_service_pb2.AttributeType.ZCL_INT16S_ATTRIBUTE_TYPE)

@@ -646,8 +646,12 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
     capability_class = self.get_capability_classes(capability_name)[0]
     capability_name = self._get_private_capability_name(capability_class)
     if hasattr(self, capability_name):
-      getattr(self, capability_name).close()
-      delattr(self, capability_name)
+      try:
+        getattr(self, capability_name).close()
+      except errors.DeviceError:
+        pass
+      finally:
+        delattr(self, capability_name)
 
   @decorators.LogDecorator(logger, decorators.DEBUG)
   def set_property(self, prop: str, value: Any) -> None:
