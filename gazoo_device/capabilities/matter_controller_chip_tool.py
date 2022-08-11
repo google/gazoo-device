@@ -67,7 +67,7 @@ _COMMANDS = immutabledict.immutabledict({
 
 _REGEXES = immutabledict.immutabledict({
     "READ_CLUSTER_ATTRIBUTE_RESPONSE":
-        r"CHIP:DMG:\s+Data = (\w+)",
+        r'Data = ([a-zA-Z0-9_+.-]+|".*")',
     "WRITE_CLUSTER_ATTRIBUTE_RESPONSE":
         r"CHIP:DMG:\s+status = (0[xX][0-9a-fA-F]+)",
     "SEND_CLUSTER_COMMAND_RESPONSE":

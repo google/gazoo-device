@@ -449,6 +449,10 @@ _RESPONSES = ({
     "code":
         0,
 }, {
+    "cmd": "/usr/local/bin/chip-tool descriptor read device-list 1234 0",
+    "resp": DESCRIPTOR_DEVICE_LIST_RESPONSE.format(DEVICE_TYPE_ID=22),
+    "code": 0,
+}, {
     "cmd": DESCRIPTOR_DEVICE_LIST_COMMAND,
     "resp": DESCRIPTOR_DEVICE_LIST_RESPONSE.format(DEVICE_TYPE_ID=256),
     "code": 0,
@@ -526,6 +530,61 @@ _RESPONSES = ({
     "code":
         0,
 }, {
+    "cmd":
+        "/usr/local/bin/chip-tool descriptor read server-list 1234 0",
+    "resp":
+        textwrap.dedent("""
+            [1653012222.678497][1030572:1030577] CHIP:EM: Removed CHIP MessageCounter:8097092 from RetransTable on exchange 42291i
+            [1653012222.678733][1030572:1030577] CHIP:DMG: ReportDataMessage =
+            [1653012222.678762][1030572:1030577] CHIP:DMG: {
+            [1653012222.678783][1030572:1030577] CHIP:DMG: 	AttributeReportIBs =
+            [1653012222.678815][1030572:1030577] CHIP:DMG: 	[
+            [1653012222.678839][1030572:1030577] CHIP:DMG: 		AttributeReportIB =
+            [1653012222.678884][1030572:1030577] CHIP:DMG: 		{
+            [1653012222.678918][1030572:1030577] CHIP:DMG: 			AttributeDataIB =
+            [1653012222.678954][1030572:1030577] CHIP:DMG: 			{
+            [1653012222.678999][1030572:1030577] CHIP:DMG: 				DataVersion = 0xc7508647,
+            [1653012222.679037][1030572:1030577] CHIP:DMG: 				AttributePathIB =
+            [1653012222.679065][1030572:1030577] CHIP:DMG: 				{
+            [1653012222.679095][1030572:1030577] CHIP:DMG: 					Endpoint = 0x1,
+            [1653012222.679124][1030572:1030577] CHIP:DMG: 					Cluster = 0x1d,
+            [1653012222.679161][1030572:1030577] CHIP:DMG: 					Attribute = 0x0000_0001,
+            [1653012222.679200][1030572:1030577] CHIP:DMG: 				}
+            [1653012222.679236][1030572:1030577] CHIP:DMG:
+            [1653012222.679278][1030572:1030577] CHIP:DMG: 					Data = [
+            [1653012222.679309][1030572:1030577] CHIP:DMG:
+            [1653012222.679352][1030572:1030577] CHIP:DMG: 					],
+            [1653012222.679394][1030572:1030577] CHIP:DMG: 			},
+            [1653012222.679428][1030572:1030577] CHIP:DMG:
+            [1653012222.679463][1030572:1030577] CHIP:DMG: 		},
+            [1653012222.679510][1030572:1030577] CHIP:DMG:
+            [1653012222.679535][1030572:1030577] CHIP:DMG: 		AttributeReportIB =
+            [1653012222.679575][1030572:1030577] CHIP:DMG: 		{
+            [1653012222.679601][1030572:1030577] CHIP:DMG: 			AttributeDataIB =
+            [1653012222.679640][1030572:1030577] CHIP:DMG: 			{
+            [1653012222.679700][1030572:1030577] CHIP:DMG: 				DataVersion = 0xc7508647,
+            [1653012222.679732][1030572:1030577] CHIP:DMG: 				AttributePathIB =
+            [1653012222.679772][1030572:1030577] CHIP:DMG: 				{
+            [1653012222.679815][1030572:1030577] CHIP:DMG: 					Endpoint = 0x1,
+            [1653012222.679848][1030572:1030577] CHIP:DMG: 					Cluster = 0x1d,
+            [1653012222.679891][1030572:1030577] CHIP:DMG: 					Attribute = 0x0000_0001,
+            [1653012222.679943][1030572:1030577] CHIP:DMG: 					ListIndex = Null,
+            [1653012222.679969][1030572:1030577] CHIP:DMG: 				}
+            [1653012222.680011][1030572:1030577] CHIP:DMG:
+            [1653012222.680056][1030572:1030577] CHIP:DMG: 					Data = 40,
+            [1653012222.680088][1030572:1030577] CHIP:DMG: 			},
+            [1653012222.680128][1030572:1030577] CHIP:DMG:
+            [1653012222.680153][1030572:1030577] CHIP:DMG: 		},
+            [1653012222.682267][1030572:1030577] CHIP:DMG:
+            [1653012222.702070][1030572:1030577] CHIP:DMG: 	],
+            [1653012222.702275][1030572:1030577] CHIP:DMG:
+            [1653012222.702301][1030572:1030577] CHIP:DMG: 	MoreChunkedMessages = true,
+            [1653012222.702326][1030572:1030577] CHIP:DMG: 	InteractionModelRevision = 1
+            [1653012222.702349][1030572:1030577] CHIP:DMG: }
+        """),
+    "code":
+        0,
+}, {
     "cmd": "echo 1234 > ~/.matter_sdk_version",
     "resp": "",
     "code": 0,
@@ -538,6 +597,43 @@ _RESPONSES = ({
     "resp":
         "[1658180504.043668][493408:493408] CHIP:TOO: Clearing Default storage",
     "code": 0,
+}, {
+    "cmd":
+        "/usr/local/bin/chip-tool onoff read string-attr 1234 1",
+    "resp":
+        textwrap.dedent("""
+            [1643757714.466937][6008:6013] CHIP:EM: Removed CHIP MessageCounter:2881700 from RetransTable on exchange 60917i
+            [1643757714.467073][6008:6013] CHIP:DMG: ReportDataMessage =
+            [1643757714.467140][6008:6013] CHIP:DMG: {
+            [1643757714.467194][6008:6013] CHIP:DMG: 	AttributeReportIBs =
+            [1643757714.467272][6008:6013] CHIP:DMG: 	[
+            [1643757714.467332][6008:6013] CHIP:DMG: 		AttributeReportIB =
+            [1643757714.467421][6008:6013] CHIP:DMG: 		{
+            [1643757714.467486][6008:6013] CHIP:DMG: 			AttributeDataIB =
+            [1643757714.467572][6008:6013] CHIP:DMG: 			{
+            [1643757714.467653][6008:6013] CHIP:DMG: 				DataVersion = 0x0,
+            [1643757714.467738][6008:6013] CHIP:DMG: 				AttributePathIB =
+            [1643757714.467823][6008:6013] CHIP:DMG: 				{
+            [1643757714.467900][6008:6013] CHIP:DMG: 					Endpoint = 0x1,
+            [1643757714.467971][6008:6013] CHIP:DMG: 					Cluster = 0x6,
+            [1643757714.468061][6008:6013] CHIP:DMG: 					Attribute = 0x0000_0000,
+            [1643757714.468143][6008:6013] CHIP:DMG: 				}
+            [1643757714.468234][6008:6013] CHIP:DMG:
+            [1643757714.468313][6008:6013] CHIP:DMG: 					Data = "TEST_VENDOR" (11 chars),
+            [1643757714.468402][6008:6013] CHIP:DMG: 			},
+            [1643757714.468488][6008:6013] CHIP:DMG:
+            [1643757714.468556][6008:6013] CHIP:DMG: 		},
+            [1643757714.468633][6008:6013] CHIP:DMG:
+            [1643757714.468692][6008:6013] CHIP:DMG: 	],
+            [1643757714.468767][6008:6013] CHIP:DMG:
+            [1643757714.468827][6008:6013] CHIP:DMG: 	SuppressResponse = true,
+            [1643757714.468956][6008:6013] CHIP:DMG: }
+            [1643757714.469296][6008:6013] CHIP:TOO: Endpoint: 1 Cluster: 0x0000_0006 Attribute 0x0000_0000
+            [1643757714.469413][6008:6013] CHIP:TOO:   VendorName: TEST_VENDOR
+            [1643757714.469533][6008:6013] CHIP:EM: Sending Standalone Ack for MessageCounter:3893373 on exchange 60917i
+        """),
+    "code":
+        0,
 })
 
 DEFAULT_BEHAVIOR = copy.deepcopy(raspbian_device_logs.DEFAULT_BEHAVIOR)

@@ -77,8 +77,7 @@ PIGWEED_SERIAL_DEVICE_BEHAVIORS = immutabledict.immutabledict({
 PIGWEED_SOCKET_DEVICE_BEHAVIORS = immutabledict.immutabledict({
     "rpimatter": {
         "cat /proc/device-tree/model": "Raspberry Pi 4 Model B Rev 1.4",
-        "ps -aux | grep matter-linux-app | grep -v grep":
-            "sudo ./matter-linux-app",
+        "pgrep -f matter-linux-app": "84744",
     },
 })
 

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Mixin for Matter Relative Humidity Measurement cluster test suite."""
-from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
 
 _FAKE_DATA1 = 108
@@ -21,7 +20,7 @@ _FAKE_DATA2 = 999
 _FAKE_DATA3 = 10
 
 
-class RelativeHumidityMeasurementClusterTestSuite(gdm_test_base.GDMTestBase):
+class RelativeHumidityMeasurementClusterTestSuite:
   """Mixin for Matter Relative Humidity Measurement cluster test suite.
 
   The mixin assumes self.endpoint is set.

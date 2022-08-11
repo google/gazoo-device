@@ -46,6 +46,18 @@ Supported kernel images: Ubuntu 21.04 or later.
     rpi_matter_controller-1234     <undefined>     rpi_matter_controller    4 Model B Rev 1.4   available
     ```
 
+6.  For `onnetwork` commissioning, ensure that the raspberry pi and end devices
+    of interest are part of the same network either via Ethernet or WiFi.
+
+    If needed, follow the steps below to connect the raspberry pi to WiFi.
+
+    ```shell
+    sudo apt-get install network-manager
+    sudo nmcli dev wifi connect <SSID> password <PSK>
+    ```
+
+    Verify that the raspberry pi can reach the end devices using `ping` command.
+
 ### Optional: Thread Border Router Setup
 
 Requirement:
@@ -86,6 +98,15 @@ Requirement:
 
     0e080000000000010000000300001835060004001fffe00208161de905837b6ba10708fdd61eb482e203ad0510fe8c68576cef838b184b41df13c9e694030f4f70656e5468726561642d323832610102282a0410615a57bd3d170a24ac2a461d37c8e97c0c0402a0fff8
     ```
+
+4.  Set `operational_dataset` as a property for the rpi_matter_controller.
+
+    ```shell
+    gdm set-prop <DEVICE NAME> operational_dataset <OPERATIONAL DATASET>
+    ```
+
+    Running `gdm get-prop <DEVICE NAME> operational_dataset` should print out
+    the operational dataset generated in step 3 above.
 
 ## Usage
 

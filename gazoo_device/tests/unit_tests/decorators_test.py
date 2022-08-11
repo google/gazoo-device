@@ -220,8 +220,8 @@ class LogDecoratorSuite(unit_test_case.UnitTestCase):
 
     start_msg = "{} starting {}.{}".format(device_name, FakeDevice.__name__,
                                            test_device.some_method.__name__)
-    success_rx = r"{} {}.{} successful. It took \d+s.".format(
-        device_name, FakeDevice.__name__, test_device.some_method.__name__)
+    success_rx = r"{} {}.{} returned {}. It took \d+s.".format(
+        device_name, FakeDevice.__name__, test_device.some_method.__name__, 2)
     self.assertIn(start_msg, file_contents)
     self.assertRegex(file_contents, success_rx)
 
@@ -248,9 +248,9 @@ class LogDecoratorSuite(unit_test_case.UnitTestCase):
     start_msg = "{} starting {}.{}".format(device_name,
                                            FakeDeviceParent.__name__,
                                            test_device.some_method.__name__)
-    success_rx = r"{} {}.{} successful. It took \d+s.".format(
+    success_rx = r"{} {}.{} returned {}. It took \d+s.".format(
         device_name, FakeDeviceParent.__name__,
-        test_device.some_method.__name__)
+        test_device.some_method.__name__, 2)
     self.assertIn(start_msg, file_contents)
     self.assertRegex(file_contents, success_rx)
     self.assertNotIn(FakeDeviceChild.__name__, file_contents)
@@ -281,8 +281,8 @@ class LogDecoratorSuite(unit_test_case.UnitTestCase):
     for class_name in [FakeDeviceParent.__name__, FakeDeviceChild.__name__]:
       start_msg = "{} starting {}.{}".format(device_name, class_name,
                                              test_device.some_method.__name__)
-      success_rx = r"{} {}.{} successful. It took \d+s.".format(
-          device_name, class_name, test_device.some_method.__name__)
+      success_rx = r"{} {}.{} returned {}. It took \d+s.".format(
+          device_name, class_name, test_device.some_method.__name__, 2)
       self.assertIn(start_msg, file_contents)
       self.assertRegex(file_contents, success_rx)
 
@@ -306,7 +306,7 @@ class LogDecoratorSuite(unit_test_case.UnitTestCase):
     start_msg = "{} starting {}.{}".format(
         device_name, FakeDevice.__name__,
         test_device.some_method_raises_skip.__name__)
-    success_rx = (r"{} {}.{} successful. It took \d+s.".format(
+    success_rx = (r"{} {}.{} returned .*. It took \d+s.".format(
         device_name, FakeDevice.__name__,
         test_device.some_method_raises_skip.__name__))
     skip_msg = ("{} {}.{} skipped. {}".format(
@@ -382,8 +382,8 @@ class LogDecoratorSuite(unit_test_case.UnitTestCase):
 
     start_msg = "{} starting {}.{}".format(device_name, FakeDevice.__name__,
                                            test_device.some_method.__name__)
-    success_rx = r"{} {}.{} successful. It took \d+s.".format(
-        device_name, FakeDevice.__name__, test_device.some_method.__name__)
+    success_rx = r"{} {}.{} returned {}. It took \d+s.".format(
+        device_name, FakeDevice.__name__, test_device.some_method.__name__, 2)
     self.assertIn(start_msg, file_contents)
     self.assertRegex(file_contents, success_rx)
 
@@ -408,8 +408,8 @@ class LogDecoratorSuite(unit_test_case.UnitTestCase):
 
     start_msg = "{} starting {}.{}".format(device_name, FakeDevice.__name__,
                                            test_device.some_method.__name__)
-    success_rx = r"{} {}.{} successful. It took \d+s.".format(
-        device_name, FakeDevice.__name__, test_device.some_method.__name__)
+    success_rx = r"{} {}.{} returned {}. It took \d+s.".format(
+        device_name, FakeDevice.__name__, test_device.some_method.__name__, 2)
     self.assertIn(start_msg, file_contents)
     self.assertRegex(file_contents, success_rx)
 
@@ -450,8 +450,8 @@ class LogDecoratorSuite(unit_test_case.UnitTestCase):
 
     start_msg = "{} starting {}.{}".format(device_name, FakeDevice.__name__,
                                            test_device.some_method.__name__)
-    success_rx = r"{} {}.{} successful. It took \d+s.".format(
-        device_name, FakeDevice.__name__, test_device.some_method.__name__)
+    success_rx = r"{} {}.{} returned {}. It took \d+s.".format(
+        device_name, FakeDevice.__name__, test_device.some_method.__name__, 2)
     self.assertIn(start_msg, file_contents)
     self.assertRegex(file_contents, success_rx)
 
@@ -544,24 +544,16 @@ class LogDecoratorSuite(unit_test_case.UnitTestCase):
 
   def test_arg_to_str_for_repr(self):
     """Tests _arg_to_str() for an object where __repr__ works."""
-    self.assertEqual(
-        decorators._arg_to_str(_WithRepr(), max_length=100), "Representation")
+    self.assertEqual(decorators._arg_to_str(_WithRepr()), "Representation")
 
   def test_arg_to_str_for_str(self):
     """Tests _arg_to_str() for object where __repr__ fails but __str__ works."""
-    self.assertEqual(
-        decorators._arg_to_str(_WithoutReprWithStr(), max_length=100), "String")
+    self.assertEqual(decorators._arg_to_str(_WithoutReprWithStr()), "String")
 
   def test_arg_to_str_no_description(self):
     """Tests _arg_to_str() for object where both __repr__ and __str__ fail."""
     self.assertEqual(
-        decorators._arg_to_str(_WithoutReprWithoutStr(), max_length=100),
-        "<No description>")
-
-  def test_arg_to_str_clipping(self):
-    """Tests _arg_to_str() clipping long strings."""
-    self.assertEqual(
-        decorators._arg_to_str(_WithRepr(), max_length=9), "Represent...")
+        decorators._arg_to_str(_WithoutReprWithoutStr()), "<No description>")
 
   @parameterized.named_parameters(
       ("no_print_args", False, logging.INFO,

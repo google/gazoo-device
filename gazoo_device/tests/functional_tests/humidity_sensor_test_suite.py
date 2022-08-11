@@ -19,6 +19,7 @@ from gazoo_device.tests.functional_tests.utils import gdm_test_base
 
 
 class HumiditySensorTestSuite(
+    gdm_test_base.GDMTestBase,
     relative_humidity_measurement_cluster_suite.
     RelativeHumidityMeasurementClusterTestSuite):
   """Tests for the Pressure Sensor endpoint."""

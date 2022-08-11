@@ -234,7 +234,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     with self.assertRaisesRegex(errors.DeviceError, "Unable to access"):
       self.uut.add_new_filter("bad_path")
 
-  def test_gazoo_device_base_add_new_filterload_filter_file_error(self):
+  def test_gazoo_device_base_add_new_filter_load_filter_file_error(self):
     """Verifies add_new_filter raises error if load_filter_file errors."""
     self.assertTrue(self.uut.switchboard)  # Create Switchboard
     with mock.patch.object(event_parser_default, "EventParserDefault"):
@@ -242,6 +242,25 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
           "some error")
       with self.assertRaisesRegex(errors.DeviceError, "some error"):
         self.uut.add_new_filter("/some/filter/file.json")
+
+  def test_gazoo_device_base_add_new_filter_before_switchboard_creation(self):
+    """Verifies add_new_filter updates event filters in the correct order.
+
+    This is a regression test for b/240756778.
+    """
+    tracking_mock = mock.MagicMock()
+    tracking_mock.manager = self.mock_manager
+    tracking_mock.switchboard = self.mock_switchboard
+    with mock.patch.object(
+        event_parser_default, "EventParserDefault") as mock_parser_class:
+      tracking_mock.attach_mock(mock_parser_class.return_value, "parser")
+      self.uut.add_new_filter("/some/filter/file.json")
+      methods_called = [name for name, _, _ in tracking_mock.mock_calls]
+      parser_called_at = methods_called.index("parser.load_filter_file")
+      self.assertNotIn(
+          "manager.create_switchboard", methods_called[parser_called_at:],
+          ("add_new_filter instantiated switchboard after event_parser is "
+           "updated with new parser filters"))
 
   def test_gazoo_device_base_add_new_filter_successful(self):
     """Verifies add_new_filter is successful using valid input."""

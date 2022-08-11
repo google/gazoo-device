@@ -657,3 +657,8 @@ class DeviceWifiIpUnreachableError(CheckDeviceReadyError):
 class PigweedRpcTimeoutError(DeviceNotResponsiveError):
   """Raised when the Matter device is nonresponsive to Pigweed RPC calls."""
   err_code = 71
+
+
+class ServiceNotEnabledError(CheckDeviceReadyError):
+  """Raised when a service daemon is not enabled."""
+  err_code = 72

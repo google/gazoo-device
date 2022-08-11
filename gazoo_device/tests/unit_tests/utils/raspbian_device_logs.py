@@ -124,6 +124,10 @@ _RESPONSES = [{
     "cmd": "sleep 10 &",
     "resp": "",
     "code": 0,
+}, {
+    "cmd": "echo 'gdm hello'",
+    "resp": "gdm hello",
+    "code": 0,
 }]
 
 DEFAULT_BEHAVIOR = ssh_device_logs.make_device_responses(_RESPONSES)

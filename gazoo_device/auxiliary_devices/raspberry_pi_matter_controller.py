@@ -21,16 +21,16 @@ from gazoo_device import detect_criteria
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.auxiliary_devices import raspberry_pi
+from gazoo_device.base_classes import matter_endpoints_mixin
 from gazoo_device.capabilities import matter_controller_chip_tool
 from gazoo_device.capabilities import matter_endpoints_accessor_chip_tool
-from gazoo_device.capabilities.matter_endpoints import dimmable_light
-from gazoo_device.capabilities.matter_endpoints import occupancy_sensor
-from gazoo_device.capabilities.matter_endpoints import on_off_light
 
 logger = gdm_logger.get_logger()
 
 
-class RaspberryPiMatterController(raspberry_pi.RaspberryPi):
+class RaspberryPiMatterController(
+    raspberry_pi.RaspberryPi,
+    matter_endpoints_mixin.MatterEndpointAliasesMixin):
   """Base Class for RaspberryPiMatterController Devices."""
   DETECT_MATCH_CRITERIA = {
       detect_criteria.SshQuery.IS_RPI: True,
@@ -80,47 +80,3 @@ class RaspberryPiMatterController(raspberry_pi.RaspberryPi):
         shell_fn=self.shell,
         shell_with_regex=self.shell_with_regex,
         matter_controller=self.matter_controller)
-
-  # ******************** Matter endpoint aliases ******************** #
-
-  @decorators.CapabilityDecorator(dimmable_light.DimmableLightEndpoint)
-  def dimmable_light(self) -> dimmable_light.DimmableLightEndpoint:
-    """Matter Dimmable Light endpoint instance.
-
-    Returns:
-      Dimmable Light endpoint instance.
-
-    Raises:
-      DeviceError when Dimmable Light endpoint is not supported on the
-      device.
-    """
-    return self.matter_endpoints.get_endpoint_instance_by_class(
-        dimmable_light.DimmableLightEndpoint)
-
-  @decorators.CapabilityDecorator(occupancy_sensor.OccupancySensorEndpoint)
-  def occupancy_sensor(self) -> occupancy_sensor.OccupancySensorEndpoint:
-    """Matter Occupancy Sensor endpoint instance.
-
-    Returns:
-      Occupancy Sensor endpoint instance.
-
-    Raises:
-      DeviceError when Occupancy Sensor endpoint is not supported on the
-      device.
-    """
-    return self.matter_endpoints.get_endpoint_instance_by_class(
-        occupancy_sensor.OccupancySensorEndpoint)
-
-  @decorators.CapabilityDecorator(on_off_light.OnOffLightEndpoint)
-  def on_off_light(self) -> on_off_light.OnOffLightEndpoint:
-    """Matter OnOff Light endpoint instance.
-
-    Returns:
-      OnOff Light endpoint instance.
-
-    Raises:
-      DeviceError when OnOff Light endpoint is not supported on the
-      device.
-    """
-    return self.matter_endpoints.get_endpoint_instance_by_class(
-        on_off_light.OnOffLightEndpoint)

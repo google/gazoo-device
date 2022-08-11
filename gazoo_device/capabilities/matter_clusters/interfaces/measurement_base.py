@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Interface for the Matter Measurement cluster capability."""
 import abc
+import enum
 
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -26,8 +26,7 @@ from gazoo_device.protos import attributes_service_pb2
 _INT16SIGNED = attributes_service_pb2.AttributeType.ZCL_INT16S_ATTRIBUTE_TYPE
 
 
-class MeasurementClusterBase(
-    cluster_base.ClusterBase, metaclass=abc.ABCMeta):
+class MeasurementClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
   """Matter Pressure Measurement cluster capability."""
 
   CLUSTER_ID = None
@@ -48,8 +47,7 @@ class MeasurementClusterBase(
   def measured_value(self, value: int) -> None:
     """Updates the MeasuredValue attribute with new value."""
     self._write_value(
-        attribute_id=self.MATTER_CLUSTER.ATTRIBUTE_MEASURED_VALUE,
-        value=value)
+        attribute_id=self.MATTER_CLUSTER.ATTRIBUTE_MEASURED_VALUE, value=value)
 
   @decorators.DynamicProperty
   def min_measured_value(self) -> int:
@@ -91,7 +89,7 @@ class MeasurementClusterBase(
         attribute_id=self.MATTER_CLUSTER.ATTRIBUTE_MAX_MEASURED_VALUE,
         value=value)
 
-  def _read_value(self, attribute_id: int) -> int:
+  def _read_value(self, attribute_id: enum.IntEnum) -> int:
     """Reads the value from the given attribute ID.
 
     Args:
@@ -110,7 +108,7 @@ class MeasurementClusterBase(
     else:
       return value_data.data_uint16
 
-  def _write_value(self, attribute_id: int, value: int) -> None:
+  def _write_value(self, attribute_id: enum.IntEnum, value: int) -> None:
     """Writes the value to the given attribute ID.
 
     Args:
@@ -134,6 +132,58 @@ class MeasurementClusterBase(
           attribute_id=attribute_id,
           attribute_type=self.ATTRIBUTE_TYPE,
           data_uint16=value)
+    if self._read_value(attribute_id) != value:
+      raise errors.DeviceError(
+          f"Device {self._device_name} Attribute {attribute_id} didn't change"
+          f" to {value}")
+
+
+class MeasurementClusterChipToolBase(MeasurementClusterBase):
+  """Matter Measurement cluster capability for chip-tool."""
+
+  CLUSTER_NAME = None
+
+  def _map_attribute_id_to_name(self, attribute_id: enum.IntEnum) -> str:
+    """Converts attribute enum into chip-tool compatible attribute name.
+
+    Args:
+      attribute_id: Enum of the attribute. The enum name should start with
+        ATTRIBUTE_. See list of supported attributes in matter_enums.
+
+    Returns:
+      Attribute name in kebab case.
+      (e.g. ATTRIBUTE_MEASURED_VALUE -> measured-value)
+    """
+    attribute = attribute_id.name
+    if not attribute.startswith("ATTRIBUTE_"):
+      raise ValueError(
+          f"Invalid attribute ID {attribute_id} for cluster {self.CLUSTER_ID}")
+    return attribute.replace("ATTRIBUTE_", "").replace("_", "-").lower()
+
+  def _read_value(self, attribute_id: enum.IntEnum) -> int:
+    """Reads the value from the given attribute ID.
+
+    Args:
+      attribute_id: Attribute ID on a MeasurementCluster.
+
+    Returns:
+      The value read from the attribute.
+    """
+    return self._read(self._endpoint_id, self.CLUSTER_NAME,
+                      self._map_attribute_id_to_name(attribute_id))
+
+  def _write_value(self, attribute_id: enum.IntEnum, value: int) -> None:
+    """Writes the value to the given attribute ID.
+
+    Args:
+      attribute_id: Attribute ID on a MeasurementCluster.
+      value: Value to write to the attribute.
+
+    Raises:
+      DeviceError when the attribute value doesn't change.
+    """
+    self._write(self._endpoint_id, self.CLUSTER_NAME,
+                self._map_attribute_id_to_name(attribute_id), [value])
     if self._read_value(attribute_id) != value:
       raise errors.DeviceError(
           f"Device {self._device_name} Attribute {attribute_id} didn't change"

@@ -50,7 +50,7 @@ _SSH_COMMANDS = immutabledict.immutabledict({
     "DLI_PRODUCT_NAME": "http://{address}/restapi/config/=brand_name/",
     "RPI_PRODUCT_NAME": "cat /proc/device-tree/model",
     "IS_MATTER_LINUX_APP_RUNNING": (
-        f"ps -aux | grep {pwrpc_utils.MATTER_LINUX_APP_NAME} | grep -v grep")
+        f"pgrep -f {pwrpc_utils.MATTER_LINUX_APP_NAME}")
 })
 
 _GET_DLINK_MODEL_SNMP_COMMAND = (

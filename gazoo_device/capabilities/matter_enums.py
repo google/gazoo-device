@@ -42,6 +42,33 @@ class DoorLockCluster(enum.IntEnum):
   ATTRIBUTE_LOCK_STATE = 0x0000
 
 
+class FlowMeasurementCluster(enum.IntEnum):
+  """Flow Measurement cluster ID and its attribute IDs.
+
+  The enum values are defined in the Matter spec.
+  """
+  ID = attributes_service_pb2.ClusterType.ZCL_FLOW_MEASUREMENT_CLUSTER_ID
+
+  # Attribute IDs
+  ATTRIBUTE_MEASURED_VALUE = 0x0000
+  ATTRIBUTE_MIN_MEASURED_VALUE = 0x0001
+  ATTRIBUTE_MAX_MEASURED_VALUE = 0x0002
+
+
+class IlluminanceMeasurementCluster(enum.IntEnum):
+  """Illuminance Measurement cluster ID and its attribute IDs.
+
+  The enum values are defined in the Matter spec.
+  """
+  ID = attributes_service_pb2.ClusterType.ZCL_ILLUMINANCE_MEASUREMENT_CLUSTER_ID
+
+  # Attribute IDs
+  ATTRIBUTE_MEASURED_VALUE = 0x0000
+  ATTRIBUTE_MIN_MEASURED_VALUE = 0x0001
+  ATTRIBUTE_MAX_MEASURED_VALUE = 0x0002
+  ATTRIBUTE_LIGHT_SENSOR_TYPE = 0x0004
+
+
 class LevelControlCluster(enum.IntEnum):
   """Level control cluster ID and its attribute IDs.
 
@@ -203,3 +230,24 @@ class ThermostatSetpointMode(enum.IntEnum):
   HEAT = 0
   COOL = 1
   BOTH = 2
+
+
+class BasicInformationCluster(enum.IntEnum):
+  """Basic information cluster ID and its attribute IDs.
+
+  The enum values are defined in the Matter spec.
+  """
+  ID = attributes_service_pb2.ClusterType.ZCL_BASIC_CLUSTER_ID
+
+  # Attribute IDs
+  ATTRIBUTE_DATA_MODEL_REVISION = 0x0000
+  ATTRIBUTE_VENDOR_NAME = 0x0001
+  ATTRIBUTE_VENDOR_ID = 0x0002
+  ATTRIBUTE_PRODUCT_NAME = 0x0003
+  ATTRIBUTE_PRODUCT_ID = 0x0004
+  ATTRIBUTE_NODE_LABEL = 0x0005
+  ATTRIBUTE_LOCATION = 0x0006
+  ATTRIBUTE_HARDWARE_VERSION = 0x0007
+  ATTRIBUTE_HARDWARE_VERSION_STRING = 0x008
+  ATTRIBUTE_SOFTWARE_VERSION = 0x009
+  ATTRIBUTE_SOFTWARE_VERSION_STRING = 0x00A

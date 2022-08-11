@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Functional Test Runner.
+"""Functional Test Runner main.
 
 Runs the on-device regression test suites for a particular testbed model.
 See README.md for more information.
@@ -22,30 +22,7 @@ from typing import Optional, Sequence
 from absl import app
 from absl import flags
 import gazoo_device
-from gazoo_device.tests.functional_tests import auxiliary_device_common_test_suite
-from gazoo_device.tests.functional_tests import color_temperature_light_test_suite
-from gazoo_device.tests.functional_tests import comm_power_test_suite
-from gazoo_device.tests.functional_tests import common_test_suite
-from gazoo_device.tests.functional_tests import contact_sensor_test_suite
-from gazoo_device.tests.functional_tests import device_power_test_suite
-from gazoo_device.tests.functional_tests import dimmable_light_test_suite
-from gazoo_device.tests.functional_tests import door_lock_test_suite
-from gazoo_device.tests.functional_tests import embedded_script_test_suite
-from gazoo_device.tests.functional_tests import file_transfer_test_suite
-from gazoo_device.tests.functional_tests import humidity_sensor_test_suite
-from gazoo_device.tests.functional_tests import matter_endpoints_test_suite
-from gazoo_device.tests.functional_tests import occupancy_sensor_test_suite
-from gazoo_device.tests.functional_tests import on_off_light_test_suite
-from gazoo_device.tests.functional_tests import optional_properties_test_suite
-from gazoo_device.tests.functional_tests import package_management_test_suite
-from gazoo_device.tests.functional_tests import pressure_sensor_test_suite
-from gazoo_device.tests.functional_tests import pw_rpc_button_test_suite
-from gazoo_device.tests.functional_tests import pw_rpc_common_test_suite
-from gazoo_device.tests.functional_tests import pw_rpc_wifi_test_suite
-from gazoo_device.tests.functional_tests import shell_ssh_test_suite
-from gazoo_device.tests.functional_tests import switch_power_test_suite
-from gazoo_device.tests.functional_tests import switchboard_test_suite
-from gazoo_device.tests.functional_tests import temperature_sensor_test_suite
+from gazoo_device.tests.functional_tests import functional_test_runner_lib
 from gazoo_device.tests.functional_tests.utils import suite_filter
 from mobly import config_parser
 from mobly import suite_runner
@@ -59,50 +36,11 @@ _CONFIG_FLAG = flags.DEFINE_string(
 
 SuiteCollectionType = suite_filter.SuiteCollectionType
 
-TEST_SUITES = (
-    auxiliary_device_common_test_suite.AuxiliaryDeviceCommonTestSuite,
-    color_temperature_light_test_suite.ColorTemperatureTestSuite,
-    comm_power_test_suite.CommPowerTestSuite,
-    common_test_suite.CommonTestSuite,
-    contact_sensor_test_suite.ContactSensorTestSuite,
-    device_power_test_suite.DevicePowerTestSuite,
-    dimmable_light_test_suite.DimmableLightTestSuite,
-    door_lock_test_suite.DoorLockTestSuite,
-    embedded_script_test_suite.EmbeddedScriptTestSuite,
-    file_transfer_test_suite.FileTransferTestSuite,
-    humidity_sensor_test_suite.HumiditySensorTestSuite,
-    matter_endpoints_test_suite.MatterEndpointsPwRpcTestSuite,
-    occupancy_sensor_test_suite.OccupancySensorTestSuite,
-    on_off_light_test_suite.OnOffLightTestSuite,
-    optional_properties_test_suite.OptionalPropertiesTestSuite,
-    package_management_test_suite.PackageManagementTestSuite,
-    pressure_sensor_test_suite.PressureSensorTestSuite,
-    pw_rpc_button_test_suite.PwRPCButtonTestSuite,
-    pw_rpc_common_test_suite.PwRPCCommonTestSuite,
-    pw_rpc_wifi_test_suite.PwRPCWifiTestSuite,
-    shell_ssh_test_suite.ShellSshTestSuite,
-    switch_power_test_suite.SwitchPowerTestSuite,
-    switchboard_test_suite.SwitchboardTestSuite,
-    temperature_sensor_test_suite.TemperatureSensorTestSuite,
-)
-
-
-def _get_suite_index(suite: suite_filter.SuiteType) -> int:
-  """Returns the key used for test suite sorting."""
-  aux_common_test_suite = (
-      auxiliary_device_common_test_suite.AuxiliaryDeviceCommonTestSuite)
-  if suite == aux_common_test_suite:
-    # CommonTestSuite runs first as it does a factory reset of the device.
-    return 0
-  else:
-    return 1  # Other test suites run in any order.
-
 
 def _reorder_test_suites(
     test_suites: SuiteCollectionType) -> SuiteCollectionType:
   """Reorders test suites to ensure factory reset run first."""
-  test_suites.sort(key=_get_suite_index)
-  return test_suites
+  return sorted(test_suites, key=functional_test_runner_lib.get_suite_index)
 
 
 def _get_device_name(config_path: str) -> str:
@@ -117,7 +55,7 @@ def _run_tests(argv: Optional[Sequence[str]] = None) -> None:
   del argv  # Unused.
   device_name = _get_device_name(_CONFIG_FLAG.value)
   test_suite_dict = suite_filter.identify_tests_to_run(
-      all_test_suites=TEST_SUITES,
+      all_test_suites=functional_test_runner_lib.TEST_SUITES,
       reorder_test_suites=_reorder_test_suites,
       device_name=device_name)
   all_test_names = []

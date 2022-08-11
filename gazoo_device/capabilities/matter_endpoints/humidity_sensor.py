@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Matter Humidity Sensor endpoint.
 
 A humidity sensor (in most cases a Relative humidity sensor) reports humidity
@@ -25,8 +24,11 @@ type with the following defined clusters on this endpoint:
 
 The required clusters for this endpoint: Relative Humidity Measurement
 """
+from typing import Union
+
 from gazoo_device import decorators
 from gazoo_device.capabilities import matter_enums
+from gazoo_device.capabilities.matter_clusters import relative_humidity_measurement_chip_tool
 from gazoo_device.capabilities.matter_clusters import relative_humidity_measurement_pw_rpc
 from gazoo_device.capabilities.matter_endpoints.interfaces import humidity_sensor_base
 
@@ -34,12 +36,18 @@ from gazoo_device.capabilities.matter_endpoints.interfaces import humidity_senso
 class HumiditySensorEndpoint(humidity_sensor_base.HumiditySensorBase):
   """Matter Humidity Sensor endpoint."""
 
-  @decorators.CapabilityDecorator(
-      relative_humidity_measurement_pw_rpc.
-      RelativeHumidityMeasurementClusterPwRpc)
+  @decorators.CapabilityDecorator([
+      relative_humidity_measurement_chip_tool
+      .RelativeHumidityMeasurementClusterChipTool,
+      relative_humidity_measurement_pw_rpc
+      .RelativeHumidityMeasurementClusterPwRpc
+  ])
   def relative_humidity_measurement(
-      self) -> (relative_humidity_measurement_pw_rpc.
-                RelativeHumidityMeasurementClusterPwRpc):
+      self
+  ) -> Union[relative_humidity_measurement_chip_tool
+             .RelativeHumidityMeasurementClusterChipTool,
+             relative_humidity_measurement_pw_rpc
+             .RelativeHumidityMeasurementClusterPwRpc]:
     """Matter Relative Humidity Measurement cluster instance."""
     return self.cluster_lazy_init(
         matter_enums.RelativeHumidityMeasurementCluster.ID)

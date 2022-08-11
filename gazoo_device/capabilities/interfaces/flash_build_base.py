@@ -13,10 +13,25 @@
 # limitations under the License.
 
 """Build Flasher capability interface."""
+
 import abc
-from typing import Any, Dict
+import dataclasses
+from typing import Any, Dict, Tuple
+
 from gazoo_device.capabilities.interfaces import capability_base
+
+
 UNKNOWN = "UNKNOWN"
+
+
+@dataclasses.dataclass(frozen=True)
+class BuildInfo:
+  build_version: str
+  build_type: str
+  build_files: Tuple[str, ...]
+  is_local: bool
+  obtain_build: bool = True
+  extract_build: bool = True
 
 
 class FlashBuildBase(capability_base.CapabilityBase):

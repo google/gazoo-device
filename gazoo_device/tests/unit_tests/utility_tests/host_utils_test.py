@@ -12,16 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Unit tests for gazoo_device.utility.host_utils.py."""
+
 import os
 import subprocess
 from unittest import mock
 
+from absl.testing import parameterized
 from gazoo_device import config
 from gazoo_device import data_types
 from gazoo_device import extensions
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import host_utils
 import immutabledict
+
 
 _TEST_PACKAGE = "foo_package"
 _EXPECTED_KEY_DIR = os.path.join(config.KEYS_DIRECTORY, _TEST_PACKAGE)
@@ -107,7 +110,7 @@ class HostUtilsTests(unit_test_case.UnitTestCase):
         _TEST_KEY_SSH_PRIVATE_NAME, _EXPECTED_KEY_SSH_PRIVATE_PATH)
     with self.assertRaisesRegex(FileNotFoundError, error_regex):
       host_utils._download_key(_TEST_KEY_SSH_PRIVATE)
-    mock_exists.assert_called_once_with(_EXPECTED_KEY_SSH_PRIVATE_PATH)
+    mock_exists.assert_called_with(_EXPECTED_KEY_SSH_PRIVATE_PATH)
 
   @mock.patch.object(os.path, "isdir", return_value=True)
   @mock.patch.object(os, "makedirs")
@@ -258,6 +261,56 @@ class SnmpHostUtilsTests(unit_test_case.UnitTestCase):
   def test_accepts_snmp__fail(self, mock_check_output):
     ip_address = "0.0.0.0"
     self.assertFalse(host_utils.accepts_snmp(ip_address=ip_address))
+
+  @parameterized.named_parameters(
+      ("default_boto", None, "default_boto"),
+      ("custom_boto", "some_boto", "some_boto"),
+  )
+  @mock.patch.object(subprocess, "check_output", return_value=b"some_output")
+  @mock.patch.object(os.path, "exists", return_value=True)
+  @mock.patch.object(
+      host_utils, "_get_default_boto", return_value="default_boto")
+  @mock.patch.object(host_utils, "_set_gsutil_cli")
+  def test_gsutil_command_success(
+      self,
+      boto_path,
+      expected_boto_path,
+      mock_set_gsutil_cli,
+      mock_get_default_boto,
+      mock_exists,
+      mock_check_output,
+  ):
+    """Verifies gsutil_command succeeds when expected."""
+    output = host_utils.gsutil_command(
+        "ls", "gs://some/dir/", boto_path=boto_path)
+    mock_check_output.assert_called_once()
+    self.assertEqual(output, "some_output")
+    check_output_env = mock_check_output.call_args[1]["env"]
+    self.assertIn("BOTO_CONFIG", check_output_env)
+    self.assertEqual(check_output_env["BOTO_CONFIG"], expected_boto_path)
+
+  @parameterized.named_parameters(
+      ("bad_boto", RuntimeError),
+      ("bad_gsutil_call", "good_boto"),
+  )
+  @mock.patch.object(
+      subprocess,
+      "check_output",
+      side_effect=subprocess.CalledProcessError("some_err", "some_cmd"))
+  @mock.patch.object(host_utils, "_get_default_boto")
+  @mock.patch.object(host_utils, "_set_gsutil_cli")
+  def test_gsutil_command_failure(
+      self,
+      get_default_boto_effect,
+      mock_set_gsutil_cli,
+      mock_get_default_boto,
+      mock_check_output,
+  ):
+    """Verifies gsutil_command fails when expected."""
+    mock_get_default_boto.side_effect = get_default_boto_effect
+    with mock.patch.object(host_utils, "_gsutil_cli", new="some_gsutil_cli"):
+      with self.assertRaises(RuntimeError):
+        host_utils.gsutil_command("ls", "gs://some/dir/")
 
 
 if __name__ == "__main__":

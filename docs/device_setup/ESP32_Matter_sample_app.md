@@ -106,6 +106,17 @@ upgrade --build_file=/path/to/application.bin
 --partition_file=/path/to/partition_table.bin
 --bootloader_file=/path/to/bootloader.bin`)
 
+Note: For flashing a chef build, you'll also need to pass a
+`flash_settings_file` argument for `chip-shell.flash.py`. Also sometimes the
+`application.bin` might be renamed as `chip-shell.bin` in the build artifacts.
+
+```
+>>> esp.flash_build.upgrade(build_file='/path/to/chip-shell.bin',
+                            partition_file='/path/to/partition_table.bin',
+                            bootloader_file='/path/to/bootloader.bin',
+                            flash_settings_file=/path/to/chip-shell.flash.py)
+```
+
 After flashing it'll need to be redetected (if going from `esp32` to
 `esp32matter`).
 

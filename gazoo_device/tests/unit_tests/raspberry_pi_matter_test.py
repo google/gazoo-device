@@ -15,11 +15,13 @@
 """Unit tests for the raspberry_pi_matter module."""
 from unittest import mock
 from gazoo_device import errors
-from gazoo_device.capabilities import matter_app_controls_shell
+from gazoo_device.base_classes import ssh_device
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.primary_devices import raspberry_pi_matter
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
-from gazoo_device.tests.unit_tests.utils import raspberry_pi_matter_controller_device_logs
+from gazoo_device.tests.unit_tests.utils import raspberry_pi_matter_device_logs
+from gazoo_device.utility import host_utils
+from gazoo_device.utility import retry
 import immutabledict
 
 _FAKE_DEVICE_IP = "123.45.67.89"
@@ -32,8 +34,6 @@ _CONNECT_PERSISTENT_PROPERTIES = immutabledict.immutabledict({
     "model": "PROTO",
     "wpan_mac_address": "123456"
 })
-_MOCK_MATTER_APP = mock.Mock(
-    spec=matter_app_controls_shell.MatterSampleAppShell)
 _MOCK_MATTER_ENDPOINT = mock.Mock(
     spec=matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc)
 
@@ -46,7 +46,7 @@ class RaspberryPiMatterTests(fake_device_test_case.FakeDeviceTestCase):
     self.setup_fake_device_requirements("rpimatter-1234")
     self.device_config["persistent"]["console_port_name"] = _FAKE_DEVICE_IP
     self.fake_responder.behavior_dict = (
-        raspberry_pi_matter_controller_device_logs.DEFAULT_BEHAVIOR.copy())
+        raspberry_pi_matter_device_logs.DEFAULT_BEHAVIOR.copy())
 
     self.uut = raspberry_pi_matter.RaspberryPiMatter(
         self.mock_manager,
@@ -74,25 +74,73 @@ class RaspberryPiMatterTests(fake_device_test_case.FakeDeviceTestCase):
     """Verifies health_check is not empty."""
     self.assertTrue(bool(self.uut.health_checks))
 
-  @mock.patch.object(
-      raspberry_pi_matter.RaspberryPiMatter,
-      "matter_sample_app",
-      new_callable=mock.PropertyMock(return_value=_MOCK_MATTER_APP))
-  def test_check_app_present(self, mock_controls):
+  def test_check_app_present_on_success(self):
+    """Verifies check_app_present on success."""
+    self.uut.check_app_present()
+
+  def test_check_app_present_on_failure(self):
     """Verifies check_app_present on failure."""
-    mock_controls.is_present = False
+    response = {
+        "cmd": "test -f /home/pi/matter-linux-app",
+        "resp": "",
+        "code": 1,
+    }
+    self.fake_responder.behavior_dict.update(
+        raspberry_pi_matter_device_logs.make_device_responses((response,)))
     with self.assertRaisesRegex(
         errors.DeviceBinaryMissingError,
         "The Matter sample app binary does not exist"):
       self.uut.check_app_present()
 
-  @mock.patch.object(
-      raspberry_pi_matter.RaspberryPiMatter,
-      "matter_sample_app",
-      new_callable=mock.PropertyMock(return_value=_MOCK_MATTER_APP))
-  def test_check_app_running(self, mock_controls):
+  def test_check_has_service_on_success(self):
+    """Verifies check_has_service on success."""
+    self.uut.check_has_service()
+
+  def test_check_has_service_on_failure(self):
+    """Verifies check_has_service on failure."""
+    response = {
+        "cmd": "test -f /etc/systemd/system/matter-linux-app.service",
+        "resp": "",
+        "code": 1,
+    }
+    self.fake_responder.behavior_dict.update(
+        raspberry_pi_matter_device_logs.make_device_responses((response,)))
+    with self.assertRaisesRegex(
+        errors.DeviceMissingPackagesError,
+        "The Matter sample app service file does not exist"):
+      self.uut.check_has_service()
+
+  def test_check_is_service_enabled_on_success(self):
+    """Verifies is_service_enabled on success."""
+    self.uut.check_is_service_enabled()
+
+  def test_check_is_service_enabled_on_failure(self):
+    """Verifies is_service_enabled on failure."""
+    response = {
+        "cmd": "sudo systemctl is-enabled matter-linux-app.service",
+        "resp": "disabled",
+        "code": 0,
+    }
+    self.fake_responder.behavior_dict.update(
+        raspberry_pi_matter_device_logs.make_device_responses((response,)))
+    with self.assertRaisesRegex(
+        errors.ServiceNotEnabledError,
+        "The Matter sample app service is not enabled"):
+      self.uut.check_is_service_enabled()
+
+  def test_check_app_running_on_success(self):
+    """Verifies check_app_running on success."""
+    self.uut.check_app_running()
+
+  def test_check_app_running_on_failure(self):
     """Verifies check_app_running on failure."""
-    mock_controls.is_running = False
+    response = {
+        "cmd": "pgrep -f matter-linux-app",
+        "resp": "",
+        "code": 0,
+    }
+    self.fake_responder.behavior_dict.update(
+        raspberry_pi_matter_device_logs.make_device_responses((response,)))
     with self.assertRaisesRegex(
         errors.ProcessNotRunningError,
         "The Matter sample app process is not running"):
@@ -114,17 +162,33 @@ class RaspberryPiMatterTests(fake_device_test_case.FakeDeviceTestCase):
     """Verifies matter_sample_app alias on success."""
     self.assertIsNotNone(self.uut.matter_sample_app)
 
-  @mock.patch.object(
-      raspberry_pi_matter.RaspberryPiMatter,
-      "matter_sample_app",
-      new_callable=mock.PropertyMock(return_value=_MOCK_MATTER_APP))
-  def test_recover_for_rpc_working_error(self, mock_matter_app):
+  @mock.patch.object(retry, "retry")
+  @mock.patch.object(host_utils, "is_pingable", return_value=True)
+  def test_recover_for_rpc_working_error(self, mock_is_pingable, mock_retry):
     """Verifies recover method for RPC not working error."""
+    response = {
+        "cmd": "pgrep -f matter-linux-app",
+        "resp": "12345",
+        "code": 0,
+    }
+    self.fake_responder.behavior_dict.update(
+        raspberry_pi_matter_device_logs.make_device_responses((response,)))
     fake_error = errors.PigweedRpcTimeoutError(
         device_name="fake-name", msg="fake-msg")
     self.uut.recover(error=fake_error)
 
-    mock_matter_app.restart.assert_called_once()
+  def test_recover_for_service_not_enabled_error(self):
+    """Verifies recover method for sample app service not enabled error."""
+    response = {
+        "cmd": "sudo systemctl is-enabled matter-linux-app.service",
+        "resp": "disabled",
+        "code": 0,
+    }
+    self.fake_responder.behavior_dict.update(
+        raspberry_pi_matter_device_logs.make_device_responses((response,)))
+    fake_error = errors.ServiceNotEnabledError(
+        device_name="fake-name", msg="fake-msg")
+    self.uut.recover(error=fake_error)
 
   @mock.patch.object(
       raspberry_pi_matter.RaspberryPiMatter, "wait_for_bootup_complete")
@@ -135,6 +199,26 @@ class RaspberryPiMatterTests(fake_device_test_case.FakeDeviceTestCase):
     self.uut.recover(error=fake_error)
 
     mock_wait.assert_called_once()
+
+  @mock.patch.object(raspberry_pi_matter.RaspberryPiMatter, "_verify_reboot")
+  def test_reboot(self, mock_verify_reboot):
+    """Verifies hard reboot method."""
+    self.uut.reboot()
+
+    mock_verify_reboot.assert_called_once()
+
+  @mock.patch.object(retry, "retry")
+  @mock.patch.object(ssh_device.SshDevice, "wait_for_bootup_complete")
+  def test_wait_for_bootup_complete(self, mock_wait, mock_retry):
+    """Verifies wait_for_bootup_complete on success."""
+    self.uut.wait_for_bootup_complete()
+
+    mock_wait.assert_called_once()
+    self.assertEqual(2, mock_retry.call_count)
+
+  def test_bluetooth_service_alias(self):
+    """Verifies bluetooth_service alias on success."""
+    self.assertIsNotNone(self.uut.bluetooth_service)
 
 
 if __name__ == "__main__":

@@ -126,3 +126,18 @@ Note: Ports are defined as 1-5 or 1-8 depending on the model.
 *   POWER ON port 1: `$ gdm issue dlink_switch-3.90 - switch_power power_on 1`
 
 *   POWER OFF port 1: `$ gdm issue dlink_switch-3.90 - switch_power power_off 1`
+
+
+## Troubleshooting
+
+### I cannot log into the switch after factory resetting the switch
+
+*   If you are having trouble logging into the device after factory reset,
+    ensure you are navigating to the IP address with http as opposed to https.
+
+### GDM Cannot detect my switch
+
+*   Ensure that `snmp` is installed on you host machine
+    `sudo apt-get install snmp`. If it was not, re-detect the switch after
+     installation.
+

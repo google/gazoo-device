@@ -46,9 +46,9 @@ class MatterSampleAppBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def upgrade(self, app_file: str) -> None:
-    """Upgrades to a new app file.
+  def upgrade(self, sample_app_file_path: str) -> None:
+    """Upgrades to a new sample app binary.
 
     Args:
-      app_file: Local path to app file.
+      sample_app_file_path: Local path to the sample app file on the host.
     """

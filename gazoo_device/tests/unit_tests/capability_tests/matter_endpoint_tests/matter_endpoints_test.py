@@ -26,18 +26,31 @@ _FAKE_ENDPOINT_ID = 1
 _FAKE_RPC_TIMEOUT_S = 10
 
 # Trim the cluster capability names into alias names.
-_CLUSTER_NAMES = (
-    cluster.get_capability_name().replace("_control_cluster", "").replace(
-        "_cluster", "")
+_CLUSTER_NAMES_PW_RPC = (
+    cluster.get_capability_name().replace("_control_cluster",
+                                          "").replace("_cluster", "")
     for cluster in matter_endpoints_and_clusters.SUPPORTED_CLUSTERS_PW_RPC)
 
-_ENDPOINT_AND_CLUSTER_PRODUCT = itertools.product(
-    matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS_PW_RPC, _CLUSTER_NAMES)
+_ENDPOINT_AND_CLUSTER_PRODUCT_PW_RPC = itertools.product(
+    matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS_PW_RPC,
+    _CLUSTER_NAMES_PW_RPC)
+
+_CLUSTER_NAMES_CHIP_TOOL = (
+    cluster.get_capability_name().replace("_control_cluster",
+                                          "").replace("_cluster", "")
+    for cluster in matter_endpoints_and_clusters.SUPPORTED_CLUSTERS_CHIP_TOOL)
+
+_ENDPOINT_AND_CLUSTER_PRODUCT_CHIP_TOOL = itertools.product(
+    matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS_CHIP_TOOL,
+    _CLUSTER_NAMES_CHIP_TOOL)
+
+_ENDPOINTS_AND_CLUSTER_PRODUCT = itertools.chain(
+        _ENDPOINT_AND_CLUSTER_PRODUCT_PW_RPC,
+        _ENDPOINT_AND_CLUSTER_PRODUCT_CHIP_TOOL)
 
 ENDPOINT_AND_CLUSTER_PAIR = [
     dict(endpoint_class=endpoint_class, cluster_name=cluster_name)
-    for endpoint_class, cluster_name in _ENDPOINT_AND_CLUSTER_PRODUCT
-]
+    for endpoint_class, cluster_name in _ENDPOINTS_AND_CLUSTER_PRODUCT]
 
 
 class MatterEndpointsTest(fake_device_test_case.FakeDeviceTestCase):

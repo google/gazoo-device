@@ -72,6 +72,7 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
       raise errors.DeviceError(
           f"Device {self._device_name} getting {_DESCRIPTOR_SERVICE_NAME} "
           f"{_DESCRIPTOR_GET_ENDPOINTS_RPC_NAME} failed.")
+    # TODO(b/241164443): support RootNode device type in PwRPC.
     supported_endpoint_ids = []
     for endpoint_in_bytes in list_of_supported_endpoints:
       endpoint = descriptor_service_pb2.Endpoint.FromString(endpoint_in_bytes)

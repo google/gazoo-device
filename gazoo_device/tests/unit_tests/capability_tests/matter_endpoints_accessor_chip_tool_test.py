@@ -15,6 +15,7 @@
 
 from gazoo_device import errors
 from gazoo_device.auxiliary_devices import raspberry_pi_matter_controller
+from gazoo_device.capabilities.matter_clusters import basic_information_chip_tool
 from gazoo_device.capabilities.matter_clusters import on_off_chip_tool
 from gazoo_device.capabilities.matter_endpoints import on_off_light
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
@@ -50,7 +51,7 @@ class MatterEndpointsAccessorChipToolCapabilityTests(
   def test_list_endpoints(self):
     """Tests list."""
     endpoints = self.uut.matter_endpoints.list()
-    self.assertLen(endpoints, 1)
+    self.assertLen(endpoints, 2)
     self.assertEqual(endpoints[self._endpoint], on_off_light.OnOffLightEndpoint)
 
   def test_get_endpoint_instance_by_class(self):
@@ -105,18 +106,20 @@ class MatterEndpointsAccessorChipToolCapabilityTests(
     """Tests get_supported_endpoints_and_clusters."""
     self.assertDictEqual(
         self.uut.matter_endpoints.get_supported_endpoints_and_clusters(),
-        {1: ["on_off_cluster"]})
+        {0: ["basic_information_cluster"], 1: ["on_off_cluster"]})
 
   def test_get_supported_endpoint_instances_and_cluster_flavors(self):
     """Tests get_supported_endpoint_instances_and_cluster_flavors."""
     endpoints = self.uut.matter_endpoints.get_supported_endpoint_instances_and_cluster_flavors(
     )
     self.assertNotEmpty(endpoints)
-
-    key = next(iter(endpoints))
-    self.assertIsInstance(key, on_off_light.OnOffLightEndpoint)
-    self.assertSetEqual(endpoints[key],
-                        set([on_off_chip_tool.OnOffClusterChipTool]))
+    endpoint_clusters = list(endpoints.values())
+    self.assertSetEqual(
+        endpoint_clusters[0],
+        set([basic_information_chip_tool.BasicInformationClusterChipTool]))
+    self.assertSetEqual(
+        endpoint_clusters[1],
+        set([on_off_chip_tool.OnOffClusterChipTool]))
 
   def test_endpoint_id_to_clusters(self):
     """Tests endpoint_id_to_clusters property."""

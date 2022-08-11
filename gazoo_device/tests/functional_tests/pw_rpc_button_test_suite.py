@@ -14,7 +14,9 @@
 
 """Test suite for devices using the pw_rpc_button capability."""
 from typing import Type
+from gazoo_device import errors
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
+from mobly import asserts
 
 # Pressing button 1 changes the lighting state of the board if it's a lighting
 # app. Should be no-op if it's a locking app.
@@ -38,7 +40,13 @@ class PwRPCButtonTestSuite(gdm_test_base.GDMTestBase):
 
   def test_button_push(self):
     """Tests button push method."""
-    self.device.pw_rpc_button.push(button_id=_BUTTON_ID_1)
+    try:
+      self.device.pw_rpc_button.push(button_id=_BUTTON_ID_1)
+    except errors.DeviceError as e:
+      if "Status.NOT_FOUND: the RPC server does not support this RPC" in str(e):
+        asserts.skip(f"{self.device.name} does not support button RPCs.")
+      else:
+        raise
 
 
 if __name__ == "__main__":

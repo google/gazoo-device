@@ -268,7 +268,8 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
         DeviceError: if filter_path doesn't exist
     """
     self.event_parser.load_filter_file(filter_path)
-    self.switchboard.add_new_filter(filter_path)
+    if self.is_capability_initialized("switchboard"):
+      self.switchboard.add_new_filter(filter_path)
 
   @decorators.health_check
   def check_create_switchboard(self):

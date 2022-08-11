@@ -14,17 +14,12 @@
 
 """Unit tests for the raspberry_pi_matter_controller module."""
 from unittest import mock
-from absl.testing import parameterized
 
 from gazoo_device import errors
 from gazoo_device.auxiliary_devices import raspberry_pi_matter_controller
 from gazoo_device.base_classes import raspbian_device
-from gazoo_device.capabilities.matter_endpoints import dimmable_light
-from gazoo_device.capabilities.matter_endpoints import occupancy_sensor
-from gazoo_device.capabilities.matter_endpoints import on_off_light
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.tests.unit_tests.utils import raspberry_pi_matter_controller_device_logs
-from gazoo_device.tests.unit_tests.utils import ssh_device_logs
 
 
 class RaspberryPiMatterControllerTests(
@@ -57,35 +52,6 @@ class RaspberryPiMatterControllerTests(
 
   def test_initialize_matter_endpoints_accessor_capability(self):
     self.assertIsNotNone(self.uut.matter_endpoints)
-
-  def _update_descriptor_device_list_response(self,
-                                              device_type_id: int) -> None:
-    """Updates response for device list command to return device_type_id."""
-    response = {
-        "cmd":
-            raspberry_pi_matter_controller_device_logs
-            .DESCRIPTOR_DEVICE_LIST_COMMAND,
-        "resp":
-            raspberry_pi_matter_controller_device_logs
-            .DESCRIPTOR_DEVICE_LIST_RESPONSE.format(
-                DEVICE_TYPE_ID=device_type_id),
-        "code":
-            0,
-    }
-    self.fake_responder.behavior_dict.update(
-        ssh_device_logs.make_device_responses((response,)))
-
-  @parameterized.named_parameters([
-      ("dimmable_light", dimmable_light.DimmableLightEndpoint),
-      ("on_off_light", on_off_light.OnOffLightEndpoint),
-      ("occupancy_sensor", occupancy_sensor.OccupancySensorEndpoint),
-  ])
-  def test_initialize_endpoint_alias(self, endpoint_class):
-    """Tests initializing endpoint alias."""
-    endpoint_alias = endpoint_class.__module__.split(".")[-1]
-    self._update_descriptor_device_list_response(
-        endpoint_class.DEVICE_TYPE_ID)
-    self.assertIsInstance(getattr(self.uut, endpoint_alias), endpoint_class)
 
   def test_initialize_matter_endpoints_with_no_matter_node_id(self):
     """Tests matter_endpoints throws DeviceError with no commissioned device."""

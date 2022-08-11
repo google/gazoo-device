@@ -301,9 +301,12 @@ def gsutil_command(cmd: str,
   new_env = os.environ.copy()
   new_env.update({_BOTO_ENV_VAR: boto_path})
   try:
+    logger.debug("[GSUTIL] Calling gsutil with: %r", cmd_list)
     output = subprocess.check_output(
-        cmd_list, stderr=subprocess.STDOUT, env=new_env)
-    return output.decode("utf-8", "replace")
+        cmd_list, stderr=subprocess.STDOUT,
+        env=new_env).decode("utf-8", "replace")
+    logger.debug("[GSUTIL] Returning from gsutil call with: %r", output)
+    return output
   except subprocess.CalledProcessError as err:
     raise RuntimeError("{!r} failed. Err: {}".format(" ".join(cmd_list),
                                                      err.output))
@@ -404,7 +407,10 @@ def accepts_snmp(ip_address: str) -> bool:
     snmpwalk_command = _SNMPWALK_COMMAND.format(ip_address=ip_address).split()
     subprocess.check_output(snmpwalk_command, timeout=_SNMPWALK_TIMEOUT)
     return True
-  except subprocess.CalledProcessError:
+  except subprocess.CalledProcessError as err:
+    logger.debug(f"IP {ip_address} may not be snmp enabled or snmp is not "
+                 f"installed on host machine. Error: {err!r}. "
+                 f"Output: {err.output!r}")
     return False
 
 

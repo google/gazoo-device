@@ -82,7 +82,10 @@ class MatterEndpointsAccessorChipTool(matter_endpoints_base.MatterEndpointsBase
         endpoint_id=matter_endpoints_base.ROOT_NODE_ENDPOINT_ID,
         node_id=self._node_id_getter()))
     endpoints = re.findall(_REGEXES["DESCRIPTOR_ATTRIBUTE_RESPONSE"], response)
-    return [int(endpoint) for endpoint in endpoints]
+    # Descriptor cluster does not explicitly list root node endpoint.
+    endpoint_ids = [matter_endpoints_base.ROOT_NODE_ENDPOINT_ID]
+    endpoint_ids += [int(endpoint) for endpoint in endpoints]
+    return endpoint_ids
 
   def get_endpoint_class_and_device_type_id(
       self, endpoint_id: int) -> Tuple[Type[endpoint_base.EndpointBase], int]:

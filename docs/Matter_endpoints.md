@@ -233,6 +233,30 @@ Alias for accessing `DoorLock` endpoint and its supported clusters.
 The supported clusters can be found in the
 [GDM DoorLock implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/door_lock.py).
 
+#### `extended_color_light`
+
+Alias for accessing `ExtendedColorLight` endpoint and its supported clusters.
+
+```
+# Check the OnOff state on the OnOff cluster on the ExtendedColorLight endpoint.
+>>> dut.extended_color_light.on_off.onoff
+```
+
+The supported clusters can be found in the
+[GDM ExtendedColorLight implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/extended_color_light.py).
+
+#### `flow_sensor`
+
+Alias for accessing `FlowSensorEndpoint` endpoint and its supported clusters.
+
+```
+# Check the measured_value on the FlowMeasurement cluster on the FlowSensor endpoint.
+>>> dut.flow_sensor.flow_measurement.measured_value
+```
+
+The supported clusters can be found in the
+[GDM FlowSensorEndpoint implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/flow_sensor.py).
+
 #### `humidity_sensor`
 
 Alias for accessing `HumiditySensor` endpoint and its supported clusters.
@@ -244,6 +268,18 @@ Alias for accessing `HumiditySensor` endpoint and its supported clusters.
 
 The supported clusters can be found in the
 [GDM HumiditySensor implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/humidity_sensor.py).
+
+#### `light_sensor`
+
+Alias for accessing `LightSensorEndpoint` endpoint and its supported clusters.
+
+```
+# Check the measured_value on the IlluminanceMeasurement cluster on the LightSensor endpoint.
+>>> dut.light_sensor.illuminance_measurement.measured_value
+```
+
+The supported clusters can be found in the
+[GDM LightSensorEndpoint implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/light_sensor.py).
 
 #### `occupancy_sensor`
 
@@ -304,6 +340,18 @@ Alias for accessing `TemperatureSensor` endpoint and its supported clusters.
 
 The supported clusters can be found in the
 [GDM TemperatureSensor implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/temperature_sensor.py).
+
+#### `root_node`
+
+Alias for accessing `RootNode` endpoint and its supported clusters.
+
+```
+# Check the SoftwareVersion attribute on the BasicInformation cluster on the RootNode endpoint.
+>>> dut.root_node.basic_information.software_version
+```
+
+The supported clusters can be found in the
+[GDM RootNode implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/root_node.py).
 
 ### APIs of the Matter Endpoints capability
 

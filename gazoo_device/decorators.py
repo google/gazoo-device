@@ -163,13 +163,14 @@ MESSAGES = {
     "START":
         "{device_name} starting {class_name}.{method_name}{args_and_kwargs}",
     "SKIP":
-        "{device_name} {class_name}.{method_name} skipped. {skip_reason}.",
+        "{device_name} {class_name}.{method_name} skipped. "
+        "{skip_reason}.",
     "SUCCESS":
-        "{device_name} {class_name}.{method_name} successful. It took "
-        "{time_elapsed}s.",
+        "{device_name} {class_name}.{method_name} returned {return_val}. "
+        "It took {time_elapsed}s.",
     "FAILURE":
-        "{device_name} {class_name}.{method_name} failed. {exc_name}: "
-        "{exc_reason}"
+        "{device_name} {class_name}.{method_name} failed. "
+        "{exc_name}: {exc_reason}"
 }
 
 DEFAULT_DEVICE_NAME = "Unknown_device"
@@ -271,8 +272,13 @@ class CapabilityProperty(property):
     self.capability_classes = set(classes)
 
 
-def _arg_to_str(arg: Any, max_length: int) -> str:
+def _arg_to_str(arg: Any, log_level: Optional[int] = None) -> str:
   """Converts the argument to a string with max_length for logging."""
+  if log_level is not None and log_level >= logging.INFO:
+    max_length = _MAX_ARG_REPR_LENGTH_INFO  # Keep CLI stdout logs short.
+  else:
+    max_length = _MAX_ARG_REPR_LENGTH_DEBUG
+
   try:
     arg_str = repr(arg)
   except Exception:  # pylint: disable=broad-except
@@ -292,17 +298,13 @@ def _get_args_and_kwargs_str(print_args: bool,
   if not print_args:
     return ""
 
-  if log_level is not None and log_level >= logging.INFO:
-    max_arg_length = _MAX_ARG_REPR_LENGTH_INFO  # Keep CLI stdout logs short.
-  else:
-    max_arg_length = _MAX_ARG_REPR_LENGTH_DEBUG
   arg_names = [arg_name for arg_name in method_signature.parameters
                if arg_name not in ["cls", "self"]]
   args_str = ", ".join(
-      f"{arg_name}={_arg_to_str(arg_value, max_arg_length)}"
+      f"{arg_name}={_arg_to_str(arg_value, log_level)}"
       for arg_name, arg_value in zip(arg_names, method_args))
   kwargs_str = ", ".join(
-      f"{arg_name}={_arg_to_str(arg_value, max_arg_length)}"
+      f"{arg_name}={_arg_to_str(arg_value, log_level)}"
       for arg_name, arg_value in method_kwargs.items())
   args_and_kwargs_str = ", ".join(
       args_or_kwargs_str for args_or_kwargs_str in (args_str, kwargs_str)
@@ -447,7 +449,9 @@ class LogDecorator:
           self.logger.log(self.level, MESSAGES["SKIP"].format(**fmt_args))
         else:
           fmt_args["time_elapsed"] = int(time.time() - start_time)
-          self.logger.log(self.level, MESSAGES["SUCCESS"].format(**fmt_args))
+          self.logger.log(
+              self.level, MESSAGES["SUCCESS"].format(
+                  return_val=_arg_to_str(return_val, self.level), **fmt_args))
 
       return return_val
 

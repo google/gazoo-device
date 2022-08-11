@@ -21,27 +21,18 @@ from gazoo_device import custom_types
 from gazoo_device import decorators
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import gazoo_device_base
+from gazoo_device.base_classes import matter_endpoints_mixin
 from gazoo_device.capabilities import device_power_default
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities import pwrpc_button_default
 from gazoo_device.capabilities import pwrpc_common_default
-from gazoo_device.capabilities.matter_endpoints import color_temperature_light
-from gazoo_device.capabilities.matter_endpoints import contact_sensor
-from gazoo_device.capabilities.matter_endpoints import dimmable_light
-from gazoo_device.capabilities.matter_endpoints import door_lock
-from gazoo_device.capabilities.matter_endpoints import humidity_sensor
-from gazoo_device.capabilities.matter_endpoints import occupancy_sensor
-from gazoo_device.capabilities.matter_endpoints import on_off_light
-from gazoo_device.capabilities.matter_endpoints import on_off_light_switch
-from gazoo_device.capabilities.matter_endpoints import pressure_sensor
-from gazoo_device.capabilities.matter_endpoints import temperature_sensor
+
 from gazoo_device.protos import attributes_service_pb2
 from gazoo_device.protos import button_service_pb2
 from gazoo_device.protos import descriptor_service_pb2
 from gazoo_device.protos import device_service_pb2
 from gazoo_device.protos import wifi_service_pb2
 from gazoo_device.utility import usb_utils
-
 
 logger = gdm_logger.get_logger()
 BAUDRATE = 115200
@@ -51,7 +42,9 @@ _CONNECTION_TIMEOUT_SECONDS = 10
 _REBOOT_METHODS = ("pw_rpc", "soft", "hard")
 
 
-class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
+class MatterDeviceBase(
+    gazoo_device_base.GazooDeviceBase,
+    matter_endpoints_mixin.MatterEndpointAliasesMixin):
   """Matter device base class."""
   COMMUNICATION_TYPE = "PigweedSerialComms"
   _OWNER_EMAIL = "gdm-authors@google.com"
@@ -290,147 +283,3 @@ class MatterDeviceBase(gazoo_device_base.GazooDeviceBase):
         wait_for_connection_fn=self.check_device_connected,
         usb_hub_name_prop="device_usb_hub_name",
         usb_port_prop="device_usb_port")
-
-  # ******************** Matter endpoint aliases ******************** #
-  @decorators.CapabilityDecorator(
-      color_temperature_light.ColorTemperatureLightEndpoint)
-  def color_temperature_light(
-      self) -> color_temperature_light.ColorTemperatureLightEndpoint:
-    """Matter Color Temperature Light endpoint instance.
-
-    Returns:
-      Color Temperature Light endpoint instance.
-
-    Raises:
-      DeviceError when Color Temperate Light endpoint is not supported on the
-      device.
-    """
-    return self.matter_endpoints.get_endpoint_instance_by_class(
-        color_temperature_light.ColorTemperatureLightEndpoint)
-
-  @decorators.CapabilityDecorator(contact_sensor.ContactSensorEndpoint)
-  def contact_sensor(self) -> contact_sensor.ContactSensorEndpoint:
-    """Matter Contact Sensor endpoint instance.
-
-    Returns:
-      Contact Sensor endpoint instance.
-
-    Raises:
-      DeviceError when Contact Sensor endpoint is not supported on the
-      device.
-    """
-    return self.matter_endpoints.get_endpoint_instance_by_class(
-        contact_sensor.ContactSensorEndpoint)
-
-  @decorators.CapabilityDecorator(dimmable_light.DimmableLightEndpoint)
-  def dimmable_light(self) -> dimmable_light.DimmableLightEndpoint:
-    """Matter Dimmable Light endpoint instance.
-
-    Returns:
-      Dimmable Light endpoint instance.
-
-    Raises:
-      DeviceError when Dimmable Light endpoint is not supported on the
-      device.
-    """
-    return self.matter_endpoints.get_endpoint_instance_by_class(
-        dimmable_light.DimmableLightEndpoint)
-
-  @decorators.CapabilityDecorator(door_lock.DoorLockEndpoint)
-  def door_lock(self) -> door_lock.DoorLockEndpoint:
-    """Matter Door Lock endpoint instance.
-
-    Returns:
-      Door Lock endpoint instance.
-
-    Raises:
-      DeviceError when Door Lock endpoint is not supported on the
-      device.
-    """
-    return self.matter_endpoints.get_endpoint_instance_by_class(
-        door_lock.DoorLockEndpoint)
-
-  @decorators.CapabilityDecorator(occupancy_sensor.OccupancySensorEndpoint)
-  def occupancy_sensor(self) -> occupancy_sensor.OccupancySensorEndpoint:
-    """Matter Occupancy Sensor endpoint instance.
-
-    Returns:
-      Occupancy Sensor endpoint instance.
-
-    Raises:
-      DeviceError when Occupancy Sensor endpoint is not supported on the
-      device.
-    """
-    return self.matter_endpoints.get_endpoint_instance_by_class(
-        occupancy_sensor.OccupancySensorEndpoint)
-
-  @decorators.CapabilityDecorator(humidity_sensor.HumiditySensorEndpoint)
-  def humidity_sensor(self) -> humidity_sensor.HumiditySensorEndpoint:
-    """Matter Humidity Sensor endpoint instance.
-
-    Returns:
-      Humidity Sensor endpoint instance.
-
-    Raises:
-      DeviceError when Humidity Sensor endpoint is not supported on the
-      device.
-    """
-    return self.matter_endpoints.get_endpoint_instance_by_class(
-        humidity_sensor.HumiditySensorEndpoint)
-
-  @decorators.CapabilityDecorator(on_off_light.OnOffLightEndpoint)
-  def on_off_light(self) -> on_off_light.OnOffLightEndpoint:
-    """Matter OnOff Light endpoint instance.
-
-    Returns:
-      OnOff Light endpoint instance.
-
-    Raises:
-      DeviceError when OnOff Light endpoint is not supported on the
-      device.
-    """
-    return self.matter_endpoints.get_endpoint_instance_by_class(
-        on_off_light.OnOffLightEndpoint)
-
-  @decorators.CapabilityDecorator(on_off_light_switch.OnOffLightSwitchEndpoint)
-  def on_off_light_switch(self) -> on_off_light_switch.OnOffLightSwitchEndpoint:
-    """Matter OnOff Light Switch endpoint instance.
-
-    Returns:
-      OnOff Light Switch endpoint instance.
-
-    Raises:
-      DeviceError when OnOff Light Switch endpoint is not supported on the
-      device.
-    """
-    return self.matter_endpoints.get_endpoint_instance_by_class(
-        on_off_light_switch.OnOffLightSwitchEndpoint)
-
-  @decorators.CapabilityDecorator(pressure_sensor.PressureSensorEndpoint)
-  def pressure_sensor(self) -> pressure_sensor.PressureSensorEndpoint:
-    """Matter Pressure Sensor endpoint instance.
-
-    Returns:
-      Pressure Sensor endpoint instance.
-
-    Raises:
-      DeviceError when Pressure Sensor endpoint is not supported on the
-      device.
-    """
-    return self.matter_endpoints.get_endpoint_instance_by_class(
-        pressure_sensor.PressureSensorEndpoint)
-
-  @decorators.CapabilityDecorator(temperature_sensor.TemperatureSensorEndpoint)
-  def temperature_sensor(self) -> temperature_sensor.TemperatureSensorEndpoint:
-    """Matter Temperature Sensor endpoint instance.
-
-    Returns:
-      Temperature Sensor endpoint instance.
-
-    Raises:
-      DeviceError when Temperature Sensor endpoint is not supported on the
-      device.
-    """
-    return self.matter_endpoints.get_endpoint_instance_by_class(
-        temperature_sensor.TemperatureSensorEndpoint)
-  # ***************************************************************** #

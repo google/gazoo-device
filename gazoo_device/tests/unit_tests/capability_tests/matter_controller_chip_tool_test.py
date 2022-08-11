@@ -15,11 +15,13 @@
 
 from unittest import mock
 
+from absl.testing import parameterized
 from gazoo_device import errors
 from gazoo_device.auxiliary_devices import raspberry_pi_matter_controller
 from gazoo_device.capabilities import file_transfer_scp
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.tests.unit_tests.utils import raspberry_pi_matter_controller_device_logs
+from gazoo_device.tests.unit_tests.utils import ssh_device_logs
 
 
 class MatterControllerChipToolCapabilityTests(
@@ -132,15 +134,28 @@ class MatterControllerChipToolCapabilityTests(
     with self.assertRaises(errors.DeviceError):
       self.uut.matter_controller.decommission()
 
-  def test_read_attribute_integer(self):
+  @parameterized.named_parameters([
+      ("integer", 1234, 1234),
+      ("positive_integer", "+17", 17),
+      ("negative_integer", -100, -100),
+      ("float", 1.47, 1.47),
+      ("negative_float", -3.14, -3.14),
+      ("boolean", "true", True),
+      ("string", "\"TEST_VENDOR\" (11 chars)", "TEST_VENDOR"),
+      ("empty_string", "\"\" (0 chars)", ""),
+  ])
+  def test_read_attribute(self, data, expected_value):
+    response = {
+        "cmd": "/usr/local/bin/chip-tool onoff read test-attribute 1234 1",
+        "resp": f"CHIP:DMG: 					Data = {data},",
+        "code": 0,
+    }
+    self.fake_responder.behavior_dict.update(
+        ssh_device_logs.make_device_responses((response,)))
     self.assertEqual(
-        self.uut.matter_controller.read(self._endpoint_id, self._cluster,
-                                        "on-time"), 0)
-
-  def test_read_attribute_boolean(self):
-    self.assertTrue(
-        self.uut.matter_controller.read(self._endpoint_id, self._cluster,
-                                        "on-off"))
+        self.uut.matter_controller.read(
+            self._endpoint_id, self._cluster, "test-attribute"),
+        expected_value)
 
   def test_write_attribute(self):
     self.uut.matter_controller.write(self._endpoint_id, self._cluster,

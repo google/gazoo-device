@@ -14,6 +14,7 @@
 
 """Class for SSH devices."""
 import time
+from typing import Optional
 
 from gazoo_device import config
 from gazoo_device import console_config
@@ -81,15 +82,6 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
     self._commands.update(COMMANDS)
     self._regexes.update(REGEXES)
     self._timeouts.update(TIMEOUTS)
-
-  @decorators.LogDecorator(logger)
-  def _after_boot_hook(self):
-    """Executes after the device boots up.
-
-    No-op by default. Override in derived classes as necessary.
-    Methods as upgrade, factory reset may also reboot the device.
-    """
-    pass
 
   @decorators.health_check
   def check_device_responsiveness(self):
@@ -256,11 +248,11 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
         tries=2)
 
   @decorators.LogDecorator(logger)
-  def wait_for_bootup_complete(self, timeout=None):
+  def wait_for_bootup_complete(self, timeout: Optional[int] = None) -> None:
     """Wait until the device finishes booting up and is ready for testing.
 
     Args:
-      timeout (int): max time to wait for the device to finish booting up.
+      timeout: max time to wait for the device to finish booting up.
 
     Raises:
       DeviceNotBootupCompleteError: device failed to finish booting up
@@ -385,8 +377,6 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
     self.wait_for_bootup_complete(timeout=bootup_timeout)
     logger.info("{} booted up successfully in {}s.".format(
         self.name, int(time.time() - start_time)))
-
-    self._after_boot_hook()
 
 
 deprecation_utils.add_deprecated_attributes(

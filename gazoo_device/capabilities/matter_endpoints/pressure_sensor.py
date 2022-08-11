@@ -25,8 +25,11 @@ type with the following defined clusters on this endpoint:
 
 The required clusters for this endpoint: Pressure Measurement
 """
+from typing import Union
+
 from gazoo_device import decorators
 from gazoo_device.capabilities import matter_enums
+from gazoo_device.capabilities.matter_clusters import pressure_measurement_chip_tool
 from gazoo_device.capabilities.matter_clusters import pressure_measurement_pw_rpc
 from gazoo_device.capabilities.matter_endpoints.interfaces import pressure_sensor_base
 
@@ -34,9 +37,14 @@ from gazoo_device.capabilities.matter_endpoints.interfaces import pressure_senso
 class PressureSensorEndpoint(pressure_sensor_base.PressureSensorBase):
   """Matter Pressure Sensor endpoint."""
 
-  @decorators.CapabilityDecorator(
-      pressure_measurement_pw_rpc.PressureMeasurementClusterPwRpc)
+  @decorators.CapabilityDecorator([
+      pressure_measurement_chip_tool.PressureMeasurementClusterChipTool,
+      pressure_measurement_pw_rpc.PressureMeasurementClusterPwRpc
+  ])
   def pressure_measurement(
-      self) -> pressure_measurement_pw_rpc.PressureMeasurementClusterPwRpc:
+      self
+  ) -> Union[
+      pressure_measurement_chip_tool.PressureMeasurementClusterChipTool,
+      pressure_measurement_pw_rpc.PressureMeasurementClusterPwRpc]:
     """Matter Pressure Measurement cluster instance."""
     return self.cluster_lazy_init(matter_enums.PressureMeasurementCluster.ID)
