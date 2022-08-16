@@ -34,6 +34,7 @@ from gazoo_device.capabilities.matter_clusters import relative_humidity_measurem
 from gazoo_device.capabilities.matter_clusters import relative_humidity_measurement_pw_rpc
 from gazoo_device.capabilities.matter_clusters import temperature_measurement_chip_tool
 from gazoo_device.capabilities.matter_clusters import temperature_measurement_pw_rpc
+from gazoo_device.capabilities.matter_clusters import thermostat_chip_tool
 from gazoo_device.capabilities.matter_clusters import thermostat_pw_rpc
 from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import contact_sensor
@@ -46,6 +47,7 @@ from gazoo_device.capabilities.matter_endpoints import light_sensor
 from gazoo_device.capabilities.matter_endpoints import occupancy_sensor
 from gazoo_device.capabilities.matter_endpoints import on_off_light
 from gazoo_device.capabilities.matter_endpoints import on_off_light_switch
+from gazoo_device.capabilities.matter_endpoints import on_off_plugin_unit
 from gazoo_device.capabilities.matter_endpoints import pressure_sensor
 from gazoo_device.capabilities.matter_endpoints import root_node
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
@@ -65,6 +67,7 @@ SUPPORTED_ENDPOINTS_PW_RPC = (
     occupancy_sensor.OccupancySensorEndpoint,
     on_off_light.OnOffLightEndpoint,
     on_off_light_switch.OnOffLightSwitchEndpoint,
+    on_off_plugin_unit.OnOffPluginUnitEndpoint,
     pressure_sensor.PressureSensorEndpoint,
     temperature_sensor.TemperatureSensorEndpoint,
     thermostat.ThermostatEndpoint)
@@ -103,7 +106,8 @@ SUPPORTED_ENDPOINTS_CHIP_TOOL = (
     on_off_light.OnOffLightEndpoint,
     pressure_sensor.PressureSensorEndpoint,
     root_node.RootNodeEndpoint,
-    temperature_sensor.TemperatureSensorEndpoint)
+    temperature_sensor.TemperatureSensorEndpoint,
+    thermostat.ThermostatEndpoint)
 
 SUPPORTED_CLUSTERS_CHIP_TOOL = (
     basic_information_chip_tool.BasicInformationClusterChipTool,
@@ -116,6 +120,7 @@ SUPPORTED_CLUSTERS_CHIP_TOOL = (
     relative_humidity_measurement_chip_tool.
     RelativeHumidityMeasurementClusterChipTool,
     temperature_measurement_chip_tool.TemperatureMeasurementClusterChipTool,
+    thermostat_chip_tool.ThermostatClusterChipTool,
 )
 
 MATTER_DEVICE_TYPE_ID_TO_CLASS_CHIP_TOOL = immutabledict.immutabledict({

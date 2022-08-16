@@ -115,6 +115,11 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
     self._test_comms_type(
         "SnmpComms", fake_detect_playback.SNMP_DEVICE_BEHAVIORS)
 
+  def test_snmp_comms_devices_alt_dlink_model(self):
+    """Verifies snmp detection criteria can detect an alternate dlink model."""
+    self._test_comms_type(
+        "SnmpComms", fake_detect_playback.ALT_SNMP_DEVICE_BEHAVIORS)
+
   def test_ssh_devices(self):
     """Verifies detection criteria for the SSH comms type."""
     self._test_comms_type(

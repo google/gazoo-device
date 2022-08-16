@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """D-Link switch device controller."""
+import re
+import subprocess
 from typing import Any, Dict, Tuple
 
 from gazoo_device import custom_types
@@ -25,6 +27,11 @@ from gazoo_device.utility import host_utils
 
 logger = gdm_logger.get_logger()
 
+_GET_DLINK_TOTAL_PORTS_SNMP_COMMAND = (
+    "snmpget -v 2c -c private {ip_address}:161 1.3.6.1.2.1.2.1.0")
+_DLINK_TOTAL_PORTS_RESPONSE_REG_EX = r".+INTEGER:.+?(\d+)"
+_SNMP_TIMEOUT_S = 10
+
 
 class DLinkSwitch(auxiliary_device.AuxiliaryDevice):
   """Device class for a D-Link Switch."""
@@ -32,6 +39,31 @@ class DLinkSwitch(auxiliary_device.AuxiliaryDevice):
   DETECT_MATCH_CRITERIA = {detect_criteria.SnmpQuery.IS_DLINK: True}
   DEVICE_TYPE = "dlink_switch"
   _OWNER_EMAIL = "gdm-authors@google.com"
+
+  def _get_total_ports(self) -> int:
+    """Gets the total number of network ports.
+
+    Returns:
+      Total number of network ports.
+
+    Raises:
+      DeviceError: When the response to querying the SNMP total ports OID
+        is unexpected.
+    """
+    command = _GET_DLINK_TOTAL_PORTS_SNMP_COMMAND.format(
+        ip_address=self.ip_address)
+    # Expected response for supported dlink switch total ports should look like:
+    # "iso.3.6.1.2.1.2.1.0 = INTEGER: <total-number-of-ports>".
+    response = subprocess.check_output(
+        command.split(), text=True, timeout=_SNMP_TIMEOUT_S)
+    logger.debug(
+        "%s sent command %s and got response %r", self.name, command, response)
+    total_ports = re.search(_DLINK_TOTAL_PORTS_RESPONSE_REG_EX, response)
+    if total_ports:
+      return int(total_ports[1])
+    raise errors.DeviceError(f"Failed to retrieve total ports from "
+                             f"dlink_switch {self.name} with command: "
+                             f"{command}. Unexpected response: {response}")
 
   @decorators.PersistentProperty
   def ip_address(self):
@@ -67,6 +99,8 @@ class DLinkSwitch(auxiliary_device.AuxiliaryDevice):
     # Using IP as a unique identifier instead.
     self.props["persistent_identifiers"]["serial_number"] = (
         self.ip_address.replace(".", ""))
+    self.props["persistent_identifiers"]["total_ports"] = (
+        self._get_total_ports())
     return self.props["persistent_identifiers"], self.props["optional"]
 
   @classmethod
@@ -83,26 +117,7 @@ class DLinkSwitch(auxiliary_device.AuxiliaryDevice):
     return host_utils.is_pingable(
         device_config["persistent"]["console_port_name"])
 
-  @decorators.DynamicProperty
+  @decorators.PersistentProperty
   def total_ports(self) -> int:
-    """Gets the number of ports for the attached unifi_switch.
-
-    D-Link DGS-1100 gigabit ethernet switches will have either
-    5 or 8 ports depending on their model name.
-
-    Possible model names:
-    DGS-1100-05 Gigabit Ethernet Switch
-    DGS-1100-05L Gigabit Ethernet Switch
-    DGS-1100-08 Gigabit Ethernet Switch
-    DGS-1100-08L Gigabit Ethernet Switch
-
-    Returns:
-      Number of device ports.
-    """
-    if "-05" in str(self.model):
-      return 5
-    elif "-08" in str(self.model):
-      return 8
-    raise errors.DeviceError(
-        f"{self.device_type} model name does not contain expected "
-        f"port values -05 or -08. Model name is: {self.model}")
+    """Returns the dlink switch's total number of ports."""
+    return self.props["persistent_identifiers"]["total_ports"]

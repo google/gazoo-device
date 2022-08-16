@@ -88,6 +88,13 @@ class CommPowerDefault(comm_power_base.CommPowerBase):
     self._wait_for_bootup_complete_func = wait_for_bootup_complete_func
     self._hub = None
 
+  @decorators.OptionalProperty
+  def address(self) -> str:
+    """IP address of the ethernet switch."""
+    if not self.healthy:
+      self.health_check()
+    return self._hub.communication_address
+
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
   def health_check(self):
     """Checks that the capability is ready to use.
@@ -215,5 +222,4 @@ deprecation_utils.add_deprecated_attributes(CommPowerDefault,
                                             [("enable", "on", True),
                                              ("disable", "off", True),
                                              ("power_cycle", "cycle", True),
-                                             ("port", "port_number", False),
-                                             ("address", "hub_name", False)])
+                                             ("port", "port_number", False)])

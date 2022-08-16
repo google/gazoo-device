@@ -55,7 +55,7 @@ _SSH_COMMANDS = immutabledict.immutabledict({
 
 _GET_DLINK_MODEL_SNMP_COMMAND = (
     "snmpget -v 2c -c private {ip_address}:161 1.3.6.1.2.1.1.1.0")
-_MODEL_RESPONSE_REG_EX = r"DGS-1100.+? Gigabit Ethernet Switch"
+_DLINK_MODEL_RESPONSE_REG_EX = r"((WS6-|)DGS-[0-9]+-[0-9]+)"
 _SNMP_TIMEOUT_S = 10
 
 _UNIFI_MODEL_PREFIXES = ("USW-", "US-")
@@ -178,13 +178,14 @@ def _is_dli_query(
 def get_dlink_model_name(ip_address: str) -> str:
   """Returns the model name of the Dlink switch at the ip_address."""
   command = _GET_DLINK_MODEL_SNMP_COMMAND.format(ip_address=ip_address)
-  # Expected response for 5 port model should look like:
-  # "DGS-1100-05 Gigabit Ethernet Switch"
+  # Expected response for supported dlink switch model should look like:
+  # "DGS-1100-<total-number-of-ports>" or
+  # "WS6-DGS-1210-<total-number-of-ports>P".
   response = subprocess.check_output(
       command.split(), text=True, timeout=_SNMP_TIMEOUT_S)
-  match = re.search(_MODEL_RESPONSE_REG_EX, response)
-  if match:
-    return match[0]
+  match_model = re.search(_DLINK_MODEL_RESPONSE_REG_EX, response)
+  if match_model:
+    return match_model.group(1)
   raise errors.DeviceError(f"Failed to retrieve model name from dlink_switch "
                            f"with command: {command}\n"
                            f"Unexpected output: {response}")
@@ -194,7 +195,7 @@ def _is_dlink_query(
     address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> bool:
-  """Determines if address belongs to dli power switch."""
+  """Determines if address belongs to dlink switch."""
   del create_switchboard_func  # Unused by _is_dlink_query
   try:
     model = get_dlink_model_name(ip_address=address)

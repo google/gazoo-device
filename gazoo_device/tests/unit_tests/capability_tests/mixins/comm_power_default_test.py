@@ -17,12 +17,23 @@ from unittest import mock
 
 from gazoo_device.capabilities import comm_power_default
 
+ETHERNET_SWITCH_NAME = "dlink_switch-4390"
+ETHERNET_SWITCH_PORT = "2"
+
 
 class CommPowerDefaultTestMixin:
   """Mixin for common device unit tests of communication power.
 
   Assumes self.uut is set.
   """
+
+  def mixin_set_up(self):
+    """Set up the ethernet switch ip and port for the mixin unit tests.
+
+    Device unit tests that use this mixin should call this in setUp method.
+    """
+    self.uut.set_property("ethernet_switch_name", ETHERNET_SWITCH_NAME)
+    self.uut.set_property("ethernet_switch_port", ETHERNET_SWITCH_PORT)
 
   @mock.patch.object(
       comm_power_default.CommPowerDefault, "_verify_switch_created")

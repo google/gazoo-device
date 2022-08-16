@@ -25,14 +25,15 @@ from gazoo_device import extensions
 from gazoo_device import gdm_logger
 
 logger = gdm_logger.get_logger()
-ARP_CONNECTED_IPS = r"([\-\w\.]*)\s*ether"
+
 _BOTO_ENV_VAR = "BOTO_CONFIG"
 _DEFAULT_BOTO = os.path.expanduser("~/.boto")
+_PING_DEFAULT_PACKET_COUNT = 1
+_PING_DEFAULT_TIMEOUT_SECONDS = 2
+
+ARP_CONNECTED_IPS = r"([\-\w\.]*)\s*ether"
 DOCKER_CP_COMMAND = "cp {src} {dest}"
 IP_ADDRESS = r"\d+\.\d+\.\d+\.\d+"
-PING_DEFAULT_TIMEOUT_SECONDS = 2
-PING_COMMAND = "ping -c 1 -W 2 {}"  # Ping ip address and wait for response.
-PING_CUSTOM_TIMEOUT = "ping -c 1 -W {} {}"  # Ping with custom timeout.
 SSHABLE_COMMAND = "nc -z -w 2 {} 22"  # Connect to ssh port for up to 2 seconds.
 
 SSH_ARGS = "{options} {user}@{ip_address} {command}"
@@ -48,7 +49,7 @@ GET_COMMAND_PATH = "which {}"
 GET_CONNECTED_IPS = "/usr/sbin/arp -e"
 
 _SNMPWALK_COMMAND = "snmpwalk -v 2c -c private {ip_address}"
-_SNMPWALK_TIMEOUT = 10
+_SNMPWALK_TIMEOUT = 30
 
 _gsutil_cli = None  # Set by _set_gsutil_cli().
 
@@ -362,15 +363,33 @@ def is_in_ifconfig(ip_or_mac_address):
 
 
 def is_pingable(
-    ip_address: str, timeout: float = PING_DEFAULT_TIMEOUT_SECONDS) -> bool:
+    ip_address: str,
+    timeout: float = _PING_DEFAULT_TIMEOUT_SECONDS,
+    packet_count: int = _PING_DEFAULT_PACKET_COUNT,
+    deadline: Optional[float] = None) -> bool:
   """Returns True if the ip_address responds to network pings.
 
   Args:
       ip_address: IP address to ping.
-      timeout: Timeout in seconds to wait for ping response.
+      timeout: Timeout in seconds to wait for a ping response. The option
+        affects only timeout in absence of any responses.
+      packet_count: How many packets will be sent before the deadline.
+      deadline: Timeout in seconds before ping exits regardless of how many
+        packets have been sent or received.
   """
+  flags_map = {
+      "-c": packet_count,
+      "-W": timeout,
+      "-w": deadline,
+  }
+  cmd_list = ["ping"]
+  for flag, flag_value in flags_map.items():
+    if flag_value is not None:
+      cmd_list.append(flag)
+      cmd_list.append(str(flag_value))
+  cmd_list.append(ip_address)
+
   try:
-    cmd_list = PING_CUSTOM_TIMEOUT.format(timeout, ip_address).split()
     subprocess.check_output(cmd_list, stderr=subprocess.STDOUT)
     return True
   except subprocess.CalledProcessError:

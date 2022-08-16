@@ -58,11 +58,11 @@ class DoorLockClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
     mock_lock.assert_called_once_with(lock=False, verify=True)
 
   @parameterized.named_parameters(
-      ("lock_state_true", True, matter_enums.LockState.LOCKED),
-      ("lock_state_false", False, matter_enums.LockState.UNLOCKED))
+      ("lock_state_true", 1, matter_enums.LockState.LOCKED),
+      ("lock_state_false", 0, matter_enums.LockState.UNLOCKED))
   def test_lock_state_attribute_on_success(self, lock_action, expected_state):
     """Verifies the lock_state attribute on success."""
-    self.fake_read.return_value = mock.Mock(data_bool=lock_action)
+    self.fake_read.return_value = mock.Mock(data_uint16=lock_action)
 
     self.assertEqual(expected_state, self.uut.lock_state)
 

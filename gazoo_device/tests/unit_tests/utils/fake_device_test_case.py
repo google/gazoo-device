@@ -24,6 +24,7 @@ import json
 import logging
 import os
 import re
+from typing import Any, Mapping, Optional
 from unittest import mock
 
 from gazoo_device import gdm_logger
@@ -153,6 +154,23 @@ class FakeDeviceTestCase(unit_test_case.UnitTestCase):
         expected_dynamic_properties,
         error_msg,
         exception_property_regexes=exception_property_regexes)
+
+  def validate_optional_properties(
+      self,
+      expected_optional_properties: Mapping[str, Any],
+      error_msg: Optional[str] = None) -> None:
+    """Verifies optional device properties.
+
+    Args:
+      expected_optional_properties: Dictionary containing optional properties
+        and their expected values.
+      error_msg: Optional message to output for bad validatation
+    """
+    error_msg = error_msg or "All optional properties should be retrievable"
+    self.validate_properties(
+        self.uut.get_optional_properties(),
+        expected_optional_properties,
+        error_msg)
 
   def _log_to_artifacts_directory(self):
     """Sets up logging to test artifact directory."""

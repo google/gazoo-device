@@ -312,6 +312,34 @@ class SnmpHostUtilsTests(unit_test_case.UnitTestCase):
       with self.assertRaises(RuntimeError):
         host_utils.gsutil_command("ls", "gs://some/dir/")
 
+  @parameterized.named_parameters(
+      ("no_flags", {}, ["ping", "-c", "1", "-W", "2", "12.34.56.78"]),
+      ("all_flags", {"timeout": 3, "packet_count": 4, "deadline": 5},
+       ["ping", "-c", "4", "-W", "3", "-w", "5", "12.34.56.78"]),
+      ("no_deadline", {"timeout": 3, "packet_count": 4},
+       ["ping", "-c", "4", "-W", "3", "12.34.56.78"]),
+  )
+  @mock.patch.object(subprocess, "check_output", return_value=b"some_output")
+  def test_is_pingable_success(
+      self,
+      params,
+      expected_cmd_list,
+      mock_check_output,
+  ):
+    """Verifies is_pingable succeeds with correct flag parsing."""
+    result = host_utils.is_pingable("12.34.56.78", **params)
+
+    self.assertTrue(result)
+    mock_check_output.assert_called_once_with(
+        expected_cmd_list, stderr=subprocess.STDOUT)
+
+  @mock.patch.object(
+      subprocess,
+      "check_output",
+      side_effect=subprocess.CalledProcessError("some_err", "some_cmd"))
+  def test_is_pingable_failure(self, mock_check_output):
+    """Verifies is_pingable fails when expected."""
+    self.assertFalse(host_utils.is_pingable("12.34.56.78"))
 
 if __name__ == "__main__":
   unit_test_case.main()

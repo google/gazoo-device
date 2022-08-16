@@ -165,11 +165,11 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     return self._commands
 
   @decorators.PersistentProperty
-  def communication_address(self):
+  def communication_address(self) -> str:
     """Returns the address of the main communication port.
 
     Returns:
-        str: path or address of main communication port.
+        Path or address of main communication port.
     """
     name = self.props["persistent_identifiers"].get("console_port_name")
     if name:

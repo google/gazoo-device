@@ -34,6 +34,7 @@ from gazoo_device.capabilities.matter_clusters import occupancy_sensing_chip_too
 from gazoo_device.capabilities.matter_clusters import occupancy_sensing_pw_rpc
 from gazoo_device.capabilities.matter_clusters import relative_humidity_measurement_pw_rpc
 from gazoo_device.capabilities.matter_clusters import temperature_measurement_pw_rpc
+from gazoo_device.capabilities.matter_clusters import thermostat_chip_tool
 from gazoo_device.capabilities.matter_clusters import thermostat_pw_rpc
 from gazoo_device.capabilities.matter_endpoints.interfaces import thermostat_base
 
@@ -41,8 +42,14 @@ from gazoo_device.capabilities.matter_endpoints.interfaces import thermostat_bas
 class ThermostatEndpoint(thermostat_base.ThermostatBase):
   """Matter Thermostat endpoint."""
 
-  @decorators.CapabilityDecorator(thermostat_pw_rpc.ThermostatClusterPwRpc)
-  def thermostat(self) -> thermostat_pw_rpc.ThermostatClusterPwRpc:
+  @decorators.CapabilityDecorator([
+      thermostat_chip_tool.ThermostatClusterChipTool,
+      thermostat_pw_rpc.ThermostatClusterPwRpc
+  ])
+  def thermostat(
+      self
+  ) -> Union[thermostat_chip_tool.ThermostatClusterChipTool,
+             thermostat_pw_rpc.ThermostatClusterPwRpc]:
     """Matter Thermostat cluster instance."""
     return self.cluster_lazy_init(matter_enums.ThermostatCluster.ID)
 

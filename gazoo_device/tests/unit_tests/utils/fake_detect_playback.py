@@ -39,6 +39,14 @@ ALT_POE_BEHAVIORS = immutabledict.immutabledict({
     }
 })
 
+# Used to test that SNMP detect criteria can detect alternate dlink model names.
+ALT_SNMP_DEVICE_BEHAVIORS = immutabledict.immutabledict({
+    "dlink_switch": {
+        "snmpget -v 2c -c private 192.168.2.65:161 1.3.6.1.2.1.1.1.0":
+            "iso.3.6.1.2.1.1.1.0 = STRING: \"WS6-DGS-1210-10P/F1 6.10.007\"",
+    },
+})
+
 JLINK_DEVICE_BEHAVIORS = immutabledict.immutabledict({})
 
 PIGWEED_SERIAL_DEVICE_BEHAVIORS = immutabledict.immutabledict({

@@ -13,6 +13,7 @@
 # limitations under the License.
 """Matter linux sample app controls and management capability over shell."""
 import os
+import time
 from typing import Callable, List
 
 from gazoo_device import decorators
@@ -28,7 +29,8 @@ _MATTER_APP_PATH = f"/home/pi/{pwrpc_utils.MATTER_LINUX_APP_NAME}"
 _MATTER_APP_SERVICE = f"{pwrpc_utils.MATTER_LINUX_APP_NAME}.service"
 _MATTER_APP_SERVICE_FULL_PATH = f"/etc/systemd/system/{_MATTER_APP_SERVICE}"
 _APP_START_SEC = 3  # seconds
-_POLL_INTERVAL_SEC = 0.1  # seconds
+_POLL_INTERVAL_SEC = 1  # seconds
+_COOL_DOWN_SEC = 1  # seconds
 _COMMANDS = immutabledict.immutabledict({
     "CHECK_IF_APP_EXISTS": f"test -f {_MATTER_APP_PATH}",
     "CHECK_IF_SERVICE_EXISTS": f"test -f {_MATTER_APP_SERVICE_FULL_PATH}",
@@ -183,6 +185,10 @@ class MatterSampleAppShell(matter_app_controls_base.MatterSampleAppBase):
         interval=_POLL_INTERVAL_SEC,
         is_successful=bool,
         reraise=False)
+
+    # Sometimes process being up doesn't mean it's able to connect.
+    # A cool down period is needed to prevent connection failure.
+    time.sleep(_COOL_DOWN_SEC)
 
     self._open_transport(port=self._pigweed_port)
 

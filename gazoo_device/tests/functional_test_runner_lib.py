@@ -31,6 +31,7 @@ from gazoo_device.tests.functional_tests import matter_endpoints_test_suite
 from gazoo_device.tests.functional_tests import occupancy_sensor_test_suite
 from gazoo_device.tests.functional_tests import on_off_light_switch_test_suite
 from gazoo_device.tests.functional_tests import on_off_light_test_suite
+from gazoo_device.tests.functional_tests import on_off_plugin_unit_test_suite
 from gazoo_device.tests.functional_tests import optional_properties_test_suite
 from gazoo_device.tests.functional_tests import package_management_test_suite
 from gazoo_device.tests.functional_tests import pressure_sensor_test_suite
@@ -63,6 +64,7 @@ TEST_SUITES = (
     occupancy_sensor_test_suite.OccupancySensorTestSuite,
     on_off_light_switch_test_suite.OnOffLightSwitchTestSuite,
     on_off_light_test_suite.OnOffLightTestSuite,
+    on_off_plugin_unit_test_suite.OnOffPluginUnitTestSuite,
     optional_properties_test_suite.OptionalPropertiesTestSuite,
     package_management_test_suite.PackageManagementTestSuite,
     pressure_sensor_test_suite.PressureSensorTestSuite,

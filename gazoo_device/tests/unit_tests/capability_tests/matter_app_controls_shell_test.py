@@ -13,6 +13,7 @@
 # limitations under the License.
 """Capability unit test for matter_app_controls_shell module."""
 import os
+import time
 from unittest import mock
 
 from gazoo_device import errors
@@ -101,10 +102,12 @@ class MatterSampleAppShellTest(fake_device_test_case.FakeDeviceTestCase):
     self.fake_switchboard_open.assert_called_once()
     self.fake_wait_for_bootup_complete.assert_called_once()
 
+  @mock.patch.object(time, "sleep")
   @mock.patch.object(retry, "retry")
   @mock.patch.object(os, "access", return_value=True)
   @mock.patch.object(os.path, "exists", return_value=True)
-  def test_upgrade_on_success(self, mock_exists, mock_access, mock_retry):
+  def test_upgrade_on_success(
+      self, mock_exists, mock_access, mock_retry, mock_sleep):
     """Verifies upgrade on success."""
     self.uut.upgrade("/path/to/sample-app-binary")
 

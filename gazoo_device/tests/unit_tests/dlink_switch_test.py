@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for dlink_switch."""
+import subprocess
 from unittest import mock
 
 from gazoo_device import detect_criteria
@@ -25,14 +26,18 @@ import immutabledict
 _PORT = 1
 _TOTAL_PORTS = 5
 _IP_ADDRESS = "123.45.67.89"
-_MODEL = "DGS-1100-05 Gigabit Ethernet Switch"
-_UNKNOWN_MODEL = "DGS-1100-99 Gigabit Ethernet Switch"
+_MODEL = "DGS-1100-05"
+_TOTAL_PORTS_RESPONSE = "iso.3.6.1.2.1.2.1.0 = INTEGER: 5"
+_EXPECTED_TOTAL_PORTS_CALL = (
+    f"snmpget -v 2c -c private {_IP_ADDRESS}:161 1.3.6.1.2.1.2.1.0".split())
+_EXPECTED_TOTAL_PORTS_CALL_TIMEOUT_S = 10
 
 _PERSISTENT_PROPERTIES = immutabledict.immutabledict({
     "device_type": "dlink_switch",
     "console_port_name": _IP_ADDRESS,
     "model": _MODEL,
-    "serial_number": _IP_ADDRESS.replace(".", "")
+    "serial_number": _IP_ADDRESS.replace(".", ""),
+    "total_ports": _TOTAL_PORTS,
 })
 
 
@@ -44,8 +49,11 @@ class DLinkSwitchTests(fake_device_test_case.FakeDeviceTestCase):
     self.setup_fake_device_requirements("dlink-switch-1234")
     self.device_config["persistent"]["console_port_name"] = _IP_ADDRESS
     self.device_config["persistent"]["model"] = _MODEL
+    self.device_config["persistent"]["total_ports"] = _TOTAL_PORTS
     mock.patch.object(
         detect_criteria, "get_dlink_model_name", return_value=_MODEL).start()
+    self.mock_check_output = mock.patch.object(
+        subprocess, "check_output", return_value=_TOTAL_PORTS_RESPONSE).start()
     self.uut = dlink_switch.DLinkSwitch(
         self.mock_manager,
         self.device_config,
@@ -60,20 +68,31 @@ class DLinkSwitchTests(fake_device_test_case.FakeDeviceTestCase):
   def test_ip_address(self):
     self.assertTrue(self.uut.ip_address, _IP_ADDRESS)
 
-  def test_total_ports__pass(self):
-    """Test that total_ports returns the number of ports in the model name."""
-    self.assertTrue(self.uut.total_ports, _TOTAL_PORTS)
+  def test_total_ports(self):
+    self.assertEqual(self.uut.total_ports, _TOTAL_PORTS)
 
-  def test_total_ports__fail(self):
-    self.device_config["persistent"]["model"] = _UNKNOWN_MODEL
-    with self.assertRaises(errors.DeviceError):
-      self.uut.total_ports()
-
-  def test_get_detection_info(self):
-    """Verify get detection info works correctly."""
+  def test_get_detection_info_success(self):
+    """Tests get_detection_info gathers all expected device properties."""
     self._test_get_detection_info(
         self.device_config["persistent"]["console_port_name"],
         dlink_switch.DLinkSwitch, _PERSISTENT_PROPERTIES)
+
+    self.mock_check_output.assert_called_once_with(
+        _EXPECTED_TOTAL_PORTS_CALL,
+        text=True,
+        timeout=_EXPECTED_TOTAL_PORTS_CALL_TIMEOUT_S)
+    self.assertEqual(
+        self.uut.props["persistent_identifiers"]["total_ports"], _TOTAL_PORTS)
+
+  def test_get_detection_info_fails_to_identify_total_ports(self):
+    """Tests get_detection_info fails when total ports OID is unrecognizable."""
+    self.mock_check_output.return_value = "JUNK"
+
+    with self.assertRaisesRegex(
+        errors.DeviceError, "Unexpected response: JUNK"):
+      self._test_get_detection_info(
+          self.device_config["persistent"]["console_port_name"],
+          dlink_switch.DLinkSwitch, _PERSISTENT_PROPERTIES)
 
   @mock.patch.object(
       switch_power_snmp.SwitchPowerSnmp,

@@ -146,18 +146,6 @@ class RaspberryPiMatterTests(fake_device_test_case.FakeDeviceTestCase):
         "The Matter sample app process is not running"):
       self.uut.check_app_running()
 
-  @mock.patch.object(
-      raspberry_pi_matter.RaspberryPiMatter,
-      "matter_endpoints",
-      new_callable=mock.PropertyMock(return_value=_MOCK_MATTER_ENDPOINT))
-  def test_check_rpc_working(self, mock_endpoints):
-    """Verifies check_rpc_working on failure."""
-    mock_endpoints.list.side_effect = errors.DeviceError("error")
-    with self.assertRaisesRegex(
-        errors.PigweedRpcTimeoutError,
-        "The Matter sample app process is not responding to RPC"):
-      self.uut.check_rpc_working()
-
   def test_matter_sample_app_alias(self):
     """Verifies matter_sample_app alias on success."""
     self.assertIsNotNone(self.uut.matter_sample_app)

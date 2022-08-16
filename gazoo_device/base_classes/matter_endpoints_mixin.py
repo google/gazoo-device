@@ -24,6 +24,7 @@ from gazoo_device.capabilities.matter_endpoints import light_sensor
 from gazoo_device.capabilities.matter_endpoints import occupancy_sensor
 from gazoo_device.capabilities.matter_endpoints import on_off_light
 from gazoo_device.capabilities.matter_endpoints import on_off_light_switch
+from gazoo_device.capabilities.matter_endpoints import on_off_plugin_unit
 from gazoo_device.capabilities.matter_endpoints import pressure_sensor
 from gazoo_device.capabilities.matter_endpoints import root_node
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
@@ -194,6 +195,20 @@ class MatterEndpointAliasesMixin:
     return self.matter_endpoints.get_endpoint_instance_by_class(
         on_off_light_switch.OnOffLightSwitchEndpoint)
 
+  @decorators.CapabilityDecorator(on_off_plugin_unit.OnOffPluginUnitEndpoint)
+  def on_off_plugin_unit(self) -> on_off_plugin_unit.OnOffPluginUnitEndpoint:
+    """Matter On/Off Plug-in Unit endpoint instance.
+
+    Returns:
+      On/Off Plug-in Unit endpoint instance.
+
+    Raises:
+      DeviceError when On/Off Plug-in Unit endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        on_off_plugin_unit.OnOffPluginUnitEndpoint)
+
   @decorators.CapabilityDecorator(pressure_sensor.PressureSensorEndpoint)
   def pressure_sensor(self) -> pressure_sensor.PressureSensorEndpoint:
     """Matter Pressure Sensor endpoint instance.
@@ -248,5 +263,5 @@ class MatterEndpointAliasesMixin:
       device.
     """
     return self.matter_endpoints.get_endpoint_instance_by_class(
-        temperature_sensor.TemperatureSensorEndpoint)
+        thermostat.ThermostatEndpoint)
 

@@ -23,6 +23,8 @@ from gazoo_device.capabilities import switch_power_usb_with_charge
 from gazoo_device.switchboard import switchboard
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 
+_COMMUNICATION_ADDRESS = "/dev/ttyusb0"
+
 
 class CommPowerDefaultTests(unit_test_case.UnitTestCase):
   """Test class to verify the behavior of the comm_power_default capability."""
@@ -45,7 +47,9 @@ class CommPowerDefaultTests(unit_test_case.UnitTestCase):
             "device_usb_port": 3
         }
     }
-    self.mock_cambrionix = mock.MagicMock(spec=cambrionix.Cambrionix)
+    self.mock_cambrionix = mock.MagicMock(
+        communication_address=_COMMUNICATION_ADDRESS,
+        spec=cambrionix.Cambrionix)
     self.mock_cambrionix.switch_power = mock.MagicMock(
         spec=switch_power_usb_with_charge.SwitchPowerUsbWithCharge)
     self.mock_manager.create_device.return_value = self.mock_cambrionix
@@ -60,14 +64,14 @@ class CommPowerDefaultTests(unit_test_case.UnitTestCase):
         get_switchboard_if_initialized=self.get_switchboard_if_initialized,
         power_and_data_share_cable=False)
 
-  def test_001_missing_device_usb_hub_name_property(self):
+  def test_missing_device_usb_hub_name_property(self):
     """Verifies capability raises a error if device_usb_hub_name is not set."""
     err_msg = (f"{self.name} properties device_usb_hub_name are unset.")
     self.props["optional"]["device_usb_hub_name"] = None
     with self.assertRaisesRegex(errors.CapabilityNotReadyError, err_msg):
       self.uut.health_check()
 
-  def test_002_unable_to_ready_device(self):
+  def test_unable_to_ready_device(self):
     """Verifies capability raises a error if manager is not set."""
     err_msg = (f"{self.name} cambrionix not responding")
     self.mock_manager.create_device.side_effect = errors.DeviceError(
@@ -75,7 +79,7 @@ class CommPowerDefaultTests(unit_test_case.UnitTestCase):
     with self.assertRaisesRegex(errors.CapabilityNotReadyError, err_msg):
       self.uut.health_check()
 
-  def test_003_works_with_bad_switchboard(self):
+  def test_works_with_bad_switchboard(self):
     """Verifies capability works without a Switchboard."""
     self.uut = comm_power_default.CommPowerDefault(
         device_name=self.name,
@@ -89,7 +93,7 @@ class CommPowerDefaultTests(unit_test_case.UnitTestCase):
         power_and_data_share_cable=False)
     self.uut.cycle()
 
-  def test_004_on_waits_for_connection(self):
+  def test_on_waits_for_connection(self):
     """Verifies capability waits for connection if method provided."""
     mock_wait_for_connection = mock.Mock()
     self.uut = comm_power_default.CommPowerDefault(
@@ -106,7 +110,7 @@ class CommPowerDefaultTests(unit_test_case.UnitTestCase):
     self.uut.on()
     mock_wait_for_connection.assert_called_once()
 
-  def test_005_switchboard_initialized_after_comm_power(self):
+  def test_switchboard_initialized_after_comm_power(self):
     """Test Switchboard methods called if Switchboard is initialized later."""
     self.get_switchboard_if_initialized.return_value = None
     self.uut = comm_power_default.CommPowerDefault(
@@ -124,7 +128,7 @@ class CommPowerDefaultTests(unit_test_case.UnitTestCase):
     self.mock_switchboard.close_all_transports.assert_called_once()
     self.mock_switchboard.open_all_transports.assert_called_once()
 
-  def test_006_hub_not_created_by_create_device_func(self):
+  def test_hub_not_created_by_create_device_func(self):
     """Tests error raised when failing to create self._hub."""
     self.mock_manager.create_device.return_value = "invalid hub instance"
     err_msg = "'switch_power' capability is missing in hub device"
@@ -142,6 +146,15 @@ class CommPowerDefaultTests(unit_test_case.UnitTestCase):
     self.mock_cambrionix.close.assert_not_called()
     self.uut.close()
     self.mock_cambrionix.close.assert_called_once()
+
+  def test_ethernet_ip_address(self):
+    """Tests getting the ethernet address."""
+    self.assertEqual(self.uut.address, _COMMUNICATION_ADDRESS)
+
+  def test_ethernet_ip_address_unhealthy(self):
+    """Tests getting the ethernet address when device is unhealth."""
+    type(self.uut).healthy = mock.PropertyMock(return_value=False)
+    self.assertEqual(self.uut.address, _COMMUNICATION_ADDRESS)
 
 
 if __name__ == "__main__":

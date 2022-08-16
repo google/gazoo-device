@@ -24,13 +24,10 @@ from gazoo_device.capabilities import device_power_default
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
-from gazoo_device.utility import usb_utils
 import immutabledict
 
 _FAKE_DEVICE_ID = "matterdevicestub-detect"
 _FAKE_DEVICE_ADDRESS = "fake-device-address"
-_FAKE_VENDOR_ID = "fake-vendor-id"
-_FAKE_PRODUCT_ID = "fake-product-id"
 _FAKE_QR_CODE = "fake-qr-code"
 _FAKE_QR_CODE_URL = "fake-qr-code-url"
 _FAKE_OS = "fake-os"
@@ -46,8 +43,6 @@ _CONNECT_PERSISTENT_PROPERTIES = immutabledict.immutabledict({
     "serial_number": "FT2BSR6O",
     "name": "matterdevicestub_detect",
     "device_type": "matterdevicestub",
-    "vendor_id": _FAKE_VENDOR_ID,
-    "product_id": _FAKE_PRODUCT_ID,
 })
 
 
@@ -79,12 +74,30 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
                                 self.device_config,
                                 log_directory=self.artifacts_directory)
 
-  @mock.patch.object(
-      matter_device_base.MatterDeviceBase, "device_power")
+  def test_health_check(self):
+    """Verifies health_check is not empty."""
+    self.assertTrue(bool(self.uut.health_checks))
+
+  @mock.patch.object(matter_device_base.MatterDeviceBase, "device_power")
   def test_check_power_on(self, mock_device_power):
-    """Checks that the power gets turned on in health checks."""
-    self.uut.make_device_ready()
+    """Veirifes check_power_on on success."""
+    self.uut.check_power_on()
     mock_device_power.on.assert_called_once()
+
+  @mock.patch.object(matter_device_base.MatterDeviceBase, "matter_endpoints")
+  def test_check_rpc_working_on_success(self, mock_matter_endpoints):
+    """Verifies check_rpc_working on success."""
+    self.uut.check_rpc_working()
+    mock_matter_endpoints.reset.assert_called_once()
+    mock_matter_endpoints.list.assert_called_once()
+
+  @mock.patch.object(matter_device_base.MatterDeviceBase, "matter_endpoints")
+  def test_check_rpc_working_on_failure(self, mock_endpoints):
+    """Verifies check_rpc_working on failure."""
+    mock_endpoints.list.side_effect = errors.DeviceError("error")
+    with self.assertRaisesRegex(
+        errors.PigweedRpcTimeoutError, "Not responding to RPC"):
+      self.uut.check_rpc_working()
 
   @mock.patch.object(console_config, "get_log_only_configuration")
   def test_get_console_configuration_on_success(self, mock_console_config):
@@ -101,15 +114,16 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
     mock_exists.assert_called_once()
 
   @mock.patch.object(
+      matter_device_base.MatterDeviceBase, "matter_endpoints")
+  @mock.patch.object(
       matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
       "get_endpoint_instance_by_class",
       return_value=_FAKE_ENDPOINT_INST)
-  @mock.patch.object(usb_utils, "get_device_info")
   def test_get_detection_info_on_success(
-      self, mock_get_device_info, mock_get_endpoint_instance_by_class):
+      self,
+      mock_get_endpoint_instance_by_class,
+      mock_matter_endpoints):
     """Verifies persistent properties are set correctly."""
-    mock_get_device_info.return_value.vendor_id = _FAKE_VENDOR_ID
-    mock_get_device_info.return_value.product_id = _FAKE_PRODUCT_ID
     self._test_get_detection_info(
         console_port_name=_FAKE_DEVICE_ADDRESS,
         device_class=MatterDeviceStub,

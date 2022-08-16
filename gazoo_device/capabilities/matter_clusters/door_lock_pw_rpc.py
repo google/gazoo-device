@@ -23,7 +23,7 @@ from gazoo_device.protos import attributes_service_pb2
 
 logger = gdm_logger.get_logger()
 DoorLockCluster = matter_enums.DoorLockCluster
-BOOLEAN_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_BOOLEAN_ATTRIBUTE_TYPE
+UNSIGNED_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_INT16U_ATTRIBUTE_TYPE
 
 
 class DoorLockClusterPwRpc(door_lock_base.DoorLockClusterBase):
@@ -58,8 +58,8 @@ class DoorLockClusterPwRpc(door_lock_base.DoorLockClusterBase):
         endpoint_id=self._endpoint_id,
         cluster_id=DoorLockCluster.ID,
         attribute_id=DoorLockCluster.ATTRIBUTE_LOCK_STATE,
-        attribute_type=BOOLEAN_ATTRIBUTE_TYPE)
-    return (matter_enums.LockState.LOCKED if locked_data.data_bool
+        attribute_type=UNSIGNED_ATTRIBUTE_TYPE)
+    return (matter_enums.LockState.LOCKED if bool(locked_data.data_uint16)
             else matter_enums.LockState.UNLOCKED)
 
   def _lock_command(self, lock: bool, verify: bool = True) -> None:
@@ -77,8 +77,8 @@ class DoorLockClusterPwRpc(door_lock_base.DoorLockClusterBase):
         endpoint_id=self._endpoint_id,
         cluster_id=DoorLockCluster.ID,
         attribute_id=DoorLockCluster.ATTRIBUTE_LOCK_STATE,
-        attribute_type=BOOLEAN_ATTRIBUTE_TYPE,
-        data_bool=lock)
+        attribute_type=UNSIGNED_ATTRIBUTE_TYPE,
+        data_uint16=int(lock))
 
     if verify:
       expected_state = (matter_enums.LockState.LOCKED if lock else

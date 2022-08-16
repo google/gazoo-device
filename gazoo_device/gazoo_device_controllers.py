@@ -100,6 +100,7 @@ from gazoo_device.capabilities.matter_clusters import relative_humidity_measurem
 from gazoo_device.capabilities.matter_clusters import relative_humidity_measurement_pw_rpc
 from gazoo_device.capabilities.matter_clusters import temperature_measurement_chip_tool
 from gazoo_device.capabilities.matter_clusters import temperature_measurement_pw_rpc
+from gazoo_device.capabilities.matter_clusters import thermostat_chip_tool
 from gazoo_device.capabilities.matter_clusters import thermostat_pw_rpc
 from gazoo_device.capabilities.matter_clusters.interfaces import basic_information_base
 from gazoo_device.capabilities.matter_clusters.interfaces import boolean_state_base
@@ -121,6 +122,7 @@ from gazoo_device.capabilities.matter_endpoints import light_sensor
 from gazoo_device.capabilities.matter_endpoints import occupancy_sensor
 from gazoo_device.capabilities.matter_endpoints import on_off_light
 from gazoo_device.capabilities.matter_endpoints import on_off_light_switch
+from gazoo_device.capabilities.matter_endpoints import on_off_plugin_unit
 from gazoo_device.capabilities.matter_endpoints import pressure_sensor
 from gazoo_device.capabilities.matter_endpoints import root_node
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
@@ -137,6 +139,7 @@ from gazoo_device.capabilities.matter_endpoints.interfaces import light_sensor_b
 from gazoo_device.capabilities.matter_endpoints.interfaces import occupancy_sensor_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import on_off_light_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import on_off_light_switch_base
+from gazoo_device.capabilities.matter_endpoints.interfaces import on_off_plugin_unit_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import pressure_sensor_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import root_node_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import temperature_sensor_base
@@ -248,6 +251,7 @@ def export_extensions() -> Dict[str, Any]:
           on_off_base.OnOffClusterBase,
           on_off_light_base.OnOffLightBase,
           on_off_light_switch_base.OnOffLightSwitchBase,
+          on_off_plugin_unit_base.OnOffPluginUnitBase,
           package_management_base.PackageManagementBase,
           pressure_sensor_base.PressureSensorBase,
           pwrpc_button_base.PwRPCButtonBase,
@@ -306,6 +310,7 @@ def export_extensions() -> Dict[str, Any]:
           on_off_light.OnOffLightEndpoint,
           on_off_light_switch.OnOffLightSwitchEndpoint,
           on_off_chip_tool.OnOffClusterChipTool,
+          on_off_plugin_unit.OnOffPluginUnitEndpoint,
           on_off_pw_rpc.OnOffClusterPwRpc,
           temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc,
           package_management_android.PackageManagementAndroid,
@@ -333,6 +338,7 @@ def export_extensions() -> Dict[str, Any]:
           TemperatureMeasurementClusterChipTool,
           temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc,
           thermostat.ThermostatEndpoint,
+          thermostat_chip_tool.ThermostatClusterChipTool,
           thermostat_pw_rpc.ThermostatClusterPwRpc,
           unsupported_endpoint.UnsupportedEndpoint,
           usb_hub_default.UsbHubDefault,

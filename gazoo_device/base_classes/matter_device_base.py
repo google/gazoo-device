@@ -19,6 +19,7 @@ from typing import Callable, Dict, List, NoReturn, Optional, Tuple
 from gazoo_device import console_config
 from gazoo_device import custom_types
 from gazoo_device import decorators
+from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.base_classes import matter_endpoints_mixin
@@ -91,9 +92,6 @@ class MatterDeviceBase(
     persistent_dict["serial_number"] = (
         usb_utils.get_serial_number_from_path(address))
     persistent_dict["model"] = "PROTO"
-    device_info = usb_utils.get_device_info(self.communication_address)
-    persistent_dict["vendor_id"] = device_info.vendor_id
-    persistent_dict["product_id"] = device_info.product_id
     persistent_dict.update(
         usb_utils.get_usb_hub_info(self.communication_address))
     return persistent_dict, {}
@@ -106,7 +104,19 @@ class MatterDeviceBase(
         self.check_power_on,
         self.check_device_connected,
         self.check_create_switchboard,
+        self.check_rpc_working,
     ]
+
+  @decorators.health_check
+  def check_rpc_working(self) -> None:
+    """Checks if the RPC is working."""
+    try:
+      self.matter_endpoints.reset()
+      self.matter_endpoints.list()
+    except errors.DeviceError as e:
+      raise errors.PigweedRpcTimeoutError(
+          device_name=self.name,
+          msg="Not responding to RPC.") from e
 
   @decorators.health_check
   def check_power_on(self) -> None:
@@ -124,16 +134,6 @@ class MatterDeviceBase(
   def firmware_version(self) -> str:
     """Firmware version of the device."""
     return self.pw_rpc_common.software_version
-
-  @decorators.PersistentProperty
-  def vendor_id(self) -> str:
-    """Vendor ID of the USB-UART controller."""
-    return self.props["persistent_identifiers"]["vendor_id"]
-
-  @decorators.PersistentProperty
-  def product_id(self) -> str:
-    """Product ID of the USB-UART controller."""
-    return self.props["persistent_identifiers"]["product_id"]
 
   @decorators.PersistentProperty
   def device_usb_hub_name(self) -> Optional[str]:

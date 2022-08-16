@@ -317,6 +317,19 @@ Alias for accessing `OnOffLightSwitch` endpoint and its supported clusters.
 The supported clusters can be found in the
 [GDM OnOffLightSwitch implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/on_off_light_switch.py).
 
+
+#### `on_off_plugin_unit`
+
+Alias for accessing `OnOffPluginUnit` endpoint and its supported clusters.
+
+```
+# Check the OnOff state on the OnOff cluster on the OnOffPluginUnit endpoint.
+>>> dut.on_off_plugin_unit.on_off.onoff
+```
+
+The supported clusters can be found in the
+[GDM OnOffPluginUnit implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/on_off_plugin_unit.py).
+
 #### `pressure_sensor`
 
 Alias for accessing `PressureSensor` endpoint and its supported clusters.

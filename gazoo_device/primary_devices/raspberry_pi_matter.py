@@ -158,17 +158,6 @@ class RaspberryPiMatter(
           device_name=self.name,
           msg="The Matter sample app process is not running.")
 
-  @decorators.health_check
-  def check_rpc_working(self) -> None:
-    """Checks if the RPC is working."""
-    try:
-      self.matter_endpoints.reset()
-      self.matter_endpoints.list()
-    except errors.DeviceError as e:
-      raise errors.PigweedRpcTimeoutError(
-          device_name=self.name,
-          msg="The Matter sample app process is not responding to RPC.") from e
-
   @decorators.CapabilityDecorator(
       matter_app_controls_shell.MatterSampleAppShell)
   def matter_sample_app(self):
