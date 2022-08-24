@@ -177,16 +177,13 @@ class RaspberryPiMatter(
   def recover(self, error: errors.DeviceError) -> None:
     """Recovers the device from an error.
 
-    1. Restarts the sample app when the RPC is not working.
-    2. Enables the sample app service when it's not enabled.
-    3. Otherwise trying with a parent recover method.
+    1. Enables the sample app service when it's not enabled.
+    2. Otherwise trying with a parent recover method.
 
     Args:
       error: The error we try to recover from.
     """
-    if isinstance(error, errors.PigweedRpcTimeoutError):
-      self.matter_sample_app.restart()
-    elif isinstance(error, errors.ServiceNotEnabledError):
+    if isinstance(error, errors.ServiceNotEnabledError):
       self.matter_sample_app.enable_service()
     else:
       super().recover(error)

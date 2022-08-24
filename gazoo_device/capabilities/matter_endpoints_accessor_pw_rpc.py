@@ -44,7 +44,7 @@ logger = gdm_logger.get_logger()
 class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
   """Capability wrapper for accessing the Matter endpoint instances."""
 
-  _SUPPORTED_ENDPOINTS = matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS_PW_RPC
+  _SUPPORTED_ENDPOINTS = matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS
 
   def __init__(self, device_name: str, switchboard_call: Callable[..., Any],
                rpc_timeout_s: int):
@@ -72,7 +72,7 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
       raise errors.DeviceError(
           f"Device {self._device_name} getting {_DESCRIPTOR_SERVICE_NAME} "
           f"{_DESCRIPTOR_GET_ENDPOINTS_RPC_NAME} failed.")
-    # TODO(b/241164443): support RootNode device type in PwRPC.
+    # TODO(b/241313435): support RootNode device type in PwRPC.
     supported_endpoint_ids = []
     for endpoint_in_bytes in list_of_supported_endpoints:
       endpoint = descriptor_service_pb2.Endpoint.FromString(endpoint_in_bytes)
@@ -104,7 +104,7 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
     device_type_id = device_type.device_type
 
     endpoint_class = (
-        matter_endpoints_and_clusters.MATTER_DEVICE_TYPE_ID_TO_CLASS_PW_RPC.
+        matter_endpoints_and_clusters.MATTER_DEVICE_TYPE_ID_TO_CLASS.
         get(device_type_id, unsupported_endpoint.UnsupportedEndpoint))
 
     return endpoint_class, device_type_id

@@ -20,7 +20,6 @@ from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.primary_devices import raspberry_pi_matter
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.tests.unit_tests.utils import raspberry_pi_matter_device_logs
-from gazoo_device.utility import host_utils
 from gazoo_device.utility import retry
 import immutabledict
 
@@ -149,21 +148,6 @@ class RaspberryPiMatterTests(fake_device_test_case.FakeDeviceTestCase):
   def test_matter_sample_app_alias(self):
     """Verifies matter_sample_app alias on success."""
     self.assertIsNotNone(self.uut.matter_sample_app)
-
-  @mock.patch.object(retry, "retry")
-  @mock.patch.object(host_utils, "is_pingable", return_value=True)
-  def test_recover_for_rpc_working_error(self, mock_is_pingable, mock_retry):
-    """Verifies recover method for RPC not working error."""
-    response = {
-        "cmd": "pgrep -f matter-linux-app",
-        "resp": "12345",
-        "code": 0,
-    }
-    self.fake_responder.behavior_dict.update(
-        raspberry_pi_matter_device_logs.make_device_responses((response,)))
-    fake_error = errors.PigweedRpcTimeoutError(
-        device_name="fake-name", msg="fake-msg")
-    self.uut.recover(error=fake_error)
 
   def test_recover_for_service_not_enabled_error(self):
     """Verifies recover method for sample app service not enabled error."""

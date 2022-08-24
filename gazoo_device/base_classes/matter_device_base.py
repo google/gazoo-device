@@ -114,9 +114,10 @@ class MatterDeviceBase(
       self.matter_endpoints.reset()
       self.matter_endpoints.list()
     except errors.DeviceError as e:
-      raise errors.PigweedRpcTimeoutError(
-          device_name=self.name,
-          msg="Not responding to RPC.") from e
+      # b/242914961: For Matter devices, errors cannot be raised otherwise the
+      # device cannot be created and will get quarantined if a bad build is
+      # flashed.
+      logger.warning("%s is not responding to RPC: %r", self.name, e)
 
   @decorators.health_check
   def check_power_on(self) -> None:

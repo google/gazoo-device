@@ -70,7 +70,8 @@ class DeviceDetector:
 
   def detect_all_new_devices(
       self, static_ips: Optional[List[str]] = None,
-      comm_types: Optional[Collection[str]] = None
+      comm_types: Optional[Collection[str]] = None,
+      addresses: Optional[Collection[str]] = None
     ) -> Tuple[
         custom_types.PersistentConfigsDict,
         custom_types.OptionalConfigsDict]:
@@ -79,6 +80,7 @@ class DeviceDetector:
     Args:
       static_ips: Static ips not otherwise detectable.
       comm_types: Limit detection to specific communication types.
+      addresses: Limit detection to specific communication addresses.
 
     Returns:
       (Dicts of persistent props, dict of optional props).
@@ -87,7 +89,7 @@ class DeviceDetector:
         "\n##### Step 1/3: Detecting potential new communication addresses. #####\n"
     )
     all_connections_dict = communication_types.detect_connections(
-        static_ips=static_ips, comm_types=comm_types)
+        static_ips=static_ips, comm_types=comm_types, addresses=addresses)
     return self.detect_new_devices(all_connections_dict)
 
   def detect_new_devices(
@@ -256,7 +258,7 @@ class DeviceDetector:
           if con.replace(u":5555", u"") not in known_cons
       ]
       if new_con_dict[key]:
-        logger.info("Found {} possible {} connections:".format(
+        logger.info("Found {} new possible {} connections:".format(
             len(new_con_dict[key]), key))
         logger.info(u"\t" + u"\n\t".join(new_con_dict[key]))
     return new_con_dict

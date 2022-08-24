@@ -92,12 +92,14 @@ def _validate_comm_types(
 
 def detect_connections(
     static_ips: Optional[List[str]] = None,
-    comm_types: Optional[Collection[str]] = None) -> Dict[str, List[str]]:
+    comm_types: Optional[Collection[str]] = None,
+    addresses: Optional[Collection[str]] = None) -> Dict[str, List[str]]:
   """Detects all the communication addresses for the different devices.
 
   Args:
     static_ips: Static ip addresses.
     comm_types: Limit detection to specific communication types.
+    addresses: Limit detection to specific communication addresses.
 
   Returns:
     Connections by connection class name from classes in this module
@@ -105,12 +107,13 @@ def detect_connections(
   """
   lowercase_comm_types = _validate_comm_types(comm_types)
 
-  connections_dict = {}
+  connections_dict = {comms_name: []
+                      for comms_name in extensions.communication_types}
   for comms_name, comms_class in extensions.communication_types.items():
     if lowercase_comm_types is not None:
       if comms_name.lower() not in lowercase_comm_types:
-        logger.debug(
-            f"Skipping detection for {comms_name} communication addresses.")
+        logger.info(
+            f"Skipping detection for {comms_name} communication types.")
         continue
 
     logger.info(
@@ -121,11 +124,20 @@ def detect_connections(
         comms_addresses = detection_method(static_ips=static_ips)
       except TypeError:  # method does not accept static_ips
         comms_addresses = detection_method()
-      connections_dict[comms_name] = comms_addresses
-      logger.debug("Found {} potential communication addresses".format(
-          len(comms_addresses)))
+      selected_comms_addresses = [
+          addr for addr in comms_addresses
+          if addresses is None or addr in addresses]
+      not_selected_comms_addresses = list(
+          set(comms_addresses) - set(selected_comms_addresses))
+      connections_dict[comms_name] = selected_comms_addresses
+      if not_selected_comms_addresses:
+        logger.info(
+            f"Skipping detection for {not_selected_comms_addresses} "
+            "communication addresses.")
+      logger.info("Found {} new potential communication addresses: {}".format(
+          len(selected_comms_addresses), selected_comms_addresses))
 
-      # Verify ssh keys exist if ssh connections are detected
+        # Verify ssh keys exist if ssh connections are detected
       if issubclass(comms_class, SshComms) and comms_addresses:
         missing_keys = []
         ssh_keys = [
@@ -400,6 +412,9 @@ class PigweedSerialComms(CommunicationType):
         },
         "address": {
             "include_regex": "|".join(include_address)
+        },
+        "ftdi_interface": {
+            "include_regex": "0"
         }
     }
     return get_specific_serial_addresses(match_criteria)

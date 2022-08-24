@@ -1,7 +1,10 @@
 {
-  "shell_cmd": "ps -aux | grep rootnode | grep -v grep",
-  "expect": ["*rootnode*"],
-  "do_not_run_tests": [],
+  "shell_cmd": "ls /",
+  "expect": [".*rootnode.*"],
+  "known_logline": "systemd",
+  "do_not_run_tests": [
+    "PwRPCButtonTestSuite.test_button_push"
+  ],
   "slow_tests": [],
   "volatile_tests": []
 }

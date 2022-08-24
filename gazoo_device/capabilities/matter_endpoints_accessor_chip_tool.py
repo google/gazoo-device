@@ -43,7 +43,7 @@ class MatterEndpointsAccessorChipTool(matter_endpoints_base.MatterEndpointsBase
                                      ):
   """Capability for accessing the Matter endpoint instances via chip-tool."""
 
-  _SUPPORTED_ENDPOINTS = matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS_CHIP_TOOL
+  _SUPPORTED_ENDPOINTS = matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS
 
   def __init__(
       self,
@@ -106,7 +106,7 @@ class MatterEndpointsAccessorChipTool(matter_endpoints_base.MatterEndpointsBase
         self._shell_with_regex(command, _REGEXES["DEVICE_LIST_RESPONSE"]))
 
     endpoint_class = (
-        matter_endpoints_and_clusters.MATTER_DEVICE_TYPE_ID_TO_CLASS_CHIP_TOOL.
+        matter_endpoints_and_clusters.MATTER_DEVICE_TYPE_ID_TO_CLASS.
         get(device_type_id, unsupported_endpoint.UnsupportedEndpoint))
 
     return endpoint_class, device_type_id

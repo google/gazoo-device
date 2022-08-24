@@ -49,6 +49,8 @@ class DLinkSwitch(auxiliary_device.AuxiliaryDevice):
     Raises:
       DeviceError: When the response to querying the SNMP total ports OID
         is unexpected.
+      CalledProcessError: When the snmp shell command sent to the dlink's
+        given ip_address is unsuccessful.
     """
     command = _GET_DLINK_TOTAL_PORTS_SNMP_COMMAND.format(
         ip_address=self.ip_address)

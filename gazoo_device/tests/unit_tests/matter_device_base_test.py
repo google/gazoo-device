@@ -91,13 +91,14 @@ class MatterDeviceTest(fake_device_test_case.FakeDeviceTestCase):
     mock_matter_endpoints.reset.assert_called_once()
     mock_matter_endpoints.list.assert_called_once()
 
+  @mock.patch.object(matter_device_base, "logger")
   @mock.patch.object(matter_device_base.MatterDeviceBase, "matter_endpoints")
-  def test_check_rpc_working_on_failure(self, mock_endpoints):
-    """Verifies check_rpc_working on failure."""
+  def test_check_rpc_working_on_failure_not_raise_error(
+      self, mock_endpoints, mock_logger):
+    """Verifies check_rpc_working not raises error on failure."""
     mock_endpoints.list.side_effect = errors.DeviceError("error")
-    with self.assertRaisesRegex(
-        errors.PigweedRpcTimeoutError, "Not responding to RPC"):
-      self.uut.check_rpc_working()
+    self.uut.check_rpc_working()
+    mock_logger.warning.assert_called_once()
 
   @mock.patch.object(console_config, "get_log_only_configuration")
   def test_get_console_configuration_on_success(self, mock_console_config):

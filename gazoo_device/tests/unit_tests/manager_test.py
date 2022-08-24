@@ -25,6 +25,7 @@ import shutil
 import signal
 from unittest import mock
 
+from absl.testing import parameterized
 from gazoo_device import config as config_gdm
 from gazoo_device import data_types
 from gazoo_device import decorators
@@ -36,6 +37,7 @@ from gazoo_device import log_parser
 from gazoo_device import manager
 from gazoo_device.auxiliary_devices import cambrionix
 from gazoo_device.capabilities import switch_power_usb_with_charge
+from gazoo_device.switchboard import communication_types
 from gazoo_device.switchboard import log_process
 from gazoo_device.switchboard import switchboard
 from gazoo_device.tests.unit_tests.utils import fake_devices
@@ -73,14 +75,10 @@ FAKE_DEVICES = {
     },
     "other_devices": {
         "cambrionix-1234": {
-            "serial_number":
-                "1234",
-            "name":
-                "cambrionix-1234",
-            "device_type":
-                "cambrionix",
-            "model":
-                "PP15S",
+            "serial_number": "1234",
+            "name": "cambrionix-1234",
+            "device_type": "cambrionix",
+            "model": "PP15S",
             "console_port_name":
                 ("/dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_DJ00JMN0-if00"
                  "-port0"),
@@ -1382,15 +1380,18 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       # Ensure static ip strings are correctly parsed into lists
       self.uut.detect(static_ips="123.123.78.90")
       mock_detect.assert_called_with(static_ips=[u"123.123.78.90"],
-                                     comm_types=None)
+                                     comm_types=None,
+                                     addresses=None)
       self.uut.detect(static_ips="123.123.78.90,123.123.78.1,99.9.9.0")
       mock_detect.assert_called_with(
           static_ips=[u"123.123.78.90", "123.123.78.1", "99.9.9.0"],
-          comm_types=None)
+          comm_types=None,
+          addresses=None)
       self.uut.detect(static_ips="123.123.78.90,,,,,123.123.78.1,,")
       mock_detect.assert_called_with(
           static_ips=[u"123.123.78.90", "123.123.78.1"],
-          comm_types=None)
+          comm_types=None,
+          addresses=None)
 
   def test_700a_detect_force_overwrite(self):
     """Test detect() with force_overwrite=True."""
@@ -1420,13 +1421,42 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       mock_overwrite.assert_called_once()
     mock_detect.assert_called_once_with(
         static_ips=["123.123.78.1", "123.123.78.9", "123.123.78.0"],
-        comm_types=None)
+        comm_types=None,
+        addresses=None)
     # Check that all devices are known to Manager
     device_names = (
         list(FAKE_DEVICES["devices"].keys()) +
         list(FAKE_DEVICES["other_devices"].keys()) + ["sshdevice-5678"])
     for device_name in device_names:
       self.uut._get_device_name(device_name, raise_error=True)
+
+  @parameterized.named_parameters(
+      ("comm_types", None, ["SshComms"], None),
+      ("addresses", None, None, ["12.34.56.78"]),
+      ("comm_types_and_addresses", None, ["SshComms"], ["12.34.56.78"]),
+      ("comm_types_and_addresses_with_static_ips",
+       ["12.34.56.78"], ["SshComms"], ["12.34.56.78"]),
+  )
+  @mock.patch.object(
+      device_detector.DeviceDetector, "detect_new_devices", autospec=True,
+      return_value=({}, {}))
+  @mock.patch.object(communication_types, "detect_connections", autospec=True)
+  def test_detect_argument_propagation(
+      self, static_ips, comm_types, addresses,
+      mock_detect_connections, mock_detect_new_devices):
+    """Tests that detect() propagates arguments appropriately."""
+    expected_static_ips = static_ips if static_ips is not None else []
+    self.uut = self._create_manager_object()
+    self.uut.detect(
+        static_ips=static_ips,
+        communication_types=comm_types,
+        addresses=addresses)
+    mock_detect_connections.assert_called_once_with(
+        static_ips=expected_static_ips,
+        comm_types=comm_types,
+        addresses=addresses)
+    mock_detect_new_devices.assert_called_once_with(
+        mock.ANY, mock_detect_connections.return_value)
 
   def test_701_delete(self):
     self.uut = self._create_manager_object()
@@ -1518,7 +1548,8 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           return_value=(persistent_configs, options_configs)) as mock_detect:
         self.uut.redetect("sshdevice-0000")
         mock_detect.assert_called_with(static_ips=[u"123.123.78.9"],
-                                       comm_types=None)
+                                       comm_types=None,
+                                       addresses=None)
 
   @mock.patch.object(switch_power_usb_with_charge.SwitchPowerUsbWithCharge,
                      "set_mode")

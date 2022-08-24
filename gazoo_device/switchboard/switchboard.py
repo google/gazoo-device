@@ -868,7 +868,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
   @decorators.DynamicProperty
   def number_transports(self) -> int:
     """Returns the number of transport processes used by Switchboard."""
-    return len(self._transport_processes)
+    return len(self._transport_processes_cache)
 
   @decorators.CapabilityLogDecorator(logger)
   def open_all_transports(self) -> None:
@@ -879,6 +879,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     Only opens the ones closed so if device.close has already occurred,
     nothing will be opened.
     """
+    self.health_check()
     for port in range(self.number_transports):
       self.open_transport(port=port)
 

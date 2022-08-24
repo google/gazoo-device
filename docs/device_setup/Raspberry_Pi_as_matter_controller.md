@@ -15,6 +15,38 @@ Supported kernel images: Ubuntu 21.04 or later.
     `/usr/local/bin/chip-tool`. Follow the instructions on
     https://github.com/project-chip/connectedhomeip/tree/master/examples/chip-tool#building-the-example-application.
 
+    Ensure that `chip-tool` binary can be run without any issues. The binary
+    should produce the output below:
+
+    ```shell
+    [1660844066.237092][304338:304338] CHIP:TOO: Missing cluster name
+    Usage:
+    chip-tool cluster_name command_name [param1 param2 ...]
+
+    +-------------------------------------------------------------------------------------+
+    | Clusters:                                                                           |
+    +-------------------------------------------------------------------------------------+
+    | * accesscontrol                                                                     |
+    | * accountlogin                                                                      |
+    | * actions                                                                           |
+    | * administratorcommissioning                                                        |
+    ...
+    ```
+
+    Raspberry pi running Ubuntu 22.04 or later may encounter an issue with
+    incompatible SSL library.
+
+    ```shell
+    chip-tool: error while loading shared libraries: libssl.so.1.1: cannot open shared object file: No such file or directory
+    ```
+
+    As a workaround, force install libssl1.1 using the command below:
+
+    ```
+    wget http://security.debian.org/pool/updates/main/o/openssl/libssl1.1_1.1.1n-0+deb10u3_arm64.deb
+    sudo dpkg -i libssl1.1_1.1.1n-0+deb10u3_arm64.deb
+    ```
+
 3.  On the raspberry pi, save the commit SHA the `chip-tool` was built at by
     running
 
@@ -57,6 +89,14 @@ Supported kernel images: Ubuntu 21.04 or later.
     ```
 
     Verify that the raspberry pi can reach the end devices using `ping` command.
+
+7.  Some devices may require PAA certificate information for commissioning.
+    Ensure that the relevant certs are available on the Raspberry Pi.
+    Development credentials can be found in the
+    [credentials/development/paa-root-certs](https://github.com/project-chip/connectedhomeip/tree/master/credentials/development/paa-root-certs)
+    directory of project-chip/connectedhomeip repository.
+
+    The default certificate path is `/opt/matter/certs`.
 
 ### Optional: Thread Border Router Setup
 
@@ -112,7 +152,7 @@ Requirement:
 
 ```shell
 # Commission a device on network with 20202021 setup code and assign it node id 100.
-gdm issue rpi_matter_controller-1234 - matter_controller commission 100 20202021
+gdm issue rpi_matter_controller-1234 - matter_controller commission 100 20202021 --paa_trust_store_path /opt/matter/certs
 
 # Commission a device over thread using dataset generated from `Optional: Thread Border Router Setup` step
 gdm issue rpi_matter_controller-1234 - matter_controller commission 100 20202021 --operational_dataset 0e080000000000010000000300001835060004001fffe00208161de905837b6ba10708fdd61eb482e203ad0510fe8c68576cef838b184b41df13c9e694030f4f70656e5468726561642d323832610102282a0410615a57bd3d170a24ac2a461d37c8e97c0c0402a0fff8

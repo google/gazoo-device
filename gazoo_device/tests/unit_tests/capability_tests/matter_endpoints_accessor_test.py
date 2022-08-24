@@ -110,7 +110,7 @@ class MatterEndpointsAccessorPwPpcTest(
       self.uut.get_supported_endpoint_ids()
 
   @mock.patch.object(
-      matter_endpoints_and_clusters.MATTER_DEVICE_TYPE_ID_TO_CLASS_PW_RPC,
+      matter_endpoints_and_clusters.MATTER_DEVICE_TYPE_ID_TO_CLASS,
       "get",
       return_value=_FAKE_ENDPOINT_CLS)
   def test_get_endpoint_class_and_device_type_id_on_success(self, mock_mapping):

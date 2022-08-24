@@ -90,7 +90,7 @@ class CommPowerDefault(comm_power_base.CommPowerBase):
 
   @decorators.OptionalProperty
   def address(self) -> str:
-    """IP address of the ethernet switch."""
+    """IP address of the comm power hub."""
     if not self.healthy:
       self.health_check()
     return self._hub.communication_address

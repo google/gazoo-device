@@ -26,7 +26,8 @@ sudo adduser pi
 
 And add `pi` to `/etc/sudoers`.
 
-**3. Set up wifi on Ubuntu**
+**3. Set up wifi on Ubuntu** (You may skip this part if you use ethernet for
+connection)
 
 Set up wifi on ubuntu host (note that is different from setting up on Raspbian
 kernel): edit the network configuration file `/etc/netplan/50-cloud-init.yaml`
@@ -63,12 +64,12 @@ RPi without password after the setup.
 ssh pi@<pi's IP address>
 ```
 
-**4. Getting linux sample app build**
+**5. Getting linux sample app build**
 
 Simply follow the build instruction in
 [CHIP Linux Lighting Example](https://github.com/project-chip/connectedhomeip/tree/master/examples/lighting-app/linux#chip-linux-lighting-example).
 
-**5. Register sample app as a linux service**
+**6. Register sample app as a linux service**
 
 Copy the sample app to your RPi and rename it as `matter-linux-app` under
 `/home/pi`. The name and directory must be correct otherwise the GDM detection
@@ -76,6 +77,20 @@ won't work.
 
 ```
 scp chip-lighting-app pi@<pi's IP address>:/home/pi/matter-linux-app
+```
+
+Raspberry pi running Ubuntu 22.04 or later may encounter an issue with
+incompatible SSL library.
+
+```shell
+chip-tool: error while loading shared libraries: libssl.so.1.1: cannot open shared object file: No such file or directory
+```
+
+As a workaround, force install `libssl1.1` using the command below:
+
+```
+wget http://security.debian.org/pool/updates/main/o/openssl/libssl1.1_1.1.1n-0+deb10u3_arm64.deb
+sudo dpkg -i libssl1.1_1.1.1n-0+deb10u3_arm64.deb
 ```
 
 Create a linux service file `/etc/systemd/system/matter-linux-app.service` (need
@@ -102,7 +117,7 @@ sudo systemctl enable matter-linux-app.service
 sudo systemctl start matter-linux-app.service
 ```
 
-**6. Device detection**
+**7. Device detection**
 
 Detect the Linux Matter sample app: `gdm detect --statics_ips=[<pi's IP
 address>]`. The output should be like:

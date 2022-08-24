@@ -1415,7 +1415,24 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     for tst_transport in transport_list:
       tst_transport.close()
 
-  def test_close_all_transports_works(self):
+  def test_close_all_transports_works_with_health_check(self):
+    """Ensure device closes all transport lists."""
+    transport_list = [
+        fake_transport.FakeTransport(),
+        fake_transport.FakeTransport()
+    ]
+    self.uut = switchboard.SwitchboardDefault("test_device",
+                                              self.exception_queue,
+                                              transport_list, self.log_path)
+    self.uut.health_check()
+
+    with mock.patch.object(self.uut, "close_transport") as mock_close:
+      self.uut.close_all_transports()
+
+      self.assertEqual(mock_close.call_count, 2,
+                       "close transports should have been called twice.")
+
+  def test_close_all_transports_works_without_health_check(self):
     """Ensure device closes all transport lists."""
     transport_list = [
         fake_transport.FakeTransport(),
@@ -1427,9 +1444,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
     with mock.patch.object(self.uut, "close_transport") as mock_close:
       self.uut.close_all_transports()
-
-      self.assertEqual(mock_close.call_count, 2,
-                       "close transports should have been called twice.")
+      mock_close.assert_not_called()
 
   def test_open_all_transports_works(self):
     """Ensure device opens all transports."""

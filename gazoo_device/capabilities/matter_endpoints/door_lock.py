@@ -25,8 +25,11 @@ The required clusters for this endpoint: Door Lock.
 The optional clusters for this endpoint: Groups, Scenes, Alarms, Time,
 TimeSync and Poll Control.
 """
+from typing import Union
+
 from gazoo_device import decorators
 from gazoo_device.capabilities import matter_enums
+from gazoo_device.capabilities.matter_clusters import door_lock_chip_tool
 from gazoo_device.capabilities.matter_clusters import door_lock_pw_rpc
 from gazoo_device.capabilities.matter_endpoints.interfaces import door_lock_base
 
@@ -34,8 +37,12 @@ from gazoo_device.capabilities.matter_endpoints.interfaces import door_lock_base
 class DoorLockEndpoint(door_lock_base.DoorLockBase):
   """Matter Door Lock endpoint."""
 
-  @decorators.CapabilityDecorator(door_lock_pw_rpc.DoorLockClusterPwRpc)
-  def door_lock(self) -> door_lock_pw_rpc.DoorLockClusterPwRpc:
+  @decorators.CapabilityDecorator([
+      door_lock_chip_tool.DoorLockClusterChipTool,
+      door_lock_pw_rpc.DoorLockClusterPwRpc])
+  def door_lock(self) -> Union[
+      door_lock_chip_tool.DoorLockClusterChipTool,
+      door_lock_pw_rpc.DoorLockClusterPwRpc]:
     """Matter Door Lock cluster instance."""
     return self.cluster_lazy_init(matter_enums.DoorLockCluster.ID)
 

@@ -32,8 +32,7 @@ _CLUSTER_NAMES_PW_RPC = (
     for cluster in matter_endpoints_and_clusters.SUPPORTED_CLUSTERS_PW_RPC)
 
 _ENDPOINT_AND_CLUSTER_PRODUCT_PW_RPC = itertools.product(
-    matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS_PW_RPC,
-    _CLUSTER_NAMES_PW_RPC)
+    matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS, _CLUSTER_NAMES_PW_RPC)
 
 _CLUSTER_NAMES_CHIP_TOOL = (
     cluster.get_capability_name().replace("_control_cluster",
@@ -41,8 +40,7 @@ _CLUSTER_NAMES_CHIP_TOOL = (
     for cluster in matter_endpoints_and_clusters.SUPPORTED_CLUSTERS_CHIP_TOOL)
 
 _ENDPOINT_AND_CLUSTER_PRODUCT_CHIP_TOOL = itertools.product(
-    matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS_CHIP_TOOL,
-    _CLUSTER_NAMES_CHIP_TOOL)
+    matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS, _CLUSTER_NAMES_CHIP_TOOL)
 
 _ENDPOINTS_AND_CLUSTER_PRODUCT = itertools.chain(
         _ENDPOINT_AND_CLUSTER_PRODUCT_PW_RPC,

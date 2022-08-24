@@ -17,6 +17,7 @@ import os
 import socket
 from unittest import mock
 
+from absl.testing import parameterized
 import gazoo_device
 from gazoo_device import data_types
 from gazoo_device import errors
@@ -35,6 +36,7 @@ import serial
 _CAMBRIONIX_ADDRESS = "/dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_DJ00JMN0-if00-port0"
 _CAMBRIONIX_USB3_ADDRESS = "/dev/serial/by-id/usb-cambrionix_PS15-USB3_0000007567CE143A-if01"
 _J_LINK_ADDRESS = "/dev/serial/by-id/usb-SEGGER_J-Link_000050130117-if00"
+_J_LINK_ADDRESS_IF02 = "/dev/serial/by-id/usb-SEGGER_J-Link_000050130117-if02"
 _M5STACK_ADDRESS = (
     "/dev/serial/by-id/"
     "usb-Silicon_Labs_CP2104_USB_to_UART_Bridge_Controller_01EDB69B-if00-port0")
@@ -43,6 +45,8 @@ _PTY_PROCESS_DIRECTORY = "/home/someuser/gazoo/gdm/pty_proc/some_device_dir"
 _BAUDRATE = 115200
 _PORT = 33000
 _USB_SERIAL_NUMBER = "123789"
+_ADB_SERIAL1 = "adb_serial1"
+_ADB_SERIAL2 = "adb_serial2"
 
 _MOCK_USB_MAP = {
     _CAMBRIONIX_ADDRESS:
@@ -82,6 +86,12 @@ _MOCK_USB_MAP = {
             ftdi_interface=0,
             serial_number="56741",
             address=_J_LINK_ADDRESS),
+    _J_LINK_ADDRESS_IF02:
+        usb_config.UsbInfo(
+            product_name="J-Link",
+            ftdi_interface=2,
+            serial_number="56741",
+            address=_J_LINK_ADDRESS),
     _M5STACK_ADDRESS:
         usb_config.UsbInfo(
             product_name="CP2104",
@@ -90,7 +100,7 @@ _MOCK_USB_MAP = {
             address=_M5STACK_ADDRESS),
 }
 
-ADB_CONNECTIONS = ["adb_serial1"]
+ADB_CONNECTIONS = [_ADB_SERIAL1, _ADB_SERIAL2]
 DOCKER_CONNECTIONS = [_DOCKER_ID]
 PTY_PROCESS_CONNECTIONS = [_PTY_PROCESS_DIRECTORY]
 STATIC_IPS = ["123.45.67.89"]
@@ -179,7 +189,7 @@ class CommunicationTypeTests(unit_test_case.UnitTestCase):
   @mock.patch.object(host_utils, "is_pingable", return_value=True)
   @mock.patch.object(host_utils, "is_sshable", return_value=True)
   @mock.patch.object(os, "access", return_value=True)
-  def test_007_detection_works(
+  def test_detection_works(
       self, mock_access, mock_sshable, mock_ping, mock_yepkit, mock_adb,
       mock_docker, mock_pty, mock_get_all_snmp_ips,
   ):
@@ -206,31 +216,45 @@ class CommunicationTypeTests(unit_test_case.UnitTestCase):
                             "Mismatch in detected connections for "
                             f"communication type {comm_type!r}")
 
+  @parameterized.named_parameters(
+      ("specific_communication_types_success",
+       {"comm_types": ["AdbComms"]}, {"AdbComms": ADB_CONNECTIONS}),
+      ("specific_communication_types_success_case_insensitive",
+       {"comm_types": ["adbcomms", "Invalid", "another_invalid"]},
+       {"AdbComms": ADB_CONNECTIONS}),
+      ("specific_communication_types_success_no_matches",
+       {"comm_types": ["Invalid"]}, {}),
+      ("specific_addresses_success",
+       {"comm_types": ["AdbComms"], "addresses": [_ADB_SERIAL1]},
+       {"AdbComms": [_ADB_SERIAL1]}),
+      ("specific_addresses_success_no_matches",
+       {"comm_types": ["AdbComms"], "addresses": ["Invalid"]},
+       {"AdbComms": []}),
+  )
   @mock.patch.object(
-      adb_utils,
-      "get_adb_devices",
-      return_value=ADB_CONNECTIONS)
-  def test_detection_for_specific_communication_types_works(
-      self, mock_adb):
-    a_dict = communication_types.detect_connections(comm_types=["AdbComms"])
-    self.assertEqual(set(a_dict.keys()), set(["AdbComms"]),
-                     "Mismatch in detected communication types")
+      adb_utils, "get_adb_devices", autospec=True, return_value=ADB_CONNECTIONS)
+  def test_detect_specific_connections(
+      self, kwargs, expected_connections, mock_get_adb_devices):
+    """Tests detect_connections with restricted comm_types and addresses.
 
-  @mock.patch.object(
-      adb_utils,
-      "get_adb_devices",
-      return_value=ADB_CONNECTIONS)
-  def test_detection_for_specific_communication_types_works_case_insensitive(
-      self, mock_adb):
-    a_dict = communication_types.detect_connections(
-        comm_types=["adbcomms", "Invalid", "another"])
-    self.assertEqual(set(a_dict.keys()), set(["AdbComms"]),
-                     "Mismatch in detected communication types")
+    Args:
+      kwargs: Keyword arguments for the detect_connections() call.
+      expected_connections: Connections which should be returned from the
+        detect_connections() call.
+      mock_get_adb_devices: Mock of adb_utils.get_adb_devices().
 
-  def test_detection_for_specific_communication_types_works_no_matches(self):
-    a_dict = communication_types.detect_connections(
-        comm_types=["Invalid"])
-    self.assertEmpty(a_dict, "Mismatch in detected communication types")
+    Note that comm_types have to be limited to "AdbComms" since only ADB utils
+    are mocked for the test.
+    """
+    connections = communication_types.detect_connections(**kwargs)
+    # The returned connection dict will have all communication types.
+    # There shouldn't be any detected connections for them.
+    self.assertContainsSubset(expected_connections.keys(), connections.keys())
+    for comm_type, addresses in connections.items():
+      if comm_type in expected_connections:
+        self.assertSequenceEqual(addresses, expected_connections[comm_type])
+      else:
+        self.assertFalse(addresses)
 
   def test_013_inaccessible_serial_works(self):
     """Test Inaccessible serial ports are removed from possible serial ports."""

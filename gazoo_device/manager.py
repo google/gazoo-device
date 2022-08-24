@@ -565,7 +565,8 @@ class Manager:
       save_changes: bool = True,
       device_configs: Optional[Tuple[custom_types.PersistentConfigsDict,
                                      custom_types.OptionalConfigsDict]] = None,
-      communication_types: Optional[Collection[str]] = None
+      communication_types: Optional[Collection[str]] = None,
+      addresses: Optional[Collection[str]] = None
   ) -> Optional[Tuple[custom_types.PersistentConfigsDict,
                       custom_types.OptionalConfigsDict]]:
     """Detect new devices not present in config files.
@@ -579,6 +580,7 @@ class Manager:
       device_configs: Device configs (persistent, options) to pass to the
           device detector. If None, uses the current Manager configs.
       communication_types: Limit detection to specific communication types.
+      addresses: Limit detection to specific communication addresses.
 
     Returns:
       The new device configs: (devices, device_options) if save_changes is
@@ -600,6 +602,8 @@ class Manager:
     if isinstance(communication_types, str):
       communication_types = [comm_type for comm_type in
                              communication_types.split(",") if comm_type]
+    if isinstance(addresses, str):
+      addresses = [address for address in addresses.split(",") if address]
 
     if force_overwrite:
       comm_ports = [
@@ -623,7 +627,8 @@ class Manager:
         .get_supported_auxiliary_device_classes())
 
     new_device_config, new_options_config = detector.detect_all_new_devices(
-        static_ips=static_ips, comm_types=communication_types)
+        static_ips=static_ips, comm_types=communication_types,
+        addresses=addresses)
     if save_changes:
       self._save_config_to_file(new_device_config, self.device_file_name)
       self._save_config_to_file(new_options_config,

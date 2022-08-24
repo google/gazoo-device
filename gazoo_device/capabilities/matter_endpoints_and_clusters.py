@@ -17,6 +17,7 @@
 from gazoo_device.capabilities.matter_clusters import basic_information_chip_tool
 from gazoo_device.capabilities.matter_clusters import boolean_state_pw_rpc
 from gazoo_device.capabilities.matter_clusters import color_control_pw_rpc
+from gazoo_device.capabilities.matter_clusters import door_lock_chip_tool
 from gazoo_device.capabilities.matter_clusters import door_lock_pw_rpc
 from gazoo_device.capabilities.matter_clusters import flow_measurement_chip_tool
 from gazoo_device.capabilities.matter_clusters import flow_measurement_pw_rpc
@@ -55,7 +56,8 @@ from gazoo_device.capabilities.matter_endpoints import thermostat
 import immutabledict
 
 
-SUPPORTED_ENDPOINTS_PW_RPC = (
+# PwRPC and CHIP tool implementation share the same endpoint interfaces.
+SUPPORTED_ENDPOINTS = (
     color_temperature_light.ColorTemperatureLightEndpoint,
     contact_sensor.ContactSensorEndpoint,
     dimmable_light.DimmableLightEndpoint,
@@ -69,6 +71,7 @@ SUPPORTED_ENDPOINTS_PW_RPC = (
     on_off_light_switch.OnOffLightSwitchEndpoint,
     on_off_plugin_unit.OnOffPluginUnitEndpoint,
     pressure_sensor.PressureSensorEndpoint,
+    root_node.RootNodeEndpoint,
     temperature_sensor.TemperatureSensorEndpoint,
     thermostat.ThermostatEndpoint)
 
@@ -87,9 +90,9 @@ SUPPORTED_CLUSTERS_PW_RPC = (
     temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc,
     thermostat_pw_rpc.ThermostatClusterPwRpc)
 
-MATTER_DEVICE_TYPE_ID_TO_CLASS_PW_RPC = immutabledict.immutabledict({
+MATTER_DEVICE_TYPE_ID_TO_CLASS = immutabledict.immutabledict({
     endpoint_class.DEVICE_TYPE_ID: endpoint_class
-    for endpoint_class in SUPPORTED_ENDPOINTS_PW_RPC
+    for endpoint_class in SUPPORTED_ENDPOINTS
 })
 
 CLUSTER_ID_TO_CLASS_PW_RPC = immutabledict.immutabledict({
@@ -97,20 +100,9 @@ CLUSTER_ID_TO_CLASS_PW_RPC = immutabledict.immutabledict({
     for cluster_class in SUPPORTED_CLUSTERS_PW_RPC
 })
 
-SUPPORTED_ENDPOINTS_CHIP_TOOL = (
-    dimmable_light.DimmableLightEndpoint,
-    flow_sensor.FlowSensorEndpoint,
-    humidity_sensor.HumiditySensorEndpoint,
-    light_sensor.LightSensorEndpoint,
-    occupancy_sensor.OccupancySensorEndpoint,
-    on_off_light.OnOffLightEndpoint,
-    pressure_sensor.PressureSensorEndpoint,
-    root_node.RootNodeEndpoint,
-    temperature_sensor.TemperatureSensorEndpoint,
-    thermostat.ThermostatEndpoint)
-
 SUPPORTED_CLUSTERS_CHIP_TOOL = (
     basic_information_chip_tool.BasicInformationClusterChipTool,
+    door_lock_chip_tool.DoorLockClusterChipTool,
     flow_measurement_chip_tool.FlowMeasurementClusterChipTool,
     illuminance_measurement_chip_tool.IlluminanceMeasurementClusterChipTool,
     level_control_chip_tool.LevelControlClusterChipTool,
@@ -123,10 +115,6 @@ SUPPORTED_CLUSTERS_CHIP_TOOL = (
     thermostat_chip_tool.ThermostatClusterChipTool,
 )
 
-MATTER_DEVICE_TYPE_ID_TO_CLASS_CHIP_TOOL = immutabledict.immutabledict({
-    endpoint_class.DEVICE_TYPE_ID: endpoint_class
-    for endpoint_class in SUPPORTED_ENDPOINTS_CHIP_TOOL
-})
 
 CLUSTER_ID_TO_CLASS_CHIP_TOOL = immutabledict.immutabledict({
     cluster_class.CLUSTER_ID: cluster_class

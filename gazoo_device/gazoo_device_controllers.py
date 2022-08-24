@@ -83,6 +83,7 @@ from gazoo_device.capabilities.interfaces import usb_hub_base
 from gazoo_device.capabilities.matter_clusters import basic_information_chip_tool
 from gazoo_device.capabilities.matter_clusters import boolean_state_pw_rpc
 from gazoo_device.capabilities.matter_clusters import color_control_pw_rpc
+from gazoo_device.capabilities.matter_clusters import door_lock_chip_tool
 from gazoo_device.capabilities.matter_clusters import door_lock_pw_rpc
 from gazoo_device.capabilities.matter_clusters import flow_measurement_chip_tool
 from gazoo_device.capabilities.matter_clusters import flow_measurement_pw_rpc
@@ -278,6 +279,7 @@ def export_extensions() -> Dict[str, Any]:
           device_power_default.DevicePowerDefault,
           dimmable_light.DimmableLightEndpoint,
           door_lock.DoorLockEndpoint,
+          door_lock_chip_tool.DoorLockClusterChipTool,
           door_lock_pw_rpc.DoorLockClusterPwRpc,
           embedded_script_dli_powerswitch.EmbeddedScriptDliPowerswitch,
           event_parser_default.EventParserDefault,
