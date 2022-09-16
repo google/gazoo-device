@@ -161,9 +161,22 @@ class MatterControllerChipToolCapabilityTests(
     self.uut.matter_controller.write(self._endpoint_id, self._cluster,
                                      "on-time", 100)
 
-  def test_send_command(self):
-    self.uut.matter_controller.send(self._endpoint_id, self._cluster, "toggle",
-                                    [])
+  def test_send_command_without_flags(self):
+    """Verifies send command without additional flags."""
+    self.uut.matter_controller.send(
+        endpoint_id=self._endpoint_id,
+        cluster=self._cluster,
+        command="toggle",
+        arguments=[])
+
+  def test_send_command_with_flags(self):
+    """Verifies send command with additional flags."""
+    self.uut.matter_controller.send(
+        endpoint_id=self._endpoint_id,
+        cluster="doorlock",
+        command="lock-door",
+        arguments=[],
+        flags=["--timedInteractionTimeoutMs", "1000"])
 
   def test_write_attribute_non_zero_status_code(self):
     with self.assertRaises(errors.DeviceError):

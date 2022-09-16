@@ -20,20 +20,63 @@ info for that address.
 Note: usb_info_linux primarily relies on pyudev for full information.
 It processes just adb devices and those that show up in /dev/serial/by-id
 """
+import dataclasses
 import re
 import sys
 
 from gazoo_device.utility import usb_config
+import immutabledict
 import pyudev
-
 
 PERSISTENT_SERIAL_PATH_FOLDER = '/dev/serial/by-id'
 MOUNTED_DISK_FOLDER = '/dev/disk/by-id'
 ADB_SERIAL_REGEX = r'\/dev\/disk\/by-id\/usb-Linux_File-CD_Gadget_([\da-z]+)-0:0'
-HUB_IDENTIFIER_REGEX = r'\d-\d(?:\.\d?)+/(\d-(?:\d\.)+)\d\.\d:\d\.\d'
-USB3_HUB_IDENTIFIER_REGEX = r'\d-\d(?:\.\d?)+/(\d-(?:\d\.)+)\d:\d\.\d'
-IDENTIFIER_REGEX_TEMPLATE = r'\d-\d(?:\.\d?)+/{hub}(\d\.\d)(?:\.\d)*:\d\.\d'
 ANDROID_DEVICE_PRODUCT_NAME = 'File-CD Gadget'
+
+
+@dataclasses.dataclass(frozen=True)
+class _UsbPathRegex:
+  parent_hub_re: str
+  child_template_re: str
+
+_CAMBRIONIX_REGEX = immutabledict.immutabledict({
+    'PP8S':
+        _UsbPathRegex(r'\d-\d(?:\.\d?)+/(\d-(?:\d\.)+)\d\.\d:\d\.\d',
+                      r'\d-\d(?:\.\d?)+/{hub}(\d\.\d)(?:\.\d)*:\d\.\d'),
+    'PP15S':
+        _UsbPathRegex(r'\d-\d(?:\.\d?)+/(\d-(?:\d\.)+)\d\.\d:\d\.\d',
+                      r'\d-\d(?:\.\d?)+/{hub}(\d\.\d)(?:\.\d)*:\d\.\d'),
+    'PS15-USB3':
+        _UsbPathRegex(r'\d-\d(?:\.\d?)+/(\d-(?:\d\.)+)\d:\d\.\d',
+                      r'\d-\d(?:\.\d?)+/{hub}(\d\.\d)(?:\.\d)*:\d\.\d'),
+    'SuperSync15':
+        _UsbPathRegex(
+            # NOTE: Both hub dev path and child dev path of SuperSync15 have
+            #       much simpler format than other models.
+            #       The parent hub identifier of other model is much longer and
+            #       includes "." while SuperSync15 model does not have ".".
+            #       The simplified path makes RE below simpler than other model.
+            #
+            # Example of hub dev path:
+            #   "/devices/pci0000:00/0000:00:14.0/usb1/1-14/1-14.5/1-14.5:1.1/"
+            #   "tty/ttyACM0"
+            #
+            # From the hub dev path above, RE below finds
+            # the parent hub identifier("1-14") which replaces {hub} below.
+            r'\/(\d+-\d+)\/',
+            # Example of child dev path:
+            #   "/devices/pci0000:00/0000:00:14.0/usb1/1-14/1-14.4/1-14.4.4/"
+            #   "1-14.4.4.1/1-14.4.4.1:1.0/tty/ttyACM1"
+            #
+            # From child dev path above, RE below finds the child identifier
+            # "4.4" which is  used to look up the port number
+            # at CAMBRIONIX_PORT_MAP of usb_config.py,
+            # which is 12 at "SuperSync15".
+            r'\/{hub}\.(\d+\.\d+)\/'),
+    'U16S':
+        _UsbPathRegex(r'\d-\d(?:\.\d?)+/(\d-(?:\d\.)+)\d\.\d:\d\.\d',
+                      r'\d-\d(?:\.\d?)+/{hub}(\d\.\d)(?:\.\d)*:\d\.\d'),
+})
 
 # These vendor's mounted drives show up as multiple usb connections.
 # We use the one with the symlink.
@@ -191,18 +234,16 @@ def _get_cambrionix_port_number(hub_address,
           "1:" is the hub device identifier
           "1.0" indicates the FTDI interface.
   """
-  if 'USB3' in hub_model:
-    hub_id_regex = USB3_HUB_IDENTIFIER_REGEX
-  else:
-    hub_id_regex = HUB_IDENTIFIER_REGEX
+  hub_id_regex = _CAMBRIONIX_REGEX[hub_model].parent_hub_re
   hub_match = re.search(hub_id_regex, location_dict[hub_address])
   if hub_match:
-    parent_identifier = hub_match.group(1).replace('.', r'\.')
-    identifier_regex = IDENTIFIER_REGEX_TEMPLATE.format(hub=parent_identifier)
-    match = re.search(identifier_regex, location_dict[child_address])
-    if match:
+    parent_hub_identifier = hub_match.group(1).replace('.', r'\.')
+    identifier_regex = _CAMBRIONIX_REGEX[
+        hub_model].child_template_re.format(hub=parent_hub_identifier)
+    port_match = re.search(identifier_regex, location_dict[child_address])
+    if port_match:
       port_mapping = usb_config.CAMBRIONIX_PORT_MAP[hub_model]
-      return port_mapping.get(match.group(1))
+      return port_mapping.get(port_match.group(1))  # port number
   return None
 
 

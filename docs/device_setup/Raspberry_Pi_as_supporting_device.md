@@ -6,39 +6,25 @@ Supported kernel images: Raspbian.
 
 ## Setup
 
-1. Flash SD card with the Raspbian kernel. Refer to
-   https://www.raspberrypi.org/documentation/installation/installing-images/
-   for instructions.
-2. Boot the Pi from the SD card.
-3. Open the RPi configuration utility: `sudo raspi-config` (from RPi)
-    1. Change the default password ("Change User Password")
-    2. Enable SSH ("Interfacing Options" -> "SSH")
-    3. Connect to Wi-Fi ("Network Options" -> "WLAN")
-    4. Select "Finish" to exit the configuration utility
-    5. Reboot the RPi: `reboot`
-4. Configure GDM SSH keys: run `gdm download-keys` (on the host)
-   * If you don't have a key in
-     `~/gazoo/gdm/keys/gazoo_device_controllers/raspberrypi3_ssh_key`, you'll
-     see an error prompting you to generate a key. Follow the prompt to generate
-     all required keys.
-     * Alternatively, you can copy an existing private/public SSH key pair to
-       `~/gazoo/gdm/keys/gazoo_device_controllers/raspberrypi3_ssh_key` and
-       `~/gazoo/gdm/keys/gazoo_device_controllers/raspberrypi3_ssh_key.pub`.
+1.  Flash SD card with the Raspbian kernel. Refer to
+    https://www.raspberrypi.org/documentation/installation/installing-images/
+    for instructions.
 
-5. Set up passwordless SSH with RPi using the GDM key (on the host):
+2.  Boot the Pi from the SD card.
 
-   ```shell
-   ssh-copy-id -i ~/gazoo/gdm/keys/gazoo_device_controllers/raspberrypi3_ssh_key.pub pi@<IP_ADDRESS>
-   ```
+3.  Open the RPi configuration utility: `sudo raspi-config` (from RPi)
 
-6. Check that the RPi is accessible from the host:
+    1.  Change the default password ("Change User Password")
+    2.  Enable SSH ("Interfacing Options" -> "SSH")
+    3.  Connect to Wi-Fi ("Network Options" -> "WLAN")
+    4.  Select "Finish" to exit the configuration utility
+    5.  Reboot the RPi: `reboot`
 
-   ```shell
-   ping <IP_ADDRESS>
-   ssh -i ~/gazoo/gdm/keys/gazoo_device_controllers/raspberrypi3_ssh_key pi@<IP_ADDRESS>
-   ```
+4.  Follow the Raspbian instructions from
+    [Raspberry_Pi_SSH_key_setup](./Raspberry_Pi_SSH_key_setup.md) to ensure that
+    GDM can detect the raspberry pi as a `raspberrypi`
 
-7. Detect the RPi: `gdm detect --static_ips=<IP_ADDRESS>`
+5.  Detect the RPi: `gdm detect --static_ips=<IP_ADDRESS>`
 
 ## Usage
 

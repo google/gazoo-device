@@ -50,8 +50,7 @@ class DoorLockClusterChipTool(door_lock_base.DoorLockClusterBase):
   def lock_state(self) -> matter_enums.LockState:
     """The LockState attribute."""
     locked_data = self._read(self._endpoint_id, _CLUSTER_NAME, "lock-state")
-    return (matter_enums.LockState.LOCKED if bool(locked_data)
-            else matter_enums.LockState.UNLOCKED)
+    return matter_enums.LockState(int(locked_data))
 
   def _lock_command(
       self,
@@ -67,7 +66,12 @@ class DoorLockClusterChipTool(door_lock_base.DoorLockClusterBase):
       DeviceError: when the device does not transition to the appropriate
       lock state.
     """
-    self._send(self._endpoint_id, _CLUSTER_NAME, lock_command, [])
+    self._send(
+        endpoint_id=self._endpoint_id,
+        cluster=_CLUSTER_NAME,
+        command=lock_command,
+        arguments=[],
+        flags=["--timedInteractionTimeoutMs", 1000])
 
     if verify:
       expected_lock_state = (

@@ -14,6 +14,7 @@
 
 """Unit tests for the PackageManagementAndroid capability."""
 from unittest import mock
+from absl.testing import parameterized
 from gazoo_device.capabilities import package_management_android
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.utility import adb_utils
@@ -25,9 +26,11 @@ _PACKAGE_NAME = 'android.package'
 _PACKAGE_PATH = '/path/to/'
 
 _FAKE_RESPONSE_DICT = immutabledict.immutabledict({
+    'pm list packages com.android\n': 'package:com.android.shell\n',
     'pm list packages com.android.shell\n': 'package:com.android.shell\n',
     'pm list packages\n': (
-        'package:android\npackage:com.google.android.tv\n'
+        'package:android\n'
+        'package:com.google.android.tv\n'
         'package:com.android.shell\n'),
 })
 
@@ -87,14 +90,13 @@ class PackageManagementAndroidCapabilityTests(
     self.assertEqual(
         results, ['android', 'com.google.android.tv', 'com.android.shell'])
 
-  def test_has_package_true(self):
-    """Verifies has_package return True when the package exists."""
-    result = self.uut.has_package('com.android.shell')
+  @parameterized.named_parameters(
+      ('true', True, 'com.android.shell'),
+      ('false_not_exists', False, 'bad_package'),
+      ('false_partial_matched', False, 'com.android'),
+  )
+  def test_has_package(self, expected_result, package_name):
+    """Verifies has_package return expected result."""
+    result = self.uut.has_package(package_name)
 
-    self.assertTrue(result)
-
-  def test_has_package_false(self):
-    """Verifies has_package return False when the package doesn't exist."""
-    result = self.uut.has_package('bad package')
-
-    self.assertFalse(result)
+    self.assertEqual(result, expected_result)

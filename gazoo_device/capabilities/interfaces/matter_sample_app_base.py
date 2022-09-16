@@ -52,3 +52,7 @@ class MatterSampleAppBase(capability_base.CapabilityBase):
     Args:
       sample_app_file_path: Local path to the sample app file on the host.
     """
+
+  @abc.abstractmethod
+  def factory_reset(self) -> None:
+    """Factory resets all settings stored on RPi."""

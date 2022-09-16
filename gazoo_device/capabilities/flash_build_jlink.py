@@ -23,6 +23,7 @@ from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import flash_build_base
 from gazoo_device.capabilities.interfaces import switchboard_base
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
+from gazoo_device.utility import host_utils
 from gazoo_device.utility import retry
 from gazoo_device.utility import subprocess_utils
 import intelhex
@@ -42,7 +43,7 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
 
   def __init__(self,
                device_name: str,
-               serial_number: int,
+               serial_number: str,
                platform_name: str,
                reset_endpoints_fn: Optional[Callable[[str], None]] = None,
                switchboard: Optional[switchboard_base.SwitchboardBase] = None):
@@ -146,6 +147,12 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
           f"{self._device_name} encountered an error during flashing: {err!r}."
           " Performing a second flash attempt.")
       self._post_flashing(jlink)
+
+      # Unexpected flashing issues frequently occur on NRF / EFR32 boards even
+      # after performing a second flash operation. Recovering the device should
+      # fix the board flakiness.
+      self.recover_device()
+
       self._pre_flashing(jlink)
       self._flash_image(jlink, image_path)
     finally:
@@ -170,6 +177,43 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
     # Find the first segment
     segment_start, _ = image.segments()[0]
     jlink.flash_file(image_path, segment_start)
+
+  @decorators.CapabilityLogDecorator(logger)
+  def recover_device(self) -> None:
+    """Recovers the device if the supported binary is present.
+
+    Erases all user available non-volatile memory.
+    Does nothing if:
+      1. The platform is not supported, currently only NRF and EFR32 are
+        supported.
+      2. The binary (nrfjprog for NRF, commander for EFR) is not present.
+
+    Raises:
+      DeviceError when the binary is present but the device cannot be recovered.
+    """
+    if self._platform_name == "NRF52840_XXAA":
+      binary_name = "nrfjprog"
+      recover_command = [binary_name, "--family", "NRF52", "--recover", "--snr"]
+    elif self._platform_name == "EFR32MG12PXXXF1024":
+      binary_name = "commander"
+      recover_command = [binary_name, "device", "recover", "--serialno"]
+    else:
+      logger.warning(
+          "Cannot recover %s: The platform %s is not supported.",
+          self._device_name, self._platform_name)
+      return
+    if not host_utils.has_command(binary_name):
+      logger.warning(
+          "Cannot recover the %s: %s binary is not present.",
+          self._device_name, binary_name)
+      return
+    recover_command.append(self._serial_number.lstrip("0"))
+    return_code, output = subprocess_utils.run_and_stream_output(
+        recover_command,
+        timeout=_FLASH_TIMEOUT_S)
+    if return_code:
+      raise errors.DeviceError(
+          f"Failed to recover {self._device_name}: {output}.")
 
   @decorators.CapabilityLogDecorator(logger)
   def download_build_file(self, remote_build_folder, local_folder):

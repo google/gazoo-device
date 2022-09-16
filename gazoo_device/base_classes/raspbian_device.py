@@ -37,7 +37,7 @@ LOG_MARKER_LINE_POS_OR_EMPTY = (
     '":" -f 1').format(
         marker=MARKER, file_path=LOGGING_FILE_PATH)
 LOG_MARKER_LINE_POS = (
-    "line_num=$({cmd}); [ -z \"($line_num)\" ] && echo 1 || echo"
+    "line_num=$({cmd}); [ -z \"$line_num\" ] && echo 1 || echo"
     " $line_num".format(cmd=LOG_MARKER_LINE_POS_OR_EMPTY))
 
 COMMANDS = {

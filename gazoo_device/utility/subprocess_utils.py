@@ -28,7 +28,8 @@ _POLL_DELAY = .2
 
 
 def run_and_stream_output(cmd_args: Sequence[str],
-                          timeout: float) -> Tuple[int, str]:
+                          timeout: float,
+                          shell: bool = False) -> Tuple[int, str]:
   """Runs commands and streams the output at the same time.
 
   Python subprocess cannot capture and stream the output at the same time.
@@ -37,6 +38,7 @@ def run_and_stream_output(cmd_args: Sequence[str],
   Args:
     cmd_args: Command args in a sequence.
     timeout: The timeout for running the commands.
+    shell: Enables command to execute via shell.
 
   Returns:
     Tuple of (return code, string output).
@@ -52,6 +54,7 @@ def run_and_stream_output(cmd_args: Sequence[str],
               "Streaming command output...".format(cmd_args, timeout))
   start_time = time.time()
   with subprocess.Popen(cmd_args,
+                        shell=shell,
                         encoding="utf-8",
                         errors="replace",
                         stdout=subprocess.PIPE,

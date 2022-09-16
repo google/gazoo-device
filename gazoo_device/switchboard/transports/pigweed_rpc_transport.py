@@ -307,7 +307,8 @@ class PigweedRpcSerialTransport(transport_base.TransportBase):
     fcntl.fcntl(fd, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
     self._hdlc_client.start()
 
-  def _read(self, size: int, timeout: float) -> bytes:
+  def _read(  # pytype: disable=signature-mismatch  # overriding-parameter-type-checks
+      self, size: int, timeout: float) -> bytes:
     """Returns Pigweed log from the HDLC channel 1.
 
     Args:
@@ -392,7 +393,8 @@ class PigweedRpcSocketTransport(transport_base.TransportBase):
     self._socket.connect(self._address)
     self._hdlc_client.start()
 
-  def _read(self, size: int, timeout: float) -> bytes:
+  def _read(  # pytype: disable=signature-mismatch  # overriding-parameter-type-checks
+      self, size: int, timeout: float) -> bytes:
     """Returns Pigweed log from the HDLC channel 1.
 
     Args:

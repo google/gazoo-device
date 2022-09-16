@@ -517,7 +517,7 @@ class PigweedSocketComms(SshComms):
                log_cmd: str = "tail -F -n /var/log/messages",
                args: str = host_utils.DEFAULT_SSH_OPTIONS,
                key_info: Optional[data_types.KeyInfo] = None,
-               username: str = "pi") -> None:
+               username: str = "ubuntu") -> None:
     super().__init__(comms_address, log_cmd, args, key_info, username)
     self.protobufs = protobufs
     self.port = port

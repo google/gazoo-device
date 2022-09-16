@@ -20,7 +20,7 @@ from gazoo_device.tests.unit_tests.utils import ssh_device_logs
 make_device_responses = ssh_device_logs.make_device_responses
 
 _RESPONSES = ({
-    "cmd": "test -f /home/pi/matter-linux-app",
+    "cmd": "test -f /home/ubuntu/matter-linux-app",
     "resp": "",
     "code": 0,
 }, {
@@ -47,6 +47,14 @@ _RESPONSES = ({
     "cmd": "sudo reboot",
     "resp": "",
     "code": 0,
+}, {
+    "cmd": "sudo rm -rf /tmp/chip*",
+    "resp": "",
+    "code": 0,
+}, {
+    "cmd": 'sudo sh -c \'echo "--- GDM Log Marker ---" >> /var/log/syslog\'',
+    "resp": "",
+    "code": 0
 })
 
 DEFAULT_BEHAVIOR = copy.deepcopy(raspbian_device_logs.DEFAULT_BEHAVIOR)

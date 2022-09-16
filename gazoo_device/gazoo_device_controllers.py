@@ -44,10 +44,10 @@ from gazoo_device.capabilities import file_transfer_scp
 from gazoo_device.capabilities import flash_build_esptool
 from gazoo_device.capabilities import flash_build_jlink
 from gazoo_device.capabilities import led_driver_default
-from gazoo_device.capabilities import matter_app_controls_shell
 from gazoo_device.capabilities import matter_controller_chip_tool
 from gazoo_device.capabilities import matter_endpoints_accessor_chip_tool
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
+from gazoo_device.capabilities import matter_sample_app_shell
 from gazoo_device.capabilities import package_management_android
 from gazoo_device.capabilities import pwrpc_button_default
 from gazoo_device.capabilities import pwrpc_common_default
@@ -69,9 +69,9 @@ from gazoo_device.capabilities.interfaces import fastboot_base
 from gazoo_device.capabilities.interfaces import file_transfer_base
 from gazoo_device.capabilities.interfaces import flash_build_base
 from gazoo_device.capabilities.interfaces import led_driver_base
-from gazoo_device.capabilities.interfaces import matter_app_controls_base
 from gazoo_device.capabilities.interfaces import matter_controller_base
 from gazoo_device.capabilities.interfaces import matter_endpoints_base
+from gazoo_device.capabilities.interfaces import matter_sample_app_base
 from gazoo_device.capabilities.interfaces import package_management_base
 from gazoo_device.capabilities.interfaces import pwrpc_button_base
 from gazoo_device.capabilities.interfaces import pwrpc_common_base
@@ -103,6 +103,7 @@ from gazoo_device.capabilities.matter_clusters import temperature_measurement_ch
 from gazoo_device.capabilities.matter_clusters import temperature_measurement_pw_rpc
 from gazoo_device.capabilities.matter_clusters import thermostat_chip_tool
 from gazoo_device.capabilities.matter_clusters import thermostat_pw_rpc
+from gazoo_device.capabilities.matter_clusters import window_covering_pw_rpc
 from gazoo_device.capabilities.matter_clusters.interfaces import basic_information_base
 from gazoo_device.capabilities.matter_clusters.interfaces import boolean_state_base
 from gazoo_device.capabilities.matter_clusters.interfaces import color_control_base
@@ -112,6 +113,7 @@ from gazoo_device.capabilities.matter_clusters.interfaces import measurement_bas
 from gazoo_device.capabilities.matter_clusters.interfaces import occupancy_sensing_base
 from gazoo_device.capabilities.matter_clusters.interfaces import on_off_base
 from gazoo_device.capabilities.matter_clusters.interfaces import thermostat_base
+from gazoo_device.capabilities.matter_clusters.interfaces import window_covering_base
 from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import contact_sensor
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
@@ -129,6 +131,7 @@ from gazoo_device.capabilities.matter_endpoints import root_node
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.capabilities.matter_endpoints import thermostat
 from gazoo_device.capabilities.matter_endpoints import unsupported_endpoint
+from gazoo_device.capabilities.matter_endpoints import window_covering
 from gazoo_device.capabilities.matter_endpoints.interfaces import color_temperature_light_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import contact_sensor_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import dimmable_light_base
@@ -146,6 +149,7 @@ from gazoo_device.capabilities.matter_endpoints.interfaces import root_node_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import temperature_sensor_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import thermostat_base as thermostat_endpoint_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import unsupported_endpoint_base
+from gazoo_device.capabilities.matter_endpoints.interfaces import window_covering_base as window_covering_endpoint_base
 from gazoo_device.primary_devices import efr32_matter
 from gazoo_device.primary_devices import esp32_matter
 from gazoo_device.primary_devices import nrf_matter
@@ -243,9 +247,9 @@ def export_extensions() -> Dict[str, Any]:
           led_driver_base.LedDriverBase,
           level_control_base.LevelControlClusterBase,
           light_sensor_base.LightSensorBase,
-          matter_app_controls_base.MatterSampleAppBase,
           matter_controller_base.MatterControllerBase,
           matter_endpoints_base.MatterEndpointsBase,
+          matter_sample_app_base.MatterSampleAppBase,
           measurement_base.MeasurementClusterBase,
           occupancy_sensing_base.OccupancySensingClusterBase,
           occupancy_sensor_base.OccupancySensorBase,
@@ -267,6 +271,8 @@ def export_extensions() -> Dict[str, Any]:
           thermostat_endpoint_base.ThermostatBase,
           unsupported_endpoint_base.UnsupportedBase,
           usb_hub_base.UsbHubBase,
+          window_covering_base.WindowCoveringClusterBase,
+          window_covering_endpoint_base.WindowCoveringBase,
       ],
       "capability_flavors": [
           basic_information_chip_tool.BasicInformationClusterChipTool,
@@ -302,10 +308,10 @@ def export_extensions() -> Dict[str, Any]:
           level_control_chip_tool.LevelControlClusterChipTool,
           level_control_pw_rpc.LevelControlClusterPwRpc,
           light_sensor.LightSensorEndpoint,
-          matter_app_controls_shell.MatterSampleAppShell,
           matter_controller_chip_tool.MatterControllerChipTool,
           matter_endpoints_accessor_chip_tool.MatterEndpointsAccessorChipTool,
           matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
+          matter_sample_app_shell.MatterSampleAppShell,
           occupancy_sensing_chip_tool.OccupancySensingClusterChipTool,
           occupancy_sensing_pw_rpc.OccupancySensingClusterPwRpc,
           occupancy_sensor.OccupancySensorEndpoint,
@@ -344,6 +350,8 @@ def export_extensions() -> Dict[str, Any]:
           thermostat_pw_rpc.ThermostatClusterPwRpc,
           unsupported_endpoint.UnsupportedEndpoint,
           usb_hub_default.UsbHubDefault,
+          window_covering.WindowCoveringEndpoint,
+          window_covering_pw_rpc.WindowCoveringClusterPwRpc,
       ],
       "keys": list(config.KEYS.values()),
   }

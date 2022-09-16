@@ -107,7 +107,8 @@ class SnmpQuery(QueryEnum):
 class SshQuery(QueryEnum):
   """Query names for detection for SshComms Devices."""
   IS_DLI = "is_dli_power_switch"
-  IS_RPI = "is_raspberry_pi"
+  IS_RASPBIAN_RPI = "is_raspbian_raspberry_pi"
+  IS_UBUNTU_RPI = "is_ubuntu_raspberry_pi"
   IS_UNIFI = "is_unifi_switch"
   IS_CHIP_TOOL_PRESENT = "is_chip_tool_installed_on_rpi"
   IS_MATTER_LINUX_APP_RUNNING = "is_matter_linux_app_running_on_rpi"
@@ -207,12 +208,12 @@ def _is_dlink_query(
   return True
 
 
-def _is_rpi_query(
+def _is_raspbian_rpi_query(
     address: str, detect_logger: logging.Logger,
     create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
 ) -> bool:
   """Determines if address belongs to raspberry pi."""
-  del create_switchboard_func  # Unused by _is_rpi_query
+  del create_switchboard_func  # Unused by _is_raspbian_rpi_query
   try:
     name = host_utils.ssh_command(
         address,
@@ -220,9 +221,28 @@ def _is_rpi_query(
         user="pi",
         key_info=config.KEYS["raspberrypi3_ssh_key"])
   except RuntimeError as err:
-    detect_logger.info("_is_rpi_query failed for %s: %r", address, err)
+    detect_logger.info("_is_raspbian_rpi_query failed for %s: %r", address, err)
     return False
   return "Raspberry Pi" in name
+
+
+def _is_ubuntu_rpi_query(
+    address: str, detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> bool:
+  """Determines if address belongs to raspberry pi Ubuntu."""
+  del create_switchboard_func  # Unused by _is_ubuntu_rpi_query
+  try:
+    host_utils.ssh_command(
+        address,
+        command=_SSH_COMMANDS["RPI_PRODUCT_NAME"],
+        user="ubuntu",
+        key_info=config.KEYS["raspberrypi3_ssh_key"])
+  except RuntimeError as err:
+    detect_logger.info(
+        "_is_ubuntu_rpi_query failed for %s: %r", address, err)
+    return False
+  return True
 
 
 def _is_matter_app_running_query(
@@ -235,7 +255,7 @@ def _is_matter_app_running_query(
     host_utils.ssh_command(
         address,
         command=_SSH_COMMANDS["IS_MATTER_LINUX_APP_RUNNING"],
-        user="pi",
+        user="ubuntu",
         key_info=config.KEYS["raspberrypi3_ssh_key"])
   except RuntimeError as err:
     detect_logger.info(
@@ -469,7 +489,8 @@ SNMP_QUERY_DICT = immutabledict.immutabledict({
 
 SSH_QUERY_DICT = immutabledict.immutabledict({
     SshQuery.IS_DLI: _is_dli_query,
-    SshQuery.IS_RPI: _is_rpi_query,
+    SshQuery.IS_RASPBIAN_RPI: _is_raspbian_rpi_query,
+    SshQuery.IS_UBUNTU_RPI: _is_ubuntu_rpi_query,
     SshQuery.IS_UNIFI: _is_unifi_query,
     SshQuery.IS_CHIP_TOOL_PRESENT: _is_chip_tool_installed_query,
     SshQuery.IS_MATTER_LINUX_APP_RUNNING: _is_matter_app_running_query,

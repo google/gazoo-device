@@ -33,7 +33,7 @@ class RaspberryPiMatterController(
     matter_endpoints_mixin.MatterEndpointAliasesMixin):
   """Base Class for RaspberryPiMatterController Devices."""
   DETECT_MATCH_CRITERIA = {
-      detect_criteria.SshQuery.IS_RPI: True,
+      detect_criteria.SshQuery.IS_RASPBIAN_RPI: True,
       detect_criteria.SshQuery.IS_CHIP_TOOL_PRESENT: True,
   }
   DEVICE_TYPE = "rpi_matter_controller"

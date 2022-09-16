@@ -37,6 +37,7 @@ from gazoo_device.capabilities.matter_clusters import temperature_measurement_ch
 from gazoo_device.capabilities.matter_clusters import temperature_measurement_pw_rpc
 from gazoo_device.capabilities.matter_clusters import thermostat_chip_tool
 from gazoo_device.capabilities.matter_clusters import thermostat_pw_rpc
+from gazoo_device.capabilities.matter_clusters import window_covering_pw_rpc
 from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import contact_sensor
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
@@ -53,6 +54,7 @@ from gazoo_device.capabilities.matter_endpoints import pressure_sensor
 from gazoo_device.capabilities.matter_endpoints import root_node
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.capabilities.matter_endpoints import thermostat
+from gazoo_device.capabilities.matter_endpoints import window_covering
 import immutabledict
 
 
@@ -73,7 +75,8 @@ SUPPORTED_ENDPOINTS = (
     pressure_sensor.PressureSensorEndpoint,
     root_node.RootNodeEndpoint,
     temperature_sensor.TemperatureSensorEndpoint,
-    thermostat.ThermostatEndpoint)
+    thermostat.ThermostatEndpoint,
+    window_covering.WindowCoveringEndpoint)
 
 SUPPORTED_CLUSTERS_PW_RPC = (
     color_control_pw_rpc.ColorControlClusterPwRpc,
@@ -88,7 +91,8 @@ SUPPORTED_CLUSTERS_PW_RPC = (
     (relative_humidity_measurement_pw_rpc.
      RelativeHumidityMeasurementClusterPwRpc),
     temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc,
-    thermostat_pw_rpc.ThermostatClusterPwRpc)
+    thermostat_pw_rpc.ThermostatClusterPwRpc,
+    window_covering_pw_rpc.WindowCoveringClusterPwRpc)
 
 MATTER_DEVICE_TYPE_ID_TO_CLASS = immutabledict.immutabledict({
     endpoint_class.DEVICE_TYPE_ID: endpoint_class

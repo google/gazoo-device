@@ -16,7 +16,7 @@
 
 import abc
 import dataclasses
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 from gazoo_device.capabilities.interfaces import capability_base
 
@@ -28,35 +28,84 @@ UNKNOWN = "UNKNOWN"
 class BuildInfo:
   build_version: str
   build_type: str
+  build_branch: str
   build_files: Tuple[str, ...]
   is_local: bool
-  obtain_build: bool = True
-  extract_build: bool = True
 
 
 class FlashBuildBase(capability_base.CapabilityBase):
   """Abstract base class for the build_flasher capability."""
 
   @abc.abstractmethod
-  def download_build_file(self, remote_build_folder, local_folder) -> None:
-    """Retrieves the build file(s) from the remote location and puts them in the local folder.
+  def upgrade(
+      self,
+      *unexpected_args,
+      build_folder_url: Optional[str] = None,
+      local_files: Optional[Sequence[str]] = None,
+      forced_upgrade: Optional[bool] = None,
+      method: Optional[str] = None,
+      file_regexes: Optional[Sequence[str]] = None,
+      num_files: Optional[int] = None,
+      **unexpected_kwargs: Any,
+  ) -> None:
+    """Upgrade the device based on the provided build arguments.
 
     Args:
-        remote_build_folder (str): build folder in remote location.
-        local_folder (str): local path to store build files.
+        *unexpected_args: Captures unexpected positional arguments.
+        build_folder_url: gs:// URL of the folder the remote build files reside
+          in.
+        local_files: Full paths to local build files.
+          Mutually exclusive with build_folder_url and file_regexes.
+        forced_upgrade: Upgrade the firmware without checks.
+        method: Used by some flavors to pick between flashing methods.
+        file_regexes: Regexes for finding the build files in a folder. If not
+          provided, uses the default in nest_device/build_defaults/info.json
+        num_files: The number of build files expected after regex matching.
+        **unexpected_kwargs: Captures unexpected keyword arguments.
+
+    Raises:
+        DeviceError: Both upgrades over_the_wire & over_the_air are unsupported.
     """
 
   @abc.abstractmethod
-  def extract_build_info(self, build_args=None) -> Dict[str, str]:
+  def upgrade_over_the_wire(self, **build_args):
+    """Using the build arguments, download and flash the build on the device.
+
+    Args:
+        **build_args (dict): dictionary of build arguments.
+    """
+
+  @abc.abstractmethod
+  def extract_build_info(
+      self,
+      *unexpected_args,
+      build_folder_url: Optional[str] = None,
+      local_files: Optional[Sequence[str]] = None,
+      forced_upgrade: Optional[bool] = None,
+      method: Optional[str] = None,
+      file_regexes: Optional[Sequence[str]] = None,
+      num_files: Optional[int] = None,
+      **unexpected_kwargs: Any,
+  ) -> BuildInfo:
     """Converts the provided build arguments into information about the build.
 
     Args:
-        build_args (dict): dictionary of build arguments. If None, the
-          default build arguments are used.
+        *unexpected_args: Captures unexpected positional arguments.
+        build_folder_url: gs:// URL of the folder the remote build files reside
+          in.
+        local_files: Full paths to local build files.
+          Mutually exclusive with build_folder_url and file_regexes.
+        forced_upgrade: Upgrade the firmware without checks.
+        method: Used by some flavors to pick between flashing methods.
+        file_regexes: Regexes for finding the build files in a folder. If not
+          provided, uses the default in nest_device/build_defaults/info.json
+        num_files: The number of build files expected after regex matching.
+        **unexpected_kwargs: Captures unexpected keyword arguments.
 
     Returns:
-        dict: dictionary of build information including
-        absolute_remote_path, build_type, and build_version.
+        BuildInfo about the requested build's version, type, and file locations.
+        For upgrades from build folder URLs, this method transforms
+        "build_folder_url" + "file_regexes" into remote build file locations.
     """
 
   @abc.abstractmethod
@@ -80,6 +129,17 @@ class FlashBuildBase(capability_base.CapabilityBase):
 
     Note: The list of files and expected version will be used to do an over
         the wire upgrade for the device.
+    """
+
+  # Deprecated methods below.
+
+  @abc.abstractmethod
+  def download_build_file(self, remote_build_folder, local_folder) -> None:
+    """Retrieves the build file(s) from the remote location and puts them in the local folder.
+
+    Args:
+        remote_build_folder (str): build folder in remote location.
+        local_folder (str): local path to store build files.
     """
 
   @abc.abstractmethod
@@ -132,33 +192,4 @@ class FlashBuildBase(capability_base.CapabilityBase):
 
     Returns:
         str: The latest verified remote build folder path.
-    """
-
-  @abc.abstractmethod
-  def upgrade(self,
-              build_number=None,
-              build_url=None,
-              build_file=None,
-              forced_upgrade=False,
-              latest_verified=False,
-              **other_build_args):
-    """Upgrade the device based on the provided build arguments.
-
-    Args:
-        build_number(int): build number. Defaults to last_believed good
-          build.
-        build_url(str): URL or gs:// path to the .zip upgrade file.
-        build_file(str): local path to the file.
-        forced_upgrade(bool): Upgrade the firmware without checks.
-        latest_verified(bool): Upgrade to latest verified build.
-        **other_build_args(dict): Other build arguments that are different
-          based on the device type.
-    """
-
-  @abc.abstractmethod
-  def upgrade_over_the_wire(self, **build_args):
-    """Using the build arguments, download and flash the build on the device.
-
-    Args:
-        **build_args (dict): dictionary of build arguments.
     """

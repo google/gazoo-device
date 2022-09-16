@@ -43,6 +43,7 @@ from gazoo_device.tests.functional_tests import switch_power_test_suite
 from gazoo_device.tests.functional_tests import switchboard_test_suite
 from gazoo_device.tests.functional_tests import temperature_sensor_test_suite
 from gazoo_device.tests.functional_tests import thermostat_test_suite
+from gazoo_device.tests.functional_tests import window_covering_test_suite
 from gazoo_device.tests.functional_tests.utils import suite_filter
 
 TEST_SUITES = (
@@ -76,6 +77,7 @@ TEST_SUITES = (
     switchboard_test_suite.SwitchboardTestSuite,
     temperature_sensor_test_suite.TemperatureSensorTestSuite,
     thermostat_test_suite.ThermostatTestSuite,
+    window_covering_test_suite.WindowCoveringTestSuite,
 )
 
 

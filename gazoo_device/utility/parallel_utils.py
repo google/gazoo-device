@@ -89,7 +89,7 @@ import multiprocessing
 import os
 import time
 import traceback
-from typing import Any, Callable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple
 
 from gazoo_device import errors
 from gazoo_device import extensions
@@ -142,16 +142,22 @@ class CallSpec:
     args: Positional arguments to the function. Must be serializable. In
       particular, Manager and device instances as well their instance methods
       are not serializable.
+    manager_kwargs: The keyword arguments to be passed during manager instance
+      creation.
     kwargs: Keyword arguments to the function. Must be serializable.
   """
   function: Callable[..., _AnySerializable]
   args: Tuple[_AnySerializable, ...]
   kwargs: immutabledict.immutabledict[str, _AnySerializable]
 
-  def __init__(self, function: Callable[..., _AnySerializable],
-               *args: _AnySerializable, **kwargs: _AnySerializable):
+  def __init__(self,
+               function: Callable[..., _AnySerializable],
+               *args: _AnySerializable,
+               manager_kwargs: Optional[Mapping[str, _AnySerializable]] = None,
+               **kwargs: _AnySerializable):
     self.function = function
     self.args = args
+    self.manager_kwargs = manager_kwargs or {}
     self.kwargs = immutabledict.immutabledict(kwargs)
 
 
@@ -180,7 +186,8 @@ def _process_wrapper(call_spec: CallSpec) -> Any:
   short_description = f"{call_spec.function.__name__} in process {os.getpid()}"
   logger.debug(f"{short_description}: starting execution of {call_spec}...")
 
-  manager_inst = manager.Manager()
+  manager_inst = manager.Manager(**call_spec.manager_kwargs)
+
   try:
     return_value = call_spec.function(manager_inst, *call_spec.args,
                                       **call_spec.kwargs)
@@ -286,7 +293,8 @@ def execute_concurrently(
 
 def factory_reset(manager_inst: manager.Manager, device_name: str) -> None:
   """Convenience function for factory resetting devices in parallel."""
-  device = manager_inst.create_device(device_name)
+  device = manager_inst.create_device(device_name,
+                                      log_name_prefix="factory_reset")
   try:
     device.factory_reset()
   finally:
@@ -296,7 +304,7 @@ def factory_reset(manager_inst: manager.Manager, device_name: str) -> None:
 def reboot(manager_inst: manager.Manager, device_name: str, *reboot_args: Any,
            **reboot_kwargs: Any) -> None:
   """Convenience function for rebooting devices in parallel."""
-  device = manager_inst.create_device(device_name)
+  device = manager_inst.create_device(device_name, log_name_prefix="reboot")
   try:
     device.reboot(*reboot_args, **reboot_kwargs)
   finally:
@@ -306,7 +314,7 @@ def reboot(manager_inst: manager.Manager, device_name: str, *reboot_args: Any,
 def upgrade(manager_inst: manager.Manager, device_name: str, *upgrade_args: Any,
             **upgrade_kwargs: Any) -> None:
   """Convenience function for upgrading devices in parallel."""
-  device = manager_inst.create_device(device_name)
+  device = manager_inst.create_device(device_name, log_name_prefix="upgrade")
   try:
     device.flash_build.upgrade(*upgrade_args, **upgrade_kwargs)
   finally:

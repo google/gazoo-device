@@ -29,7 +29,7 @@ class RaspberryPi(raspbian_device.RaspbianDevice):
       --reboot
   """
   DETECT_MATCH_CRITERIA = {
-      detect_criteria.SshQuery.IS_RPI: True,
+      detect_criteria.SshQuery.IS_RASPBIAN_RPI: True,
       detect_criteria.SshQuery.IS_CHIP_TOOL_PRESENT: False,
       detect_criteria.SshQuery.IS_MATTER_LINUX_APP_RUNNING: False,
   }

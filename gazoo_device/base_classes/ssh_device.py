@@ -33,11 +33,11 @@ logger = gdm_logger.get_logger()
 _LOG_MARKER = "--- GDM Log Marker ---"
 _LOGGING_FILE_PATH = "/var/log/syslog"
 _LOG_MARKER_LINE_POS_OR_EMPTY = (
-    'grep -n -e "{marker}" {file_path} --text | tail -n 1 | cut -d '
+    'sudo grep -n -e "{marker}" {file_path} --text | tail -n 1 | cut -d '
     '":" -f 1').format(
         marker=_LOG_MARKER, file_path=_LOGGING_FILE_PATH)
 _LOG_MARKER_LINE_POS = (
-    "line_num=$({cmd}); [ -z \"($line_num)\" ] && echo 1 || echo"
+    "line_num=$({cmd}); [ -z \"$line_num\" ] && echo 1 || echo"
     " $line_num".format(cmd=_LOG_MARKER_LINE_POS_OR_EMPTY))
 
 INFO_PREFIX = "INFO_"
@@ -45,7 +45,7 @@ COMMANDS = {
     "BOOT_UP_COMPLETE": "echo 'gdm hello'",
     "INJECT_LOG_MARKER": "sudo sh -c 'echo \"{marker}\" >> {file_path}'".format(
         marker=_LOG_MARKER, file_path=_LOGGING_FILE_PATH),
-    "LOGGING": "tail -F -n +$({cmd}) {file_path}".format(
+    "LOGGING": "sudo tail -F -n +$({cmd}) {file_path}".format(
         cmd=_LOG_MARKER_LINE_POS, file_path=_LOGGING_FILE_PATH),
     "GDM_HELLO": "echo 'gdm hello'",
 }
@@ -310,12 +310,19 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
         elif key == "build_date":
           persistent_dict[key] = self._convert_build_date(value)
 
-  def _inject_log_marker(self):
+  def _inject_log_marker(self) -> None:
     """Adds a log marker to /var/log/syslog to prevent reading preexisting logs.
 
     Device logs are read starting with the last log marker (if present).
+
+    Raises:
+      DeviceError when the log marker injection fails.
     """
-    self.shell(self.commands["INJECT_LOG_MARKER"])
+    output, return_code = self.shell(
+        self.commands["INJECT_LOG_MARKER"], include_return_code=True)
+    if return_code:
+      raise errors.DeviceError(
+          f"{self.name}: log marker injection fails: {output}")
 
   def _set_optional_props(self):
     """Sets the optional properties for the device during detection."""

@@ -1,7 +1,7 @@
 {
-  "shell_cmd": "ls /",
-  "expect": [".*rootnode.*"],
   "known_logline": "systemd",
+  "shell_cmd": "pgrep -f matter-linux-app",
+  "expect": ["\\d+\\n.*"],
   "do_not_run_tests": [
     "PwRPCButtonTestSuite.test_button_push"
   ],

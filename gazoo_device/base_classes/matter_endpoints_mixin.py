@@ -29,6 +29,7 @@ from gazoo_device.capabilities.matter_endpoints import pressure_sensor
 from gazoo_device.capabilities.matter_endpoints import root_node
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.capabilities.matter_endpoints import thermostat
+from gazoo_device.capabilities.matter_endpoints import window_covering
 
 
 class MatterEndpointAliasesMixin:
@@ -265,3 +266,16 @@ class MatterEndpointAliasesMixin:
     return self.matter_endpoints.get_endpoint_instance_by_class(
         thermostat.ThermostatEndpoint)
 
+  @decorators.CapabilityDecorator(window_covering.WindowCoveringEndpoint)
+  def window_covering(self) -> window_covering.WindowCoveringEndpoint:
+    """Matter window covering endpoint instance.
+
+    Returns:
+      Window covering endpoint instance.
+
+    Raises:
+      DeviceError when Window Covering endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        window_covering.WindowCoveringEndpoint)

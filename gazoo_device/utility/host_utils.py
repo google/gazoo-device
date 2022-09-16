@@ -49,7 +49,7 @@ GET_COMMAND_PATH = "which {}"
 GET_CONNECTED_IPS = "/usr/sbin/arp -e"
 
 _SNMPWALK_COMMAND = "snmpwalk -v 2c -c private {ip_address}"
-_SNMPWALK_TIMEOUT = 30
+_SNMPWALK_TIMEOUT = 90
 
 _gsutil_cli = None  # Set by _set_gsutil_cli().
 
@@ -362,21 +362,43 @@ def is_in_ifconfig(ip_or_mac_address):
     return False
 
 
+def _validate_ip_address(ip_address: str) -> bool:
+  """Validates the IP address format.
+
+  Args:
+    ip_address: IP address to ping.
+  Returns:
+    True if the IP address is valid else False
+  """
+  try:
+    ipaddress.ip_address(ip_address)
+  except ValueError:
+    return False
+  return True
+
+
 def is_pingable(
     ip_address: str,
     timeout: float = _PING_DEFAULT_TIMEOUT_SECONDS,
     packet_count: int = _PING_DEFAULT_PACKET_COUNT,
     deadline: Optional[float] = None) -> bool:
-  """Returns True if the ip_address responds to network pings.
+  """Checks if the ip_address responds to network pings.
 
   Args:
-      ip_address: IP address to ping.
-      timeout: Timeout in seconds to wait for a ping response. The option
-        affects only timeout in absence of any responses.
-      packet_count: How many packets will be sent before the deadline.
-      deadline: Timeout in seconds before ping exits regardless of how many
-        packets have been sent or received.
+    ip_address: IP address to ping.
+    timeout: Timeout in seconds to wait for a ping response. The option
+      affects only timeout in absence of any responses.
+    packet_count: How many packets will be sent before the deadline.
+    deadline: Timeout in seconds before ping exits regardless of how many
+      packets have been sent or received.
+
+  Returns:
+    True if the IP is pingable. False if the ping command fails or if the
+      IP address is not valid.
   """
+  if not _validate_ip_address(ip_address):
+    return False
+
   flags_map = {
       "-c": packet_count,
       "-W": timeout,

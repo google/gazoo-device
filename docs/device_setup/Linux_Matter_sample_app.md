@@ -4,29 +4,15 @@ Supported models: Raspberry Pi 4 with at least 4GB of memory.
 
 Supported kernel images: Ubuntu for Raspberry Pi
 
-## Setup
+## Setup manually
 
 **1. Flash SD card with Ubuntu OS**
 
 Install [Raspberry Pi Imager](https://www.raspberrypi.com/software/) on your
-host, pick up the build of **Ubuntu for Raspberry Pi Server 20.04 LTS
-(aarch64)** or **Ubuntu for Raspberry Pi Desktop 20.10 (aarch64)** and flash it
-to your SD card.
+host, pick up the build of **Ubuntu for Raspberry Pi Server 20.04 LTS (64-bit
+server OS for arm64 architectures)** and flash it to your SD card.
 
-**2. Create a pi user on Ubuntu**
-
-Boot your RPi with the SD card, login with the default user account **ubuntu**
-and password **ubuntu**. GDM uses **pi** as default user account name for
-controlling RPi, you'll need to create a user `pi` with root permission in your
-RPi:
-
-```
-sudo adduser pi
-```
-
-And add `pi` to `/etc/sudoers`.
-
-**3. Set up wifi on Ubuntu** (You may skip this part if you use ethernet for
+**2. Set up wifi on Ubuntu** (You may skip this part if you use ethernet for
 connection)
 
 Set up wifi on ubuntu host (note that is different from setting up on Raspbian
@@ -53,30 +39,30 @@ network:
 Save the file and reboot your RPi. You should have your wifi setup once RPi is
 up and running again. Use `hostname -I` to obtain the IP address of your RPi.
 
-**4. Set up passwordless SSH configuration**
+**3. Set up passwordless SSH configuration**
 
-Follow the
-[GDM device setup: Raspberry Pi (as a support device)](./Raspberry_Pi_as_supporting_device.md),
-starting from the `Configure GDM SSH keys`. You should be able to SSH to your
-RPi without password after the setup.
+Ubuntu image only has a default user `ubuntu`. Make sure to login and change the
+default password first and follow the Ubuntu instructions from
+[Raspberry_Pi_SSH_key_setup](./Raspberry_Pi_SSH_key_setup.md). You should be
+able to SSH to your RPi without password after the setup.
 
 ```
-ssh pi@<pi's IP address>
+ssh ubuntu@<pi's IP address>
 ```
 
-**5. Getting linux sample app build**
+**4. Getting linux sample app build**
 
 Simply follow the build instruction in
 [CHIP Linux Lighting Example](https://github.com/project-chip/connectedhomeip/tree/master/examples/lighting-app/linux#chip-linux-lighting-example).
 
-**6. Register sample app as a linux service**
+**5. Register sample app as a linux service**
 
 Copy the sample app to your RPi and rename it as `matter-linux-app` under
-`/home/pi`. The name and directory must be correct otherwise the GDM detection
-won't work.
+`/home/ubuntu`. The name and directory must be correct otherwise the GDM
+detection won't work.
 
 ```
-scp chip-lighting-app pi@<pi's IP address>:/home/pi/matter-linux-app
+scp chip-lighting-app ubuntu@<pi's IP address>:/home/ubuntu/matter-linux-app
 ```
 
 Raspberry pi running Ubuntu 22.04 or later may encounter an issue with
@@ -101,9 +87,9 @@ Create a linux service file `/etc/systemd/system/matter-linux-app.service` (need
 Description=Matter Linux Sample App on RPi
 
 [Service]
-User=pi
-WorkingDirectory=/home/pi
-ExecStart=sudo /home/pi/matter-linux-app
+User=ubuntu
+WorkingDirectory=/home/ubuntu
+ExecStart=sudo /home/ubuntu/matter-linux-app
 Restart=always
 
 [Install]
@@ -117,7 +103,7 @@ sudo systemctl enable matter-linux-app.service
 sudo systemctl start matter-linux-app.service
 ```
 
-**7. Device detection**
+**6. Device detection**
 
 Detect the Linux Matter sample app: `gdm detect --statics_ips=[<pi's IP
 address>]`. The output should be like:

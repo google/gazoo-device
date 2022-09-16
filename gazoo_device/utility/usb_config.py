@@ -16,7 +16,7 @@
 import inspect
 
 ANDROID_NAMES = ("Android", "Pixel")
-CAMBRIONIX_NAMES = ("FT230X Basic UART", "PS15-USB3")
+CAMBRIONIX_NAMES = ("FT230X Basic UART", "PS15-USB3", "SuperSync15")
 CAMBRIONIX_VENDOR_PRODUCT_ID = ("0403/6015", "2cd9/0021")
 
 CAMBRIONIX_PORT_MAP = {
@@ -48,6 +48,24 @@ CAMBRIONIX_PORT_MAP = {
         "4.4": 3
     },
     "PS15-USB3": {
+        "1.1": 1,
+        "1.2": 2,
+        "1.3": 9,
+        "1.4": 8,
+        "2.1": 6,
+        "2.2": 7,
+        "2.3": 15,
+        "2.4": 14,
+        "3.1": 3,
+        "3.2": 4,
+        "3.3": 11,
+        "3.4": 10,
+        "4.1": 5,
+        "4.3": 13,
+        "4.4": 12
+    },
+    "SuperSync15": {
+        # cloned from PS15-USB3
         "1.1": 1,
         "1.2": 2,
         "1.3": 9,

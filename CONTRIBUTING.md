@@ -826,7 +826,7 @@ Here's an example of detection criteria for Raspberry Pi:
 ```python
 class RaspberryPi(raspbian_device.RaspbianDevice):
   DETECT_MATCH_CRITERIA = {
-      detect_criteria.SshQuery.IS_RPI: True,
+      detect_criteria.SshQuery.IS_RASPBIAN_RPI: True,
   }
 ```
 

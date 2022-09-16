@@ -341,5 +341,20 @@ class SnmpHostUtilsTests(unit_test_case.UnitTestCase):
     """Verifies is_pingable fails when expected."""
     self.assertFalse(host_utils.is_pingable("12.34.56.78"))
 
+  @parameterized.named_parameters(
+      ("Normal IPv4", "12.34.56.78", True),
+      ("Normal IPv6", "2001:db8::ff00:42:8329", True),
+      ("None", None, False),
+      ("Random string", "hello_world", False),
+      ("Invalid length", "12.34.56", False),
+  )
+  @mock.patch.object(subprocess, "check_output", return_value=b"some_output")
+  def test_is_pingable_ip_address_format(
+      self, ip_address, expected_result, mock_check_output):
+    """Verifies is_pingable check if the ip_address format is valid."""
+    result = host_utils.is_pingable(ip_address)
+
+    self.assertEqual(result, expected_result)
+
 if __name__ == "__main__":
   unit_test_case.main()

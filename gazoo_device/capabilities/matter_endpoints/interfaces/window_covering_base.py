@@ -12,5 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Gazoo Device Manager version."""
-version = "1.93.1"
+"""Interface for a Matter Window Covering endpoint."""
+import abc
+from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
+
+
+class WindowCoveringBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
+  """Matter Window Covering endpoint interface."""
+
+  DEVICE_TYPE_ID = 0x0202
+
+  @property
+  @abc.abstractmethod
+  def window_covering(self):
+    """Required cluster: ZCL window_covering cluster."""
+

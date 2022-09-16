@@ -80,6 +80,14 @@ FAKE_FASTBOOT = ("04576e89	fastboot\n"
                  "04576ee5	fastboot\n\n")
 FAKE_FASTBOOT_REBOOT = ("Rebooting...\n\n"
                         "Finished. Total time: 0.157s\n")
+
+FAKE_PORT_FORWARDING_LIST = (
+    "DEVICESERIAL_A tcp:8000 tcp:8000\n"
+    "DEVICESERIAL_B tcp:8012 tcp:8034\n"
+    "DEVICESERIAL_B tcp:8056 tcp:8078\n"
+    "192.168.0.1:5555 tcp:8098 tcp:8099\n"
+)
+
 DEVICE_NAME = "somedevice"
 DEVICE_ADB_SERIAL = "aabbccdd"
 DEVICE_FASTBOOT_SERIAL = "aabbccdd"
@@ -1155,6 +1163,42 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
         adb_serial=DEVICE_ADB_SERIAL,
         adb_path=ADB_CMD_PATH,
         include_return_code=True)
+
+  @parameterized.named_parameters(
+      ("Empty result", "", None, []),
+      ("All rules", FAKE_PORT_FORWARDING_LIST, None,
+       [(8000, 8000), (8012, 8034), (8056, 8078), (8098, 8099)]),
+      ("Rules for DeviceB", FAKE_PORT_FORWARDING_LIST, "DEVICESERIAL_B",
+       [(8012, 8034), (8056, 8078)]),
+      ("Rules for adb-over-ip device", FAKE_PORT_FORWARDING_LIST,
+       "192.168.0.1:5555", [(8098, 8099)]),
+  )
+  @mock.patch.object(adb_utils, "_adb_command")
+  def test_list_port_forwarding_success(
+      self, cmd_output, adb_serial, expected_result, mock_adb_command):
+    """Verifies list_port_forwarding on success."""
+    mock_adb_command.return_value = (cmd_output, 0)
+
+    result = adb_utils.list_port_forwarding(adb_serial=adb_serial,
+                                            adb_path=ADB_CMD_PATH)
+
+    mock_adb_command.assert_called_once_with(("forward", "--list"),
+                                             adb_serial=None,
+                                             adb_path=ADB_CMD_PATH,
+                                             include_return_code=True)
+    self.assertEqual(result, expected_result)
+
+  @mock.patch.object(adb_utils, "_adb_command", return_value=("Error", 1))
+  def test_list_port_forwarding_failed(self, mock_adb_command):
+    """Verifies list_port_forwarding on raise exception."""
+    with self.assertRaises(RuntimeError):
+      adb_utils.list_port_forwarding(
+          adb_serial=DEVICE_ADB_SERIAL, adb_path=ADB_CMD_PATH)
+
+    mock_adb_command.assert_called_once_with(("forward", "--list"),
+                                             adb_serial=None,
+                                             adb_path=ADB_CMD_PATH,
+                                             include_return_code=True)
 
   @mock.patch.object(adb_utils, "_fastboot_command")
   def test_330_adb_utils_fastboot_check_is_unlocked(self,

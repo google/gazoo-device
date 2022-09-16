@@ -34,6 +34,7 @@ from gazoo_device.capabilities.matter_endpoints import pressure_sensor
 from gazoo_device.capabilities.matter_endpoints import root_node
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.capabilities.matter_endpoints import thermostat
+from gazoo_device.capabilities.matter_endpoints import window_covering
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
 
@@ -79,6 +80,7 @@ class MatterEndpointsAliasesMixinTest(fake_device_test_case.FakeDeviceTestCase):
       ("root_node", root_node.RootNodeEndpoint),
       ("temperature_sensor", temperature_sensor.TemperatureSensorEndpoint),
       ("thermostat", thermostat.ThermostatEndpoint),
+      ("window_covering", window_covering.WindowCoveringEndpoint),
   )
   def test_endpoint_alias(self, attribute_name, endpoint_class):
     """Verifies endpoint alias on success."""

@@ -319,6 +319,47 @@ _RESPONSES = ({
         0,
 }, {
     "cmd":
+        ("/usr/local/bin/chip-tool doorlock lock-door  1234 1 "
+         "--timedInteractionTimeoutMs 1000"),
+    "resp":
+        textwrap.dedent("""
+            [1660950609.491083][2194063:2194068] CHIP:DMG: ICR moving to [ResponseRe]
+            [1660950609.491192][2194063:2194068] CHIP:DMG: InvokeResponseMessage =
+            [1660950609.491257][2194063:2194068] CHIP:DMG: {
+            [1660950609.491320][2194063:2194068] CHIP:DMG: 	suppressResponse = false,
+            [1660950609.491384][2194063:2194068] CHIP:DMG: 	InvokeResponseIBs =
+            [1660950609.491469][2194063:2194068] CHIP:DMG: 	[
+            [1660950609.491534][2194063:2194068] CHIP:DMG: 		InvokeResponseIB =
+            [1660950609.491677][2194063:2194068] CHIP:DMG: 		{
+            [1660950609.491751][2194063:2194068] CHIP:DMG: 			CommandStatusIB =
+            [1660950609.491834][2194063:2194068] CHIP:DMG: 			{
+            [1660950609.491921][2194063:2194068] CHIP:DMG: 				CommandPathIB =
+            [1660950609.492010][2194063:2194068] CHIP:DMG: 				{
+            [1660950609.492103][2194063:2194068] CHIP:DMG: 					EndpointId = 0x1,
+            [1660950609.492198][2194063:2194068] CHIP:DMG: 					ClusterId = 0x101,
+            [1660950609.492289][2194063:2194068] CHIP:DMG: 					CommandId = 0x0,
+            [1660950609.492375][2194063:2194068] CHIP:DMG: 				},
+            [1660950609.492481][2194063:2194068] CHIP:DMG:
+            [1660950609.492561][2194063:2194068] CHIP:DMG: 				StatusIB =
+            [1660950609.492649][2194063:2194068] CHIP:DMG: 				{
+            [1660950609.492739][2194063:2194068] CHIP:DMG: 					status = 0x00 (SUCCESS),
+            [1660950609.492826][2194063:2194068] CHIP:DMG: 				},
+            [1660950609.492921][2194063:2194068] CHIP:DMG:
+            [1660950609.492998][2194063:2194068] CHIP:DMG: 			},
+            [1660950609.493087][2194063:2194068] CHIP:DMG:
+            [1660950609.493159][2194063:2194068] CHIP:DMG: 		},
+            [1660950609.493241][2194063:2194068] CHIP:DMG:
+            [1660950609.493302][2194063:2194068] CHIP:DMG: 	],
+            [1660950609.493382][2194063:2194068] CHIP:DMG:
+            [1660950609.493445][2194063:2194068] CHIP:DMG: 	InteractionModelRevision = 1
+            [1660950609.493506][2194063:2194068] CHIP:DMG: },
+            [1660950609.493658][2194063:2194068] CHIP:DMG: Received Command Response Status for Endpoint=1 Cluster=0x0000_0101 Command=0x0000_0000 Status=0x0
+            [1660950609.493768][2194063:2194068] CHIP:DMG: ICR moving to [AwaitingDe]
+        """),
+    "code":
+        0,
+}, {
+    "cmd":
         "/usr/local/bin/chip-tool onoff write non-existent-attr 100 1234 1",
     "resp":
         textwrap.dedent("""

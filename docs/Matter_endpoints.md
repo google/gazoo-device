@@ -366,6 +366,19 @@ Alias for accessing `RootNode` endpoint and its supported clusters.
 The supported clusters can be found in the
 [GDM RootNode implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/root_node.py).
 
+#### `window_covering`
+
+Alias for accessing `WindowCovering` endpoint and its supported clusters.
+
+```
+# Check the CurrentPositionLiftPercentag attribute on the WindowCovering cluster
+ on the WindowCovering endpoint.
+>>> dut.window_covering.window_covering.current_position_lift_percentage
+```
+
+The supported clusters can be found in the
+[GDM WindowCovering implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/window_covering.py).
+
 ### APIs of the Matter Endpoints capability
 
 #### `list()`

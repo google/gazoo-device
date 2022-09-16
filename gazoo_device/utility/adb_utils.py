@@ -1137,6 +1137,47 @@ def remove_port_forwarding(host_port: int,
   return output
 
 
+def list_port_forwarding(
+    adb_serial: Optional[str] = None,
+    adb_path: Optional[str] = None) -> List[Tuple[int, int]]:
+  """Lists the adbforwarding connections.
+
+  Args:
+    adb_serial: The device serial. If given, only returns the results of the
+      given device serial.
+    adb_path: Alternative path to adb executable.
+
+  Raises:
+    RuntimeError: If the adb forward --list command fails.
+
+  Returns:
+    A list of (host_port, device_port) forwarding connection rules.
+  """
+  commands = ("forward", "--list")
+  # The forward --list always return all rules so no need to pass the serial.
+  output, returncode = _adb_command(commands,
+                                    adb_serial=None,
+                                    adb_path=adb_path,
+                                    include_return_code=True)
+  if returncode != 0:
+    raise RuntimeError("Failed to list adb port forwarding rules")
+
+  output_lines = output.splitlines()
+  result = []
+
+  #  Sample adb forward --list output result on each line:
+  #  DEVIERSERIALNUMBER tcp:8008 tcp:8008
+  forwarding_rules_regex = r"^([\w\.:]+) tcp:(\d+) tcp:(\d+)$"
+  for output_line in output_lines:
+    match = re.match(forwarding_rules_regex, output_line)
+    if match and len(match.groups()) == 3:
+      if adb_serial is None or match.group(1) == adb_serial:
+        forwarding_rule = (int(match.group(2)), int(match.group(3)))
+        result.append(forwarding_rule)
+
+  return result
+
+
 def tcpip(adb_serial: Optional[str] = None,
           port: Optional[int] = DEFAULT_PORT,
           adb_path: Optional[str] = None) -> str:

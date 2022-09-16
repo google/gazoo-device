@@ -17,6 +17,7 @@ from unittest import mock
 from gazoo_device import errors
 from gazoo_device.base_classes import ssh_device
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
+from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.primary_devices import raspberry_pi_matter
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.tests.unit_tests.utils import raspberry_pi_matter_device_logs
@@ -80,7 +81,7 @@ class RaspberryPiMatterTests(fake_device_test_case.FakeDeviceTestCase):
   def test_check_app_present_on_failure(self):
     """Verifies check_app_present on failure."""
     response = {
-        "cmd": "test -f /home/pi/matter-linux-app",
+        "cmd": "test -f /home/ubuntu/matter-linux-app",
         "resp": "",
         "code": 1,
     }
@@ -178,6 +179,15 @@ class RaspberryPiMatterTests(fake_device_test_case.FakeDeviceTestCase):
     self.uut.reboot()
 
     mock_verify_reboot.assert_called_once()
+
+  @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "factory_reset")
+  @mock.patch.object(raspberry_pi_matter.RaspberryPiMatter, "matter_sample_app")
+  def test_factory_reset(self, mock_matter_sample_app, mock_factory_reset):
+    """Verifies factory reset method."""
+    self.uut.factory_reset()
+
+    mock_matter_sample_app.factory_reset.assert_called_once()
+    mock_factory_reset.assert_called_once()
 
   @mock.patch.object(retry, "retry")
   @mock.patch.object(ssh_device.SshDevice, "wait_for_bootup_complete")

@@ -112,4 +112,4 @@ class PackageManagementAndroid(package_management_base.PackageManagementBase):
     """
     cmd_result = self._shell_fn(f'{_COMMAND_LIST_PACKAGES} {package_name}')
     full_package_name = f'{_PACKAGE_PREFIX}{package_name}'
-    return full_package_name in cmd_result
+    return full_package_name in cmd_result.splitlines()

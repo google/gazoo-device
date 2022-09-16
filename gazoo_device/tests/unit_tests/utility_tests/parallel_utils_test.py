@@ -131,10 +131,13 @@ class ParallelUtilsUnitTests(unit_test_case.UnitTestCase):
 
     if function is parallel_utils.factory_reset:
       device_method = mock_device.factory_reset
+      device_method.__name__ = "factory_reset"
     elif function is parallel_utils.reboot:
       device_method = mock_device.reboot
+      device_method.__name__ = "reboot"
     else:
       device_method = mock_device.flash_build.upgrade
+      device_method.__name__ = "upgrade"
 
     if raises:
       device_method.side_effect = errors.DeviceError("Failed")
@@ -146,7 +149,8 @@ class ParallelUtilsUnitTests(unit_test_case.UnitTestCase):
           function(
               mock_manager, mock_device.name, *method_args, **method_kwargs))
 
-    mock_manager.create_device.assert_called_once_with(mock_device.name)
+    mock_manager.create_device.assert_called_once_with(
+        mock_device.name, log_name_prefix=device_method.__name__)
     device_method.assert_called_once_with(*method_args, **method_kwargs)
     mock_device.close.assert_called_once()
 
@@ -181,6 +185,45 @@ class ParallelUtilsUnitTests(unit_test_case.UnitTestCase):
     self.assertEqual(mock_register.call_count, 2)
     mock_manager_class.assert_called_once()
     mock_function.assert_called_once_with(mock_manager, *args, **kwargs)
+    self.assertEqual(proc_results[0], args)
+    mock_manager.close.assert_called_once()
+
+  @mock.patch.object(extensions, "package_info")
+  @mock.patch.object(gdm_logger, "initialize_child_process_logging")
+  @mock.patch.object(gdm_logger, "get_logger")
+  @mock.patch.object(package_registrar, "register")
+  @mock.patch.object(importlib, "import_module")
+  @mock.patch.object(manager, "Manager")
+  def test_process_init_successful_call_with_manager_kwarg(
+      self, mock_manager_class, mock_import, mock_register,
+      mock_get_logger, mock_initialize_logging, mock_package_info):
+    """Tests process init sets up process bcorrectly."""
+    mock_package_info.items.return_value = [
+        ("package_1", {"import_path": "foo.package"}),
+        ("package_2", {"import_path": "bar.package"}),
+    ]
+    mock_manager = mock_manager_class.return_value
+    mock_logger = mock_get_logger.return_value
+    mock_function = mock.MagicMock()
+    mock_function.__name__ = "mock_function"
+    args = (1, 2)
+    mock_function.return_value = args
+
+    kwargs = {"foo": "bar"}
+    manager_kwargs = {"log_directory": "/fake/log/path"}
+    proc_results, _ = parallel_utils.execute_concurrently([
+        parallel_utils.CallSpec(
+            mock_function, *args, manager_kwargs=manager_kwargs, **kwargs)
+    ])
+
+    mock_get_logger.assert_called()
+    mock_logger.debug.assert_called()
+    mock_import.assert_has_calls(
+        [mock.call("foo.package"), mock.call("bar.package")])
+    self.assertEqual(mock_register.call_count, 2)
+    mock_manager_class.assert_called_once_with(**manager_kwargs)
+    mock_function.assert_called_once_with(mock_manager, *(1, 2),
+                                          **{"foo": "bar"})
     self.assertEqual(proc_results[0], args)
     mock_manager.close.assert_called_once()
 

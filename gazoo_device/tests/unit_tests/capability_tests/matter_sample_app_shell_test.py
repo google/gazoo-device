@@ -11,14 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Capability unit test for matter_app_controls_shell module."""
+"""Capability unit test for matter_sample_app_shell module."""
 import os
 import time
 from unittest import mock
 
 from gazoo_device import errors
 from gazoo_device.capabilities import file_transfer_scp
-from gazoo_device.capabilities import matter_app_controls_shell
+from gazoo_device.capabilities import matter_sample_app_shell
 from gazoo_device.capabilities import shell_ssh
 from gazoo_device.capabilities.interfaces import matter_endpoints_base
 from gazoo_device.primary_devices import raspberry_pi_matter
@@ -47,7 +47,7 @@ class MatterSampleAppShellTest(fake_device_test_case.FakeDeviceTestCase):
         spec=raspberry_pi_matter.RaspberryPiMatter.wait_for_bootup_complete)
     self.fake_reset_endpoints = mock.Mock(
         spec=matter_endpoints_base.MatterEndpointsBase.reset)
-    self.uut = matter_app_controls_shell.MatterSampleAppShell(
+    self.uut = matter_sample_app_shell.MatterSampleAppShell(
         device_name=_FAKE_DEVICE_NAME,
         shell_fn=self.fake_shell,
         close_transport_fn=self.fake_switchboard_close,
@@ -88,7 +88,7 @@ class MatterSampleAppShellTest(fake_device_test_case.FakeDeviceTestCase):
     self.uut.enable_service()
 
   @mock.patch.object(
-      matter_app_controls_shell.MatterSampleAppShell,
+      matter_sample_app_shell.MatterSampleAppShell,
       "get_process_ids",
       return_value=[_FAKE_PROCESS_ID])
   @mock.patch.object(retry, "retry")
@@ -131,6 +131,10 @@ class MatterSampleAppShellTest(fake_device_test_case.FakeDeviceTestCase):
     """Verifies upgrade on failure when the sample app is not executable."""
     with self.assertRaisesRegex(errors.DeviceError, "not executable"):
       self.uut.upgrade("not-executable")
+
+  def test_factory_reset(self):
+    """Verifies factory reset on success."""
+    self.uut.factory_reset()
 
 
 if __name__ == "__main__":

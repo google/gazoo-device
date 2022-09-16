@@ -73,6 +73,22 @@ class SubprocessUtilsTest(unit_test_case.UnitTestCase):
       subprocess_utils.run_and_stream_output(cmd_args, timeout)
     self.mock_select.assert_called()
 
+  def test_run_and_stream_output_with_shell_enabled(self):
+    """Test run_and_stream_output with shell enabled ."""
+    cmd_args = ["echo", "hello"]
+    timeout = 5
+    shell = True
+    self.mock_subprocess.poll.return_value = 0
+    self.mock_subprocess.wait.return_value = 0
+    _, _ = subprocess_utils.run_and_stream_output(
+        cmd_args, timeout, shell)
+
+    self.mock_subprocess_popen.assert_called_once_with(cmd_args,
+                                                       shell=True,
+                                                       encoding="utf-8",
+                                                       errors="replace",
+                                                       stdout=subprocess.PIPE,
+                                                       stderr=subprocess.STDOUT)
 
 if __name__ == "__main__":
   unit_test_case.main()

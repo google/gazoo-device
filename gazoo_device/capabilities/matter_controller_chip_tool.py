@@ -41,7 +41,8 @@ _COMMANDS = immutabledict.immutabledict({
         "{chip_tool} {cluster} write {attribute} {value} {node_id} "
         "{endpoint_id}",
     "SEND_CLUSTER_COMMMAND":
-        "{chip_tool} {cluster} {command} {arguments} {node_id} {endpoint_id}",
+        "{chip_tool} {cluster} {command} {arguments} {node_id} {endpoint_id} "
+        "{flags}",
     "COMMISSION_OVER_BLE_WIFI":
         "{chip_tool} pairing ble-wifi {node_id} {ssid} {password} {setup_code} "
         "{long_discriminator}",
@@ -296,8 +297,13 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
           f"status code: {status_code}")
 
   @decorators.CapabilityLogDecorator(logger)
-  def send(self, endpoint_id: int, cluster: str, command: str,
-           arguments: Sequence[Any]) -> None:
+  def send(
+      self,
+      endpoint_id: int,
+      cluster: str,
+      command: str,
+      arguments: Sequence[Any],
+      flags: Optional[Sequence[Any]] = None) -> None:
     """Sends a command to a device with the given node id and endpoint.
 
     Args:
@@ -305,7 +311,10 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
       cluster: Name of the cluster to send the command to (e.g. onoff).
       command: Name of the command to send (e.g. toggle).
       arguments: Command arguments.
+      flags: Additional flags passed to chip-tool send command. None if it's not
+        provided.
     """
+    additional_flags = "" if flags is None else " ".join(map(str, flags))
     command = _COMMANDS["SEND_CLUSTER_COMMMAND"].format(
         chip_tool=self._chip_tool_path,
         node_id=self._get_property_fn(_MATTER_NODE_ID_PROPERTY),
@@ -313,7 +322,9 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
         cluster=cluster,
         command=command,
         arguments=" ".join(map(str, arguments)),
+        flags=additional_flags,
     )
+    command = command.rstrip()
     status_code = self._shell_with_regex(
         command,
         _REGEXES["SEND_CLUSTER_COMMAND_RESPONSE"],

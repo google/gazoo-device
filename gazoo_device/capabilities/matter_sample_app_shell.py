@@ -18,14 +18,14 @@ from typing import Callable, List
 
 from gazoo_device import decorators
 from gazoo_device import gdm_logger
-from gazoo_device.capabilities.interfaces import matter_app_controls_base
+from gazoo_device.capabilities.interfaces import matter_sample_app_base
 from gazoo_device.utility import pwrpc_utils
 from gazoo_device.utility import retry
 import immutabledict
 
 logger = gdm_logger.get_logger()
 
-_MATTER_APP_PATH = f"/home/pi/{pwrpc_utils.MATTER_LINUX_APP_NAME}"
+_MATTER_APP_PATH = f"/home/ubuntu/{pwrpc_utils.MATTER_LINUX_APP_NAME}"
 _MATTER_APP_SERVICE = f"{pwrpc_utils.MATTER_LINUX_APP_NAME}.service"
 _MATTER_APP_SERVICE_FULL_PATH = f"/etc/systemd/system/{_MATTER_APP_SERVICE}"
 _APP_START_SEC = 3  # seconds
@@ -40,10 +40,11 @@ _COMMANDS = immutabledict.immutabledict({
     "ENABLE_SERVICE": f"sudo systemctl enable {_MATTER_APP_SERVICE}",
     "START_SERVICE": f"sudo systemctl start {_MATTER_APP_SERVICE}",
     "STOP_SERVICE": f"sudo systemctl stop {_MATTER_APP_SERVICE}",
+    "CLEAR_COMMISSION_DIRECTORY": "sudo rm -rf /tmp/chip*",
 })
 
 
-class MatterSampleAppShell(matter_app_controls_base.MatterSampleAppBase):
+class MatterSampleAppShell(matter_sample_app_base.MatterSampleAppBase):
   """Matter app controls and management capability over shell."""
 
   def __init__(
@@ -196,3 +197,8 @@ class MatterSampleAppShell(matter_app_controls_base.MatterSampleAppBase):
     # endpoints.
     self._wait_for_bootup_complete()
     self._reset_endpoints()
+
+  @decorators.CapabilityLogDecorator(logger)
+  def factory_reset(self) -> None:
+    """Factory resets all settings stored on RPi."""
+    self._shell(_COMMANDS["CLEAR_COMMISSION_DIRECTORY"])

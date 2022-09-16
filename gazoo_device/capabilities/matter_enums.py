@@ -251,3 +251,16 @@ class BasicInformationCluster(enum.IntEnum):
   ATTRIBUTE_HARDWARE_VERSION_STRING = 0x008
   ATTRIBUTE_SOFTWARE_VERSION = 0x009
   ATTRIBUTE_SOFTWARE_VERSION_STRING = 0x00A
+
+
+class WindowCoveringCluster(enum.IntEnum):
+  """Window Covering cluster ID and its attribute IDs.
+
+  The enum values are defined in the Matter spec.
+  """
+  ID = attributes_service_pb2.ClusterType.ZCL_WINDOW_COVERING_CLUSTER_ID
+
+  # Attribute IDs
+  ATTRIBUTE_CURRENT_POSITION_LIFT_PERCENTAGE = 0x0008
+  ATTRIBUTE_CURRENT_POSITION_TILT_PERCENTAGE = 0x0009
+

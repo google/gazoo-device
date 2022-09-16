@@ -62,11 +62,10 @@ Supported kernel images: Ubuntu 21.04 or later.
     sudo chown -R `whoami`:pi /usr/local/bin
     ```
 
-5.  Follow the instructions from
-    [GDM device setup: Raspberry Pi (as a support device)](./Raspberry_Pi_as_supporting_device.md)
-    starting from the `Configure GDM SSH keys` step to ensure that GDM can
-    detect the raspberry pi as a `rpi_matter_controller`. The output of `gdm
-    devices` command should look like:
+5.  Follow the Raspbian instructions from
+    [Raspberry_Pi_SSH_key_setup](./Raspberry_Pi_SSH_key_setup.md) to ensure that
+    GDM can detect the raspberry pi as a `rpi_matter_controller`. The output of
+    `gdm devices` command should look like:
 
     ```shell
     $ gdm devices

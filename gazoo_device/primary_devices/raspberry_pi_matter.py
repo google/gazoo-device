@@ -26,7 +26,8 @@ from gazoo_device import gdm_logger
 from gazoo_device.base_classes import matter_device_base
 from gazoo_device.base_classes import ssh_device
 from gazoo_device.capabilities import bluetooth_service_linux
-from gazoo_device.capabilities import matter_app_controls_shell
+from gazoo_device.capabilities import matter_sample_app_shell
+from gazoo_device.capabilities.interfaces import matter_controller_base
 from gazoo_device.protos import attributes_service_pb2
 from gazoo_device.protos import descriptor_service_pb2
 from gazoo_device.protos import device_service_pb2
@@ -57,7 +58,7 @@ class RaspberryPiMatter(
   """RPi Matter device controller."""
   COMMUNICATION_TYPE = "PigweedSocketComms"
   DETECT_MATCH_CRITERIA = {
-      detect_criteria.SshQuery.IS_RPI: True,
+      detect_criteria.SshQuery.IS_UBUNTU_RPI: True,
       detect_criteria.SshQuery.IS_MATTER_LINUX_APP_RUNNING: True,
   }
   _COMMUNICATION_KWARGS = {"protobufs": (attributes_service_pb2,
@@ -67,13 +68,15 @@ class RaspberryPiMatter(
                            "args": host_utils.DEFAULT_SSH_OPTIONS,
                            "log_cmd": ssh_device.COMMANDS["LOGGING"],
                            "key_info": config.KEYS["raspberrypi3_ssh_key"],
-                           "username": "pi"}
+                           "username": "ubuntu"}
   DEVICE_TYPE = "rpimatter"
   # Overrides to recover from the successive recoverable health check failures
   _RECOVERY_ATTEMPTS = 3
 
   # RPi Matter controller has transport number 2 for RPC interaction.
   _PIGWEED_PORT = 2
+
+  MATTER_COMMISSION_METHOD = matter_controller_base.CommissionMethod.ON_NETWORK
 
   def __init__(self,
                manager,
@@ -158,12 +161,11 @@ class RaspberryPiMatter(
           device_name=self.name,
           msg="The Matter sample app process is not running.")
 
-  @decorators.CapabilityDecorator(
-      matter_app_controls_shell.MatterSampleAppShell)
+  @decorators.CapabilityDecorator(matter_sample_app_shell.MatterSampleAppShell)
   def matter_sample_app(self):
     """Matter sample app control and management capability over shell."""
     return self.lazy_init(
-        matter_app_controls_shell.MatterSampleAppShell,
+        matter_sample_app_shell.MatterSampleAppShell,
         device_name=self.name,
         shell_fn=self.shell,
         close_transport_fn=self.switchboard.close_transport,
@@ -197,9 +199,16 @@ class RaspberryPiMatter(
       method: Not used.
     """
     del method
+    self._inject_log_marker()
     self.switchboard.send(command=self.commands["REBOOT"])
     if not no_wait:
       self._verify_reboot()
+
+  @decorators.LogDecorator(logger)
+  def factory_reset(self, no_wait: bool = False) -> None:
+    """Factory resets the device."""
+    self.matter_sample_app.factory_reset()
+    super().factory_reset(no_wait)
 
   @decorators.LogDecorator(logger)
   def wait_for_bootup_complete(self, timeout: Optional[int] = None) -> None:

@@ -245,6 +245,26 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
               detect_logger=mock.MagicMock(spec=logging.Logger),
               create_switchboard_func=mock.MagicMock()))
 
+  @mock.patch.object(host_utils, "ssh_command")
+  def test_is_ubuntu_rpi_query_return_true(self, mock_ssh_command):
+    """Verifies _is_ubuntu_rpi_query method returns true."""
+    self.assertTrue(
+        detect_criteria._is_ubuntu_rpi_query(
+            address=_IP_ADDRESS,
+            detect_logger=mock.MagicMock(spec=logging.Logger),
+            create_switchboard_func=mock.MagicMock()))
+    mock_ssh_command.assert_called_once()
+
+  @mock.patch.object(host_utils, "ssh_command", side_effect=RuntimeError)
+  def test_is_ubuntu_rpi_query_return_false(self, mock_ssh_command):
+    """Verifies _is_ubuntu_rpi_query method returns false."""
+    self.assertFalse(
+        detect_criteria._is_ubuntu_rpi_query(
+            address=_IP_ADDRESS,
+            detect_logger=mock.MagicMock(spec=logging.Logger),
+            create_switchboard_func=mock.MagicMock()))
+    mock_ssh_command.assert_called_once()
+
   @mock.patch.object(pwrpc_utils, "is_matter_device", return_value=True)
   def test_is_matter_device_query(self, mock_is_matter):
     """Verifies _is_matter_device_query method on success."""
