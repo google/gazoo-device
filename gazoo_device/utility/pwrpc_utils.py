@@ -100,15 +100,15 @@ def is_matter_device(
     # Retry is to avoid flakiness of the descriptor cluster on Matter devices.
     for _ in range(_DETECT_RETRY):
       try:
-        ack, _ = switchboard.call(
+        switchboard.call(
             method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
             method_args=method_args,
             method_kwargs=method_kwargs)
-        if ack:
-          is_matter = True
-          break
+        is_matter = True
+        break
       except errors.DeviceError as e:
-        detect_logger.info(f"Pigweed RPC failure for address {address}: {e}")
+        detect_logger.info(
+            f"Pigweed RPC failure for address {address}: {e}", exc_info=True)
   finally:
     switchboard.close()
 

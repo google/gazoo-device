@@ -56,7 +56,7 @@ DEVICE_OPTION_ATTRIBUTES = [
     "alias", "power_switch", "power_port", "usb_hub", "location", "usb_port"
 ]
 
-CLASS_PROPERTY_TYPES = (str, int, dict, type(None))
+CLASS_PROPERTY_TYPES = (str, int, float, dict, type(None))
 
 _BUILT_IN_EXTENSION_PACKAGE_NAME = "gazoo_device_controllers"
 KEYS = immutabledict.immutabledict({

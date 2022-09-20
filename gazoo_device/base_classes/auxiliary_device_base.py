@@ -19,7 +19,7 @@ re-implemented in derived device classes. Device classes should inherit from
 AuxiliaryDevice, not from this class.
 """
 import abc
-from typing import Optional
+from typing import Callable, List, Optional
 
 from gazoo_device import console_config
 from gazoo_device import data_types
@@ -57,7 +57,7 @@ class AuxiliaryDeviceBase(abc.ABC):
     """Returns interactive console configuration or None if not supported."""
 
   @abc.abstractproperty
-  def health_checks(self):
+  def health_checks(self) -> List[Callable[[], None]]:
     """Returns list of methods to execute as health checks."""
 
   @abc.abstractproperty

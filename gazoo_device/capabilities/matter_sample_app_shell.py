@@ -31,7 +31,7 @@ _MATTER_APP_SERVICE_FULL_PATH = f"/etc/systemd/system/{_MATTER_APP_SERVICE}"
 _APP_START_SEC = 3  # seconds
 _POLL_INTERVAL_SEC = 1  # seconds
 _COOL_DOWN_SEC = 1  # seconds
-_COMMANDS = immutabledict.immutabledict({
+COMMANDS = immutabledict.immutabledict({
     "CHECK_IF_APP_EXISTS": f"test -f {_MATTER_APP_PATH}",
     "CHECK_IF_SERVICE_EXISTS": f"test -f {_MATTER_APP_SERVICE_FULL_PATH}",
     "CHECK_SERVICE_ENABLED": f"sudo systemctl is-enabled {_MATTER_APP_SERVICE}",
@@ -82,7 +82,7 @@ class MatterSampleAppShell(matter_sample_app_base.MatterSampleAppBase):
   def is_present(self) -> bool:
     """Returns if the app binary presents."""
     _, return_code = self._shell(
-        _COMMANDS["CHECK_IF_APP_EXISTS"], include_return_code=True)
+        COMMANDS["CHECK_IF_APP_EXISTS"], include_return_code=True)
     return return_code == 0
 
   @decorators.DynamicProperty
@@ -94,13 +94,13 @@ class MatterSampleAppShell(matter_sample_app_base.MatterSampleAppBase):
   def has_service(self) -> bool:
     """Returns if the sample app service file exists."""
     _, return_code = self._shell(
-        _COMMANDS["CHECK_IF_SERVICE_EXISTS"], include_return_code=True)
+        COMMANDS["CHECK_IF_SERVICE_EXISTS"], include_return_code=True)
     return return_code == 0
 
   @decorators.DynamicProperty
   def is_service_enabled(self) -> bool:
     """Returns if the sample app service is enabled."""
-    return self._shell(_COMMANDS["CHECK_SERVICE_ENABLED"]) == "enabled"
+    return self._shell(COMMANDS["CHECK_SERVICE_ENABLED"]) == "enabled"
 
   @decorators.CapabilityLogDecorator(logger)
   def get_process_ids(self) -> List[str]:
@@ -109,7 +109,7 @@ class MatterSampleAppShell(matter_sample_app_base.MatterSampleAppBase):
     Returns:
       The list of active linux app process IDs.
     """
-    output = self._shell(_COMMANDS["GET_RUNNING_PROCESSES"])
+    output = self._shell(COMMANDS["GET_RUNNING_PROCESSES"])
     return list(output.splitlines()) if output else []
 
   @decorators.CapabilityLogDecorator(logger)
@@ -128,7 +128,7 @@ class MatterSampleAppShell(matter_sample_app_base.MatterSampleAppBase):
     # Terminate the process and wait for it to restart.
     running_processes = " ".join(self.get_process_ids())
     terminate_proc_cmd = (
-        _COMMANDS["TERMINATE_PROCESS"].format(running_processes))
+        COMMANDS["TERMINATE_PROCESS"].format(running_processes))
     self._shell(terminate_proc_cmd)
 
     # Poll until the sample app process is up.
@@ -151,7 +151,7 @@ class MatterSampleAppShell(matter_sample_app_base.MatterSampleAppBase):
     Does nothing if the service is already enabled.
     """
     if not self.is_service_enabled:
-      self._shell(_COMMANDS["ENABLE_SERVICE"])
+      self._shell(COMMANDS["ENABLE_SERVICE"])
 
   @decorators.CapabilityLogDecorator(logger)
   def upgrade(self, sample_app_file_path: str) -> None:
@@ -175,9 +175,9 @@ class MatterSampleAppShell(matter_sample_app_base.MatterSampleAppBase):
     self._close_transport(port=self._pigweed_port)
 
     # Stop the service daemon, scp the sample app binary and start again.
-    self._shell(_COMMANDS["STOP_SERVICE"])
+    self._shell(COMMANDS["STOP_SERVICE"])
     self._send_file_to_device(src=sample_app_file_path, dest=_MATTER_APP_PATH)
-    self._shell(_COMMANDS["START_SERVICE"])
+    self._shell(COMMANDS["START_SERVICE"])
 
     # Poll until the sample app process is up.
     retry.retry(
@@ -201,4 +201,4 @@ class MatterSampleAppShell(matter_sample_app_base.MatterSampleAppBase):
   @decorators.CapabilityLogDecorator(logger)
   def factory_reset(self) -> None:
     """Factory resets all settings stored on RPi."""
-    self._shell(_COMMANDS["CLEAR_COMMISSION_DIRECTORY"])
+    self._shell(COMMANDS["CLEAR_COMMISSION_DIRECTORY"])

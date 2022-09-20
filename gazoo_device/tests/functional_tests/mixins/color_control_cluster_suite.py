@@ -17,6 +17,7 @@ from mobly import asserts
 
 _TARGET_HUE = 70
 _TARGET_SATURATION = 90
+_TARGET_COLOR_TEMPERATURE = 108
 
 
 class ColorControlClusterTestSuite:
@@ -35,3 +36,11 @@ class ColorControlClusterTestSuite:
     self.endpoint.color.move_to_saturation(saturation=_TARGET_SATURATION)
     asserts.assert_equal(_TARGET_SATURATION,
                          self.endpoint.color.current_saturation)
+
+  def test_move_to_color_temperature_and_color_temperature_mireds_attribute(
+      self):
+    """Tests the MoveToColorTemperature and the ColorTemperatureMireds."""
+    self.endpoint.color.move_to_color_temperature(
+        color_temperature_mireds=_TARGET_COLOR_TEMPERATURE)
+    asserts.assert_equal(_TARGET_COLOR_TEMPERATURE,
+                         self.endpoint.color.color_temperature_mireds)

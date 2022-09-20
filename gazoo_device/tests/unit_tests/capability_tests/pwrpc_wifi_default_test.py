@@ -36,21 +36,13 @@ class PwRPCWifiDefaultTest(fake_device_test_case.FakeDeviceTestCase):
         device_name=_FAKE_DEVICE_NAME,
         switchboard_call=self.switchboard_call_mock)
 
-  def test_verify_rpc_ack_raise_error(self):
-    """Verifies DeviceError is raied in case of failed ACK."""
-    with self.assertRaisesWithLiteralMatch(
-        errors.DeviceError,
-        f"{_FAKE_DEVICE_NAME} did not acknowledge the RPC."):
-      self.uut._verify_rpc_ack(ack=False)
-
   def test_channel(self):
     """Verifies get wifi channel."""
     wifi_channel = 1
     channel_to_bytes = wifi_service_pb2.Channel(
         channel=wifi_channel).SerializeToString()
-    self.switchboard_call_mock.return_value = (True, channel_to_bytes)
-    resp = self.uut.channel
-    self.assertEqual(resp, wifi_channel)
+    self.switchboard_call_mock.return_value = channel_to_bytes
+    self.assertEqual(self.uut.channel, wifi_channel)
     self.switchboard_call_mock.assert_called_once()
 
   def test_ssid(self):
@@ -58,9 +50,8 @@ class PwRPCWifiDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     wifi_ssid = b"TEST"
     ssid_to_bytes = wifi_service_pb2.Ssid(
         ssid=wifi_ssid).SerializeToString()
-    self.switchboard_call_mock.return_value = (True, ssid_to_bytes)
-    resp = self.uut.ssid
-    self.assertEqual(resp, wifi_ssid.decode("utf-8"))
+    self.switchboard_call_mock.return_value = ssid_to_bytes
+    self.assertEqual(self.uut.ssid, wifi_ssid.decode("utf-8"))
     self.switchboard_call_mock.assert_called_once()
 
   def test_mac_address(self):
@@ -68,9 +59,8 @@ class PwRPCWifiDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     wifi_mac = "AA:AA:AA:AA:AA:AA"
     mac_address_to_bytes = wifi_service_pb2.MacAddress(
         mac_address=wifi_mac).SerializeToString()
-    self.switchboard_call_mock.return_value = (True, mac_address_to_bytes)
-    resp = self.uut.mac_address
-    self.assertEqual(resp, wifi_mac)
+    self.switchboard_call_mock.return_value = mac_address_to_bytes
+    self.assertEqual(self.uut.mac_address, wifi_mac)
     self.switchboard_call_mock.assert_called_once()
 
   def test_wifi_interface(self):
@@ -78,9 +68,8 @@ class PwRPCWifiDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     wifi_interface = "wlan0"
     interface_to_bytes = wifi_service_pb2.WiFiInterface(
         interface=wifi_interface).SerializeToString()
-    self.switchboard_call_mock.return_value = (True, interface_to_bytes)
-    resp = self.uut.wifi_interface
-    self.assertEqual(resp, wifi_interface)
+    self.switchboard_call_mock.return_value = interface_to_bytes
+    self.assertEqual(self.uut.wifi_interface, wifi_interface)
     self.switchboard_call_mock.assert_called_once()
 
   def test_ipv4_address(self):
@@ -88,9 +77,8 @@ class PwRPCWifiDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     wifi_ipv4_address = "192.168.100.120"
     address_to_bytes = wifi_service_pb2.IP4Address(
         address=wifi_ipv4_address).SerializeToString()
-    self.switchboard_call_mock.return_value = (True, address_to_bytes)
-    resp = self.uut.ipv4_address
-    self.assertEqual(resp, wifi_ipv4_address)
+    self.switchboard_call_mock.return_value = address_to_bytes
+    self.assertEqual(self.uut.ipv4_address, wifi_ipv4_address)
     self.switchboard_call_mock.assert_called_once()
 
   def test_connect_success(self):
@@ -100,7 +88,7 @@ class PwRPCWifiDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     connection_result = wifi_service_pb2.CONNECTION_ERROR.OK
     connection_result_bytes = wifi_service_pb2.ConnectionResult(
         error=connection_result).SerializeToString()
-    self.switchboard_call_mock.return_value = (True, connection_result_bytes)
+    self.switchboard_call_mock.return_value = connection_result_bytes
     self.uut.connect(ssid=ssid, security_type=security_type)
     self.switchboard_call_mock.assert_called_once()
 
@@ -112,7 +100,7 @@ class PwRPCWifiDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     connection_result_bytes = wifi_service_pb2.ConnectionResult(
         error=connection_result).SerializeToString()
 
-    self.switchboard_call_mock.return_value = (True, connection_result_bytes)
+    self.switchboard_call_mock.return_value = connection_result_bytes
     with self.assertRaisesWithLiteralMatch(
         errors.DeviceError,
         f"{_FAKE_DEVICE_NAME} failed to connect to wifi with {connection_result}"
@@ -122,17 +110,7 @@ class PwRPCWifiDefaultTest(fake_device_test_case.FakeDeviceTestCase):
 
   def test_disconnect_success(self):
     """Verifies wifi disconnect is successful."""
-    self.switchboard_call_mock.return_value = (True, "")
     self.uut.disconnect()
-    self.switchboard_call_mock.assert_called_once()
-
-  def test_disconnect_failure(self):
-    """Verifies device error in case of wifi disconnect is unsuccessful."""
-    self.switchboard_call_mock.return_value = (False, "")
-    with self.assertRaisesWithLiteralMatch(
-        errors.DeviceError,
-        f"{_FAKE_DEVICE_NAME} did not acknowledge the RPC."):
-      self.uut.disconnect()
     self.switchboard_call_mock.assert_called_once()
 
 

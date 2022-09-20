@@ -29,6 +29,7 @@ class ColorControlCluster(enum.IntEnum):
   # Attribute IDs
   ATTRIBUTE_CURRENT_HUE = 0x0000
   ATTRIBUTE_CURRENT_SATURATION = 0x0001
+  ATTRIBUTE_COLOR_TEMPERATURE_MIREDS = 0x0007
 
 
 class DoorLockCluster(enum.IntEnum):

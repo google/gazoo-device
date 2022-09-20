@@ -162,21 +162,13 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
 
   @decorators.CapabilityLogDecorator(logger)
   def get_device_info(self) -> device_service_pb2.DeviceInfo:
-    """Returns device static information.
-
-    Raises:
-      DeviceError: The ack status is not true.
-    """
+    """Returns device static information."""
     payload_in_bytes = self._trigger_device_action(action="GetDeviceInfo")
     return device_service_pb2.DeviceInfo.FromString(payload_in_bytes)
 
   @decorators.CapabilityLogDecorator(logger)
   def get_device_state(self) -> device_service_pb2.DeviceState:
-    """Returns device state information.
-
-    Raises:
-      DeviceError: The ack status is not true.
-    """
+    """Returns device state information."""
     payload_in_bytes = self._trigger_device_action(action="GetDeviceState")
     return device_service_pb2.DeviceState.FromString(payload_in_bytes)
 
@@ -267,13 +259,7 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     """
     device_rpc_kwargs = {"pw_rpc_timeout_s": self._rpc_timeout_s}
     device_rpc_kwargs.update(kwargs)
-    ack, payload_in_bytes = self.call(
+    return self.call(
         method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=("Device", action),
         method_kwargs=device_rpc_kwargs)
-
-    if not ack:
-      raise errors.DeviceError(f"{self._device_name} triggering {action} failed"
-                               ": The action did not succeed")
-
-    return payload_in_bytes

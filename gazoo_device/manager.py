@@ -1760,7 +1760,7 @@ class Manager:
       DeviceError: Device not found.
     """
     self._type_check("Property name", prop)
-    self._type_check(prop, value, allowed_types=(str, type(None), int))
+    self._type_check(prop, value, allowed_types=(str, type(None), int, float))
 
     with self.create_and_close_device(
         identifier,

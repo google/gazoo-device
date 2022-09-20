@@ -16,7 +16,6 @@
 from typing import Any, Callable, List, Set, Tuple, Type
 
 from gazoo_device import decorators
-from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities import matter_endpoints_and_clusters
 from gazoo_device.capabilities.interfaces import matter_endpoints_base
@@ -61,17 +60,13 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
 
   def get_supported_endpoint_ids(self) -> List[int]:
     """Gets the list of supported endpoint ids on the device."""
-    ack, list_of_supported_endpoints = self._switchboard_call(
+    list_of_supported_endpoints = self._switchboard_call(
         method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_DESCRIPTOR_SERVICE_NAME,
                      _DESCRIPTOR_GET_ENDPOINTS_RPC_NAME),
         method_kwargs={
             "endpoint": matter_endpoints_base.ROOT_NODE_ENDPOINT_ID,
             "pw_rpc_timeout_s": self._rpc_timeout_s})
-    if not ack:
-      raise errors.DeviceError(
-          f"Device {self._device_name} getting {_DESCRIPTOR_SERVICE_NAME} "
-          f"{_DESCRIPTOR_GET_ENDPOINTS_RPC_NAME} failed.")
     # TODO(b/241313435): support RootNode device type in PwRPC.
     supported_endpoint_ids = []
     for endpoint_in_bytes in list_of_supported_endpoints:
@@ -90,16 +85,12 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
       The endpoint class module (or UnsupportedEndpoint if the endpoint is not
       yet supported in GDM) and the device type ID.
     """
-    ack, device_types = self._switchboard_call(
+    device_types = self._switchboard_call(
         method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_DESCRIPTOR_SERVICE_NAME,
                      _DESCRIPTOR_DEVICE_TYPE_RPC_NAME),
         method_kwargs={
             "endpoint": endpoint_id, "pw_rpc_timeout_s": self._rpc_timeout_s})
-    if not ack:
-      raise errors.DeviceError(
-          f"Device {self._device_name} getting {_DESCRIPTOR_SERVICE_NAME} "
-          f"{_DESCRIPTOR_DEVICE_TYPE_RPC_NAME} failed.")
     device_type = descriptor_service_pb2.DeviceType.FromString(device_types[0])
     device_type_id = device_type.device_type
 
@@ -112,16 +103,12 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
   def get_supported_clusters(
       self, endpoint_id: int) -> Set[Type[cluster_base.ClusterBase]]:
     """Retrieves the supported clusters from the given endpoint ID."""
-    ack, clusters = self._switchboard_call(
+    clusters = self._switchboard_call(
         method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_DESCRIPTOR_SERVICE_NAME,
                      _DESCRIPTOR_GET_CLUSTERS_RPC_NAME),
         method_kwargs={
             "endpoint": endpoint_id, "pw_rpc_timeout_s": self._rpc_timeout_s})
-    if not ack:
-      raise errors.DeviceError(
-          f"Device {self._device_name} getting {_DESCRIPTOR_SERVICE_NAME} "
-          f"{_DESCRIPTOR_GET_CLUSTERS_RPC_NAME} failed.")
     cluster_classes = set()
     for cluster_in_bytes in clusters:
       cluster = descriptor_service_pb2.Cluster.FromString(cluster_in_bytes)
@@ -168,16 +155,10 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
         "attribute_id": attribute_id, "type": attribute_type,
         "pw_rpc_timeout_s": self._rpc_timeout_s}
 
-    ack, data_in_bytes = self._switchboard_call(
+    data_in_bytes = self._switchboard_call(
         method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_ATTRIBUTE_SERVICE_NAME, _ATTRIBUTE_READ_RPC_NAME),
         method_kwargs=read_kwargs)
-    if not ack:
-      error_message = (
-          f"Device {self._device_name} reading attribute (endpoint ID = "
-          f"{endpoint_id}, cluster ID = {cluster_id}, attribute ID = "
-          f"{attribute_id}) with attribute type {attribute_type} failed.")
-      raise errors.DeviceError(error_message)
 
     return attributes_service_pb2.AttributeData.FromString(data_in_bytes)
 
@@ -222,13 +203,7 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
         metadata, _ATTRIBUTE_METADATA_MODULE_PATH)
     write_kwargs = {"data": serialized_data, "metadata": serialized_metadata}
 
-    ack, _ = self._switchboard_call(
+    self._switchboard_call(
         method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_ATTRIBUTE_SERVICE_NAME, _ATTRIBUTE_WRITE_RPC_NAME),
         method_kwargs=write_kwargs)
-    if not ack:
-      error_message = (
-          f"Device {self._device_name} writing data: {data} to attribute ("
-          f"endpoint ID = {endpoint_id}, cluster ID = {cluster_id}, attribute "
-          f"ID = {attribute_id}) with attribute type {attribute_type} failed.")
-      raise errors.DeviceError(error_message)

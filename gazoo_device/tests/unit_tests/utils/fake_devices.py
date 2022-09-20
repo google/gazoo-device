@@ -14,6 +14,7 @@
 """Methods and classes for faking devices in unit tests."""
 import copy
 import os.path
+from typing import Callable, List
 from unittest import mock
 
 import gazoo_device
@@ -155,7 +156,7 @@ class FakeGazooDeviceBase(gazoo_device_base.GazooDeviceBase):
     return "SomethingPlatform"
 
   @decorators.PersistentProperty
-  def health_checks(self):
+  def health_checks(self) -> List[Callable[[], None]]:
     return []
 
   @decorators.LogDecorator(_LOGGER)

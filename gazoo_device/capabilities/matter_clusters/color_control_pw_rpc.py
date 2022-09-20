@@ -24,6 +24,7 @@ from gazoo_device.protos import attributes_service_pb2
 logger = gdm_logger.get_logger()
 ColorControlCluster = matter_enums.ColorControlCluster
 INT8U_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_INT8U_ATTRIBUTE_TYPE
+INT16U_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_INT16U_ATTRIBUTE_TYPE
 
 
 class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
@@ -113,3 +114,49 @@ class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
         attribute_id=ColorControlCluster.ATTRIBUTE_CURRENT_SATURATION,
         attribute_type=INT8U_ATTRIBUTE_TYPE)
     return color_data.data_uint8
+
+  @decorators.DynamicProperty
+  def color_temperature_mireds(self) -> int:
+    """The ColorTemperatureMireds attribute.
+
+    The ColorTemperatureMireds attribute contains a scaled inverse of the
+    current value of the color temperature.
+
+    Returns:
+      The current color temperature.
+    """
+    color_temperature = self._read(
+        endpoint_id=self._endpoint_id,
+        cluster_id=matter_enums.ColorControlCluster.ID,
+        attribute_id=ColorControlCluster.ATTRIBUTE_COLOR_TEMPERATURE_MIREDS,
+        attribute_type=INT16U_ATTRIBUTE_TYPE)
+    return color_temperature.data_uint16
+
+  @decorators.CapabilityLogDecorator(logger)
+  def move_to_color_temperature(
+      self, color_temperature_mireds: int, verify: bool = True) -> None:
+    """The MoveToColorTemperature command.
+
+    On receipt of this command, a device should move from its current color
+    temperature to the given color temperature value.
+
+    Args:
+      color_temperature_mireds: The color temperature that the device should
+        move to.
+      verify: If true, verifies the color temperature changes before returning.
+    """
+    previous_color_temperature = self.color_temperature_mireds
+
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster_id=ColorControlCluster.ID,
+        attribute_id=ColorControlCluster.ATTRIBUTE_COLOR_TEMPERATURE_MIREDS,
+        attribute_type=INT16U_ATTRIBUTE_TYPE,
+        data_uint16=color_temperature_mireds)
+
+    if verify:
+      if self.color_temperature_mireds != color_temperature_mireds:  # pylint: disable=comparison-with-callable
+        raise errors.DeviceError(
+            f"Device {self._device_name} current color temperature didn't "
+            f"change to {color_temperature_mireds} from "
+            f"{previous_color_temperature}.")

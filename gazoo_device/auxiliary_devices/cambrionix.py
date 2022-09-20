@@ -89,6 +89,7 @@ import os
 import select
 import time
 import typing
+from typing import Callable, List
 
 from gazoo_device import decorators
 from gazoo_device import detect_criteria
@@ -190,7 +191,7 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
     return None
 
   @decorators.PersistentProperty
-  def health_checks(self):
+  def health_checks(self) -> List[Callable[[], None]]:
     """Returns list of methods to execute as health checks."""
     return [self.check_device_connected, self.check_clear_flags]
 

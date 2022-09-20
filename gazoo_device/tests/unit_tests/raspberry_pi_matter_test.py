@@ -146,6 +146,12 @@ class RaspberryPiMatterTests(fake_device_test_case.FakeDeviceTestCase):
         "The Matter sample app process is not running"):
       self.uut.check_app_running()
 
+  @mock.patch.object(raspberry_pi_matter.RaspberryPiMatter, "switchboard")
+  def test_check_open_pwrpc_socket_transport(self, mock_switchboard):
+    """Verifies check_open_pwrpc_socket_transport on success."""
+    self.uut.check_open_pwrpc_socket_transport()
+    mock_switchboard.open_transport.assert_called_once()
+
   def test_matter_sample_app_alias(self):
     """Verifies matter_sample_app alias on success."""
     self.assertIsNotNone(self.uut.matter_sample_app)
@@ -162,6 +168,15 @@ class RaspberryPiMatterTests(fake_device_test_case.FakeDeviceTestCase):
     fake_error = errors.ServiceNotEnabledError(
         device_name="fake-name", msg="fake-msg")
     self.uut.recover(error=fake_error)
+
+  @mock.patch.object(raspberry_pi_matter.RaspberryPiMatter, "shell")
+  def test_recover_for_process_not_running_error(self, mock_shell):
+    """Verifies recover method for sample app service not running error."""
+    fake_error = errors.ProcessNotRunningError(
+        device_name="fake-name", msg="fake-msg")
+    self.uut.recover(error=fake_error)
+
+    mock_shell.assert_called_once()
 
   @mock.patch.object(
       raspberry_pi_matter.RaspberryPiMatter, "wait_for_bootup_complete")

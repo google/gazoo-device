@@ -93,44 +93,28 @@ class MatterEndpointsAccessorPwPpcTest(
     mock_get_endpoint_cls.assert_called_once()
     mock_get_supported_clusters.assert_called_once()
 
-  def test_get_supported_endpoint_ids_on_success(self):
+  def test_get_supported_endpoint_ids(self):
     """Verifies get_supported_endpoint_ids method on success."""
     fake_endpoint = descriptor_service_pb2.Endpoint(endpoint=_FAKE_ENDPOINT_ID)
     fake_supported_endpoints = [fake_endpoint.SerializeToString()]
-    self.fake_switchboard_call.return_value = True, fake_supported_endpoints
+    self.fake_switchboard_call.return_value = fake_supported_endpoints
 
     self.assertEqual([_FAKE_ENDPOINT_ID], self.uut.get_supported_endpoint_ids())
-
-  def test_get_supported_endpoint_ids_on_failure_false_ack(self):
-    """Verifies get_supported_endpoint_ids on failure with false ack."""
-    self.fake_switchboard_call.return_value = False, []
-
-    with self.assertRaisesRegex(errors.DeviceError,
-                                "getting Descriptor PartsList failed"):
-      self.uut.get_supported_endpoint_ids()
 
   @mock.patch.object(
       matter_endpoints_and_clusters.MATTER_DEVICE_TYPE_ID_TO_CLASS,
       "get",
       return_value=_FAKE_ENDPOINT_CLS)
-  def test_get_endpoint_class_and_device_type_id_on_success(self, mock_mapping):
+  def test_get_endpoint_class_and_device_type_id(self, mock_mapping):
     """Verifies get_endpoint_class_and_device_type_id on success."""
     fake_device_type = descriptor_service_pb2.DeviceType(
         device_type=_FAKE_DEVICE_TYPE_ID)
     fake_device_types = [fake_device_type.SerializeToString()]
-    self.fake_switchboard_call.return_value = True, fake_device_types
+    self.fake_switchboard_call.return_value = fake_device_types
 
     self.assertEqual(
         (_FAKE_ENDPOINT_CLS, _FAKE_DEVICE_TYPE_ID),
         self.uut.get_endpoint_class_and_device_type_id(_FAKE_ENDPOINT_ID))
-
-  def test_get_endpoint_class_and_device_type_id_on_failure_false_ack(self):
-    """Verifies get_endpoint_class_and_device_type_id failure with false ack."""
-    self.fake_switchboard_call.return_value = False, []
-
-    with self.assertRaisesRegex(errors.DeviceError,
-                                "getting Descriptor DeviceTypeList failed"):
-      self.uut.get_endpoint_class_and_device_type_id(_FAKE_ENDPOINT_ID)
 
   def test_reset_method_on_success(self):
     """Verifies reset method on success."""
@@ -151,7 +135,7 @@ class MatterEndpointsAccessorPwPpcTest(
     mock_get.return_value = cluster_class
     fake_cluster = descriptor_service_pb2.Cluster(cluster_id=cluster_id)
     fake_clusters = [fake_cluster.SerializeToString()]
-    self.fake_switchboard_call.return_value = True, fake_clusters
+    self.fake_switchboard_call.return_value = fake_clusters
 
     expected_cluster_classes = (
         set() if cluster_class is None else {
@@ -160,14 +144,6 @@ class MatterEndpointsAccessorPwPpcTest(
     self.assertEqual(
         expected_cluster_classes,
         self.uut.get_supported_clusters(endpoint_id=_FAKE_ENDPOINT_ID))
-
-  def test_get_supported_clusters_on_failure(self):
-    """Verifies get_supported_clusters method on failure."""
-    self.fake_switchboard_call.return_value = False, []
-
-    with self.assertRaisesRegex(errors.DeviceError,
-                                "getting Descriptor ServerList failed"):
-      self.uut.get_supported_clusters(endpoint_id=_FAKE_ENDPOINT_ID)
 
   @mock.patch.object(
       matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
@@ -320,10 +296,10 @@ class MatterEndpointsAccessorPwPpcTest(
         expected_mapping,
         self.uut.get_supported_endpoint_instances_and_cluster_flavors())
 
-  def test_ember_api_read_on_success(self):
+  def test_ember_api_read(self):
     """Verifies Ember API read method on success."""
     data = attributes_service_pb2.AttributeData(data_bool=True)
-    self.fake_switchboard_call.return_value = True, data.SerializeToString()
+    self.fake_switchboard_call.return_value = data.SerializeToString()
 
     self.assertEqual(
         data,
@@ -333,22 +309,8 @@ class MatterEndpointsAccessorPwPpcTest(
             attribute_id=_FAKE_ATTRIBUTE_ID,
             attribute_type=_FAKE_ATTRIBUTE_TYPE))
 
-  def test_ember_api_read_on_failure(self):
-    """Verifies Ember API read method on failure."""
-    self.fake_switchboard_call.return_value = False, None
-    error_message = f"Device {_FAKE_DEVICE_NAME} reading attribute"
-
-    with self.assertRaisesRegex(errors.DeviceError, error_message):
-      self.uut.read(
-          endpoint_id=_FAKE_ENDPOINT_ID,
-          cluster_id=_FAKE_CLUSTER_ID,
-          attribute_id=_FAKE_ATTRIBUTE_ID,
-          attribute_type=_FAKE_ATTRIBUTE_TYPE)
-
-  def test_ember_api_write_on_success(self):
+  def test_ember_api_write(self):
     """Verifies Ember API write method on success."""
-    self.fake_switchboard_call.return_value = True, None
-
     self.uut.write(
         endpoint_id=_FAKE_ENDPOINT_ID,
         cluster_id=_FAKE_CLUSTER_ID,
@@ -357,19 +319,6 @@ class MatterEndpointsAccessorPwPpcTest(
         data_bool=True)
 
     self.fake_switchboard_call.assert_called_once()
-
-  def test_ember_api_write_on_failure(self):
-    """Verifies Ember API write method on failure."""
-    self.fake_switchboard_call.return_value = False, None
-    error_message = f"Device {_FAKE_DEVICE_NAME} writing data"
-
-    with self.assertRaisesRegex(errors.DeviceError, error_message):
-      self.uut.write(
-          endpoint_id=_FAKE_ENDPOINT_ID,
-          cluster_id=_FAKE_CLUSTER_ID,
-          attribute_id=_FAKE_ATTRIBUTE_ID,
-          attribute_type=_FAKE_ATTRIBUTE_TYPE,
-          data_bool=True)
 
 
 if __name__ == "__main__":

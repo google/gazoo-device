@@ -21,7 +21,7 @@ import inspect
 import os
 import re
 import time
-from typing import Any, List, Set, Tuple, Type
+from typing import Any, Callable, List, Set, Tuple, Type
 import weakref
 
 from gazoo_device import config
@@ -187,7 +187,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     return self.is_connected(device_config)
 
   @decorators.PersistentProperty
-  def health_checks(self):
+  def health_checks(self) -> List[Callable[[], None]]:
     """Returns list of methods to execute as health checks."""
     return [
         self.check_power_cycling_ready, self.check_device_connected,

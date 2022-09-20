@@ -17,6 +17,8 @@
 This device controller populates the supported Matter endpoints on the RPi
 platform by using the descriptor RPC service.
 """
+import time
+
 from typing import Callable, Dict, List, Optional, Tuple
 from gazoo_device import config
 from gazoo_device import decorators
@@ -124,6 +126,7 @@ class RaspberryPiMatter(
         self.check_has_service,
         self.check_is_service_enabled,
         self.check_app_running,
+        self.check_open_pwrpc_socket_transport,
         self.check_rpc_working]
 
   @decorators.health_check
@@ -161,6 +164,15 @@ class RaspberryPiMatter(
           device_name=self.name,
           msg="The Matter sample app process is not running.")
 
+  @decorators.health_check
+  def check_open_pwrpc_socket_transport(self) -> None:
+    """Checks if the PwRpc socket transport can be opened successfully.
+
+    Note that this health check can only be run after the health checks which
+    ensure the sample app is running (check_app_present and check_app_running).
+    """
+    self.switchboard.open_transport(port=self._PIGWEED_PORT)
+
   @decorators.CapabilityDecorator(matter_sample_app_shell.MatterSampleAppShell)
   def matter_sample_app(self):
     """Matter sample app control and management capability over shell."""
@@ -180,13 +192,18 @@ class RaspberryPiMatter(
     """Recovers the device from an error.
 
     1. Enables the sample app service when it's not enabled.
-    2. Otherwise trying with a parent recover method.
+    2. Starts the sample app service if the process is not running.
+    3. Otherwise trying with a parent recover method.
 
     Args:
       error: The error we try to recover from.
     """
     if isinstance(error, errors.ServiceNotEnabledError):
       self.matter_sample_app.enable_service()
+    elif isinstance(error, errors.ProcessNotRunningError):
+      self.shell(matter_sample_app_shell.COMMANDS["START_SERVICE"])
+      # Wait a bit for the process to start.
+      time.sleep(_APP_START_SEC)
     else:
       super().recover(error)
 

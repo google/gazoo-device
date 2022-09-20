@@ -279,23 +279,15 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     mock_trigger_device_action.assert_called_once_with(
         action="SetPairingState", pairing_enabled=False)
 
-  def test_trigger_device_actio_on_success(self):
+  def test_trigger_device_action(self):
     """Verifies _trigger_device_action on success."""
-    self.switchboard_call_mock.return_value = True, _FAKE_PAYLOAD_BYTES
+    self.switchboard_call_mock.return_value = _FAKE_PAYLOAD_BYTES
 
     self.assertEqual(
         _FAKE_PAYLOAD_BYTES,
         self.uut._trigger_device_action(action=_FAKE_ACTION))
 
     self.switchboard_call_mock.assert_called_once()
-
-  def test_trigger_device_action_on_failure(self):
-    """Verifies _trigger_device_action on failure."""
-    self.switchboard_call_mock.return_value = False, None
-    error_regex = f"triggering {_FAKE_ACTION} failed"
-
-    with self.assertRaisesRegex(errors.DeviceError, error_regex):
-      self.uut._trigger_device_action(action=_FAKE_ACTION)
 
 
 if __name__ == "__main__":

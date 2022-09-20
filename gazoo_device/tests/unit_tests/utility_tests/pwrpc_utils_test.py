@@ -57,18 +57,16 @@ class PwRpcUtilsTests(fake_device_test_case.FakeDeviceTestCase):
     self.assertIsNotNone(proto_inst)
     fake_decoder.assert_called_once_with(_FAKE_BYTES)
 
-  @parameterized.parameters(dict(ack=True), dict(ack=False), dict(ack=None))
-  def test_is_matter_device(self, ack):
+  @parameterized.parameters(dict(is_matter=True), dict(is_matter=False))
+  def test_is_matter_device(self, is_matter):
     """Verifies is_matter_device method."""
     fake_switchboard_func = mock.Mock(
         spec=switchboard.switchboard.SwitchboardDefault)
-    if ack is None:
+    if not is_matter:
       fake_switchboard_func.return_value.call.side_effect = (
           errors.DeviceError(_FAKE_ERROR_MESSAGE))
-      is_matter = False
     else:
-      fake_switchboard_func.return_value.call.return_value = ack, None
-      is_matter = ack
+      fake_switchboard_func.return_value.call.return_value = None
 
     self.assertEqual(is_matter,
                      pwrpc_utils.is_matter_device(

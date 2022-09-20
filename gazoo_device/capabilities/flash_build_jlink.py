@@ -109,10 +109,6 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
     if self._switchboard is None:
       return
 
-    def is_ack_true(rpc_response):
-      ack, _ = rpc_response
-      return ack
-
     switchboard_kwargs = {
         "method_name": pigweed_rpc_transport.RPC_METHOD_NAME,
         "method_args": (_RPC_DEVICE_SERVICE_NAME, _RPC_GET_DEVICE_INFO_NAME),
@@ -120,7 +116,6 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
     retry.retry(
         func=self._switchboard.call,
         func_kwargs=switchboard_kwargs,
-        is_successful=is_ack_true,
         reraise=False)
 
   def _jlink_flash(self, image_path: str) -> None:

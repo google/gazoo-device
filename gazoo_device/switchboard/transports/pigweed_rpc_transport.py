@@ -20,7 +20,7 @@ import select
 import socket
 import threading
 import typing
-from typing import Any, Collection, Optional, Tuple, Union
+from typing import Any, Collection, Optional, Union
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.switchboard.transports import transport_base
@@ -225,7 +225,7 @@ class PwHdlcRpcClient:
 def _rpc(hdlc_client: PwHdlcRpcClient,
          service_name: str,
          event_name: str,
-         **kwargs: Any) -> Tuple[bool, Optional[bytes]]:
+         **kwargs: Any) -> bytes:
   """RPC call to the Matter endpoint with given service and event name.
 
   Args:
@@ -235,10 +235,13 @@ def _rpc(hdlc_client: PwHdlcRpcClient,
     **kwargs: Arguments for the event method.
 
   Returns:
-    RPC ack value, RPC encoded payload in bytes
+    RPC encoded payload in bytes.
+
+  Raises:
+    DeviceError when the HDLC client is not alive or RPC ack value is not OK.
   """
   if not hdlc_client.is_alive():
-    return False, None
+    raise errors.DeviceError("HLDC client is not alive.")
   client_channel = hdlc_client.rpcs().chip.rpc
   service = getattr(client_channel, service_name)
   event = getattr(service, event_name)
@@ -247,7 +250,11 @@ def _rpc(hdlc_client: PwHdlcRpcClient,
       param.decode() if isinstance(param, pwrpc_utils.PigweedProtoState)
       else param for param_name, param in kwargs.items()}
   ack, payload = event(**kwargs)
-  return ack.ok(), _serialize(payload)
+  if not ack.ok():
+    raise errors.DeviceError(
+        f"Pigweed RPC call {service_name} {event_name} {kwargs} fails: "
+        f"Error message: {ack.name}. Error code: {ack.value}.")
+  return _serialize(payload)
 
 
 class PigweedRpcSerialTransport(transport_base.TransportBase):
@@ -334,7 +341,7 @@ class PigweedRpcSerialTransport(transport_base.TransportBase):
   def rpc(self,
           service_name: str,
           event_name: str,
-          **kwargs: Any) -> Tuple[bool, Optional[bytes]]:
+          **kwargs: Any) -> bytes:
     """RPC call to the Matter endpoint with given service and event name."""
     return _rpc(self._hdlc_client, service_name, event_name, **kwargs)
 
@@ -347,7 +354,7 @@ class PigweedRpcSocketTransport(transport_base.TransportBase):
                protobuf_import_paths: Collection[str],
                port: int,
                auto_reopen: bool = True,
-               open_on_start: bool = True):
+               open_on_start: bool = False):
     """Initializes a PigweedRpcSocketTransport instance.
 
     Args:
@@ -358,7 +365,8 @@ class PigweedRpcSocketTransport(transport_base.TransportBase):
       auto_reopen: Whether to automatically reopen the transport if it closes
         unexpectedly.
       open_on_start: Whether to open the transport during TransportProcess
-        start.
+        start. Set to False as the transport should be opened only if the linux
+        sample app is already running properly on the device.
     """
     super().__init__(
         auto_reopen=auto_reopen,
@@ -420,6 +428,6 @@ class PigweedRpcSocketTransport(transport_base.TransportBase):
   def rpc(self,
           service_name: str,
           event_name: str,
-          **kwargs: Any) -> Tuple[bool, Optional[bytes]]:
+          **kwargs: Any) -> bytes:
     """RPC call to the Matter endpoint with given service and event name."""
     return _rpc(self._hdlc_client, service_name, event_name, **kwargs)

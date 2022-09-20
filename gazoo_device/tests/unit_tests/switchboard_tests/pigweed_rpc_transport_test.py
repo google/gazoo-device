@@ -278,8 +278,8 @@ class PigweedRpcModuleMethodsTest(unit_test_case.UnitTestCase):
                      pigweed_rpc_transport._serialize(fake_payload))
 
   @mock.patch.object(pigweed_rpc_transport, "_serialize")
-  def test_rpc_hdlc_client_alive(self, mock_serialize):
-    """Verifies rpc method with alive hdlc client."""
+  def test_rpc_hdlc_client_on_success(self, mock_serialize):
+    """Verifies rpc method on success."""
     fake_ack = mock.Mock()
     fake_ack.ok.return_value = True
     fake_channel = mock.Mock()
@@ -289,26 +289,43 @@ class PigweedRpcModuleMethodsTest(unit_test_case.UnitTestCase):
     fake_client.rpcs.return_value.chip.rpc = fake_channel
     mock_serialize.return_value = _FAKE_SERIALIZED_BYTES
 
-    ack, payload = pigweed_rpc_transport._rpc(
+    payload = pigweed_rpc_transport._rpc(
         hdlc_client=fake_client,
         service_name=_FAKE_SERVICE,
         event_name=_FAKE_EVENT)
 
-    self.assertTrue(ack)
     self.assertEqual(_FAKE_SERIALIZED_BYTES, payload)
 
+  def test_rpc_hdlc_client_ack_value_not_ok(self):
+    """Verifies rpc method on failure with not ok ack value."""
+    fake_ack = mock.Mock()
+    fake_ack.ok.return_value = False
+    fake_ack.name = "fake-error-message"
+    fake_ack.value = "fake-error-code"
+    fake_channel = mock.Mock()
+    fake_channel.fake_service.fake_event.return_value = fake_ack, None
+    fake_client = mock.Mock(spec=pigweed_rpc_transport.PwHdlcRpcClient)
+    fake_client.is_alive.return_value = True
+    fake_client.rpcs.return_value.chip.rpc = fake_channel
+
+    with self.assertRaisesRegex(
+        errors.DeviceError,
+        "Error message: fake-error-message. Error code: fake-error-code"):
+      pigweed_rpc_transport._rpc(
+          hdlc_client=fake_client,
+          service_name=_FAKE_SERVICE,
+          event_name=_FAKE_EVENT)
+
   def test_transport_rpc_hdlc_client_not_alive(self):
-    """Verifies PwRPC transport rpc call with not alive hdlc client."""
+    """Verifies rpc method on failure with not alive hdlc client."""
     fake_client = mock.Mock(spec=pigweed_rpc_transport.PwHdlcRpcClient)
     fake_client.is_alive.return_value = False
 
-    ack, payload = pigweed_rpc_transport._rpc(
-        hdlc_client=fake_client,
-        service_name=_FAKE_SERVICE,
-        event_name=_FAKE_EVENT)
-
-    self.assertFalse(ack)
-    self.assertIsNone(payload)
+    with self.assertRaisesRegex(errors.DeviceError, "HLDC client is not alive"):
+      pigweed_rpc_transport._rpc(
+          hdlc_client=fake_client,
+          service_name=_FAKE_SERVICE,
+          event_name=_FAKE_EVENT)
 
 
 class PigweedRpcSerialTransportTest(unit_test_case.UnitTestCase):

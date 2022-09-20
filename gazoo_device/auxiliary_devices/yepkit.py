@@ -43,6 +43,7 @@ To get the current switching status (UP/DOWN) of a downstream port 2.
 $ ykushcmd -g 2
 """
 import subprocess
+from typing import Callable, List
 
 from gazoo_device import decorators
 from gazoo_device import detect_criteria
@@ -128,7 +129,7 @@ class Yepkit(auxiliary_device.AuxiliaryDevice):
     return None
 
   @decorators.PersistentProperty
-  def health_checks(self):
+  def health_checks(self) -> List[Callable[[], None]]:
     """Returns list of methods to execute as health checks."""
     return [self.check_device_connected]
 

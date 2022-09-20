@@ -44,39 +44,23 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
     super().__init__(device_name=device_name)
     self._switchboard_call = switchboard_call
 
-  def _verify_rpc_ack(self, ack: bool) -> None:
-    """Helper method to verify rpc was acknowledged by device successfully.
-
-    Args:
-      ack: RPC ack.ok() value.
-
-    Raises:
-      DeviceError if the device failed to acknowledge the RPC.
-    """
-    if not ack:
-      raise errors.DeviceError(f"{self._device_name} did not acknowledge "
-                               "the RPC.")
-
   @decorators.DynamicProperty
   def channel(self) -> int:
     """Wifi channel used with current ssid connection."""
-    ack, channel_bytes = self._switchboard_call(
+    channel_bytes = self._switchboard_call(
         method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_WIFI_RPC, "GetChannel"),
         method_kwargs={})
-
-    self._verify_rpc_ack(ack)
     return wifi_service_pb2.Channel.FromString(channel_bytes).channel
 
   @decorators.DynamicProperty
   def ssid(self) -> str:
     """Name of the SSID to which device is connected."""
-    ack, ssid_bytes = self._switchboard_call(
+    ssid_bytes = self._switchboard_call(
         method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_WIFI_RPC, "GetSsid"),
         method_kwargs={})
 
-    self._verify_rpc_ack(ack)
     ssid = wifi_service_pb2.Ssid.FromString(ssid_bytes).ssid
     # b/212183946: Remove any null characters from ssid name.
     return ssid.rstrip(_ASCII_NULL_BYTES).decode()
@@ -89,35 +73,29 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
       String representation of mac_address in lower case hexadecimal digits
       separated by colon (:). e.g. 24:0a:c4:f8:6c:d4
     """
-    ack, mac_address_bytes = self._switchboard_call(
+    mac_address_bytes = self._switchboard_call(
         method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_WIFI_RPC, "GetMacAddress"),
         method_kwargs={})
-
-    self._verify_rpc_ack(ack)
     return wifi_service_pb2.MacAddress.FromString(mac_address_bytes).mac_address
 
   @decorators.DynamicProperty
   def wifi_interface(self) -> str:
     """Name of the interface used for wifi connection."""
-    ack, wifi_interface_bytes = self._switchboard_call(
+    wifi_interface_bytes = self._switchboard_call(
         method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_WIFI_RPC, "GetWiFiInterface"),
         method_kwargs={})
-
-    self._verify_rpc_ack(ack)
     return wifi_service_pb2.WiFiInterface.FromString(
         wifi_interface_bytes).interface
 
   @decorators.DynamicProperty
   def ipv4_address(self) -> str:
     """IPv4 address for wifi interface."""
-    ack, ip4_address_bytes = self._switchboard_call(
+    ip4_address_bytes = self._switchboard_call(
         method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_WIFI_RPC, "GetIP4Address"),
         method_kwargs={})
-
-    self._verify_rpc_ack(ack)
     return wifi_service_pb2.IP4Address.FromString(ip4_address_bytes).address
 
   @decorators.CapabilityLogDecorator(_LOGGER)
@@ -144,12 +122,10 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
     }
     if secret is not None:
       connect_kwargs.update({"secret": secret.encode()})
-    ack, connection_result_bytes = self._switchboard_call(
+    connection_result_bytes = self._switchboard_call(
         method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_WIFI_RPC, "Connect"),
         method_kwargs=connect_kwargs)
-
-    self._verify_rpc_ack(ack)
     connection_result = wifi_service_pb2.ConnectionResult.FromString(
         connection_result_bytes)
     result = connection_result.error
@@ -160,8 +136,7 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
   @decorators.CapabilityLogDecorator(_LOGGER)
   def disconnect(self) -> None:
     """Disconnects from current wifi connection."""
-    ack, _ = self._switchboard_call(
+    self._switchboard_call(
         method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=(_WIFI_RPC, "Disconnect"),
         method_kwargs={})
-    self._verify_rpc_ack(ack)

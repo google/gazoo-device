@@ -14,7 +14,7 @@
 
 """Class for SSH devices."""
 import time
-from typing import Optional
+from typing import Callable, List, Optional
 
 from gazoo_device import config
 from gazoo_device import console_config
@@ -149,7 +149,7 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
     return self.props["persistent_identifiers"], self.props["options"]
 
   @decorators.PersistentProperty
-  def health_checks(self):
+  def health_checks(self) -> List[Callable[[], None]]:
     """Returns list of methods to execute as health checks."""
     return [
         self.check_device_connected, self.check_create_switchboard,

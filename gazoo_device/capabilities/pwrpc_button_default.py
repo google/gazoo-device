@@ -58,13 +58,9 @@ class PwRPCButtonDefault(pwrpc_button_base.PwRPCButtonBase):
       raise errors.DeviceError(f"Invalid button id {button_id}. Possible valid "
                                f"ids: {self._valid_button_ids}.")
 
-    ack, _ = self._switchboard_call(
+    self._switchboard_call(
         method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
         method_args=("Button", "Event"),
         method_kwargs={"idx": button_id,
                        "pushed": True,
                        "pw_rpc_timeout_s": self._rpc_timeout_s})
-
-    if not ack:
-      raise errors.DeviceError(f"Device {self._device_name} button {button_id} "
-                               f"push failed.")
