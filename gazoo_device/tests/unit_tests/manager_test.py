@@ -243,6 +243,8 @@ class MockOutDevices:
 def populate_config_files(artifacts_directory):
   """Create fake gdm config files."""
   config_folder = os.path.join(artifacts_directory, "fake_configs")
+  if os.path.exists(config_folder):
+    shutil.rmtree(config_folder)
   os.mkdir(config_folder)
   fake_gdm_config = {
       "device_file_name": os.path.join(config_folder, "c.json"),
@@ -284,8 +286,6 @@ class ManagerTestsSetup(unit_test_case.UnitTestCase):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    cls.fake_gdm_config, cls.files = populate_config_files(
-        cls.artifacts_directory)
     extensions.primary_devices.append(fake_devices.FakeSSHDevice)
 
   @classmethod
@@ -295,6 +295,10 @@ class ManagerTestsSetup(unit_test_case.UnitTestCase):
 
   def setUp(self):
     super().setUp()
+    # Create fresh config files for each test.
+    self.fake_gdm_config, self.files = populate_config_files(
+        self.artifacts_directory)
+
     self.device_log_file = os.path.join(self.artifacts_directory,
                                         self._testMethodName + "-device.txt")
     self.event_file_name = log_process.get_event_filename(self.device_log_file)
@@ -334,24 +338,24 @@ class ManagerTestsSetup(unit_test_case.UnitTestCase):
 class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
   """Unit tests for the manager.py module."""
 
-  def test_001_manager_construct_destruct(self):
+  def test_manager_construct_destruct(self):
     """Test Manager constructing and destructing raises no errors."""
     uut = manager.Manager()
     del uut
 
-  def test_002_manager_debug_level_INFO_sets_log_handler_level(self):
+  def test_manager_debug_level_INFO_sets_log_handler_level(self):
     self.uut = self._create_manager_object(debug_level=logging.INFO)
     self.assertEqual(self.uut.gdm_log_handler.level, logging.INFO)
 
-  def test_003_manager_debug_level_DEVELOPER_sets_log_handler_level(self):
+  def test_manager_debug_level_DEVELOPER_sets_log_handler_level(self):
     self.uut = self._create_manager_object(debug_level="developer")
     self.assertEqual(self.uut.gdm_log_handler.level, logging.DEBUG)
 
-  def test_004_manager_debug_level_DEBUG_sets_log_handler_level(self):
+  def test_manager_debug_level_DEBUG_sets_log_handler_level(self):
     self.uut = self._create_manager_object(debug_level=logging.DEBUG)
     self.assertEqual(self.uut.gdm_log_handler.level, logging.DEBUG)
 
-  def test_000_manager_default_config_files_exist(self):
+  def test_manager_default_config_files_exist(self):
     """Verifying the default files passed to the manager exist on the host."""
     self.uut = self._create_manager_object()
     self.assertTrue(
@@ -375,7 +379,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         "DEFAULT_TESTBEDS_FILE {} does not exist".format(
             config_gdm.DEFAULT_TESTBEDS_FILE))
 
-  def test_005_manager_loads_default_config_files(self):
+  def test_manager_loads_default_config_files(self):
     """Verifying the manager correctly sets all the attributes passed in."""
     self.uut = manager.Manager(gdm_log_file="{}/{}_gdm.txt".format(
         self.artifacts_directory, self._testMethodName + "-2"))
@@ -387,7 +391,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           ("Manager should have loaded {} ({}) from defaults but it didnt, "
            "Instead key is {}").format(key, value, getattr(self.uut, key)))
 
-  def test_006_manager_constructor_accepts_custom_config_file(self):
+  def test_manager_constructor_accepts_custom_config_file(self):
     """Verifying manager overrides the defaults with gdm_config."""
     self.uut = manager.Manager(
         gdm_log_file="{}/{}_gdm.txt".format(self.artifacts_directory,
@@ -399,7 +403,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           ("Manager should have loaded {} from gdm_config_file. "
            "instead of {}, its {}").format(key, value, getattr(self.uut, key)))
 
-  def test_007_manager_constructor_accepts_custom_arguments(self):
+  def test_manager_constructor_accepts_custom_arguments(self):
     """Verifying arguments override both gdm config and defaults."""
     self.uut = self._create_manager_object()
     for key, value in self.files.items():
@@ -409,7 +413,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
                  "its {}").format(key, value, getattr(self.uut, key))
       self.assertEqual(str(getattr(self.uut, key)), str(value), err_msg)
 
-  def test_008_manager_rejects_bad_log_directory_parameter(self):
+  def test_manager_rejects_bad_log_directory_parameter(self):
     """Verifying error user provides a log_directory that doesn't exist."""
     fake_d = "/tmp/t/r/s"
     if os.path.exists(fake_d):
@@ -420,7 +424,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
                                               self._testMethodName + "-2"),
           log_directory=fake_d)
 
-  def test_010_manager_close_called_twice(self):
+  def test_manager_close_called_twice(self):
     """Test calling Manager.close() more than once closes devices correctly."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -433,7 +437,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         self.uut.close()
         mock_close.assert_not_called()
 
-  def test_100_manager_get_device_prop_bad_types_raises_error(self):
+  def test_manager_get_device_prop_bad_types_raises_error(self):
     """Testing a bad property types and characters that GDM forbids."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -460,28 +464,28 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       with self.assertRaises(errors.DeviceError):
         self.uut.set_prop(self.first_name, "alias", "BullsEye\n")
 
-  def test_101_manager_get_device_prop_bad_name_raises_error(self):
+  def test_manager_get_device_prop_bad_device_name_raises_error(self):
     """Testing giving the manager a bad device name will raise an error."""
     name_s = "sdkjfhskdjhf"
     self.uut = self._create_manager_object()
     with self.assertRaises(errors.DeviceError):
       self.uut.get_device_prop(name_s)
 
-  def test_102_manager_get_device_prop_bad_name_raises_error(self):
+  def test_manager_get_device_prop_bad_prop_name_raises_error_(self):
     """Testing gdm raises error in get_device_prop."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
       with self.assertRaises(AttributeError):
         self.uut.get_device_prop(self.first_name, "lskdfhsldkfjlskdjf")
 
-  def test_103_manager_get_device_prop_method_raises_error(self):
+  def test_manager_get_device_prop_method_raises_error(self):
     """Test get-prop reboot."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
       with self.assertRaises(errors.DeviceError):
         self.uut.get_device_prop(self.first_name, "reboot")
 
-  def test_104_manager_get_device_prop_dynamic_of_disconnected_raises_error(
+  def test_manager_get_device_prop_dynamic_of_disconnected_raises_error(
       self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -493,24 +497,24 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           self.logger.info(
               self.uut.get_device_prop(self.first_name, "firmware_version"))
 
-  def test_105_manager_get_device_prop_manager_successful(self):
+  def test_manager_get_device_prop_manager_successful(self):
     """Testing gdm returns all types of properties."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
       self.uut.get_device_prop("manager", "device_options_file_name")
       self.uut.get_device_prop("manager")
 
-  def test_106_manager_get_device_prop_optional_successful(self):
+  def test_manager_get_device_prop_first_name(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       self.uut.get_device_prop(self.first_name, "alias")
 
-  def test_107_manager_get_device_prop_persistent_successful(self):
+  def test_manager_get_device_prop_persistent_successful(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       self.uut.get_device_prop(self.first_name, "serial_number")
 
-  def test_108_manager_get_device_prop_dynamic_connected_successful(self):
+  def test_manager_get_device_prop_dynamic_first_name(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       connected = self.uut.get_device_prop(self.first_name, "connected")
@@ -519,7 +523,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           "Device is not reporting as connected in setup for dynamic property")
       self.uut.get_device_prop(self.first_name, "firmware_version")
 
-  def test_109_manager_get_device_prop_with_non_name_identifier_successful(
+  def test_manager_get_device_prop_with_non_name_identifier_successful(
       self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -531,12 +535,12 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       finally:
         self.uut.set_prop(self.first_name, "alias", old_alias)
 
-  def test_110_manager_get_device_prop_none_successful(self):
+  def test_manager_get_device_prop_none_successful(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       self.uut.get_device_prop("sshdevice-0001")
 
-  def test_111_get_device_prop_with_all_aliases(self):
+  def test_get_device_prop_with_all_aliases(self):
     """Verifies get-prop with different identifiers."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -544,17 +548,17 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         identifier = self.uut.get_device_prop(self.first_name, prop)
         self.uut.get_device_prop(identifier.upper(), "firmware_version")
 
-  def test_112_manager_get_device_prop_optional_successful(self):
+  def test_manager_get_device_prop_auxiliary_name(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       self.uut.get_device_prop(self.auxiliary_name, "alias")
 
-  def test_113_manager_get_device_prop_persistent_auxiliary_successful(self):
+  def test_manager_get_device_prop_persistent_auxiliary_successful(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       self.uut.get_device_prop(self.auxiliary_name, "serial_number")
 
-  def test_114_manager_get_device_prop_dynamic_connected_successful(self):
+  def test_manager_get_device_prop_dynamic_auxiliary_name(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       connected = self.uut.get_device_prop(self.auxiliary_name, "connected")
@@ -563,7 +567,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           "Device is not reporting as connected in setup for dynamic property")
       self.uut.get_device_prop(self.first_name, "firmware_version")
 
-  def test_200_manager_set_prop_dynamic_raises_error(self):
+  def test_manager_set_prop_dynamic_raises_error(self):
     """Testing if set_prop doesn't overwrite dynamic prop."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -571,7 +575,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         self.uut.set_prop(self.first_name, "firmware_version",
                           "FAKE_FIRMWARE_VERSION")
 
-  def test_201_manager_set_prop_persistent_raises_error(self):
+  def test_manager_set_prop_persistent_raises_error(self):
     """Testing if set_prop doesn't overwrite dynamic prop."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -579,19 +583,19 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         self.uut.set_prop(self.first_name, "serial_number",
                           "FAKE_SERIAL_NUMBER")
 
-  def test_202_manager_set_prop_persistent_auxiliary_raises_error(self):
+  def test_manager_set_prop_persistent_auxiliary_raises_error(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       with self.assertRaisesRegex(errors.DeviceError, "persistent"):
         self.uut.set_prop(self.auxiliary_name, "serial_number", "1234")
 
-  def test_203_manager_set_prop_dynamic_auxiliary_raises_error(self):
+  def test_manager_set_prop_dynamic_auxiliary_raises_error(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       with self.assertRaisesRegex(errors.DeviceError, "dynamic"):
         self.uut.set_prop(self.auxiliary_name, "firmware_version", "1234")
 
-  def test_204_manager_get_device_prop_custom_successful(self):
+  def test_manager_get_device_prop_custom_successful(self):
     """Testing if custom property can be retrieved."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -606,7 +610,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           "Optional property 'gobbly' not set to gook for {}".format(
               self.first_name))
 
-  def test_204b_manager_get_device_prop_custom_auxiliary_successful(self):
+  def test_manager_get_device_prop_custom_auxiliary_successful(self):
     """Testing if custom property can be retrieved."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -621,7 +625,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           "Optional property 'gobbly' not set to gook for {}".format(
               self.first_name))
 
-  def test_205_manager_set_prop_string_successful(self):
+  def test_manager_set_prop_string_successful(self):
     """Testing if set_prop works on strings."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -637,7 +641,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       finally:
         self.uut.set_prop(self.first_name, "alias", o_alias)
 
-  def test_206_manager_set_prop_None_successful(self):
+  def test_manager_set_prop_None_successful(self):
     """Testing if set_prop works on none."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -653,7 +657,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       finally:
         self.uut.set_prop(self.first_name, "alias", o_alias)
 
-  def test_207_manager_set_prop_unicode_successful(self):
+  def test_manager_set_prop_unicode_successful(self):
     """Testing if set_prop works with unicode."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -667,7 +671,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       finally:
         self.uut.set_prop(self.first_name, "alias", o_alias)
 
-  def test_208_manager_set_prop_manager_successful(self):
+  def test_manager_set_prop_manager_successful(self):
     """Modify manager config and ensure its written to file."""
     manager_test_path = "/fake/manager/path/and/config.json"
     self.uut = self._create_manager_object()
@@ -685,13 +689,13 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     finally:
       _create_dict(original_config, self.uut.gdm_config_file_name)
 
-  def test_209_manager_set_prop_custom_successful(self):
+  def test_manager_set_prop_custom_successful(self):
     """Testing if set_prop works for new property."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
       self.uut.set_prop(self.first_name, "gobbly", "gook")
 
-  def test_210_set_and_get_from_open_device(self):
+  def test_set_and_get_from_open_device(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       device = self.uut.create_device(self.first_name)
@@ -703,7 +707,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       self.assertIn(device.name, self.uut.get_open_device_names())
       device.close()
 
-  def test_210_manager_set_prop_dynamic_base_class(self):
+  def test_manager_set_prop_dynamic_base_class_no_setter(self):
     """Test manager setting a dynamic property fails if there is no setter."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -722,7 +726,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
             self.uut.set_prop("sshdevice-0000",
                               "file_transfer.dynamic_property", 22)
 
-  def test_211_manager_set_prop_dynamic_base_class(self):
+  def test_manager_set_prop_dynamic_base_class(self):
     """Test manager setting a dynamic property works if there is a setter."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -740,7 +744,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           self.uut.set_prop("sshdevice-0000", "file_transfer.dynamic_property",
                             22)
 
-  def test_212_manager_set_prop_dynamic_auxiliary_class(self):
+  def test_manager_set_prop_dynamic_auxiliary_class_no_setter(self):
     """Test manager setting a dynamic property fails if there is no setter."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -759,7 +763,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
             self.uut.set_prop("cambrionix-1234",
                               "switch_power.dynamic_property", 22)
 
-  def test_213_manager_set_prop_dynamic_auxiliary_class(self):
+  def test_manager_set_prop_dynamic_auxiliary_class(self):
     """Test manager setting a dynamic property works if there is a setter."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -777,35 +781,35 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           self.uut.set_prop("cambrionix-1234", "switch_power.dynamic_property",
                             22)
 
-  def test_300_manager_remove_prop_persistent_raises_error(self):
+  def test_manager_remove_prop_persistent_raises_error(self):
     """Testing remove_prop does not remove persistent properties."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
       with self.assertRaises(errors.DeviceError):
         self.uut.remove_prop(self.first_name, "serial_number")
 
-  def test_301_manager_remove_prop_manager_raises_error(self):
+  def test_manager_remove_prop_manager_raises_error(self):
     """Testing remove_prop does not remove manager properties."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
       with self.assertRaises(errors.DeviceError):
         self.uut.remove_prop("manager", "gdm_config_file_name")
 
-  def test_302_manager_remove_prop_dynamic_raises_error(self):
+  def test_manager_remove_prop_dynamic_raises_error(self):
     """Testing remove_prop does not remove dynamic properties."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
       with self.assertRaises(errors.DeviceError):
         self.uut.remove_prop(self.first_name, "firmware_version")
 
-  def test_303_manager_remove_prop_custom_successful(self):
+  def test_manager_remove_prop_custom_successful(self):
     """Testing if remove_prop works for new property."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
       self.uut.set_prop(self.first_name, "gobbly", "gook")
       self.uut.remove_prop(self.first_name, "gobbly")
 
-  def test_400_manager_create_device_nonexisting_raises_error_and_suggestion(
+  def test_manager_create_device_nonexisting_raises_error_and_suggestion(
       self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -813,12 +817,12 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           errors.DeviceError, "Close matches: sshdevice-0001, sshdevice-0000"):
         self.uut.create_device("sshdevice-0023")
 
-  def test_401_manager_create_device_bad_type_raises_error(self):
+  def test_manager_create_device_bad_type_raises_error(self):
     self.uut = self._create_manager_object()
     with self.assertRaises(errors.DeviceError):
       self.uut.create_device("gobbly-004")
 
-  def test_402_manager_create_device_default_check_log_files(self):
+  def test_manager_create_device_default_check_log_files(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       device = self.uut.create_device(self.first_name)
@@ -854,7 +858,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       self.assertIsNone(device.event_file_symlink,
                         "Expected event file symlink to be None")
 
-  def test_403_manager_create_device_default_check_log_event_symlinks(self):
+  def test_manager_create_device_default_check_log_event_symlinks(self):
     """Verify stale log or event symlinks are properly removed."""
     self.uut = self._create_manager_object()
     name = self.first_name
@@ -890,7 +894,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           "Expecting missing temporary event symlink {}".format(
               temp_event_symlink_name))
 
-  def test_404_manager_create_device_closed_success(self):
+  def test_manager_create_device_closed_success(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       device1 = self.uut.create_device(self.first_name)
@@ -932,7 +936,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           self.uut.create_device(self.second_name, raise_if_already_open=False),
           device2)
 
-  def test_406_manager_create_device_with_non_default_log_directory(self):
+  def test_manager_create_device_with_non_default_log_directory(self):
     """Test verify that symlink is skipped for non default directory."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -959,7 +963,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           "{} symlink file should be skipped for non default directory".format(
               event_symlink_name))
 
-  def test_407_manager_create_device_with_upper_case_name_successful(self):
+  def test_manager_create_device_with_upper_case_name_successful(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       name = self.first_name.upper()
@@ -967,7 +971,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       self.assertTrue(device.make_device_ready.called)
       self.assertIsNotNone(device, "Was unable to create_device")
 
-  def test_4071_manager_create_device_error_in_make_device_ready(self):
+  def test_manager_create_device_error_in_make_device_ready(self):
     """Ensures create switchboard and make_device_ready errors get handled."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -1060,7 +1064,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           "user count did not decrease: close() was not called")
       self.assertIn(device_name, self.uut.get_open_device_names())
 
-  def test_408_manager_create_devices_with_list_of_strings_successful(self):
+  def test_manager_create_devices_with_list_of_strings_successful(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       device_name_list = self.uut.get_connected_devices()[:2]
@@ -1071,7 +1075,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
             device_name, self.devices[i].name,
             "First device does not match the first device on config")
 
-  def test_409_manager_create_devices_of_a_single_type_successful(self):
+  def test_manager_create_devices_of_a_single_type_successful(self):
     """Mobly can potentially pass an id and a label in via a dictionary."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -1086,7 +1090,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           ("create_devices should have created {} {} devices but instead "
            "created {}").format(total_of_type, device_type, len(self.devices)))
 
-  def test_410_manager_create_devices_with_device_type_only(self):
+  def test_manager_create_devices_with_device_type_only(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       device_type = "sshdevice"
@@ -1097,7 +1101,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         ("create_devices should have created {} {} devices but instead "
          "created {}").format(total_of_type, device_type, len(self.devices)))
 
-  def test_411_manager_create_devices_with_dictionaries(self):
+  def test_manager_create_devices_with_dictionaries(self):
     """Mobly can potentially pass an id and a label in via a dictionary."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -1114,7 +1118,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     self.assertEqual(device_dict_list[1]["name"], self.devices[1].serial_number)
     self.assertEqual(device_dict_list[1]["alias"], self.devices[1].alias)
 
-  def test_412_manager_create_devices_with_custom_filters(self):
+  def test_manager_create_devices_with_custom_filters(self):
     """Verify custom Parser filters are loaded for each device created."""
     filter_file = os.path.join(self.TEST_FILTER_DIR, _TEST_FILTER_FILE)
     self.uut = self._create_manager_object()
@@ -1128,7 +1132,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
             device.event_parser.get_event_labels(),
             "Expecting 'optional_description.my_message' event label")
 
-  def test_413_close_does_not_affect_other_instances(self):
+  def test_close_does_not_affect_other_instances(self):
     """Test that closing one Manager instance doesn't affect others."""
     uut1 = self._create_manager_object()
     uut2 = self._create_manager_object()
@@ -1153,7 +1157,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       switch_power_usb_with_charge.SwitchPowerUsbWithCharge,
       "get_mode",
       return_value="off")
-  def test_414_create_device_with_usb_hub(self, mock_get_mode, mock_set_mode):
+  def test_create_device_with_usb_hub(self, mock_get_mode, mock_set_mode):
     self.uut = self._create_manager_object()
     self.uut.options_dict["sshdevice-0000"]["usb_hub"] = "cambrionix-1234"
     self.uut.options_dict["sshdevice-0000"]["usb_port"] = "1"
@@ -1169,7 +1173,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       self.uut.options_dict["sshdevice-0000"]["usb_hub"] = None
       self.uut.options_dict["sshdevice-0000"]["usb_port"] = None
 
-  def test_502_manager_create_log_parser_valid_parameters(self):
+  def test_manager_create_log_parser_valid_parameters(self):
     """Uses valid parameter values and verifies LogParser object is returned."""
     filter_file = os.path.join(self.TEST_FILTER_DIR, _TEST_FILTER_FILE)
     self.uut = self._create_manager_object()
@@ -1179,7 +1183,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     self.assertIsInstance(log_parser_inst, log_parser.LogParser,
                           "Unable to create LogParser object.")
 
-  def test_503_event_related_methods_raise_error_for_bogus_event_label(self):
+  def test_event_related_methods_raise_error_for_bogus_event_label(self):
     """Verify Parser rejects bogus event labels for get_last_event * methods."""
     self.uut = self._create_manager_object()
     with MockOutDevices():
@@ -1205,7 +1209,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           "Rejection of invalid event label did not occur {!r}".format(
               cm.exception))
 
-  def test_600_manager_get_all_supported_device_types(self):
+  def test_manager_get_all_supported_device_types(self):
     self.uut = self._create_manager_object()
     all_types = self.uut.get_supported_device_types()
     primary_types = self.uut.get_supported_primary_device_types()
@@ -1225,7 +1229,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         "Not all device types are in list. Expecting {}. Found {}".format(
             all_types, primary_types + other_types + virtual_types))
 
-  def test_601_manager_overwrite_configs(self):
+  def test_manager_overwrite_configs(self):
     self.uut = self._create_manager_object()
     manager.config.BACKUP_PARENT_DIRECTORY = os.path.join(
         self.artifacts_directory, "fake_backup")
@@ -1265,7 +1269,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       _create_dict(FAKE_DEVICE_OPTIONS, self.files["device_options_file_name"])
       shutil.rmtree(self.uut.backup_directory)
 
-  def test_602_manager_close_open_devices(self):
+  def test_manager_close_open_devices(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       self.uut.create_device(self.first_name)
@@ -1286,7 +1290,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           "Should be no open devices after manager closed ({})".format(
               open_devices))
 
-  def test_603_manager_close_device_success(self):
+  def test_manager_close_device_success(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       device1 = self.uut.create_device(self.first_name)
@@ -1302,14 +1306,14 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           "{} should not be in manager's open device list ({})".format(
               self.first_name, open_devices))
 
-  def test_603_manager_get_open_device_error(self):
+  def test_manager_get_open_device_error(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       with self.assertRaises(errors.DeviceError) as cm:
         self.uut.get_open_device(self.first_name)
       self.assertIn("open", str(cm.exception))
 
-  def test_604_manager_get_open_device_success(self):
+  def test_manager_get_open_device_success(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       device1 = self.uut.create_device(self.first_name)
@@ -1318,7 +1322,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           device1, device2,
           "Manager should have the same instance of device as the one created")
 
-  def test_605_manager_get_open_devices_success(self):
+  def test_manager_get_open_devices_success(self):
     self.uut = self._create_manager_object()
     with MockOutDevices():
       device1 = self.uut.create_device(self.first_name)
@@ -1340,14 +1344,14 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           "No devices should be in manager's list of open devices ({})".format(
               devices))
 
-  def test_606_backup_configs_directory_doesnt_exist(self):
+  def test_backup_configs_directory_doesnt_exist(self):
     """Test backup_configs() fails if config backup directory doesn't exist."""
     self.uut = self._create_manager_object()
     with mock.patch.object(os.path, "exists", return_value=False):
       with self.assertRaisesRegex(errors.DeviceError, "does not exist"):
         self.uut.backup_configs()
 
-  def test_700_detect(self):
+  def test_detect(self):
     self.uut = self._create_manager_object()
     self.uut.devices = mock.MagicMock()
     persistent_configs = {
@@ -1393,7 +1397,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           comm_types=None,
           addresses=None)
 
-  def test_700a_detect_force_overwrite(self):
+  def test_detect_force_overwrite(self):
     """Test detect() with force_overwrite=True."""
     self.uut = self._create_manager_object()
     self.uut.devices = mock.MagicMock()
@@ -1458,7 +1462,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     mock_detect_new_devices.assert_called_once_with(
         mock.ANY, mock_detect_connections.return_value)
 
-  def test_701_delete(self):
+  def test_delete(self):
     self.uut = self._create_manager_object()
     persistent_configs = {
         "devices": self.uut.persistent_dict.copy(),
@@ -1489,7 +1493,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     with self.assertRaises(errors.DeviceError):
       self.uut._get_device_name("12345678", raise_error=True)
 
-  def test_702_redetect(self):
+  def test_redetect(self):
     self.uut = self._create_manager_object()
     self.uut.devices = mock.MagicMock()
     persistent_configs = {
@@ -1531,7 +1535,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     self.assertEqual(self.uut._get_device_name("987654321"), "cambrionix-4321")
     self.assertEqual(self.uut._get_device_name("blah-cam"), "cambrionix-4321")
 
-  def test_703_redetect_static_ip_device(self):
+  def test_redetect_static_ip_device(self):
     self.uut = self._create_manager_object()
     persistent_configs = {
         "devices": self.uut.persistent_dict.copy(),
@@ -1557,8 +1561,8 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       switch_power_usb_with_charge.SwitchPowerUsbWithCharge,
       "get_mode",
       return_value="off")
-  def test_704_redetect_device_with_usb_power_off(self, get_mode_mock,
-                                                  set_mode_mock):
+  def test_redetect_device_with_usb_power_off(self, get_mode_mock,
+                                              set_mode_mock):
     self.uut = self._create_manager_object()
     persistent_configs = {
         "devices": copy.deepcopy(self.uut.persistent_dict),
@@ -1587,7 +1591,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         self.uut.redetect("sshdevice-0000")
         self.assertIn("sshdevice-0000", self.uut.persistent_dict)
 
-  def test_705_redetect_device_not_redetected(self):
+  def test_redetect_device_not_redetected(self):
     """Test that redetect() raises an error if the device was not redetected."""
     self.uut = self._create_manager_object()
     persistent_configs = {
@@ -1626,13 +1630,13 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     # Device should still be known to Manager after failed redetection
     self.uut._get_device_name("sshdevice-0000", raise_error=True)
 
-  def test_732_devices(self):
+  def test_devices(self):
     """Test that Manager.devices() prints a list of all known devices."""
     with MockOutDevices():
       self.uut = self._create_manager_object()
       self.uut.devices()
 
-  def test_733_is_device_connected_error(self):
+  def test_is_device_connected_error(self):
     """Test is_device_connected() returns False when is_connected() raises."""
     self.uut = self._create_manager_object()
     with mock.patch.object(
@@ -1641,14 +1645,14 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         side_effect=errors.DeviceError("Some error")):
       self.assertFalse(self.uut.is_device_connected("sshdevice-0000"))
 
-  def test_734_get_device_name_not_string(self):
+  def test_get_device_name_not_string(self):
     """Test that get_device_name() raises when identifier is not a string."""
     self.uut = self._create_manager_object()
     with self.assertRaisesRegex(errors.DeviceError,
                                 "Device identifier '1234' should be a string."):
       self.uut._get_device_name(1234)
 
-  def test_735_load_config_raises_if_file_not_found(self):
+  def test_load_config_raises_if_file_not_found(self):
     """Test that _load_config() raises if config file doesn't exist."""
     self.uut = self._create_manager_object()
     err_regex = ("Device load configuration failed. File devices.json is not "
@@ -1657,7 +1661,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
       with self.assertRaisesRegex(errors.DeviceError, err_regex):
         self.uut._load_config("devices.json")
 
-  def test_736_load_config_raises_if_file_not_json(self):
+  def test_load_config_raises_if_file_not_json(self):
     """Test that _load_config() raises if it fails to read the JSON."""
     self.uut = self._create_manager_object()
     json_err = json.decoder.JSONDecodeError("Extra data", "line 1 column 3", 2)
@@ -1668,21 +1672,21 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           with self.assertRaisesRegex(errors.DeviceError, err_regex):
             self.uut._load_config("devices.json")
 
-  def test_737_add_correct_value_to_config_value_is_none(self):
+  def test_add_correct_value_to_config_value_is_none(self):
     """Test that add_correct_value_to_config() raises if value is None."""
     self.uut = self._create_manager_object()
     with self.assertRaisesRegex(errors.DeviceError,
                                 "Final value for some_key should not be None"):
       self.uut._add_correct_value_to_config("some_key", None, None)
 
-  def test_738_add_correct_path_to_config_path_is_none(self):
+  def test_add_correct_path_to_config_path_is_none(self):
     """Test that add_correct_value_to_config() raises if path is None."""
     self.uut = self._create_manager_object()
     with self.assertRaisesRegex(errors.DeviceError,
                                 "Final value for some_path should not be None"):
       self.uut._add_correct_path_to_config("some_path", None, None)
 
-  def test_739_add_correct_path_to_config_parent_dir_doesnt_exist(self):
+  def test_add_correct_path_to_config_parent_dir_doesnt_exist(self):
     """Test add_correct_value_to_config() fails if parent dir doesn't exist."""
     self.uut = self._create_manager_object()
     err_regex = "Parent directory of /some/path.txt for some_key doesn't exist"
@@ -1691,7 +1695,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         self.uut._add_correct_path_to_config("some_key", "/some/path.txt",
                                              "some/default/path")
 
-  def test_740_add_correct_path_to_config_file_doesnt_exist(self):
+  def test_add_correct_path_to_config_file_doesnt_exist(self):
     """Test that add_correct_value_to_config() raises if file doesn't exist."""
     self.uut = self._create_manager_object()
     err_regex = "File /some/path.txt for some_key doesn't exist"
@@ -1701,14 +1705,14 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           self.uut._add_correct_path_to_config("some_key", "/some/path.txt",
                                                "some/default/path")
 
-  def test_770_log_handlers_no_stdout_logging(self):
+  def test_log_handlers_no_stdout_logging(self):
     """Verify stdout log handler is disabled when stdout_logging = False."""
     gc.collect()  # remove_handler can also get called by Manager.__del__
     with mock.patch.object(gdm_logger, "remove_handler") as mock_remove_handler:
       self.uut = self._create_manager_object(stdout_logging=False)
       mock_remove_handler.assert_called_once_with(gdm_logger._stdout_handler)
 
-  def test_800_create_required_folders_success(self):
+  def test_create_required_folders_success(self):
     required_folders = ["mock", "mock2", "mock3", "mock3/mock4"]
     required_folders = [
         os.path.join(self.artifacts_directory, folder)
@@ -1717,8 +1721,9 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     for folder in required_folders:
       if os.path.exists(folder):
         os.rmdir(folder)
-    # should be able to handle making folders and leaving existing ones alone
-    os.mkdir(required_folders[0])
+    # By mocking REQUIRED_FOLDERS, the necessary config folder won't get created
+    # and manager creation fails when checking for configs like gdm.json.
+    os.makedirs(config_gdm.CONFIG_DIRECTORY, exist_ok=True)
     with mock.patch.object(config_gdm, "REQUIRED_FOLDERS", required_folders):
       self._create_manager_object()
     self.assertTrue(
@@ -1731,7 +1736,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
         "Permission of existing required file is {} but should be {}".format(
             permission, manager._EXPECTED_FOLDER_PERMISSIONS))
 
-  def test_801_permissions_issue_raises_appropriate_message(self):
+  def test_permissions_issue_raises_appropriate_message(self):
     required_folders = [os.path.join(self.artifacts_directory, "mock5")]
     for folder in required_folders:
       if os.path.exists(folder):
@@ -1745,7 +1750,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           with self.assertRaisesRegex(errors.DeviceError, "sudo chmod"):
             self._create_manager_object()
 
-  def test_900_transport_process_exceptions_are_reraised(self):
+  def test_transport_process_exceptions_are_reraised(self):
     """Test capturing and re-raising exceptions in transport processes."""
     device_manager = manager.Manager()
     log_path = "/tmp/dummy_log.txt"
@@ -1759,22 +1764,22 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
                                 fake_transport.EXCEPTION_MESSAGE):
       device_switchboard.open_transport(transport_num)
 
-  def test_910_supported_capability_interfaces_not_empty(self):
+  def test_supported_capability_interfaces_not_empty(self):
     """Check that the dict of supported capability interfaces is not empty."""
     self.assertTrue(manager.Manager.get_all_supported_capability_interfaces())
 
-  def test_911_supported_capability_flavors_not_empty(self):
+  def test_supported_capability_flavors_not_empty(self):
     """Check that the dict of supported capability flavors is not empty."""
     self.assertTrue(manager.Manager.get_all_supported_capability_flavors())
 
-  def test_913_supported_capability_interfaces_are_read_only(self):
+  def test_supported_capability_interfaces_are_read_only(self):
     """Check that the dict of supported capability interfaces is read-only."""
     interfaces_dict = manager.Manager.get_all_supported_capability_interfaces()
     interfaces_dict["foo"] = "bar"
     self.assertNotIn("foo",
                      manager.Manager.get_all_supported_capability_interfaces())
 
-  def test_930_no_reference_loops(self):
+  def test_no_reference_loops(self):
     """Test deleting last reference to object triggers garbage collection."""
     manager_kwargs = {
         "device_file_name": self.files["device_file_name"],
@@ -1790,7 +1795,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     with mock.patch.object(signal, "signal"):
       self.verify_no_reference_loops(manager.Manager, (), manager_kwargs)
 
-  def test_931_atexit_handler_not_called_if_object_is_dead(self):
+  def test_atexit_handler_not_called_if_object_is_dead(self):
     """Test handler registered via atexit() does nothing if object not live."""
     gc.collect()  # Ensure existing garbage doesn't interfere
     gc.disable()  # Ensure __del__ isn't called by periodic GC
@@ -1810,7 +1815,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     finally:
       gc.enable()
 
-  def test_932_atexit_handler_called_if_object_is_live(self):
+  def test_atexit_handler_called_if_object_is_live(self):
     """Test that atexit calls close() if object is still live."""
     gc.collect()  # Ensure existing garbage doesn't interfere
     gc.disable()  # Ensure __del__ isn't called by periodic GC
@@ -1830,7 +1835,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
     finally:
       gc.enable()
 
-  def test_940_get_supported_device_capabilities(self):
+  def test_get_supported_device_capabilities(self):
     """Test that the call uses the correct device class."""
     mock_capabilities = ["cap1, cap2"]
     with mock.patch.object(
@@ -1842,7 +1847,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           mock_capabilities)
       mock_get_capabilities.assert_called_once()
 
-  def test_941_device_has_capabilities(self):
+  def test_device_has_capabilities(self):
     """Test that the call uses the correct device class."""
     caps = ["cap1", "cap2"]
     with mock.patch.object(
@@ -1852,7 +1857,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           manager.Manager.device_has_capabilities("sshdevice", caps), True)
       mock_has_capabilities.assert_called_once_with(caps)
 
-  def test_942_get_supported_device_capability_flavors(self):
+  def test_get_supported_device_capability_flavors(self):
     """Test underlying NestDeviceBase method is called on appropriate class."""
     mock_capability_flavors = set([str, dict])  # Set of some class objects
     with mock.patch.object(
@@ -1864,7 +1869,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           [dict, str])
       mock_method.assert_called_once()
 
-  def test_950_process_exceptions_missing_queue(self):
+  def test_process_exceptions_missing_queue(self):
     """Test failure if _exception_queue deleted before _process_exceptions."""
     self.uut = self._create_manager_object()
     self.uut.close()
@@ -1873,7 +1878,7 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
 
   @mock.patch.object(host_utils, "_download_key")
   @mock.patch.object(host_utils, "_set_key_permissions")
-  def test_980_download_keys(self, mock_set_key_permissions, mock_download_key):
+  def test_download_keys(self, mock_set_key_permissions, mock_download_key):
     """Test download_keys downloading missing keys."""
     mock_key_1 = data_types.KeyInfo(
         "foo_key", type=data_types.KeyType.SSH, package="foo_package")

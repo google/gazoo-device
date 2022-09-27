@@ -239,9 +239,7 @@ class MatterEndpointsAccessorPwPpcTest(
       "_fetch_endpoints_and_clusters")
   def test_has_endpoints_on_failure_invalid_endpoint(self, mock_fetch):
     """Verifies has_endpoints method on failure with invalid endpoint."""
-    error_msg = f"Endpoint {_FAKE_ENDPOINT_NAME} is not recognized"
-    with self.assertRaisesRegex(errors.DeviceError, error_msg):
-      self.uut.has_endpoints([_FAKE_ENDPOINT_NAME])
+    self.assertFalse(self.uut.has_endpoints([_FAKE_ENDPOINT_NAME]))
 
   @mock.patch.object(
       matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,

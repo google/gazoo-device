@@ -215,10 +215,6 @@ class MatterEndpointsBase(capability_base.CapabilityBase):
         case-insensitive. Some valid examples are: "on_off_light",
         "On_Off_Light".
 
-    Raises:
-      ValueError when the given endpoint name is invalid or not supported in
-      GDM.
-
     Returns:
       True if the device supports all the endpoints, false otherwise.
     """
@@ -230,9 +226,10 @@ class MatterEndpointsBase(capability_base.CapabilityBase):
     for endpoint_name in endpoint_names:
       endpoint = valid_endpoint_name_to_class.get(endpoint_name.lower())
       if endpoint is None:
-        raise ValueError(f"Endpoint {endpoint_name} is not recognized. "
-                         "Valid endpoints are: "
-                         f"{list(valid_endpoint_name_to_class.keys())}")
+        logger.warning(f"Endpoint {endpoint_name} is not recognized. "
+                       "Valid endpoints are: "
+                       f"{list(valid_endpoint_name_to_class.keys())}")
+        return False
       if endpoint not in supported_endpoints:
         return False
     return True

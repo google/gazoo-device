@@ -366,6 +366,19 @@ Alias for accessing `RootNode` endpoint and its supported clusters.
 The supported clusters can be found in the
 [GDM RootNode implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/root_node.py).
 
+#### `speaker`
+
+Alias for accessing `Speaker` endpoint and its supported clusters.
+
+```
+# Check the OnOff attribute on the OnOff cluster on the Speaker endpoint.
+>>> dut.speaker.on_off.onoff
+True
+```
+
+The supported clusters can be found in the
+[GDM Speaker implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/speaker.py).
+
 #### `window_covering`
 
 Alias for accessing `WindowCovering` endpoint and its supported clusters.

@@ -49,25 +49,28 @@ class GDMTestBase(suite_filter.SuiteFilterBase):
   """Base class for GDM functional test suites."""
   _CONFIG_DIRS = _CONFIG_DIRS
   device = None
+  devices = None
   testing_properties = None
 
   def setup_class(self) -> None:
     """Creates a device instance."""
     super().setup_class()
     self.testing_properties = self.user_params
-    self.device = retry.retry(
+    self.devices = retry.retry(
         func=self.register_controller,
         func_args=(self._CONTROLLER_MODULE,),
         timeout=_CREATION_TIMEOUT,
         interval=_CREATION_SLEEP,
-        reraise=True)[0]
+        reraise=True)
+    self.device = self.devices[0]
     # Check attribute presence on the class rather than the instance to avoid
     # accessing the property during the check.
-    if hasattr(type(self.device), "firmware_version"):
-      firmware_version = self.device.get_property(
-          "firmware_version", raise_error=False)
-      logging.info("DUT: %s, firmware version: %s", self.device_name,
-                   firmware_version)
+    for i, device in enumerate(self.devices):
+      if hasattr(type(device), "firmware_version"):
+        firmware_version = device.get_property(
+            "firmware_version", raise_error=False)
+        logging.info("DUT %s: %s, firmware version: %s", i, device.name,
+                     firmware_version)
 
   def setup_test(self) -> None:
     """Starts a new log for the device."""
@@ -76,15 +79,17 @@ class GDMTestBase(suite_filter.SuiteFilterBase):
       self.device.start_new_log(log_name_prefix=self.get_full_test_name())
 
   def teardown_test(self) -> None:
-    """Ensures device is connected."""
-    if self.device:
-      self.device.check_device_connected()
+    """Ensures devices are connected."""
+    if self.devices:
+      for device in self.devices:
+        device.check_device_connected()
     super().teardown_test()
 
   def teardown_class(self) -> None:
-    """Close device as needed."""
-    if self.device:
-      self.device.close()
+    """Close devices as needed."""
+    if self.devices:
+      for device in self.devices:
+        device.close()
 
 
 def main(*args, **kwargs):

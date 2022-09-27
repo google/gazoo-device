@@ -14,6 +14,7 @@
 
 """Interface for a Matter Door Lock endpoint."""
 import abc
+from gazoo_device.capabilities.matter_clusters.interfaces import door_lock_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 
 
@@ -24,7 +25,7 @@ class DoorLockBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def door_lock(self):
+  def door_lock(self) -> door_lock_base.DoorLockClusterBase:
     """Required cluster: Door Lock cluster."""
 
   # TODO(b/209362086) Add the below optional clusters

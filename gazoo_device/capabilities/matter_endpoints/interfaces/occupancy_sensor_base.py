@@ -14,6 +14,7 @@
 
 """Interface for a Matter Occupancy Sensor endpoint."""
 import abc
+from gazoo_device.capabilities.matter_clusters.interfaces import occupancy_sensing_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 
 
@@ -24,5 +25,6 @@ class OccupancySensorBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def occupancy_sensing(self):
+  def occupancy_sensing(
+      self) -> occupancy_sensing_base.OccupancySensingClusterBase:
     """Required cluster: occupancy_sensing cluster."""

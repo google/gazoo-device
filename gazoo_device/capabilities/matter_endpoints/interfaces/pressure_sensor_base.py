@@ -14,6 +14,7 @@
 
 """Interface for a Matter Pressure Sensor endpoint."""
 import abc
+from gazoo_device.capabilities.matter_clusters.interfaces import measurement_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 
 
@@ -24,5 +25,5 @@ class PressureSensorBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def pressure_measurement(self):
+  def pressure_measurement(self) -> measurement_base.MeasurementClusterBase:
     """Required cluster: pressure_measurement cluster."""

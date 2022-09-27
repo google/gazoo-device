@@ -480,17 +480,29 @@ def _is_connect_successful(output_and_return_code: Tuple[str, int]) -> bool:
           all(marker not in output for marker in failure_markers))
 
 
-def connect(adb_identifier: str, attempts: int = 3) -> str:
+def connect(adb_identifier: str,
+            attempts: int = 3,
+            verification_timeout_s: int = 10) -> str:
   """Connects to the device via ADB and returns the command output.
+
+  Verifies the device is online ('device') in 'adb devices' after connecting.
+
+  ADB 31.0.1 improves ADB over IP state tracking (TCP keepalive interval):
+  https://developer.android.com/studio/releases/platform-tools#3101_march_2021.
+  Earlier ADB versions are not recommended, as ADB over IP device state can
+  become stale, complicating connectivity verification and dropping commands.
 
   Args:
     adb_identifier: IP address ("12.34.56.78") or IP address and a port number
       ("12.34.56.78:5555"). If a port number is not provided, defaults to 5555.
     attempts: Number of attempts for performing 'adb connect'.
+    verification_timeout_s: Maximum time to wait in seconds for the device to
+      change state to 'device' in 'adb devices' output.
 
   Raises:
     DeviceError: if 'adb connect' fails, or adb_identifier is not found in
-      'adb devices' after 'adb connect'.
+      'adb devices' after 'adb connect'. Note that 'adb connect' succeeds if the
+      device is already connected.
 
   Returns:
     Output of the 'adb connect' command.
@@ -518,8 +530,8 @@ def connect(adb_identifier: str, attempts: int = 3) -> str:
         func=is_adb_mode,
         func_args=[adb_identifier],
         is_successful=bool,
-        timeout=retry_interval_s * attempts,
-        interval=retry_interval_s)
+        timeout=verification_timeout_s,
+        interval=1)
   except errors.CommunicationTimeoutError as e:
     raise errors.DeviceError(
         f"{adb_identifier!r} was not found in 'adb devices' after "
@@ -532,13 +544,26 @@ def _is_disconnected(adb_identifier: str) -> bool:
   return adb_identifier not in [adb_id for adb_id, _ in adb_devices()]
 
 
-def disconnect(adb_identifier: str, attempts: int = 3) -> str:
+def disconnect(adb_identifier: str,
+               attempts: int = 3,
+               verification_timeout_s: int = 10) -> str:
   """Disconnects ADB from the device and returns the command output.
+
+  Verifies that the device is not visible in 'adb devices' after disconnecting.
+  'adb disconnect' behavior is unusual:
+  * 'adb disconnect' fails if the device is already disconnected (not seen in
+    'adb devices'), whereas 'adb connect' succeeds if the device is already
+    connected.
+  * 'adb disconnect' succeeds and does nothing if the device is shown as
+    'offline' in 'adb devices'. The device then remains in 'adb devices' even
+    after the 'adb disconnect'.
 
   Args:
     adb_identifier: IP address ("12.34.56.78") or IP address and a port number
       ("12.34.56.78:5555"). If a port number is not provided, defaults to 5555.
     attempts: Number of attempts for performing 'adb disconnect'.
+    verification_timeout_s: Maximum time to wait in seconds for the device to
+      disappear from 'adb devices'.
 
   Raises:
     DeviceError: if 'adb disconnect' fails, or if adb_identifier is still
@@ -571,12 +596,12 @@ def disconnect(adb_identifier: str, attempts: int = 3) -> str:
         func=_is_disconnected,
         func_kwargs={"adb_identifier": adb_identifier},
         is_successful=bool,
-        timeout=retry_interval_s * attempts,
-        interval=retry_interval_s)
+        timeout=verification_timeout_s,
+        interval=1)
   except errors.CommunicationTimeoutError as e:
     raise errors.DeviceError(
         f"{adb_identifier!r} was still found in 'adb devices' after "
-        f"'adb connect'. Error: {e!r}")
+        f"'adb disconnect'. Error: {e!r}")
   return output
 
 

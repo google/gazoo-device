@@ -14,6 +14,7 @@
 
 """Interface for a Matter Contact Sensor endpoint."""
 import abc
+from gazoo_device.capabilities.matter_clusters.interfaces import boolean_state_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 
 
@@ -24,5 +25,5 @@ class ContactSensorBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def boolean_state(self):
+  def boolean_state(self) -> boolean_state_base.BooleanStateClusterBase:
     """Required cluster: boolean_state cluster."""

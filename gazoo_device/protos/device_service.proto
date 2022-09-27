@@ -13,12 +13,13 @@
 // limitations under the License.
 
 // The Pigweed device RPC proto definition.
-// The source of truth of this proto can be found at https://github.com/project-chip/connectedhomeip/tree/master/examples/common/pigweed/protos
+// The source of truth of this proto can be found at
+// https://github.com/project-chip/connectedhomeip/tree/master/examples/common/pigweed/protos
 syntax = "proto3";
 
-import "third_party/py/gazoo_device/protos/common.proto";
-
 package chip.rpc;
+
+import "third_party/py/gazoo_device/protos/common.proto";
 
 message PairingInfo {
   uint32 code = 1;
@@ -57,34 +58,42 @@ message PairingState {
   bool pairing_enabled = 1;
 }
 
+message MetadataForProvider {
+  bytes tlv = 1;
+}
+
 service Device {
   // To factory reset the device.
-  rpc FactoryReset(pw.protobuf.Empty) returns (pw.protobuf.Empty){}
+  rpc FactoryReset(pw.protobuf.Empty) returns (pw.protobuf.Empty) {}
 
   // To reboot the device.
-  rpc Reboot(pw.protobuf.Empty) returns (pw.protobuf.Empty){}
+  rpc Reboot(pw.protobuf.Empty) returns (pw.protobuf.Empty) {}
 
   // To trigger the device OTA.
-  rpc TriggerOta(pw.protobuf.Empty) returns (pw.protobuf.Empty){}
+  rpc TriggerOta(pw.protobuf.Empty) returns (pw.protobuf.Empty) {}
 
   // To get the device static information.
-  rpc GetDeviceInfo(pw.protobuf.Empty) returns (DeviceInfo){}
+  rpc GetDeviceInfo(pw.protobuf.Empty) returns (DeviceInfo) {}
 
   // To get the device current state.
-  rpc GetDeviceState(pw.protobuf.Empty) returns (DeviceState){}
+  rpc GetDeviceState(pw.protobuf.Empty) returns (DeviceState) {}
 
   // To set the device's pairing state.
-  rpc SetPairingState(PairingState) returns (pw.protobuf.Empty){}
+  rpc SetPairingState(PairingState) returns (pw.protobuf.Empty) {}
 
   // To get the device's pairing state.
-  rpc GetPairingState(pw.protobuf.Empty) returns (PairingState){}
+  rpc GetPairingState(pw.protobuf.Empty) returns (PairingState) {}
 
   // To set the device's pairing info.
-  rpc SetPairingInfo(PairingInfo) returns (pw.protobuf.Empty){}
+  rpc SetPairingInfo(PairingInfo) returns (pw.protobuf.Empty) {}
 
   // Get Spake information.
-  rpc GetSpakeInfo(pw.protobuf.Empty) returns (SpakeInfo){}
+  rpc GetSpakeInfo(pw.protobuf.Empty) returns (SpakeInfo) {}
 
   // Set Spake information.
-  rpc SetSpakeInfo(SpakeInfo) returns (pw.protobuf.Empty){}
+  rpc SetSpakeInfo(SpakeInfo) returns (pw.protobuf.Empty) {}
+
+  // Set OTA Metadata for OTA provider
+  rpc SetOtaMetadataForProvider(MetadataForProvider)
+      returns (pw.protobuf.Empty) {}
 }

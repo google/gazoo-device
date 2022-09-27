@@ -27,6 +27,7 @@ from gazoo_device.capabilities.matter_endpoints import on_off_light_switch
 from gazoo_device.capabilities.matter_endpoints import on_off_plugin_unit
 from gazoo_device.capabilities.matter_endpoints import pressure_sensor
 from gazoo_device.capabilities.matter_endpoints import root_node
+from gazoo_device.capabilities.matter_endpoints import speaker
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.capabilities.matter_endpoints import thermostat
 from gazoo_device.capabilities.matter_endpoints import window_covering
@@ -237,6 +238,20 @@ class MatterEndpointAliasesMixin:
     """
     return self.matter_endpoints.get_endpoint_instance_by_class(
         root_node.RootNodeEndpoint)
+
+  @decorators.CapabilityDecorator(speaker.SpeakerEndpoint)
+  def speaker(self) -> speaker.SpeakerEndpoint:
+    """Matter Speaker endpoint instance.
+
+    Returns:
+      Speaker endpoint instance.
+
+    Raises:
+      DeviceError when Speaker endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        speaker.SpeakerEndpoint)
 
   @decorators.CapabilityDecorator(temperature_sensor.TemperatureSensorEndpoint)
   def temperature_sensor(self) -> temperature_sensor.TemperatureSensorEndpoint:

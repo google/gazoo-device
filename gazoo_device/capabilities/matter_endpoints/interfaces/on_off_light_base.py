@@ -14,6 +14,9 @@
 
 """Interface for a Matter OnOff light endpoint."""
 import abc
+from gazoo_device.capabilities.matter_clusters.interfaces import level_control_base
+from gazoo_device.capabilities.matter_clusters.interfaces import occupancy_sensing_base
+from gazoo_device.capabilities.matter_clusters.interfaces import on_off_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 
 
@@ -24,17 +27,18 @@ class OnOffLightBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def on_off(self):
+  def on_off(self) -> on_off_base.OnOffClusterBase:
     """Required cluster: ZCL on_off cluster."""
 
   @property
   @abc.abstractmethod
-  def level(self):
+  def level(self) -> level_control_base.LevelControlClusterBase:
     """Optional cluster: ZCL level cluster."""
 
   @property
   @abc.abstractproperty
-  def occupancy_sensing(self):
+  def occupancy_sensing(
+      self) -> occupancy_sensing_base.OccupancySensingClusterBase:
     """Optional cluster: ZCL occupancy cluster."""
 
   # TODO(b/209362086) Add the below clusters

@@ -14,6 +14,7 @@
 
 """Interface for a Matter Root Node endpoint."""
 import abc
+from gazoo_device.capabilities.matter_clusters.interfaces import basic_information_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 
 
@@ -24,7 +25,8 @@ class RootNodeBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def basic_information(self):
+  def basic_information(
+      self) -> basic_information_base.BasicInformationClusterBase:
     """Required cluster: basic_information cluster."""
 
   # TODO(b/241164443): implement additional clusters for root node.

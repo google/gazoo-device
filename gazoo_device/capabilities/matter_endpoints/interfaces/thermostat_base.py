@@ -14,6 +14,9 @@
 
 """Interface for a Matter Thermostat endpoint."""
 import abc
+from gazoo_device.capabilities.matter_clusters.interfaces import measurement_base
+from gazoo_device.capabilities.matter_clusters.interfaces import occupancy_sensing_base
+from gazoo_device.capabilities.matter_clusters.interfaces import thermostat_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 
 
@@ -24,22 +27,24 @@ class ThermostatBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def thermostat(self):
+  def thermostat(self) -> thermostat_base.ThermostatClusterBase:
     """Required cluster: ZCL thermostat cluster."""
 
   @property
   @abc.abstractmethod
-  def relative_humidity_measurement(self):
+  def relative_humidity_measurement(
+      self) -> measurement_base.MeasurementClusterBase:
     """Optional cluster: ZCL Relative Humidity Measurement cluster."""
 
   @property
   @abc.abstractmethod
-  def temperature_measurement(self):
+  def temperature_measurement(self) -> measurement_base.MeasurementClusterBase:
     """Optional cluster: ZCL Temperature Measurement cluster."""
 
   @property
   @abc.abstractmethod
-  def occupancy_sensing(self):
+  def occupancy_sensing(
+      self) -> occupancy_sensing_base.OccupancySensingClusterBase:
     """Optional cluster: ZCL Occupancy Sensing cluster."""
 
   # TODO(b/239741839): add optional clusters below

@@ -39,6 +39,7 @@ from gazoo_device.tests.functional_tests import pw_rpc_button_test_suite
 from gazoo_device.tests.functional_tests import pw_rpc_common_test_suite
 from gazoo_device.tests.functional_tests import pw_rpc_wifi_test_suite
 from gazoo_device.tests.functional_tests import shell_ssh_test_suite
+from gazoo_device.tests.functional_tests import speaker_test_suite
 from gazoo_device.tests.functional_tests import switch_power_test_suite
 from gazoo_device.tests.functional_tests import switchboard_test_suite
 from gazoo_device.tests.functional_tests import temperature_sensor_test_suite
@@ -73,6 +74,7 @@ TEST_SUITES = (
     pw_rpc_common_test_suite.PwRPCCommonTestSuite,
     pw_rpc_wifi_test_suite.PwRPCWifiTestSuite,
     shell_ssh_test_suite.ShellSshTestSuite,
+    speaker_test_suite.SpeakerTestSuite,
     switch_power_test_suite.SwitchPowerTestSuite,
     switchboard_test_suite.SwitchboardTestSuite,
     temperature_sensor_test_suite.TemperatureSensorTestSuite,

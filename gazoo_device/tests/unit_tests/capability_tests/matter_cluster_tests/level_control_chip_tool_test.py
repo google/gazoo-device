@@ -64,14 +64,14 @@ class LevelControlClusterChipToolTest(fake_device_test_case.FakeDeviceTestCase):
     self.fake_read.return_value = 10
     self.uut.move_to_level(10)
     self.fake_send.assert_called_once_with(self._endpoint_id, "levelcontrol",
-                                           "move-to-level", [10, 0, 0, 0])
+                                           "move-to-level", [10, 0, 1, 1])
 
   def test_move_to_level_command_failure(self):
     """Tests the move_to_level command failure."""
     with self.assertRaises(errors.DeviceError):
       self.uut.move_to_level(10)
     self.fake_send.assert_called_once_with(self._endpoint_id, "levelcontrol",
-                                           "move-to-level", [10, 0, 0, 0])
+                                           "move-to-level", [10, 0, 1, 1])
 
   def test_min_level_attribute(self):
     """Tests the min_level attribute."""

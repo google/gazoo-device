@@ -24,8 +24,8 @@ _CLUSTER_NAME = "levelcontrol"
 
 # Default data fields for MoveToLevel command based on the spec.
 _DEFAULT_TRANSITION_TIME = 0
-_DEFAULT_OPTION_MASK = 0
-_DEFAULT_OPTION_OVERRIDE = 0
+_DEFAULT_OPTION_MASK = 1
+_DEFAULT_OPTION_OVERRIDE = 1
 
 
 class LevelControlClusterChipTool(level_control_base.LevelControlClusterBase):

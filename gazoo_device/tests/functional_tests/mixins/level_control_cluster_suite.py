@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Mixin for Matter Level Control cluster test suite."""
+from gazoo_device.capabilities.matter_endpoints import speaker
+
 from mobly import asserts
 
 _TARGET_LEVEL = 108
@@ -40,9 +42,12 @@ class LevelControlClusterTestSuite:
       asserts.assert_is_instance(
           self.endpoint.level.max_level, int,
           "MaxLevel attribute must be the int type.")
-      asserts.assert_is_instance(
-          self.endpoint.level.min_level, int,
-          "MinLevel attribute must be the int type.")
+
+      # TODO(b/248451689) Remove the bypass after Speaker issue is resolved
+      if not isinstance(self.endpoint, speaker.SpeakerEndpoint):
+        asserts.assert_is_instance(
+            self.endpoint.level.min_level, int,
+            "MinLevel attribute must be the int type.")
     else:
       asserts.skip(
           f"Endpoint {self.endpoint} does not implement the Level Control "

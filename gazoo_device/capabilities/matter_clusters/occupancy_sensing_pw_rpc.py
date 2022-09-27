@@ -22,6 +22,7 @@ from gazoo_device.protos import attributes_service_pb2
 
 _OccupancySensingCluster = matter_enums.OccupancySensingCluster
 BITMAP_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_BITMAP8_ATTRIBUTE_TYPE
+INT8U_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_INT8U_ATTRIBUTE_TYPE
 
 
 class OccupancySensingClusterPwRpc(
@@ -29,7 +30,7 @@ class OccupancySensingClusterPwRpc(
   """Matter Occupancy Sensing cluster capability."""
 
   @decorators.DynamicProperty
-  def occupancy(self) -> BITMAP_ATTRIBUTE_TYPE:
+  def occupancy(self) -> INT8U_ATTRIBUTE_TYPE:
     """The Occupancy attribute.
 
     This attribute is a bitmap where bit 0 specifies the sensed occupancy as
@@ -42,17 +43,17 @@ class OccupancySensingClusterPwRpc(
         endpoint_id=self._endpoint_id,
         cluster_id=_OccupancySensingCluster.ID,
         attribute_id=_OccupancySensingCluster.ATTRIBUTE_OCCUPANCY,
-        attribute_type=BITMAP_ATTRIBUTE_TYPE)
+        attribute_type=INT8U_ATTRIBUTE_TYPE)
     return occupancy_data.data_uint8
 
   @occupancy.setter
-  def occupancy(self, occupancy: BITMAP_ATTRIBUTE_TYPE) -> None:
+  def occupancy(self, occupancy: INT8U_ATTRIBUTE_TYPE) -> None:
     """Updates the Occupancy attribute to new value."""
     self._write(
         endpoint_id=self._endpoint_id,
         cluster_id=_OccupancySensingCluster.ID,
         attribute_id=_OccupancySensingCluster.ATTRIBUTE_OCCUPANCY,
-        attribute_type=BITMAP_ATTRIBUTE_TYPE,
+        attribute_type=INT8U_ATTRIBUTE_TYPE,
         data_uint8=occupancy)
     if self.occupancy != occupancy:  # pylint: disable=comparison-with-callable
       raise errors.DeviceError(

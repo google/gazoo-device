@@ -12,18 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Interface for a Matter Temperature Sensor endpoint."""
+"""Interface for a Matter Speaker endpoint."""
 import abc
-from gazoo_device.capabilities.matter_clusters.interfaces import measurement_base
+from gazoo_device.capabilities.matter_clusters.interfaces import level_control_base
+from gazoo_device.capabilities.matter_clusters.interfaces import on_off_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 
 
-class TemperatureSensorBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
-  """Matter Temperature Sensor endpoint interface."""
+class SpeakerBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
+  """Matter Speaker endpoint interface."""
 
-  DEVICE_TYPE_ID = 0x0302
+  DEVICE_TYPE_ID = 0x0022
 
   @property
   @abc.abstractmethod
-  def temperature_measurement(self) -> measurement_base.MeasurementClusterBase:
-    """Required cluster: temperature_measurement cluster."""
+  def on_off(self) -> on_off_base.OnOffClusterBase:
+    """Required cluster: ZCL on_off cluster."""
+
+  @property
+  @abc.abstractmethod
+  def level(self) -> level_control_base.LevelControlClusterBase:
+    """Required cluster: ZCL level cluster."""

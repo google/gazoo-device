@@ -14,6 +14,7 @@
 
 """Capability unit test for JLink flashing default capability."""
 import os
+import time
 from unittest import mock
 from absl.testing import parameterized
 from gazoo_device import config
@@ -140,7 +141,8 @@ class JLinkFlashDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.assertEqual(self.uut.get_firmware_type(), flash_build_jlink.UNKNOWN)
 
   @mock.patch.object(retry, "retry")
-  def test_poll_until_device_is_ready_on_success(self, mock_retry):
+  @mock.patch.object(time, "sleep")
+  def test_poll_until_device_is_ready_on_success(self, mock_retry, mock_sleep):
     """Verifies _poll_until_device_is_ready method on success."""
     mock_switchboard = mock.Mock(spec=switchboard.SwitchboardDefault)
     mock_switchboard.call.return_value = True, None
@@ -148,6 +150,7 @@ class JLinkFlashDefaultTest(fake_device_test_case.FakeDeviceTestCase):
 
     self.uut._poll_until_device_is_ready()
 
+    mock_sleep.assert_called_once()
     mock_retry.assert_called_once()
 
   @mock.patch.object(retry, "retry")

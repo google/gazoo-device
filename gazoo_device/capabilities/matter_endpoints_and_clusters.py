@@ -52,6 +52,7 @@ from gazoo_device.capabilities.matter_endpoints import on_off_light_switch
 from gazoo_device.capabilities.matter_endpoints import on_off_plugin_unit
 from gazoo_device.capabilities.matter_endpoints import pressure_sensor
 from gazoo_device.capabilities.matter_endpoints import root_node
+from gazoo_device.capabilities.matter_endpoints import speaker
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.capabilities.matter_endpoints import thermostat
 from gazoo_device.capabilities.matter_endpoints import window_covering
@@ -74,6 +75,7 @@ SUPPORTED_ENDPOINTS = (
     on_off_plugin_unit.OnOffPluginUnitEndpoint,
     pressure_sensor.PressureSensorEndpoint,
     root_node.RootNodeEndpoint,
+    speaker.SpeakerEndpoint,
     temperature_sensor.TemperatureSensorEndpoint,
     thermostat.ThermostatEndpoint,
     window_covering.WindowCoveringEndpoint)

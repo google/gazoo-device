@@ -14,6 +14,7 @@
 
 """Interface for a Matter Humidity Sensor endpoint."""
 import abc
+from gazoo_device.capabilities.matter_clusters.interfaces import measurement_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 
 
@@ -24,5 +25,6 @@ class HumiditySensorBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def relative_humidity_measurement(self):
+  def relative_humidity_measurement(
+      self) -> measurement_base.MeasurementClusterBase:
     """Required cluster: relative_humidity_measurement cluster."""

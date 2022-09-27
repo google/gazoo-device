@@ -14,6 +14,9 @@
 
 """Interface for a Matter Extended color light endpoint."""
 import abc
+from gazoo_device.capabilities.matter_clusters.interfaces import color_control_base
+from gazoo_device.capabilities.matter_clusters.interfaces import level_control_base
+from gazoo_device.capabilities.matter_clusters.interfaces import on_off_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 
 
@@ -25,17 +28,17 @@ class ExtendedColorLightBase(
 
   @property
   @abc.abstractmethod
-  def on_off(self):
+  def on_off(self) -> on_off_base.OnOffClusterBase:
     """Required cluster: ZCL on_off cluster."""
 
   @property
   @abc.abstractmethod
-  def level(self):
+  def level(self) -> level_control_base.LevelControlClusterBase:
     """Required cluster: ZCL level cluster."""
 
   @property
   @abc.abstractmethod
-  def color(self):
+  def color(self) -> color_control_base.ColorControlClusterBase:
     """Required cluster: ZCL color control cluster."""
 
   # TODO(b/209362086) Add the below clusters

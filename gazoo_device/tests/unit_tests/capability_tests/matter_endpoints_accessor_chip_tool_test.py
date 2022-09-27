@@ -93,8 +93,7 @@ class MatterEndpointsAccessorChipToolCapabilityTests(
 
   def test_has_endpoints_invalid(self):
     """Tests has_endpoints with invalid endpoint name."""
-    with self.assertRaises(errors.DeviceError):
-      self.uut.matter_endpoints.has_endpoints(["fake_endpoint"])
+    self.assertFalse(self.uut.matter_endpoints.has_endpoints(["fake_endpoint"]))
 
   def test_get_supported_endpoints(self):
     """Tests get_supported_endpoints."""

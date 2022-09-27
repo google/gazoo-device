@@ -14,6 +14,7 @@
 
 """Interface for a Matter Flow Sensor endpoint."""
 import abc
+from gazoo_device.capabilities.matter_clusters.interfaces import measurement_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 
 
@@ -24,5 +25,5 @@ class FlowSensorBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def flow_measurement(self):
+  def flow_measurement(self) -> measurement_base.MeasurementClusterBase:
     """Required cluster: flow_measurement cluster."""

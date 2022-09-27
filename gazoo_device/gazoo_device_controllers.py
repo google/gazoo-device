@@ -128,6 +128,7 @@ from gazoo_device.capabilities.matter_endpoints import on_off_light_switch
 from gazoo_device.capabilities.matter_endpoints import on_off_plugin_unit
 from gazoo_device.capabilities.matter_endpoints import pressure_sensor
 from gazoo_device.capabilities.matter_endpoints import root_node
+from gazoo_device.capabilities.matter_endpoints import speaker
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
 from gazoo_device.capabilities.matter_endpoints import thermostat
 from gazoo_device.capabilities.matter_endpoints import unsupported_endpoint
@@ -146,6 +147,7 @@ from gazoo_device.capabilities.matter_endpoints.interfaces import on_off_light_s
 from gazoo_device.capabilities.matter_endpoints.interfaces import on_off_plugin_unit_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import pressure_sensor_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import root_node_base
+from gazoo_device.capabilities.matter_endpoints.interfaces import speaker_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import temperature_sensor_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import thermostat_base as thermostat_endpoint_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import unsupported_endpoint_base
@@ -264,6 +266,7 @@ def export_extensions() -> Dict[str, Any]:
           pwrpc_wifi_base.PwRPCWifiBase,
           root_node_base.RootNodeBase,
           shell_base.ShellBase,
+          speaker_base.SpeakerBase,
           switchboard_base.SwitchboardBase,
           switch_power_base.SwitchPowerBase,
           temperature_sensor_base.TemperatureSensorBase,
@@ -334,6 +337,7 @@ def export_extensions() -> Dict[str, Any]:
            RelativeHumidityMeasurementClusterPwRpc),
           root_node.RootNodeEndpoint,
           shell_ssh.ShellSSH,
+          speaker.SpeakerEndpoint,
           switch_power_dli_powerswitch.SwitchPowerDliPowerswitch,
           switch_power_ethernet.SwitchPowerEthernet,
           switch_power_snmp.SwitchPowerSnmp,

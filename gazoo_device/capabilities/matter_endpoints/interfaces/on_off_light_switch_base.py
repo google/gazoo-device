@@ -14,6 +14,7 @@
 
 """Interface for a Matter OnOff light switch endpoint."""
 import abc
+from gazoo_device.capabilities.matter_clusters.interfaces import on_off_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 
 
@@ -24,7 +25,7 @@ class OnOffLightSwitchBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def on_off(self):
+  def on_off(self) -> on_off_base.OnOffClusterBase:
     """Required cluster: ZCL on_off cluster."""
 
   # TODO(b/209362086) Add the below clusters

@@ -17,6 +17,8 @@ from gazoo_device.capabilities import matter_enums
 from mobly import asserts
 
 _CLUSTER_NAME = "occupancy_sensing"
+_OCCUPIED = 1
+_UNOCCUPIED = 0
 
 
 class OccupancySensingClusterTestSuite:
@@ -31,6 +33,15 @@ class OccupancySensingClusterTestSuite:
       asserts.assert_is_instance(
           self.endpoint.occupancy_sensing.occupancy, int,
           "Occupancy attribute must be the int type.")
+    else:
+      asserts.skip(
+          f"Endpoint {self.endpoint} does not implement the Occupancy cluster.")
+
+  def test_occupancy_attribute_setter(self):
+    """Tests updating Occupancy attribute."""
+    if self.endpoint.has_clusters([_CLUSTER_NAME]):
+      self.endpoint.occupancy_sensing.occupancy = _OCCUPIED
+      self.endpoint.occupancy_sensing.occupancy = _UNOCCUPIED
     else:
       asserts.skip(
           f"Endpoint {self.endpoint} does not implement the Occupancy cluster.")

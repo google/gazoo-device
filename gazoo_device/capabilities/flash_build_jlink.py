@@ -14,6 +14,7 @@
 
 """Default implementation of the JLink flashing capability."""
 import os
+import time
 from typing import Callable, Dict, List, Optional
 
 from gazoo_device import config
@@ -36,6 +37,7 @@ _JLINK_NO_DLL_ERROR = "Expected to be given a valid DLL."
 _RPC_DEVICE_SERVICE_NAME = "Device"
 _RPC_GET_DEVICE_INFO_NAME = "GetDeviceInfo"
 _RPC_TIMEOUT_S = 1
+_COOL_DOWN_S = 3
 
 
 class FlashBuildJLink(flash_build_base.FlashBuildBase):
@@ -108,6 +110,9 @@ class FlashBuildJLink(flash_build_base.FlashBuildBase):
     # No need to poll if it's not a Matter device.
     if self._switchboard is None:
       return
+
+    # A cool down period is needed since device is still not in a ready state.
+    time.sleep(_COOL_DOWN_S)
 
     switchboard_kwargs = {
         "method_name": pigweed_rpc_transport.RPC_METHOD_NAME,

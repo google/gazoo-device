@@ -14,6 +14,7 @@
 
 """Interface for a Matter Window Covering endpoint."""
 import abc
+from gazoo_device.capabilities.matter_clusters.interfaces import window_covering_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 
 
@@ -24,6 +25,6 @@ class WindowCoveringBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def window_covering(self):
+  def window_covering(self) -> window_covering_base.WindowCoveringClusterBase:
     """Required cluster: ZCL window_covering cluster."""
 
