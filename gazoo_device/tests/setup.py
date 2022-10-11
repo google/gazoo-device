@@ -48,6 +48,7 @@ setuptools.setup(
     ######################################################################
     install_requires=[
         "absl-py>=0.12.0",
+        "cryptography>=38.0.1",
         # esptool cannot be included because of restrictive GPL v2 licence.
         "immutabledict>=2.0.0",
         "intelhex>=2.2.1",

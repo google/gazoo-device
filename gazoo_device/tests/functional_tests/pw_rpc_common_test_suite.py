@@ -13,7 +13,9 @@
 # limitations under the License.
 
 """Test suite for devices using the pw_rpc_common capability."""
+import logging
 from typing import Type
+from gazoo_device import errors
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
 
@@ -22,6 +24,8 @@ _PAIRING_DISCRIMINATOR = 50
 _FAKE_VERIFIER = b"fake-verifier"
 _FAKE_SALT = b"fake-salt"
 _FAKE_ITERATION = 10
+# TODO(b/241698162): Include a utility for TLV metadata generation.
+_TLV_OTA_METADATA = b"\x15\xcc\x06`\x01\x00\x00\x00\x06SERIAL\xcc\x06`\x01\x00\x01\x00$98389552-3B89-44A5-980D-BA8685AF9EA3\x18"
 
 
 class PwRPCCommonTestSuite(gdm_test_base.GDMTestBase):
@@ -82,6 +86,24 @@ class PwRPCCommonTestSuite(gdm_test_base.GDMTestBase):
     else:
       self._start_advertising_and_verify()
       self._stop_advertising_and_verify()
+
+  def test_set_ota_metadata(self):
+    """Tests set_ota_metadata API.
+
+    It only works on device:
+    1. which enables the OTA requestor compile options.
+    2. which is already commissioned to an OTA provider.
+    """
+    try:
+      self.device.pw_rpc_common.set_ota_metadata(_TLV_OTA_METADATA)
+    except errors.DeviceError as e:
+      if "UNIMPLEMENTED" in str(e):
+        asserts.skip(f"{self.device} does not enable OTA requestor option.")
+      elif "UNAVAILABLE" in str(e):
+        logging.info(
+            "%s is not commissioned to an OTA provider.", self.device)
+      else:
+        raise e
 
   def _start_advertising_and_verify(self):
     """Starts advertsiing and verifies the state."""

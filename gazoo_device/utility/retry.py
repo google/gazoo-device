@@ -33,19 +33,19 @@ def is_true(val: Any) -> bool:
   return bool(val)
 
 
-_FuncReturnType = TypeVar("_FuncReturnType")
+_FuncReturnT = TypeVar("_FuncReturnT")
 
 
 def retry(
-    func: Callable[..., _FuncReturnType],
+    func: Callable[..., _FuncReturnT],
     func_args: Sequence[Any] = (),
     func_kwargs: Optional[Mapping[str, Any]] = None,
-    is_successful: Callable[[_FuncReturnType], bool] = _default_is_successful,
+    is_successful: Callable[[_FuncReturnT], bool] = _default_is_successful,
     timeout: float = 10,
     interval: float = 1,
     reraise: bool = True,
     exc_type: Type[Exception] = errors.CommunicationTimeoutError
-) -> _FuncReturnType:
+) -> _FuncReturnT:
   """Retries func() until it succeeds or timeout is reached.
 
   Success of execution of func() is determined by is_successful() function,

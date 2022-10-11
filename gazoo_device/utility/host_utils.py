@@ -39,11 +39,15 @@ SSHABLE_COMMAND = "nc -z -w 2 {} 22"  # Connect to ssh port for up to 2 seconds.
 SSH_ARGS = "{options} {user}@{ip_address} {command}"
 SCP_COMMAND = "scp -r {ssh_opt} {src} {dest}"
 SSH_TIMEOUT = 3
-SSH_CONFIG = (
-    "-oPasswordAuthentication=no -oStrictHostKeyChecking=no -oBatchMode=yes "
-    "-oConnectTimeout={timeout}".format(timeout=SSH_TIMEOUT))
-_SSH_DISABLE_PSEUDO_TTY = "-T "
-DEFAULT_SSH_OPTIONS = _SSH_DISABLE_PSEUDO_TTY + SSH_CONFIG
+SSH_CONFIG_SEQ = (
+    "-oPasswordAuthentication=no", "-oStrictHostKeyChecking=no",
+    "-oBatchMode=yes", f"-oConnectTimeout={SSH_TIMEOUT}"
+)
+SSH_CONFIG = " ".join(SSH_CONFIG_SEQ)
+
+_SSH_DISABLE_PSEUDO_TTY = "-T"
+DEFAULT_SSH_OPTIONS_SEQ = (_SSH_DISABLE_PSEUDO_TTY, *SSH_CONFIG_SEQ)
+DEFAULT_SSH_OPTIONS = " ".join(DEFAULT_SSH_OPTIONS_SEQ)
 
 GET_COMMAND_PATH = "which {}"
 GET_CONNECTED_IPS = "/usr/sbin/arp -e"

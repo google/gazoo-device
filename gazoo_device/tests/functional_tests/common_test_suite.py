@@ -79,7 +79,10 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
                            "Log has updated after device is closed")
     finally:
       # Re-open for the other tests
+      position = self.devices.index(self.device)
       self.device = self.get_manager().create_device(self.device_name)
+      self.devices = (
+          self.devices[0:position] + [self.device] + self.devices[position+1:])
 
   def test_logging(self):
     """Tests that device logs are being captured."""

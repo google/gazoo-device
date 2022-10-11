@@ -243,6 +243,13 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     self._trigger_device_action(action="SetPairingState",
                                 pairing_enabled=False)
 
+  @decorators.CapabilityLogDecorator(logger)
+  def set_ota_metadata(self, tlv_metadata: bytes) -> None:
+    """Set OTA metadata for OTA provider."""
+    # TODO(b/237974405) Support TLV encoder if needed.
+    self._trigger_device_action(action="SetOtaMetadataForProvider",
+                                tlv=tlv_metadata)
+
   def _trigger_device_action(self, action: str, **kwargs: Any) -> bytes:
     """Triggers specific device action.
 

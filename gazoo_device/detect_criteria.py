@@ -132,7 +132,8 @@ def _docker_product_name_query(
     name = name.decode()
   except subprocess.CalledProcessError as err:
     detect_logger.info(
-        "_docker_product_name_query failed for %s: %r", address, err)
+        "_docker_product_name_query failed for %s: %r", address, err,
+        exc_info=True)
     return ""
   return name
 
@@ -171,7 +172,8 @@ def _is_dli_query(
         timeout=1)
     name = response.text
   except RuntimeError as err:
-    detect_logger.info("_is_dli_query failed for %s: %r", address, err)
+    detect_logger.info("_is_dli_query failed for %s: %r", address, err,
+                       exc_info=True)
     return False
   return "Power Switch" in name
 
@@ -203,7 +205,8 @@ def _is_dlink_query(
     detect_logger.info(f"Got response to sysDescr SNMP query: {model}\n"
                        f"_is_dlink_query response: True")
   except (subprocess.CalledProcessError, errors.DeviceError) as err:
-    detect_logger.info("_is_dlink_query failure: " + repr(err))
+    detect_logger.info("_is_dlink_query failure: " + repr(err),
+                       exc_info=True)
     return False
   return True
 
@@ -221,7 +224,8 @@ def _is_raspbian_rpi_query(
         user="pi",
         key_info=config.KEYS["raspberrypi3_ssh_key"])
   except RuntimeError as err:
-    detect_logger.info("_is_raspbian_rpi_query failed for %s: %r", address, err)
+    detect_logger.info("_is_raspbian_rpi_query failed for %s: %r", address, err,
+                       exc_info=True)
     return False
   return "Raspberry Pi" in name
 
@@ -240,7 +244,8 @@ def _is_ubuntu_rpi_query(
         key_info=config.KEYS["raspberrypi3_ssh_key"])
   except RuntimeError as err:
     detect_logger.info(
-        "_is_ubuntu_rpi_query failed for %s: %r", address, err)
+        "_is_ubuntu_rpi_query failed for %s: %r", address, err,
+        exc_info=True)
     return False
   return True
 
@@ -259,7 +264,8 @@ def _is_matter_app_running_query(
         key_info=config.KEYS["raspberrypi3_ssh_key"])
   except RuntimeError as err:
     detect_logger.info(
-        "_is_matter_app_running_query failed for %s: %r", address, err)
+        "_is_matter_app_running_query failed for %s: %r", address, err,
+        exc_info=True)
     return False
   return True
 
@@ -278,7 +284,8 @@ def _is_chip_tool_installed_query(
         key_info=config.KEYS["raspberrypi3_ssh_key"])
   except RuntimeError as err:
     detect_logger.info(
-        "_is_chip_tool_installed_query failed for %s: %r", address, err)
+        "_is_chip_tool_installed_query failed for %s: %r", address, err,
+        exc_info=True)
     return False
   return True
 
@@ -296,7 +303,8 @@ def _is_unifi_query(
         user="admin",
         key_info=config.KEYS["unifi_switch_ssh_key"])
   except RuntimeError as err:
-    detect_logger.info("_is_unifi_query failed for %s: %r", address, err)
+    detect_logger.info("_is_unifi_query failed for %s: %r", address, err,
+                       exc_info=True)
     return False
 
   for model_prefix in _UNIFI_MODEL_PREFIXES:
@@ -624,7 +632,8 @@ def _get_detect_query_response(
       detect_logger.info("%s response from %s: %r",
                          query_name, address, query_responses[query_name])
     except Exception as err:  # pylint: disable=broad-except
-      detect_logger.info("%s failed for %s: %r", query_name, address, err)
+      detect_logger.info("%s failed for %s: %r", query_name, address, err,
+                         exc_info=True)
       query_responses[query_name] = repr(err)
 
     if not isinstance(query_responses[query_name], (str, bool)):

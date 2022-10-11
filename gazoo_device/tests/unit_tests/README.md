@@ -1,8 +1,5 @@
 # GDM unit tests
 
-GDM unit tests are being open-sourced. Expect more unit tests to be added
-shortly.
-
 ### Prerequisites
 
 Set up a virtual environment and install *gazoo-device* and *gazoo-device.tests*

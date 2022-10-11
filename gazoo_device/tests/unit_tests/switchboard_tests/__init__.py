@@ -12,28 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Switchboard unit tests."""
+"""Switchboard unit tests.
+
+Unit testing documentation:
+https://github.com/google/gazoo-device/blob/master/gazoo_device/tests/unit_tests/README.md  # pylint: disable=line-too-long
+"""
 import os.path
+import unittest
 
 from absl import flags
+from absl.testing import absltest
 from gazoo_device import config
+from gazoo_device.tests.unit_tests.utils import unit_test_loader
 
 _CUR_DIR = os.path.join(config.PACKAGE_PATH, "tests", "unit_tests",
                         "switchboard_tests")
 
 
-def load_tests(loader, standard_tests, unused_pattern):
+def load_tests(loader: absltest.TestLoader,
+               standard_tests: unittest.TestSuite,
+               unused_pattern: str) -> unittest.TestSuite:
   """Called by unittest framework to load tests for this module."""
-  pattern_match = "*_test.py"
-
-  if flags.FLAGS.file:
-    filename = flags.FLAGS.file
-    if not filename.endswith(".py"):
-      filename += ".py"  # allow filenames without the .py extension
-    pattern_match = filename
-  elif flags.FLAGS.skip_slow:
-    return standard_tests  # skip switchboard tests
-
-  switchboard_tests = loader.discover(_CUR_DIR, pattern=pattern_match)
-  standard_tests.addTests(switchboard_tests)
+  if flags.FLAGS.skip_slow:
+    return standard_tests  # Skip switchboard tests.
+  standard_tests.addTests(
+      unit_test_loader.discover_tests(
+          loader,
+          start_dir=_CUR_DIR,
+          # Don't raise if no tests are selected under switchboard_tests/.
+          # This check should only be performed by top-level unit test suites.
+          raise_if_no_tests_found=False))
   return standard_tests

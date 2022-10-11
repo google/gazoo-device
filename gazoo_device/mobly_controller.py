@@ -52,7 +52,7 @@ _LOGGER = gdm_logger.get_logger()
 _MANAGER_INSTANCE = None
 
 
-def _get_log_directory() -> Optional[str]:
+def get_log_directory() -> Optional[str]:
   """Returns the path to the directory where logs should be stored.
 
   Returns:
@@ -67,7 +67,7 @@ def get_manager() -> manager.Manager:
   """Set up, as needed, and returns a manager instance."""
   global _MANAGER_INSTANCE
   if _MANAGER_INSTANCE is None:
-    log_directory = _get_log_directory()
+    log_directory = get_log_directory()
     if log_directory is not None:
       log_file = os.path.join(log_directory, "gdm.txt")
     else:
@@ -102,7 +102,7 @@ def _set_auxiliary_props(properties: Dict[str, Any], device_name: str):
 
 def create(configs: List[Dict[str, Any]]) -> List[custom_types.Device]:
   """Creates gazoo device instances and returns them."""
-  log_directory = _get_log_directory()
+  log_directory = get_log_directory()
   devices = []
   for entry in configs:
     name = entry["id"]

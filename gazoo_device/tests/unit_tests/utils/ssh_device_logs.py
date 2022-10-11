@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Generic SSH (Linux) device logs."""
+from immutabledict import immutabledict
 
 
 def generate_command(cmd):
@@ -36,10 +37,10 @@ def make_device_responses(raw_response_dict):
             entry["cmd"], entry["resp"], entry["code"],
             entry.get("response_newline", True))
     })
-  return device_responses
+  return immutabledict(device_responses)
 
 
-_RESPONSES = [{
+_RESPONSES = ({
     "cmd": "echo 'gdm hello'",
     "resp": "gdm hello",
     "code": 0,
@@ -51,6 +52,6 @@ _RESPONSES = [{
     "cmd": "which foo_bar",
     "resp": "",
     "code": 1,
-}]
+})
 
 RESPONSES = make_device_responses(_RESPONSES)

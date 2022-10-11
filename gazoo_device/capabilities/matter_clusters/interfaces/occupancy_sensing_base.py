@@ -16,9 +16,6 @@
 import abc
 from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
-from gazoo_device.protos import attributes_service_pb2
-
-BITMAP_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_BITMAP8_ATTRIBUTE_TYPE
 
 
 class OccupancySensingClusterBase(
@@ -28,13 +25,13 @@ class OccupancySensingClusterBase(
   CLUSTER_ID = matter_enums.OccupancySensingCluster.ID
 
   @abc.abstractmethod
-  def occupancy(self) -> BITMAP_ATTRIBUTE_TYPE:
+  def occupancy(self) -> int:
     """The Occupancy attribute."""
 
   @abc.abstractmethod
-  def occupancy_sensor_type(self) -> int:
+  def occupancy_sensor_type(self) -> matter_enums.OccupancySensorType:
     """The OccupancySensorType attribute."""
 
   @abc.abstractmethod
-  def occupancy_sensor_type_bitmap(self) -> BITMAP_ATTRIBUTE_TYPE:
+  def occupancy_sensor_type_bitmap(self) -> int:
     """The OccupancySensorTypeBitmap attribute."""

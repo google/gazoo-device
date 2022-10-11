@@ -13,9 +13,9 @@
 # limitations under the License.
 
 """Device logs for RPi Matter devices."""
-import copy
 from gazoo_device.tests.unit_tests.utils import raspbian_device_logs
 from gazoo_device.tests.unit_tests.utils import ssh_device_logs
+from immutabledict import immutabledict
 
 make_device_responses = ssh_device_logs.make_device_responses
 
@@ -57,5 +57,7 @@ _RESPONSES = ({
     "code": 0
 })
 
-DEFAULT_BEHAVIOR = copy.deepcopy(raspbian_device_logs.DEFAULT_BEHAVIOR)
-DEFAULT_BEHAVIOR.update(make_device_responses(_RESPONSES))
+DEFAULT_BEHAVIOR = immutabledict({
+    **raspbian_device_logs.DEFAULT_BEHAVIOR,
+    **make_device_responses(_RESPONSES)
+})

@@ -736,3 +736,13 @@ Stops advertising for commissioning. No-op if the device is not advertising.
 ```
 >>> dut.pw_rpc_common.stop_advertising()
 ```
+
+#### set_ota_metadata()
+
+Set OTA metadata for OTA provider. Note that this API only works on device which
+enables OTA requestor (with compile option
+`CHIP_DEVICE_CONFIG_ENABLE_OTA_REQUESTOR`).
+
+```
+>>> dut.pw_rpc_common.set_ota_metadata(tlv_metadata=b"tlv_metadata")
+```

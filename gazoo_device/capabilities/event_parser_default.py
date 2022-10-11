@@ -1029,10 +1029,9 @@ class EventParserDefault(event_parser_base.EventParserBase):
       if group_index < len(match_groups):
         return match_groups[group_index]
       else:
-        msg = (
-            "{} get event state failed. Group index ({}) is greater than "
-            "number of match groups ({})").format(self._device_name, group_index,
-                                        match_groups)
+        msg = ("{} get event state failed. Group index ({}) is greater than "
+               "number of match groups ({})").format(self._device_name,
+                                                     group_index, match_groups)
 
     if raise_error:
       raise errors.ParserError(msg)
@@ -1217,7 +1216,7 @@ class EventParserDefault(event_parser_base.EventParserBase):
                     }
                 ]
             }
-        """
+    """
     logger.debug("Adding filter file %s", filter_path)
     try:
       with open(filter_path, "r") as filter_file:
@@ -1228,9 +1227,9 @@ class EventParserDefault(event_parser_base.EventParserBase):
               filter_path, err)
           logger.debug(msg)
           raise errors.ParserError(msg)
-    except IOError:
+    except IOError as e:
       raise errors.ParserError(
-          "Unable to access filter path '{}'".format(filter_path))
+          "Unable to access filter path '{}'".format(filter_path)) from e
 
     if "version" not in json_filter_data:
       raise errors.ParserError(
@@ -1327,12 +1326,12 @@ class EventParserDefault(event_parser_base.EventParserBase):
         event_data["log_filename"] = log_filename
       event_data["raw_log_line"] = raw_log_line.rstrip()[header_length:]
       event_data["system_timestamp"] = raw_log_line[1:27]
-      event_data["matched_timestamp"] = \
-          datetime.datetime.now().strftime(TIMESTAMP_FORMAT)
+      event_data["matched_timestamp"] = (
+          datetime.datetime.now().strftime(TIMESTAMP_FORMAT))
       event_file.write(json.dumps(event_data) + "\n")
       event_file.flush()
 
-  @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
+  @decorators.CapabilityLogDecorator(logger, level=None)
   def verify_event_labels(self, event_labels, error_message=""):
     """Verifies event_labels in correct format and exist.
 
@@ -1394,6 +1393,7 @@ class EventParserDefault(event_parser_base.EventParserBase):
     end_time = start_time + timeout
 
     all_found = False
+    max_found_time = start_datetime
 
     while not all_found and time.time() < end_time:
       remaining_time = timeout - (time.time() - start_time)
@@ -1409,6 +1409,8 @@ class EventParserDefault(event_parser_base.EventParserBase):
         any_timed_out |= result.timedout
         if (result.results_list and
             result.results_list[0]["system_timestamp"] >= start_datetime):
+          max_found_time = max(max_found_time,
+                               result.results_list[0]["system_timestamp"])
           found_labels.append(event_label)
         else:
           missed_labels.append(event_label)
@@ -1423,8 +1425,11 @@ class EventParserDefault(event_parser_base.EventParserBase):
               missed_labels))
       if raise_error:
         raise errors.ParserError(msg)
-      else:
-        logger.warning(msg)
+      logger.warning(msg)
+    else:
+      found_within = (max_found_time - start_datetime).total_seconds()
+      logger.info("%s found all labels within %r seconds from '%s': %r",
+                  self._device_name, found_within, start_datetime, found_labels)
 
     return all_found
 
@@ -1510,9 +1515,9 @@ class EventParserDefault(event_parser_base.EventParserBase):
           self.load_filter_file(filter_file_path)
         else:
           logger.debug("Skipping file %s missing .json extension", filter_path)
-    except OSError:
+    except OSError as e:
       raise errors.ParserError(
-          "Unable to access filter path '{}'".format(filter_path))
+          "Unable to access filter path '{}'".format(filter_path)) from e
 
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
   def load_filters(self, filters: Collection[str]) -> None:

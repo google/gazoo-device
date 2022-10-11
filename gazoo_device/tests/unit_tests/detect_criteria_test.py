@@ -19,6 +19,7 @@ import subprocess
 from unittest import mock
 
 from gazoo_device import detect_criteria
+from gazoo_device import errors
 from gazoo_device.tests.unit_tests.utils import fake_detect_playback
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import adb_utils
@@ -31,6 +32,7 @@ import immutabledict
 import usb
 
 _ADB_ADDRESS = "01a12345"
+_DOCKER_ID = "12345678"
 _IP_ADDRESS = "192.168.2.65"
 _JLINK_ADDRESS = "/dev/serial/by-id/usb-SEGGER_J-Link_000050130117-if00"
 _SERIAL_ADDRESS = (
@@ -276,6 +278,89 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
             detect_logger=fake_detect_logger,
             create_switchboard_func=mock.MagicMock()))
 
+  @mock.patch.object(subprocess, "check_output", return_value="NAME".encode())
+  def test_docker_product_name_query(self, mock_check_output):
+    """Verifies _docker_product_name_query method returns value."""
+    self.assertEqual(
+        detect_criteria._docker_product_name_query(
+            address=_DOCKER_ID,
+            detect_logger=mock.MagicMock(spec=logging.Logger),
+            create_switchboard_func=self.mock_create_switchboard
+            ),
+        "NAME")
+
+  @mock.patch.object(subprocess, "check_output",
+                     side_effect=subprocess.CalledProcessError(
+                         cmd="docker: command not found",
+                         returncode=1
+                         ))
+  def test_docker_product_name_query_error(self, mock_check_output):
+    """Verifies _docker_product_name_query method returns ""."""
+    self.assertEqual(
+        detect_criteria._docker_product_name_query(
+            address=_DOCKER_ID,
+            detect_logger=mock.MagicMock(spec=logging.Logger),
+            create_switchboard_func=self.mock_create_switchboard
+            ),
+        "")
+
+  def test_is_dli_query_return_false(self):
+    """Verifies _is_dli_query method returns false: no "Power Switch"."""
+    mock_response = mock.MagicMock()
+    mock_response.text = "No power switch Response"
+    with mock.patch.object(
+        http_utils, "send_http_get", return_value=mock_response):
+      self.assertFalse(
+          detect_criteria._is_dli_query(
+              address=_IP_ADDRESS,
+              detect_logger=mock.MagicMock(spec=logging.Logger),
+              create_switchboard_func=self.mock_create_switchboard
+              ))
+
+  def test_is_dli_query_return_false_http_error(self):
+    """Verifies _is_dli_query method returns false: HTTP error."""
+    with mock.patch.object(
+        http_utils, "send_http_get", side_effect=RuntimeError):
+      self.assertFalse(
+          detect_criteria._is_dli_query(
+              address=_IP_ADDRESS,
+              detect_logger=mock.MagicMock(spec=logging.Logger),
+              create_switchboard_func=self.mock_create_switchboard
+              ))
+
+  @mock.patch.object(detect_criteria, "get_dlink_model_name",
+                     side_effect=errors.DeviceError("ErrorMessage"))
+  def test_is_dlink_query_return_false(self, mock_get_dlink_model_name):
+    """Verifies _is_dlink_query method returns false."""
+    self.assertFalse(
+        detect_criteria._is_dlink_query(
+            address=_IP_ADDRESS,
+            detect_logger=mock.MagicMock(spec=logging.Logger),
+            create_switchboard_func=self.mock_create_switchboard
+            ))
+
+  @mock.patch.object(host_utils, "ssh_command",
+                     return_value="Raspberry Pi")
+  def test_is_raspbian_rpi_query(self, mock_ssh_command):
+    """Verifies _is_dlink_query method returns true."""
+    self.assertTrue(
+        detect_criteria._is_raspbian_rpi_query(
+            address=_IP_ADDRESS,
+            detect_logger=mock.MagicMock(spec=logging.Logger),
+            create_switchboard_func=self.mock_create_switchboard
+            ))
+
+  @mock.patch.object(host_utils, "ssh_command",
+                     side_effect=RuntimeError)
+  def test_is_raspbian_rpi_query_return_false(self, mock_ssh_command):
+    """Verifies _is_raspbian_rpi_query method returns false."""
+    self.assertFalse(
+        detect_criteria._is_raspbian_rpi_query(
+            address=_IP_ADDRESS,
+            detect_logger=mock.MagicMock(spec=logging.Logger),
+            create_switchboard_func=self.mock_create_switchboard
+            ))
+
   @mock.patch.object(host_utils, "ssh_command")
   def test_is_matter_app_running_query_return_true(self, fake_ssh_command):
     """Verifies _is_matter_app_running_query method returns true."""
@@ -297,7 +382,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
 
   def _test_comms_type(
       self, comms_type, behaviors_dict, switchboard_behaviors_dict=None):
-    errors = []
+    error_msgs = []
     bdict_name = "{}_DEVICE_BEHAVIORS".format(
         comms_type.replace("Comms", "").upper())
     device_types = [
@@ -319,12 +404,12 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
       classes = detect_criteria.determine_device_class(
           address, comms_type, log_file, self.mock_create_switchboard)
       if len(classes) != 1 or classes[0].DEVICE_TYPE != device_type:
-        errors.append("{}'s behavior returned {!r}".format(
+        error_msgs.append("{}'s behavior returned {!r}".format(
             device_type, classes))
 
-    if errors:
+    if error_msgs:
       error_msg = "Not all {} devices correctly matched. Mismatches: {}".format(
-          comms_type, "\n\t".join(errors))
+          comms_type, "\n\t".join(error_msgs))
       self.fail(error_msg)
 
 

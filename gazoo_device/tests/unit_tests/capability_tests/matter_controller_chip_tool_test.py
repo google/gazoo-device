@@ -33,8 +33,8 @@ class MatterControllerChipToolCapabilityTests(
     self.setup_fake_device_requirements("rpi_matter_controller-1234")
     self.device_config["persistent"]["console_port_name"] = "123.45.67.89"
     self.device_config["options"]["matter_node_id"] = 1234
-    self.fake_responder.behavior_dict = (
-        raspberry_pi_matter_controller_device_logs.DEFAULT_BEHAVIOR.copy())
+    self.fake_responder.behavior_dict = {
+        **raspberry_pi_matter_controller_device_logs.DEFAULT_BEHAVIOR}
 
     self.uut = raspberry_pi_matter_controller.RaspberryPiMatterController(
         self.mock_manager,

@@ -219,17 +219,6 @@ class LoggingAgentNotEnabledError(CheckDeviceReadyError):
   """Raised when GDM detects that the logging agent is not installed."""
   err_code = 36
 
-  def __init__(self, device_name, msg):
-    """Inits a LoggingAgentNotEnabledError exception.
-
-    Args:
-        device_name (str): The name of the device.
-        msg (str): An error message string of the form <error_message>
-          <details>.
-    """
-    super(LoggingAgentNotEnabledError, self).__init__(
-        device_name, msg, reason="agent not installed")
-
 
 class BootloaderModeError(CheckDeviceReadyError):
   """Raised when GDM detects that the device is at the bootloader prompt."""

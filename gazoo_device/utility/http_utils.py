@@ -11,20 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Utility module for HTTP GET and POST methods."""
+import contextlib
 import json
 import os
 import socket
-from typing import Any, Dict, List, Optional, Union
+import ssl
+from typing import Any, Callable, ContextManager, Dict, List, Optional, Union
 import urllib
 
 from gazoo_device import gdm_logger
 import requests
 from requests import adapters
 from requests.auth import AuthBase
+import urllib3
+from urllib3 import connection
+from urllib3 import connectionpool
 from urllib3 import poolmanager
-import urllib3.exceptions
 
 MAX_URL_RETRY = 3
 
@@ -112,6 +115,8 @@ def send_http_get(url: str,
                   headers: Optional[Dict[Any, Any]] = None,
                   ssl_version: Optional[int] = None,
                   valid_return_codes: Optional[List[int]] = None,
+                  session_factory: Optional[Callable[
+                      [], ContextManager[requests.Session]]] = requests.Session,
                   timeout: int = 10,
                   tries: int = 1) -> requests.Response:
   """Issues a HTTP GET and returns the response if the request is successful.
@@ -123,8 +128,9 @@ def send_http_get(url: str,
       data: Data for this HTTP GET Request
       headers: Headers for this HTTP GET Request
       ssl_version: SSL version to be used for secure http (https) requests. For
-          example, ssl.PROTOCOL_TLSv1_2.
+        example, ssl.PROTOCOL_TLSv1_2.
       valid_return_codes: List of valid HTTP return codes.
+      session_factory: A context manager to yield a session to be used.
       timeout: request timeout in seconds
       tries: how many times to try sending the request.
 
@@ -145,7 +151,7 @@ def send_http_get(url: str,
         "Expecting a dict value in headers param but received: {}".format(
             type(headers)))
   try:
-    with requests.Session() as session:
+    with session_factory() as session:
       if ssl_version:
         session.mount("https://", SSLAdapter(ssl_version))
       if data and isinstance(data, dict):
@@ -172,8 +178,8 @@ def send_http_get(url: str,
             raise
 
   except Exception as err:
-    raise RuntimeError(
-        "HTTP GET to URL {} with data {} failed".format(url, data)) from err
+    raise RuntimeError("HTTP GET to URL {} with data {} failed".format(
+        url, data)) from err
 
   if response.status_code not in valid_return_codes:
     raise RuntimeError("HTTP GET to URL {} returned: {}".format(
@@ -190,6 +196,9 @@ def send_http_post(url: str,
                    json_data: Optional[Union[Dict[Any, Any], List[Any]]] = None,
                    ssl_version: Optional[int] = None,
                    valid_return_codes: Optional[List[int]] = None,
+                   session_factory: Optional[Callable[
+                       [],
+                       ContextManager[requests.Session]]] = requests.Session,
                    timeout: int = 10,
                    tries: int = 1) -> requests.Response:
   """Issues a HTTP POST and returns the response if the request is successful.
@@ -202,8 +211,9 @@ def send_http_post(url: str,
       headers: Headers for this HTTP POST Request
       json_data: JSON data for this HTTP POST Request
       ssl_version: SSL version to be used for secure http (https) requests. For
-          example, ssl.PROTOCOL_TLSv1_2
+        example, ssl.PROTOCOL_TLSv1_2
       valid_return_codes: List of valid HTTP return codes.
+      session_factory: A context manager to yield a session to be used.
       timeout: request timeout in seconds
       tries: how many times to try sending the request.
 
@@ -227,12 +237,11 @@ def send_http_post(url: str,
         "{}.".format(type(json_data)))
 
   if not isinstance(headers, dict):
-    raise TypeError(
-        "Expecting a dict value in headers params but received: "
-        "{}.".format(type(headers)))
+    raise TypeError("Expecting a dict value in headers params but received: "
+                    "{}.".format(type(headers)))
 
   try:
-    with requests.Session() as session:
+    with session_factory() as session:
       if ssl_version:
         session.mount("https://", SSLAdapter(ssl_version))
 
@@ -307,3 +316,89 @@ def validate_url_access(url: str) -> None:
   if response_code != 200:
     raise RuntimeError("Unable to reach domain {}. Returned code {}".format(
         prefix, response_code))
+
+
+class UnixSocketHTTPSConnection(connection.HTTPSConnection):
+  """A HTTPS connection via a unix socket."""
+
+  def __init__(self, path: str):
+    # Device servers are using self-signed certificates.
+    # Do not verify their certificates.
+    self.cert_reqs = ssl.CERT_NONE
+    self.path = path
+    super().__init__("localhost")
+
+  def _new_conn(self):
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.connect(self.path)
+    return sock
+
+
+class UnixSocketHTTPSConnectionPool(connectionpool.HTTPSConnectionPool):
+
+  def __init__(self, path: str):
+    self.path = path
+    super().__init__("localhost")
+
+  def _new_conn(self):
+    return UnixSocketHTTPSConnection(self.path)
+
+
+class UnixSocketHTTPSAdapter(adapters.HTTPAdapter):
+
+  def __init__(self, path: str):
+    self.path = path
+    super().__init__()
+
+  def get_connection(self, url, proxies=None):
+    return UnixSocketHTTPSConnectionPool(self.path)
+
+
+class UnixSocketHTTPConnection(connection.HTTPConnection):
+  """A HTTP connection via a unix socket."""
+
+  def __init__(self, path: str):
+    self.path = path
+    super().__init__("localhost")
+
+  def _new_conn(self):
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.connect(self.path)
+    return sock
+
+
+class UnixSocketHTTPConnectionPool(connectionpool.HTTPConnectionPool):
+
+  def __init__(self, path: str):
+    self.path = path
+    super().__init__("localhost")
+
+  def _new_conn(self):
+    return UnixSocketHTTPConnection(self.path)
+
+
+class UnixSocketHTTPAdapter(adapters.HTTPAdapter):
+
+  def __init__(self, path: str):
+    self.path = path
+    super().__init__()
+
+  def get_connection(self, url, proxies=None):
+    return UnixSocketHTTPConnectionPool(self.path)
+
+
+@contextlib.contextmanager
+def unix_socket_http_session(path: str):
+  """Initializes an HTTP or HTTPS session via a unix socket.
+
+  Args:
+    path: The unix socket to handle HTTP(S) requests.
+
+  Yields:
+    The requests session.
+  """
+
+  with requests.Session() as session:
+    session.mount("udss://localhost/", UnixSocketHTTPSAdapter(path))
+    session.mount("uds://localhost/", UnixSocketHTTPAdapter(path))
+    yield session

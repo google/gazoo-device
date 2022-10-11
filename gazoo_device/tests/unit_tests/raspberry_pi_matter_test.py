@@ -45,8 +45,8 @@ class RaspberryPiMatterTests(fake_device_test_case.FakeDeviceTestCase):
     super().setUp()
     self.setup_fake_device_requirements("rpimatter-1234")
     self.device_config["persistent"]["console_port_name"] = _FAKE_DEVICE_IP
-    self.fake_responder.behavior_dict = (
-        raspberry_pi_matter_device_logs.DEFAULT_BEHAVIOR.copy())
+    self.fake_responder.behavior_dict = {
+        **raspberry_pi_matter_device_logs.DEFAULT_BEHAVIOR}
 
     self.uut = raspberry_pi_matter.RaspberryPiMatter(
         self.mock_manager,

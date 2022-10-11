@@ -12,60 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Runs all unit tests for gazoo_device."""
+"""Runs all unit tests for gazoo_device.
+
+Unit testing documentation:
+https://github.com/google/gazoo-device/blob/master/gazoo_device/tests/unit_tests/README.md  # pylint: disable=line-too-long
+"""
 import os
-from typing import Union
 import unittest
 
 from absl import flags
 from absl.testing import absltest
 from gazoo_device import config
+from gazoo_device.tests.unit_tests.utils import unit_test_loader
 
 _UNIT_TEST_DIR = os.path.join(config.PACKAGE_PATH, "tests", "unit_tests")
-
-flags.DEFINE_string(
-    "file",
-    default=None,
-    help="Name of unit test file to run.",
-    short_name="f")
-flags.DEFINE_boolean(  # Consumed by switchboard_tests/__init__.py.
-    "skip_slow",
-    default=False,
-    help="Skip switchboard tests.",
-    short_name="s")
+flags.DEFINE_boolean(  # Used by unit_tests/switchboard_tests/__init__.py.
+    "skip_slow", default=False, help="Skip switchboard tests.", short_name="s")
 
 
-def _has_any_tests(
-    test_case_or_suite: Union[unittest.TestCase, unittest.TestSuite]) -> bool:
-  """Returns true if the test suite has any test cases to run."""
-  if isinstance(test_case_or_suite, unittest.TestCase):
-    return True
-  else:
-    return any(_has_any_tests(sub_test_case_or_suite)
-               for sub_test_case_or_suite in test_case_or_suite)
-
-
-def load_tests(loader, standard_tests, unused_pattern):
+def load_tests(loader: absltest.TestLoader,
+               standard_tests: unittest.TestSuite,
+               unused_pattern: str) -> unittest.TestSuite:
   """Called by unittest framework to load tests for this module."""
-  pattern_match = "*_test.py"
-
-  if flags.FLAGS.file:
-    filename = flags.FLAGS.file
-    if not filename.endswith(".py"):
-      filename += ".py"  # allow filenames without the .py extension
-    pattern_match = filename
-
-  unit_tests = loader.discover(
-      _UNIT_TEST_DIR, top_level_dir=_UNIT_TEST_DIR, pattern=pattern_match)
-  if not _has_any_tests(unit_tests):
-    # If we are running a single test file with sharding enabled, there may be
-    # more shards than test cases. Don't raise an error in such cases if the
-    # current shard has nothing to run.
-    if not(flags.FLAGS.file and
-           int(os.environ.get("TEST_TOTAL_SHARDS", 1)) > 1):
-      raise RuntimeError("Did not find any tests to run.")
-  standard_tests.addTests(unit_tests)
-
+  standard_tests.addTests(
+      unit_test_loader.discover_tests(
+          loader, start_dir=_UNIT_TEST_DIR, top_level_dir=_UNIT_TEST_DIR))
   return standard_tests
 
 

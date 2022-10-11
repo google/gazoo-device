@@ -279,6 +279,15 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     mock_trigger_device_action.assert_called_once_with(
         action="SetPairingState", pairing_enabled=False)
 
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
+  def test_set_ota_metadata(self, mock_trigger_device_action):
+    """Verifies set_ota_metadata method on success."""
+    self.uut.set_ota_metadata(tlv_metadata=b"tlv_metadata")
+
+    mock_trigger_device_action.assert_called_once_with(
+        action="SetOtaMetadataForProvider", tlv=b"tlv_metadata")
+
   def test_trigger_device_action(self):
     """Verifies _trigger_device_action on success."""
     self.switchboard_call_mock.return_value = _FAKE_PAYLOAD_BYTES

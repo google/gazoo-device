@@ -181,7 +181,7 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
   def test_get_log_directory(
       self, mock_logging_log_path, mock_test_undeclared_outputs_dir,
       expected_log_directory):
-    """Tests _get_log_directory."""
+    """Tests get_log_directory."""
     if mock_logging_log_path is None:
       del logging.log_path
     else:
@@ -190,7 +190,7 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
     with mock.patch.object(
         os, "getenv", return_value=mock_test_undeclared_outputs_dir):
       self.assertEqual(
-          mobly_controller._get_log_directory(), expected_log_directory)
+          mobly_controller.get_log_directory(), expected_log_directory)
 
   @parameterized.named_parameters(
       ("log_directory_specified", "/some/log/dir", "/some/log/dir/gdm.txt"),
@@ -202,7 +202,7 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
     """Tests get_manager()."""
     mock_manager = mock_manager_class.return_value
     with mock.patch.object(
-        mobly_controller, "_get_log_directory",
+        mobly_controller, "get_log_directory",
         return_value=mock_log_directory):
       self.assertIs(mobly_controller.get_manager(), mock_manager)
     mock_manager_class.assert_called_once_with(

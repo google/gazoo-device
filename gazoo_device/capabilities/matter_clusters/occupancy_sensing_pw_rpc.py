@@ -30,7 +30,7 @@ class OccupancySensingClusterPwRpc(
   """Matter Occupancy Sensing cluster capability."""
 
   @decorators.DynamicProperty
-  def occupancy(self) -> INT8U_ATTRIBUTE_TYPE:
+  def occupancy(self) -> int:
     """The Occupancy attribute.
 
     This attribute is a bitmap where bit 0 specifies the sensed occupancy as
@@ -47,7 +47,7 @@ class OccupancySensingClusterPwRpc(
     return occupancy_data.data_uint8
 
   @occupancy.setter
-  def occupancy(self, occupancy: INT8U_ATTRIBUTE_TYPE) -> None:
+  def occupancy(self, occupancy: int) -> None:
     """Updates the Occupancy attribute to new value."""
     self._write(
         endpoint_id=self._endpoint_id,
@@ -62,7 +62,7 @@ class OccupancySensingClusterPwRpc(
           f" to {occupancy}")
 
   @decorators.DynamicProperty
-  def occupancy_sensor_type(self) -> int:
+  def occupancy_sensor_type(self) -> matter_enums.OccupancySensorType:
     """The OccupancySensorType attribute.
 
     This attribute specifies the type of the occupancy sensor:
@@ -79,7 +79,7 @@ class OccupancySensingClusterPwRpc(
     return matter_enums.OccupancySensorType(sensor_type_data.data_uint8)
 
   @decorators.DynamicProperty
-  def occupancy_sensor_type_bitmap(self) -> BITMAP_ATTRIBUTE_TYPE:
+  def occupancy_sensor_type_bitmap(self) -> int:
     """The OccupancySensorTypeBitmap attribute.
 
     The attribute specifies the types of the occupancy sensor: a "1" in each bit

@@ -48,9 +48,12 @@ def whether_implements_matter_endpoint(
 class GDMTestBase(suite_filter.SuiteFilterBase):
   """Base class for GDM functional test suites."""
   _CONFIG_DIRS = _CONFIG_DIRS
-  device = None
-  devices = None
-  testing_properties = None
+
+  def __init__(self, *args, **kwargs) -> None:
+    super().__init__(*args, **kwargs)
+    self.devices = []
+    self.device = None
+    self.testing_properties = None
 
   def setup_class(self) -> None:
     """Creates a device instance."""
@@ -80,16 +83,17 @@ class GDMTestBase(suite_filter.SuiteFilterBase):
 
   def teardown_test(self) -> None:
     """Ensures devices are connected."""
-    if self.devices:
-      for device in self.devices:
-        device.check_device_connected()
+    for device in self.devices:
+      device.check_device_connected()
     super().teardown_test()
 
   def teardown_class(self) -> None:
     """Close devices as needed."""
-    if self.devices:
-      for device in self.devices:
-        device.close()
+    for device in self.devices:
+      device.close()
+    self.devices = []
+    self.device = None
+    super().teardown_class()
 
 
 def main(*args, **kwargs):

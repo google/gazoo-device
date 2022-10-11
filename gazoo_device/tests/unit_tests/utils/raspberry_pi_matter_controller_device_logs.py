@@ -14,11 +14,11 @@
 
 """Device logs for raspberrypi_matter_controller devices."""
 
-import copy
 import textwrap
 
 from gazoo_device.tests.unit_tests.utils import raspbian_device_logs
 from gazoo_device.tests.unit_tests.utils import ssh_device_logs
+from immutabledict import immutabledict
 
 generate_command = ssh_device_logs.generate_command
 generate_response = ssh_device_logs.generate_response
@@ -677,5 +677,7 @@ _RESPONSES = ({
         0,
 })
 
-DEFAULT_BEHAVIOR = copy.deepcopy(raspbian_device_logs.DEFAULT_BEHAVIOR)
-DEFAULT_BEHAVIOR.update(ssh_device_logs.make_device_responses(_RESPONSES))
+DEFAULT_BEHAVIOR = immutabledict({
+    **raspbian_device_logs.DEFAULT_BEHAVIOR,
+    **ssh_device_logs.make_device_responses(_RESPONSES)
+})
