@@ -82,7 +82,7 @@ class SuiteFilterBase(base_test.BaseTestClass, metaclass=abc.ABCMeta):
   _CONFIG_DIRS = []
   _CONTROLLER_MODULE = _CONTROLLER_MODULE
 
-  def __init__(self, configs: Collection[config_parser.TestRunConfig]) -> None:
+  def __init__(self, configs: config_parser.TestRunConfig) -> None:
     super().__init__(configs)
     self.device_config = {}
     self.device_name = ""

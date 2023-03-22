@@ -21,6 +21,7 @@ from unittest import mock
 from gazoo_device import gdm_logger
 from gazoo_device.switchboard import switchboard_process
 from gazoo_device.tests.unit_tests.utils import unit_test_case
+from gazoo_device.utility import faulthandler_utils
 from gazoo_device.utility import multiprocessing_utils
 import psutil
 
@@ -74,7 +75,8 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     self.uut = switchboard_process.SwitchboardProcess("fake_device",
                                                       "fake_process",
                                                       self.exception_queue,
-                                                      self.command_queue)
+                                                      self.command_queue,
+                                                      self.artifacts_directory)
     self.assertFalse(self.uut.is_started(),
                      "Expected process not started, found started")
     self.assertFalse(self.uut.is_running(),
@@ -144,6 +146,7 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     mock_switchboard_process.device_name = "mock_device"
     mock_switchboard_process.process_name = "mock_process"
     mock_switchboard_process._exception_queue = self.exception_queue
+    mock_switchboard_process._log_directory = self.artifacts_directory
     mock_switchboard_process.logging_queue = MagicMock()
     mock_switchboard_process._start_event = mock_start_event
     mock_switchboard_process._stop_event = mock_stop_event
@@ -155,9 +158,12 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     with mock.patch.object(
         gdm_logger,
         "initialize_child_process_logging") as mock_initialize_logging:
-      switchboard_process._process_loop(mock_switchboard_process, 1234)
+      with mock.patch.object(
+          faulthandler_utils, "set_up_faulthandler") as mock_faulthandler:
+        switchboard_process._process_loop(mock_switchboard_process, 1234)
 
     mock_initialize_logging.assert_called_once()
+    mock_faulthandler.assert_called_once()
     mock_start_event.set.assert_called_once()
     mock_switchboard_process._pre_run_hook.assert_called_once()
     mock_parent_proc.status.assert_not_called()
@@ -177,6 +183,7 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     mock_switchboard_process.device_name = "mock_device"
     mock_switchboard_process.process_name = "mock_process"
     mock_switchboard_process._exception_queue = self.exception_queue
+    mock_switchboard_process._log_directory = self.artifacts_directory
     mock_switchboard_process.logging_queue = MagicMock()
     mock_switchboard_process._start_event = mock_start_event
     mock_switchboard_process._stop_event = mock_stop_event
@@ -189,9 +196,12 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     with mock.patch.object(
         gdm_logger,
         "initialize_child_process_logging") as mock_initialize_logging:
-      switchboard_process._process_loop(mock_switchboard_process, 1234)
+      with mock.patch.object(
+          faulthandler_utils, "set_up_faulthandler") as mock_faulthandler:
+        switchboard_process._process_loop(mock_switchboard_process, 1234)
 
     mock_initialize_logging.assert_called_once()
+    mock_faulthandler.assert_called_once()
     mock_start_event.set.assert_called_once()
     mock_switchboard_process._pre_run_hook.assert_called_once()
     mock_parent_proc.status.assert_called_once()
@@ -213,6 +223,7 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     mock_switchboard_process.device_name = "mock_device"
     mock_switchboard_process.process_name = "mock_process"
     mock_switchboard_process._exception_queue = self.exception_queue
+    mock_switchboard_process._log_directory = self.artifacts_directory
     mock_switchboard_process.logging_queue = MagicMock()
     mock_switchboard_process._start_event = mock_start_event
     mock_switchboard_process._stop_event = mock_stop_event
@@ -225,9 +236,12 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     with mock.patch.object(
         gdm_logger,
         "initialize_child_process_logging") as mock_initialize_logging:
-      switchboard_process._process_loop(mock_switchboard_process, 1234)
+      with mock.patch.object(
+          faulthandler_utils, "set_up_faulthandler") as mock_faulthandler:
+        switchboard_process._process_loop(mock_switchboard_process, 1234)
 
     mock_initialize_logging.assert_called_once()
+    mock_faulthandler.assert_called_once()
     mock_start_event.set.assert_called_once()
     mock_switchboard_process._pre_run_hook.assert_called_once()
     mock_parent_proc.status.assert_called_once()
@@ -249,6 +263,7 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     mock_switchboard_process.device_name = "mock_device"
     mock_switchboard_process.process_name = "mock_process"
     mock_switchboard_process._exception_queue = self.exception_queue
+    mock_switchboard_process._log_directory = self.artifacts_directory
     mock_switchboard_process.logging_queue = MagicMock()
     mock_switchboard_process._start_event = mock_start_event
     mock_switchboard_process._stop_event = mock_stop_event
@@ -261,9 +276,12 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     with mock.patch.object(
         gdm_logger,
         "initialize_child_process_logging") as mock_initialize_logging:
-      switchboard_process._process_loop(mock_switchboard_process, 1234)
+      with mock.patch.object(
+          faulthandler_utils, "set_up_faulthandler") as mock_faulthandler:
+        switchboard_process._process_loop(mock_switchboard_process, 1234)
 
     mock_initialize_logging.assert_called_once()
+    mock_faulthandler.assert_called_once()
     mock_start_event.set.assert_called_once()
     mock_switchboard_process._pre_run_hook.assert_called_once()
     mock_parent_proc.status.assert_called_once()
@@ -285,6 +303,7 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     mock_switchboard_process.device_name = "mock_device"
     mock_switchboard_process.process_name = "mock_process"
     mock_switchboard_process._exception_queue = self.exception_queue
+    mock_switchboard_process._log_directory = self.artifacts_directory
     mock_switchboard_process.logging_queue = MagicMock()
     mock_switchboard_process._start_event = mock_start_event
     mock_switchboard_process._stop_event = mock_stop_event
@@ -298,9 +317,12 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     with mock.patch.object(
         gdm_logger,
         "initialize_child_process_logging") as mock_initialize_logging:
-      switchboard_process._process_loop(mock_switchboard_process, 1234)
+      with mock.patch.object(
+          faulthandler_utils, "set_up_faulthandler") as mock_faulthandler:
+        switchboard_process._process_loop(mock_switchboard_process, 1234)
 
     mock_initialize_logging.assert_called_once()
+    mock_faulthandler.assert_called_once()
     mock_start_event.set.assert_called_once()
     mock_switchboard_process._pre_run_hook.assert_called_once()
     mock_parent_proc.status.assert_called_once()
@@ -322,6 +344,7 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     mock_switchboard_process.device_name = "mock_device"
     mock_switchboard_process.process_name = "mock_process"
     mock_switchboard_process._exception_queue = self.exception_queue
+    mock_switchboard_process._log_directory = self.artifacts_directory
     mock_switchboard_process.logging_queue = MagicMock()
     mock_switchboard_process._start_event = mock_start_event
     mock_switchboard_process._stop_event = mock_stop_event
@@ -335,9 +358,12 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     with mock.patch.object(
         gdm_logger,
         "initialize_child_process_logging") as mock_initialize_logging:
-      switchboard_process._process_loop(mock_switchboard_process, 1234)
+      with mock.patch.object(
+          faulthandler_utils, "set_up_faulthandler") as mock_faulthandler:
+        switchboard_process._process_loop(mock_switchboard_process, 1234)
 
     mock_initialize_logging.assert_called_once()
+    mock_faulthandler.assert_called_once()
     mock_start_event.set.assert_called_once()
     mock_switchboard_process._pre_run_hook.assert_called_once()
     mock_parent_proc.status.assert_called_once()
@@ -359,6 +385,7 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     mock_switchboard_process.device_name = "mock_device"
     mock_switchboard_process.process_name = "mock_process"
     mock_switchboard_process._exception_queue = self.exception_queue
+    mock_switchboard_process._log_directory = self.artifacts_directory
     mock_switchboard_process.logging_queue = MagicMock()
     mock_switchboard_process._start_event = mock_start_event
     mock_switchboard_process._stop_event = mock_stop_event
@@ -372,9 +399,12 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     with mock.patch.object(
         gdm_logger,
         "initialize_child_process_logging") as mock_initialize_logging:
-      switchboard_process._process_loop(mock_switchboard_process, 1234)
+      with mock.patch.object(
+          faulthandler_utils, "set_up_faulthandler") as mock_faulthandler:
+        switchboard_process._process_loop(mock_switchboard_process, 1234)
 
     mock_initialize_logging.assert_called_once()
+    mock_faulthandler.assert_called_once()
     mock_start_event.set.assert_called_once()
     mock_terminate_event.is_set.assert_called_once()
     mock_terminate_event.clear.assert_not_called()
@@ -417,7 +447,8 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     self.uut = switchboard_process.SwitchboardProcess("fake_device",
                                                       "fake_process",
                                                       self.exception_queue,
-                                                      self.command_queue)
+                                                      self.command_queue,
+                                                      self.artifacts_directory)
     self.uut.start()
     end_time = time.time() + _EXIT_TIMEOUT
     while self.uut.is_running() and time.time() < end_time:
@@ -433,7 +464,8 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
   def test_101_switchboard_process_start_twice(self):
     """Test calling start twice for child process that doesn't exit."""
     self.uut = RunningProcess("fake_device", "fake_process",
-                              self.exception_queue, self.command_queue)
+                              self.exception_queue, self.command_queue,
+                              self.artifacts_directory)
     self.uut.start()
     self.assertTrue(self.uut.is_started(),
                     "Expected process started, found not started")
@@ -452,7 +484,8 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
   def test_102_switchboard_process_stop_twice(self):
     """Test calling stop twice for child process that doesn't exit."""
     self.uut = RunningProcess("fake_device", "fake_process",
-                              self.exception_queue, self.command_queue)
+                              self.exception_queue, self.command_queue,
+                              self.artifacts_directory)
     self.uut.start()
     self.assertTrue(self.uut.is_started(),
                     "Expected process started, found not started")
@@ -470,10 +503,12 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
   def test_103_switchboard_process_two_running_processes(self):
     """Test two started running processes."""
     uut1 = RunningProcess("fake_device", "echo_process1",
-                          self.exception_queue, self.command_queue)
+                          self.exception_queue, self.command_queue,
+                          self.artifacts_directory)
     command_queue2 = multiprocessing_utils.get_context().Queue()
     uut2 = RunningProcess("fake_device", "echo_process2",
-                          self.exception_queue, command_queue2)
+                          self.exception_queue, command_queue2,
+                          self.artifacts_directory)
     uut1.start()
     self.assertTrue(uut1.is_running(),
                     "Expected process1 to be running, found !running")
@@ -494,7 +529,8 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     self.uut = switchboard_process.SwitchboardProcess("fake_device",
                                                       "fake_process",
                                                       self.exception_queue,
-                                                      self.command_queue)
+                                                      self.command_queue,
+                                                      self.artifacts_directory)
     self.uut._do_work = do_work_return_true
     self.uut.start()
     self.assertTrue(self.uut.is_running(),
@@ -508,7 +544,8 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
   def test_110_switchboard_process_exception_handler_works(self):
     """Test exceptions raised end up in exception queue."""
     self.uut = ErrorProcess("fake_device", "error_process",
-                            self.exception_queue, self.command_queue)
+                            self.exception_queue, self.command_queue,
+                            self.artifacts_directory)
     self.uut.start()
     end_time = time.time() + _EXCEPTION_TIMEOUT
     while self.uut.is_running() and time.time() < end_time:
@@ -531,7 +568,8 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     self.uut = switchboard_process.SwitchboardProcess("fake_device",
                                                       "fake_command",
                                                       self.exception_queue,
-                                                      self.command_queue)
+                                                      self.command_queue,
+                                                      self.artifacts_directory)
     # Invalid command
     with self.assertRaisesRegex(ValueError, "is not a valid command in"):
       self.uut.send_command("invalid command")
@@ -543,6 +581,7 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
         "fake_command",
         self.exception_queue,
         self.command_queue,
+        self.artifacts_directory,
         valid_commands=("valid_command",))
     self.uut.send_command("valid_command", "Data")
     wait_for_queue_writes(self.command_queue)
@@ -557,6 +596,7 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
         "fake_command",
         self.exception_queue,
         self.command_queue,
+        self.artifacts_directory,
         valid_commands=("valid_command",))
     self.assertTrue(self.uut.is_command_consumed())
     self.uut.send_command("valid_command", "Data")
@@ -572,6 +612,7 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
         "fake_command",
         self.exception_queue,
         self.command_queue,
+        self.artifacts_directory,
         valid_commands=("valid_command",))
     self.assertFalse(self.uut._do_work(), "Expected _do_work to return False")
     self.assertTrue(self.uut._pre_run_hook(),
@@ -582,13 +623,24 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
   def test_terminate(self):
     """Tests terminating a Switchboard process."""
     self.uut = switchboard_process.SwitchboardProcess(
-        "fake_device", "some_process", self.exception_queue, self.command_queue)
+        "fake_device", "some_process", self.exception_queue,
+        self.command_queue, self.artifacts_directory)
     mock_process = mock.MagicMock(spec=multiprocessing.Process)
     self.uut._process = mock_process
     self.uut.terminate()
     mock_process.terminate.assert_called_once()
     mock_process.join.assert_called_once()
     self.assertIsNone(self.uut._process)
+
+  def test_wait_for_start_timeout_error(self):
+    """Tests wait_for_start() timeout error."""
+    self.uut = switchboard_process.SwitchboardProcess(
+        "fake_device", "some_process", self.exception_queue,
+        self.command_queue, self.artifacts_directory)
+    self.uut._start_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
+    self.uut._start_event.wait.return_value = False
+    with self.assertRaisesRegex(RuntimeError, "Start event was not set"):
+      self.uut.wait_for_start()
 
 
 if __name__ == "__main__":

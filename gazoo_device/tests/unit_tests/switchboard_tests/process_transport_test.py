@@ -17,6 +17,7 @@ import os
 import time
 from unittest import mock
 
+from gazoo_device import errors
 from gazoo_device.switchboard.transports import process_transport
 from gazoo_device.switchboard.transports import pty_transport
 from gazoo_device.tests.unit_tests.utils import unit_test_case
@@ -140,7 +141,7 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
 
   def test_102_transport_can_open_close(self):
     """Process transport can open and close pty (fake serial port) path."""
-    self.uut = self._TRANSPORT_CLASS("cat", "dev/kmsg")
+    self.uut = self._TRANSPORT_CLASS("cat", ["dev/kmsg"])
     self.uut.open()
     self.uut.close()
 
@@ -153,10 +154,26 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
 
   def test_104_transport_can_call_close_twice(self):
     """Process transport can call close method twice."""
-    self.uut = self._TRANSPORT_CLASS("cat", "dev/kmsg")
+    self.uut = self._TRANSPORT_CLASS("cat", ["dev/kmsg"])
     self.uut.open()
     self.uut.close()
     self.uut.close()
+
+  def test_104a_transport_close_raise_timeout(self):
+    """Process transport call close method and timeout."""
+    self.uut = self._TRANSPORT_CLASS("cat", "dev/kmsg")
+    self.uut.open()
+    with mock.patch.object(
+        self.uut._process, "kill",
+        autospec=True) as mock_process_kill:
+      with mock.patch.object(self.uut._process,
+                             "poll",
+                             return_value=None,
+                             autospec=True):
+        with self.assertRaisesRegex(errors.ProcessCommunicationError,
+                                    "Process transport did not terminate"):
+          self.uut.close()
+      mock_process_kill.assert_called_once()
 
   def test_105_transport_can_read(self):
     """Process transport can read from pty (fake serial port) path."""
@@ -166,7 +183,7 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
     with open(test_file, "w") as out_file:
       out_file.write(message)
 
-    self.uut = self._TRANSPORT_CLASS("tail", "-f " + test_file)
+    self.uut = self._TRANSPORT_CLASS("tail", ["-f", test_file])
     self.uut.open()
     out = self.uut.read(size=len(message))
     self.assertEqual(message, out.decode(),
@@ -174,7 +191,7 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
 
   def test_106_transport_can_write(self):
     """Process transport can write to pty (fake serial port) path."""
-    self.uut = self._TRANSPORT_CLASS("cat", "-")
+    self.uut = self._TRANSPORT_CLASS("cat", ["-"])
     self.uut.open()
     data = b"SOME DATA BYTES TO WRITE TO TRANSPORT\n"
     out = self.uut.write(data)
@@ -187,7 +204,7 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
 
   def test_107_transport_can_write_unicode(self):
     """Process transport can write unicode to pty (fake serial port) path."""
-    self.uut = self._TRANSPORT_CLASS("cat", "-")
+    self.uut = self._TRANSPORT_CLASS("cat", ["-"])
     self.uut.open()
     data = "SOME UNICODE DATA TO WRITE TO TRANSPORT \ufffd\n"
     data_encoded = data.encode("utf-8", errors="replace")
@@ -208,7 +225,7 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
     with open(test_file, "w") as out_file:
       out_file.write("")
 
-    self.uut = self._TRANSPORT_CLASS("tail", "-f " + test_file)
+    self.uut = self._TRANSPORT_CLASS("tail", ["-f", test_file])
     self.uut.open()
     out = self.uut.read(size=1, timeout=0.1)
     self.assertEqual(
@@ -222,7 +239,7 @@ class PtyProcessTransportTests(ProcessTransportTests):
 
   def test_106_transport_can_write(self):
     """Process transport can write to pty (fake serial port) path."""
-    self.uut = self._TRANSPORT_CLASS(comms_address="cat", args="-")
+    self.uut = self._TRANSPORT_CLASS(comms_address="cat", args=["-"])
     self.uut.open()
     data = b"SOME DATA BYTES TO WRITE TO TRANSPORT"
     out = self.uut.write(data)
@@ -235,7 +252,7 @@ class PtyProcessTransportTests(ProcessTransportTests):
 
   def test_107_transport_can_write_unicode(self):
     """Process transport can write unicode to pty (fake serial port) path."""
-    self.uut = self._TRANSPORT_CLASS(comms_address="cat", args="-")
+    self.uut = self._TRANSPORT_CLASS(comms_address="cat", args=["-"])
     self.uut.open()
     data = "SOME UNICODE DATA TO WRITE TO TRANSPORT \ufffd"
     data_encoded = data.encode("utf-8", errors="replace")
@@ -248,7 +265,7 @@ class PtyProcessTransportTests(ProcessTransportTests):
                      "Expected {!r} found {!r}.".format(data_encoded, data_in))
 
   def test_109_launch_bash(self):
-    self.uut = self._TRANSPORT_CLASS(comms_address="/bin/bash", args="-i")
+    self.uut = self._TRANSPORT_CLASS(comms_address="/bin/bash", args=["-i"])
     self.uut.open()
 
     # Clear out the input
@@ -266,7 +283,7 @@ class PtyProcessTransportTests(ProcessTransportTests):
   @mock.patch.object(
       os, "read", side_effect=[b""] + 200 * [OSError("Input/Output error")])
   def test_110_read_error(self, mock_read):
-    self.uut = self._TRANSPORT_CLASS(comms_address="/bin/bash", args="-i")
+    self.uut = self._TRANSPORT_CLASS(comms_address="/bin/bash", args=["-i"])
     self.uut.open()
     # verify error caught and empty string returned
     data_in = self.uut.read(1024, timeout=.001)
@@ -276,7 +293,7 @@ class PtyProcessTransportTests(ProcessTransportTests):
     mock_read.assert_called()
 
   def test_111_write_number(self):
-    self.uut = self._TRANSPORT_CLASS(comms_address="/bin/bash", args="-i")
+    self.uut = self._TRANSPORT_CLASS(comms_address="/bin/bash", args=["-i"])
     self.uut.open()
     self.uut.write(134)  # assure no errors
 

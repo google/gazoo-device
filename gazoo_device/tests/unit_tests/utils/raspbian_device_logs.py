@@ -19,7 +19,7 @@ generate_command = ssh_device_logs.generate_command
 generate_response = ssh_device_logs.generate_response
 make_device_responses = ssh_device_logs.make_device_responses
 
-_RESPONSES = [{
+_RESPONSES = ({
     "cmd": "cat /proc/device-tree/model",
     "resp": "Raspberry Pi 3 Model B Rev 1.1",
     "code": 0,
@@ -82,7 +82,7 @@ _RESPONSES = [{
 
         Hardware	: BCM2835
         Revision	: a020d3
-        Serial		: 000000005ee230c2
+        Serial		: 000000001234abcd
         Model		: Raspberry Pi 3 Model B Plus Rev 1.3""",
     "code": 0,
 }, {
@@ -128,6 +128,6 @@ _RESPONSES = [{
     "cmd": "echo 'gdm hello'",
     "resp": "gdm hello",
     "code": 0,
-}]
+})
 
 DEFAULT_BEHAVIOR = ssh_device_logs.make_device_responses(_RESPONSES)

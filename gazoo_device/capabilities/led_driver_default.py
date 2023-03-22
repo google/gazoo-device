@@ -116,7 +116,7 @@ class LedDriverDefault(led_driver_base.LedDriverBase):
     """
     self._pyvisa_device.write(_COMMANDS["SET_FREQUENCY"].format(freq=freq_hz))
 
-  def get_max_brightness(self) -> float:
+  def get_max_brightness(self) -> float:  # pytype: disable=signature-mismatch  # overriding-return-type-checks
     """Gets max brightness used for output in percentage 0-100."""
     return float(self._pyvisa_device.query(_COMMANDS["GET_MAX_BRIGHTNESS"]))
 
@@ -126,7 +126,7 @@ class LedDriverDefault(led_driver_base.LedDriverBase):
     self._pyvisa_device.write(
         _COMMANDS["SET_MAX_BRIGHTNESS"].format(val=brightness))
 
-  def get_min_brightness(self) -> float:
+  def get_min_brightness(self) -> float:  # pytype: disable=signature-mismatch  # overriding-return-type-checks
     """Gets min brightness used for output in percentage 0-100."""
     return float(self._pyvisa_device.query(_COMMANDS["GET_MIN_BRIGHTNESS"]))
 

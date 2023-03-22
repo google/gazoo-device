@@ -427,11 +427,11 @@ A device class typically has the following:
         [example device controller log event filters](examples/example_extension_package/log_event_filters/)
         to understand the expected JSON format.
 
-    *   A `_DEFAULT_FILTERS` class constant, which is a tuple of strings
+    *   A `DEFAULT_FILTERS` class constant, which is a tuple of strings
         specifying absolute paths to log event filters for the device:
 
         ```python
-        _DEFAULT_FILTERS = (
+        DEFAULT_FILTERS = (
             os.path.join("some_log_event_filter_directory/", "basic.json"),
             os.path.join("some_log_event_filter_directory/", "crashes.json"),
         )

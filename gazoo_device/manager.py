@@ -31,6 +31,7 @@ import queue
 import shutil
 import signal
 import time
+import typing
 from typing import Any, Collection, Dict, Generator, List, Mapping, Optional, Tuple, Type, Union
 
 from gazoo_device import config
@@ -49,6 +50,7 @@ from gazoo_device.log_parser import LogParser
 from gazoo_device.switchboard import switchboard
 from gazoo_device.usb_port_map import UsbPortMap
 from gazoo_device.utility import common_utils
+from gazoo_device.utility import faulthandler_utils
 from gazoo_device.utility import host_utils
 from gazoo_device.utility import multiprocessing_utils
 
@@ -71,7 +73,8 @@ class Manager:
                debug_level=logging.DEBUG,
                stream_debug=False,
                stdout_logging=True,
-               max_log_size=100000000):
+               max_log_size=100000000,
+               from_parallel_utils=False):
 
     self._open_devices = {}
     self.max_log_size = max_log_size
@@ -109,6 +112,12 @@ class Manager:
                              testbeds_file_name, gdm_config_file_name,
                              log_directory, adb_path)
 
+    log_file_name_prefix = "parallel_utils" if from_parallel_utils else "main"
+    log_file_name_prefix = "manager_" + log_file_name_prefix
+    faulthandler_utils.set_up_faulthandler(
+        typing.cast(str, self.log_directory),
+        log_file_name_prefix=log_file_name_prefix)
+
     # Register USR1 signal to get exception messages from exception_queue
     signal.signal(signal.SIGUSR1,
                   common_utils.MethodWeakRef(self._process_exceptions))
@@ -123,7 +132,8 @@ class Manager:
     Notes:
       Backs up configuration files to 'backup'
     """
-    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    timestamp = datetime.datetime.now(tz=datetime.timezone.utc).strftime(
+        "%Y%m%d-%H%M%S")
     if not os.path.exists(config.BACKUP_PARENT_DIRECTORY) or not os.access(
         config.BACKUP_PARENT_DIRECTORY, os.X_OK):
       raise errors.DeviceError(
@@ -193,7 +203,7 @@ class Manager:
       log_directory=None,
       log_to_stdout=None,
       skip_recover_device=False,
-      make_device_ready: data_types.MAKE_DEVICE_READY_SETTING = "on",
+      make_device_ready: data_types.MakeDeviceReadySettingStr = "on",
       filters=None,
       log_name_prefix="",
       raise_if_already_open=True) -> custom_types.Device:
@@ -323,7 +333,7 @@ class Manager:
       log_file_name=None,
       log_directory=None,
       skip_recover_device=False,
-      make_device_ready: data_types.MAKE_DEVICE_READY_SETTING = "off",
+      make_device_ready: data_types.MakeDeviceReadySettingStr = "off",
       filters=None,
       log_name_prefix="",
       build_info_kwargs=None):
@@ -366,7 +376,7 @@ class Manager:
       device_type=None,
       log_to_stdout=None,
       category="gazoo",
-      make_device_ready: data_types.MAKE_DEVICE_READY_SETTING = "on",
+      make_device_ready: data_types.MakeDeviceReadySettingStr = "on",
       log_name_prefix=""):
     """Returns list of created device objects from device_list or connected devices.
 
@@ -984,17 +994,15 @@ class Manager:
     """
     device_name = self._get_device_name(device_name, raise_error=True)
     static_ips = None
-    try:
-      hub_name, hub_port = self._get_device_usb_hub_name_and_port(device_name)
-      logger.debug("{} before redetect, found device_usb_hub_name: {}, "
-                   "device_usb_port: {}".format(device_name, hub_name,
-                                                hub_port))
-      comms_port = self.get_device_configuration(
-          device_name)["persistent"]["console_port_name"]
-      if host_utils.is_static_ip(comms_port):
-        static_ips = [comms_port]
-    except errors.DeviceError as err:
-      logger.info(err)
+    hub_name, hub_port = self._get_device_usb_hub_name_and_port(device_name)
+    logger.debug("{} before redetect, found device_usb_hub_name: {}, "
+                 "device_usb_port: {}".format(device_name, hub_name,
+                                              hub_port))
+    device_config = self.get_device_configuration(device_name)
+    comms_port = device_config["persistent"]["console_port_name"]
+    if host_utils.is_static_ip(comms_port):
+      static_ips = [comms_port]
+
     usb_hub = None
     original_power_mode = None
     if hub_name and hub_port:
@@ -1004,8 +1012,13 @@ class Manager:
         usb_hub.switch_power.set_mode("sync", hub_port)
 
     device_configs_after_delete = self.delete(device_name, save_changes=False)
+    device_type = device_config["persistent"]["device_type"]
+    device_class = self.get_supported_device_class(device_type)
+    comm_type = device_class.COMMUNICATION_TYPE
     new_device_config, new_options_config = self.detect(  # pytype: disable=attribute-error  # dynamic-method-lookup
         static_ips=static_ips,
+        addresses=[comms_port],
+        communication_types=[comm_type],
         log_directory=log_directory,
         save_changes=False,
         device_configs=device_configs_after_delete)
@@ -1456,7 +1469,7 @@ class Manager:
     if just_props:
       all_props = [
           a for a in all_attributes
-          if not inspect.isroutine(hasattr(this_class, a))
+          if not inspect.isroutine(hasattr(this_class, a))  # pytype: disable=not-supported-yet
       ]
       return all_props
     return all_attributes
@@ -1699,7 +1712,7 @@ class Manager:
     Args:
       category (str): 'gazoo' or 'other'.
     """
-    format_line = "{:30} {:15} {:24} {:20} {:10}"
+    format_line = "{:30} {:15} {:20} {:11} {:22}"
     if category == "gazoo":
       device_dict = self._devices
       title = "Device"
@@ -1711,12 +1724,13 @@ class Manager:
       connected_title = "Available"
       good_status = "available"
     logger.info(
-        format_line.format(title, "Alias", "Type", "Model", connected_title))
+        format_line.format(title, "Alias", "Model", connected_title,
+                           "Communication address"))
     logger.info(
-        format_line.format("-" * 30, "-" * 15, "-" * 24, "-" * 20, "-" * 10))
+        format_line.format("-" * 30, "-" * 15, "-" * 20, "-" * 11, "-" * 22))
     for name in sorted(device_dict.keys()):
       device_config = device_dict[name]
-      device_type = device_config["persistent"]["device_type"]
+      communication_address = device_config["persistent"]["console_port_name"]
       model = device_config["persistent"]["model"]
       alias = device_config["options"].get("alias",
                                            "<undefined>") or u"<undefined>"
@@ -1725,7 +1739,8 @@ class Manager:
       else:
         status = "unavailable"
 
-      logger.info(format_line.format(name, alias, device_type, model, status))
+      logger.info(format_line.format(name, alias, model, status,
+                                     communication_address))
     logger.info("")
 
   def _process_exceptions(self, signum, frame):  # pylint: disable=unused-argument

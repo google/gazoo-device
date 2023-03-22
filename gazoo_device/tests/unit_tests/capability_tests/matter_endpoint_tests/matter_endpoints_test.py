@@ -20,35 +20,39 @@ from gazoo_device.capabilities import matter_endpoints_and_clusters
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
+from gazoo_device.utility import common_utils
 
 _FAKE_DEVICE_NAME = "fake-device-name"
 _FAKE_ENDPOINT_ID = 1
 _FAKE_RPC_TIMEOUT_S = 10
 
-# Trim the cluster capability names into alias names.
-_CLUSTER_NAMES_PW_RPC = (
-    cluster.get_capability_name().replace("_control_cluster",
-                                          "").replace("_cluster", "")
+# Trim the PwRpc cluster capability names into alias names.
+_CLUSTER_NAMES_PW_RPC = tuple(
+    common_utils.title_to_snake_case(cluster.__name__).replace(
+        "_cluster_pw_rpc", "")
     for cluster in matter_endpoints_and_clusters.SUPPORTED_CLUSTERS_PW_RPC)
+_ENDPOINT_AND_CLUSTER_PRODUCT_PW_RPC = tuple(
+    itertools.product(
+        matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS,
+        _CLUSTER_NAMES_PW_RPC))
+_ENDPOINT_AND_SUPPORTED_CLUSTER_PRODUCT_PW_RPC = tuple(
+    (endpoint_class, cluster_name)
+    for endpoint_class, cluster_name in _ENDPOINT_AND_CLUSTER_PRODUCT_PW_RPC
+    if hasattr(endpoint_class, cluster_name))
 
-_ENDPOINT_AND_CLUSTER_PRODUCT_PW_RPC = itertools.product(
-    matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS, _CLUSTER_NAMES_PW_RPC)
-
-_CLUSTER_NAMES_CHIP_TOOL = (
-    cluster.get_capability_name().replace("_control_cluster",
-                                          "").replace("_cluster", "")
+# Trim the chip-tool cluster capability names into alias names.
+_CLUSTER_NAMES_CHIP_TOOL = tuple(
+    common_utils.title_to_snake_case(cluster.__name__).replace(
+        "_cluster_chip_tool", "")
     for cluster in matter_endpoints_and_clusters.SUPPORTED_CLUSTERS_CHIP_TOOL)
-
-_ENDPOINT_AND_CLUSTER_PRODUCT_CHIP_TOOL = itertools.product(
-    matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS, _CLUSTER_NAMES_CHIP_TOOL)
-
-_ENDPOINTS_AND_CLUSTER_PRODUCT = itertools.chain(
-        _ENDPOINT_AND_CLUSTER_PRODUCT_PW_RPC,
-        _ENDPOINT_AND_CLUSTER_PRODUCT_CHIP_TOOL)
-
-ENDPOINT_AND_CLUSTER_PAIR = [
-    dict(endpoint_class=endpoint_class, cluster_name=cluster_name)
-    for endpoint_class, cluster_name in _ENDPOINTS_AND_CLUSTER_PRODUCT]
+_ENDPOINT_AND_CLUSTER_PRODUCT_CHIP_TOOL = tuple(
+    itertools.product(
+        matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS,
+        _CLUSTER_NAMES_CHIP_TOOL))
+_ENDPOINT_AND_SUPPORTED_CLUSTER_PRODUCT_CHIP_TOOL = tuple(
+    (endpoint_class, cluster_name)
+    for endpoint_class, cluster_name in _ENDPOINT_AND_CLUSTER_PRODUCT_CHIP_TOOL
+    if hasattr(endpoint_class, cluster_name))
 
 
 class MatterEndpointsTest(fake_device_test_case.FakeDeviceTestCase):
@@ -57,21 +61,34 @@ class MatterEndpointsTest(fake_device_test_case.FakeDeviceTestCase):
   Cluster instance is only tested if it's supported on the endpoint.
   """
 
-  @parameterized.parameters(ENDPOINT_AND_CLUSTER_PAIR)
-  @mock.patch.object(endpoint_base.EndpointBase, "cluster_lazy_init")
-  def test_endpoint_and_cluster(self, mock_cluster_lazy_init, endpoint_class,
-                                cluster_name):
-    """Verifies the endpoint and cluster instance initialization."""
+  @parameterized.parameters(*_ENDPOINT_AND_SUPPORTED_CLUSTER_PRODUCT_PW_RPC)
+  @mock.patch.object(endpoint_base.EndpointBase, "cluster_lazy_init",
+                     return_value=mock.Mock(spec=cluster_base.ClusterBase))
+  def test_endpoint_and_cluster_pw_rpc(
+      self, endpoint_class, cluster_name, mock_cluster_lazy_init):
+    """Tests endpoint and cluster instance initialization for PigweedRPC."""
     uut = endpoint_class(
         device_name=_FAKE_DEVICE_NAME,
         identifier=_FAKE_ENDPOINT_ID,
-        supported_clusters=set(),
+        supported_clusters=(
+            matter_endpoints_and_clusters.SUPPORTED_CLUSTERS_PW_RPC),
         read=None,
         write=None)
-    if hasattr(uut, cluster_name):
-      fake_cluster_instance = mock.Mock(spec=cluster_base.ClusterBase)
-      mock_cluster_lazy_init.return_value = fake_cluster_instance
-      cluster = getattr(uut, cluster_name)
-      self.assertEqual(fake_cluster_instance, cluster)
-    else:
-      self.skipTest(f"{cluster_name} is not supported on {uut}.")
+    self.assertEqual(
+        getattr(uut, cluster_name), mock_cluster_lazy_init.return_value)
+
+  @parameterized.parameters(*_ENDPOINT_AND_SUPPORTED_CLUSTER_PRODUCT_CHIP_TOOL)
+  @mock.patch.object(endpoint_base.EndpointBase, "cluster_lazy_init",
+                     return_value=mock.Mock(spec=cluster_base.ClusterBase))
+  def test_endpoint_and_cluster_chip_tool(
+      self, endpoint_class, cluster_name, mock_cluster_lazy_init):
+    """Tests endpoint and cluster instance initialization for chip-tool."""
+    uut = endpoint_class(
+        device_name=_FAKE_DEVICE_NAME,
+        identifier=_FAKE_ENDPOINT_ID,
+        supported_clusters=(
+            matter_endpoints_and_clusters.SUPPORTED_CLUSTERS_CHIP_TOOL),
+        read=None,
+        write=None)
+    self.assertEqual(
+        getattr(uut, cluster_name), mock_cluster_lazy_init.return_value)

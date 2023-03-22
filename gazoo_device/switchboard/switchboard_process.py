@@ -16,24 +16,30 @@
 import contextlib
 import multiprocessing
 import os
+import queue
 import signal
 import socket
 import time
 import traceback
+import typing
 
+from gazoo_device import errors
 from gazoo_device import gdm_logger
+from gazoo_device.utility import faulthandler_utils
 from gazoo_device.utility import multiprocessing_utils
+from gazoo_device.utility import retry
 import psutil
-import six.moves.queue
 
 _PROCESS_START_TIMEOUT_S = 30
+_CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S = 3
+_CHILD_PROCESS_POLLING_INTERVAL_S = 0.01
 
 
-def get_message(queue, timeout=None):
-  """Returns next message from queue.
+def get_message(message_queue, timeout=None):
+  """Returns next message from message_queue.
 
   Args:
-      queue (Queue): to retrieve next message from
+      message_queue (Queue): to retrieve next message from
       timeout (float): time to wait in seconds for incoming message to arrive.
 
   Raises:
@@ -43,59 +49,60 @@ def get_message(queue, timeout=None):
       object: The message data or None if no messages were available or
               retrieved within timeout specified.
   """
-  if queue is None or not hasattr(queue, "get"):
-    raise ValueError("Invalid queue of {} provided".format(type(queue)))
+  if message_queue is None or not hasattr(message_queue, "get"):
+    raise ValueError("Invalid queue of {} provided".format(type(message_queue)))
 
   message = None
   try:
-    message = queue.get(block=True, timeout=timeout)
-    # manager shutdown or queue empty
-  except (IOError, six.moves.queue.Empty, ValueError, socket.error):
+    message = message_queue.get(block=True, timeout=timeout)
+    # manager shutdown or message_queue empty
+  except (IOError, queue.Empty, ValueError, socket.error):
     pass
   return message
 
 
-def put_message(queue, message, timeout=None):
-  """Puts message into queue using the timeout specified.
+def put_message(message_queue, message, timeout=None):
+  """Puts message into message_queue using the timeout specified.
 
   Args:
-      queue (Queue): to add message to
+      message_queue (Queue): to add message to
       message (object): to write into the queue
       timeout (float): time to wait in seconds for outgoing message to be
         accepted into queue.
 
   Raises:
-      ValueError: if queue provided is not valid or has no put method
-      Queue.Full: if outgoing queue is full and timeout was provided and was
-                  reached before message was sent.
+      ValueError: if message_queue provided is not valid or has no put method
+      Queue.Full: if outgoing message_queue is full and timeout was provided and
+                  was reached before message was sent.
   """
-  if queue is None or not hasattr(queue, "put"):
-    raise ValueError("Invalid queue of {} provided".format(type(queue)))
+  if message_queue is None or not hasattr(message_queue, "put"):
+    raise ValueError("Invalid queue of {} provided".format(type(message_queue)))
 
   try:
-    queue.put(message, block=True, timeout=timeout)
+    message_queue.put(message, block=True, timeout=timeout)
   except (IOError, socket.error):  # manager shutdown
     pass
 
 
 def wait_for_queue_writes(
-    queue: multiprocessing.Queue, timeout: float = 1) -> None:
-  """Wait until the queue background thread writes all pending queue messages.
+    message_queue: multiprocessing.Queue, timeout: float = 1) -> None:
+  """Wait until the message_queue background thread writes all pending message_queue messages.
 
   Args:
-    queue: Queue to wait on.
-    timeout: Max seconds to wait for the queue buffer to become empty.
+    message_queue: Queue to wait on.
+    timeout: Max seconds to wait for the message_queue buffer to become empty.
 
   Raises:
-    RuntimeError: If the queue buffer did not become empty in the given time.
+    RuntimeError: If the message_queue buffer did not become empty
+      in the given time.
   """
-  queue_buffer = queue._buffer  # pylint: disable=protected-access  # pytype:disable=attribute-error
+  queue_buffer = message_queue._buffer  # pylint: disable=protected-access  # pytype:disable=attribute-error
   deadline = time.time() + timeout
   while time.time() < deadline and queue_buffer:
     time.sleep(0.01)
   if queue_buffer:
     raise RuntimeError(
-        f"Buffer of queue {queue} didn't get flushed in {timeout}s.")
+        f"Buffer of queue {message_queue} didn't get flushed in {timeout}s.")
 
 
 @contextlib.contextmanager
@@ -135,6 +142,10 @@ def _process_loop(cls, parent_pid):
   """Child process loop which handles start/stop events and exceptions."""
   with _child_process_wrapper(parent_pid, cls.process_name, cls.device_name,
                               cls._exception_queue):
+    faulthandler_utils.set_up_faulthandler(
+        typing.cast(str, cls._log_directory),  # pylint: disable=protected-access
+        log_file_name_prefix=f"{cls.device_name}_{type(cls).__name__}_parent_"
+                             f"{parent_pid}_child")
     gdm_logger.initialize_child_process_logging(cls.logging_queue)
     try:
       cls._start_event.set()
@@ -178,22 +189,26 @@ class SwitchboardProcess:
                process_name,
                exception_queue,
                command_queue,
+               log_path,
                valid_commands=None):
     """Initialize SwitchboardProcess with the arguments provided.
 
     Args:
-        device_name (str): of the device for exception error messages
+        device_name (str): of the device for exception error messages.
         process_name (str): to use for process name and exception error
-          messages
+          messages.
         exception_queue (Queue): to use for reporting exception traceback
-          message from subprocess
-        command_queue (Queue): to receive commands into
+          message from subprocess.
+        command_queue (Queue): to receive commands into.
+        log_path (str): path and filename to write log messages to.
         valid_commands (Optional[Tuple[str, ...]]): Valid command strings.
     """
+    log_directory = os.path.dirname(log_path)
     self.device_name = device_name
     self.process_name = process_name
     self._command_queue = command_queue
     self._exception_queue = exception_queue
+    self._log_directory = log_directory
     gdm_logger.switch_to_multiprocess_logging()
     self.logging_queue = gdm_logger.get_logging_queue()
     self._start_event = multiprocessing_utils.get_context().Event()
@@ -220,7 +235,7 @@ class SwitchboardProcess:
       self._start_event.clear()
       self._stop_event.clear()
       parent_pid = os.getpid()
-      process = multiprocessing_utils.get_context().Process(
+      process = multiprocessing_utils.get_context().Process(  # pytype: disable=attribute-error  # re-none
           name=self.process_name,
           target=_process_loop,
           args=(self, parent_pid))
@@ -233,14 +248,40 @@ class SwitchboardProcess:
                          "Child process is already running.".format(
                              self.device_name, self.process_name))
 
-  def wait_for_start(self):
-    """Waits for the process to start."""
+  def wait_for_start(self) -> None:
+    """Waits for the process to start.
+
+    Raises:
+      RuntimeError: process failed to start before a timeout was reached.
+    """
     start_event_value = self._start_event.wait(timeout=_PROCESS_START_TIMEOUT_S)
     if not start_event_value:
+      per_core_cpu_utilization = psutil.cpu_percent(interval=0.1, percpu=True)
+      per_core_cpu_utilization_formatted = [
+          f"{value:.1f}%" for value in per_core_cpu_utilization]
+      num_cores = len(per_core_cpu_utilization)
+      avg_cpu_utilization = sum(per_core_cpu_utilization) / num_cores
+      # Average load for the last 1 minute, 5 minutes, 15 minutes.
+      # The "load" is defined as the average number of processes in a runnable
+      # state per CPU core. Load over 100% indicates throttling.
+      avg_historic_load = [f"{load / num_cores * 100:.1f}%"
+                           for load in psutil.getloadavg()]
       raise RuntimeError(
-          "Device {} failed to start child process {}. "
-          "Start event was not set in {}s.".format(
-              self.device_name, self.process_name, _PROCESS_START_TIMEOUT_S))
+          f"{self.device_name} failed to start child process "
+          f"{self.process_name}. "
+          f"Start event was not set in {_PROCESS_START_TIMEOUT_S}s. "
+          "This typically means that the test binary has not been allocated a "
+          "sufficient share of the host's CPU. Common causes: too many "
+          "simultaneous task executions or process leaks from previous tests.\n"
+          "Check the host CPU utilization and active processes by running "
+          "'top' on the host. Also check the CPU model and frequency via "
+          "'lscpu'.\n"
+          "Diagnostic information: "
+          f"host CPU cores: {num_cores}, "
+          f"current combined CPU load: {avg_cpu_utilization:.1f}, "
+          f"current per-core CPU load: {per_core_cpu_utilization_formatted}, "
+          "average combined CPU load in the last 1 minute, 5 minutes, 15 "
+          f"minutes: {avg_historic_load}. Load over 100% indicates throttling.")
 
   def is_started(self):
     """Returns True if process was started, False otherwise.
@@ -264,12 +305,14 @@ class SwitchboardProcess:
       return self._process.is_alive()
     return False
 
-  def send_command(self, command, data=None):
+  def send_command(self, command, data=None,
+                   wait_for_command_consumption: bool = False):
     """Sends command with optional data provided.
 
     Args:
         command (str): string to send
         data (object): optional data to include with command.
+        wait_for_command_consumption: wait until command is consummed.
 
     Raises:
         ValueError: if command provided is not in the list of valid commands
@@ -280,6 +323,20 @@ class SwitchboardProcess:
                            self.device_name, self.process_name, command,
                            self._valid_commands))
     put_message(self._command_queue, (command, data))
+    if wait_for_command_consumption:
+      try:
+        retry.retry(
+            func=self.is_command_consumed,
+            is_successful=retry.is_true,
+            timeout=_CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S,
+            interval=_CHILD_PROCESS_POLLING_INTERVAL_S)
+      except errors.CommunicationTimeoutError as err:
+        self.stop()
+        raise errors.ProcessCommunicationError(
+            self.device_name,
+            "Device {} Process {} command {} consumption timed out. "
+            "Stopped the process.".format(
+                self.device_name, self.process_name, command)) from err
 
   def stop(self):
     """Stops process if process is running.

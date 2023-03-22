@@ -82,8 +82,10 @@ class PackageManagementTestSuite(gdm_test_base.GDMTestBase):
       self.device.package_management.uninstall_package(package_name)
 
     try:
+      sample_package_path = self.test_config["sample_package_path"].format(
+          build_number=self.device.firmware_version)
       package_path = self._download_package(
-          self.test_config["sample_package_path"], download_folder)
+          sample_package_path, download_folder)
       # Ensure package is not already present on the device.
       asserts.assert_false(
           self.device.package_management.has_package(package_name),

@@ -175,9 +175,10 @@ class FakeResponder:
              timeout=30.0,
              searchwindowsize=config.SEARCHWINDOWSIZE,
              expect_type=line_identifier.LINE_TYPE_ALL,
-             mode=switchboard.MODE_TYPE_ANY):
+             mode=switchboard.MODE_TYPE_ANY,
+             raise_for_timeout: bool = False):
     """Mock implementation of Switchboard.expect."""
-    del timeout, searchwindowsize, expect_type  # Unused.
+    del searchwindowsize, expect_type  # Unused.
     response = self.response
     self.debug_print("expect")
     if isinstance(pattern_list, str):
@@ -197,7 +198,10 @@ class FakeResponder:
     self.debug_print("\tFake Response: {!r}".format(response_str))
 
     output = self._expect_parser(pattern_list, response_str, mode)
-
+    if output.timedout and raise_for_timeout:
+      raise errors.DeviceError(
+          "{} expect timed out after waiting {}s for {!r} remaining patterns"
+          .format("fakedevice-1234", timeout, ", ".join(output.remaining)))
     self.debug_print("\tExpect timedout: {}\t".format(output.timedout))
     return output
 

@@ -16,25 +16,33 @@
 import select
 import subprocess
 import time
-import six
+from typing import Sequence
+from gazoo_device import errors
+from gazoo_device import gdm_logger
 from gazoo_device.switchboard import transport_properties
 from gazoo_device.switchboard.transports import transport_base
+from gazoo_device.utility import retry
+
+logger = gdm_logger.get_logger()
+
+_CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S = 3
+_CHILD_PROCESS_POLLING_INTERVAL_S = 0.01
 
 
 class ProcessTransport(transport_base.TransportBase):
   """Perform communication using a subprocess with the command and args specified."""
 
   def __init__(self,
-               command,
-               args="",
+               command: str,
+               args: Sequence[str] = (),
                auto_reopen=False,
                open_on_start=True,
                working_directory=None):
     """Initialize the ProcessTransport object with the given process properties.
 
     Args:
-        command (str): command to execute
-        args (str): list of additional args to pass to command
+        command: command to execute
+        args: list of additional args to pass to command
         auto_reopen (bool): flag indicating transport should be reopened if
           unexpectedly closed.
         open_on_start (bool): flag indicating transport should be open on
@@ -43,8 +51,7 @@ class ProcessTransport(transport_base.TransportBase):
     """
 
     super(ProcessTransport, self).__init__(auto_reopen, open_on_start)
-    self._args = [command] + args.split()
-
+    self._args = [command] + list(args)
     self._properties.update({
         transport_properties.CLOSE_FDS: True,
     })
@@ -82,16 +89,32 @@ class ProcessTransport(transport_base.TransportBase):
     """
     pass
 
+  def _close_process(self):
+    """Closes the process."""
+    if self._process.poll() is None:
+      self._process.terminate()
+      try:
+        retry.retry(
+            func=self._process.poll,
+            is_successful=lambda poll_result: poll_result is not None,
+            timeout=_CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S,
+            interval=_CHILD_PROCESS_POLLING_INTERVAL_S)
+      except errors.CommunicationTimeoutError as e:
+        # process did not terminate.
+        self._process.kill()
+        raise errors.ProcessCommunicationError(
+            "",
+            "Process transport did not terminate after {} seconds. "
+            "Killed the process.".format(
+                _CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S)) from e
+    self._process = None
+
   def close(self):
     """Closes the process."""
     if hasattr(self, "_process") and self._process:
       self._process.stdin.close()
       self._process.stdout.close()
-      if self._process.poll() is None:
-        self._process.terminate()
-        while self._process.poll() is None:
-          time.sleep(0.001)
-      self._process = None
+      self._close_process()
 
   def _read(self, size=1, timeout=None):
     """Returns bytes read up to max_bytes within timeout in seconds specified.
@@ -121,7 +144,7 @@ class ProcessTransport(transport_base.TransportBase):
     Returns:
         int: number of bytes written or None if no bytes were written
     """
-    if isinstance(data, six.text_type):
+    if isinstance(data, str):
       data = data.encode("utf-8", errors="replace")
 
     if timeout:
@@ -162,8 +185,8 @@ class ProcessTransport(transport_base.TransportBase):
     return count
 
   def _write_data(self, data):
-    if isinstance(data, six.integer_types):
-      data = six.int2byte(data)
+    if isinstance(data, int):
+      data = bytes((data,))
     self._process.stdin.write(data)
     self._process.stdin.flush()
     return len(data)

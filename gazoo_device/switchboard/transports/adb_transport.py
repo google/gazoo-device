@@ -14,6 +14,7 @@
 
 """ADB transport which communicates to the device over a process running 'adb shell'."""
 import time
+from typing import Sequence
 
 from gazoo_device.switchboard.transports import process_transport
 from gazoo_device.utility import adb_utils
@@ -26,7 +27,7 @@ class AdbTransport(process_transport.ProcessTransport):
 
   def __init__(self,
                comms_address,
-               command="shell",
+               command: Sequence[str] = ("shell",),
                adb_path=None,
                fastboot_path=None,
                auto_reopen=True,
@@ -36,7 +37,7 @@ class AdbTransport(process_transport.ProcessTransport):
     Args:
         comms_address (str): device adb_serial to use when connecting to
           device
-        command (str): additional commands to pass to device
+        command: additional commands to pass to device
         adb_path (str): optional path to adb executable to use
         fastboot_path (str): optional path to fastboot executable to use
         auto_reopen (bool): flag indicating transport should be reopened if
@@ -49,10 +50,10 @@ class AdbTransport(process_transport.ProcessTransport):
       adb_path = adb_utils.get_adb_path()
     if fastboot_path is None:
       fastboot_path = adb_utils.get_fastboot_path()
-    args = "-s {} {}".format(comms_address, command)
+    args_list = ["-s", comms_address, *command]
     super(AdbTransport, self).__init__(
         command=adb_path,
-        args=args,
+        args=args_list,
         auto_reopen=auto_reopen,
         open_on_start=open_on_start)
     self._adb_path = adb_path

@@ -286,8 +286,9 @@ class TestAuxiliaryDevice(fake_device_test_case.FakeDeviceTestCase,
         "communication_address": "123.456.78.9",
         "regexes": {},
         "timeouts": {
-            "CONNECTED": 3,
-            "SHELL": 60
+            "CHECK_IS_CONNECTED": 3,
+            "SHELL": 60,
+            "WAIT_UNTIL_CONNECTED": 90,
         },
         "name": "aux-device-1234",
         "owner": "gdm-authors@google.com",

@@ -31,8 +31,7 @@ _CONNECT_PERSISTENT_PROPERTIES = immutabledict.immutabledict({
     "serial_number": _FAKE_SERIAL_NUMBER,
     "name": "rpimatter-1234",
     "device_type": "rpimatter",
-    "model": "PROTO",
-    "wpan_mac_address": "123456"
+    "model": "PROTO"
 })
 _MOCK_MATTER_ENDPOINT = mock.Mock(
     spec=matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc)

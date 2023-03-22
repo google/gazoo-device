@@ -48,12 +48,12 @@ class ExtendedColorLightEndpoint(
     return self.cluster_lazy_init(matter_enums.OnOffCluster.ID)
 
   @decorators.CapabilityDecorator(level_control_pw_rpc.LevelControlClusterPwRpc)
-  def level(self) -> level_control_pw_rpc.LevelControlClusterPwRpc:
+  def level_control(self) -> level_control_pw_rpc.LevelControlClusterPwRpc:
     """Matter Level Control cluster instance."""
     return self.cluster_lazy_init(matter_enums.LevelControlCluster.ID)
 
   @decorators.CapabilityDecorator(color_control_pw_rpc.ColorControlClusterPwRpc)
-  def color(self) -> color_control_pw_rpc.ColorControlClusterPwRpc:
+  def color_control(self) -> color_control_pw_rpc.ColorControlClusterPwRpc:
     """Matter Color Control cluster instance."""
     return self.cluster_lazy_init(matter_enums.ColorControlCluster.ID)
 

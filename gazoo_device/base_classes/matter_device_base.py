@@ -74,7 +74,7 @@ class MatterDeviceBase(
         device_config,
         log_file_name=log_file_name,
         log_directory=log_directory)
-    self._timeouts.update({"CONNECTED": _CONNECTION_TIMEOUT_SECONDS})
+    self._timeouts.update({"WAIT_UNTIL_CONNECTED": _CONNECTION_TIMEOUT_SECONDS})
 
   def get_console_configuration(self) -> console_config.ConsoleConfiguration:
     """Returns the interactive console configuration."""
@@ -279,8 +279,8 @@ class MatterDeviceBase(
         default_hub_type="cambrionix",
         props=self.props,
         usb_ports_discovered=True,
-        switchboard_inst=self.switchboard,
+        get_switchboard_if_initialized=self._get_switchboard_if_initialized,
+        wait_until_connected_fn=self.wait_until_connected,
         wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
-        wait_for_connection_fn=self.check_device_connected,
         usb_hub_name_prop="device_usb_hub_name",
         usb_port_prop="device_usb_port")

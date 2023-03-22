@@ -18,6 +18,7 @@ from unittest import mock
 from absl.testing import parameterized
 from gazoo_device import detect_criteria
 from gazoo_device import device_detector
+from gazoo_device import errors
 from gazoo_device import extensions
 from gazoo_device import manager
 from gazoo_device.auxiliary_devices import cambrionix
@@ -267,6 +268,38 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
         "alias": None
     }, self.detector.options_configs["other_device_options"]["cambrionix-1234"])
 
+  def test_17_add_to_configs_already_exist(self):
+    """Tests _add_to_configs for an already existed device."""
+    self.detector.persistent_configs = {
+        "devices": {
+            "sshdevice-6678": {
+                "console_port_name": "11.22.33.44"
+            },
+        },
+        "other_devices": {}
+    }
+
+    with self.assertRaises(errors.DetectionOvewriteConfigError):
+      self.detector._add_to_configs(
+          fake_devices.FakeSSHDevice, "sshdevice-6678",  # already exist.
+          {"console_port_name": "55.66.77.88"}, {})
+
+  def test_18_add_to_configs_other_already_exist(self):
+    """Tests _add_to_configs for an already existed auxiliary device."""
+    self.detector.persistent_configs = {
+        "devices": {},
+        "other_devices": {
+            "cambrionix-1234": {
+                "console_port_name": "/dev/serial/by-id/usb-OLD-port0"
+            }
+        }
+    }
+
+    with self.assertRaises(errors.DetectionOvewriteConfigError):
+      self.detector._add_to_configs(
+          cambrionix.Cambrionix, "cambrionix-1234",  # already exist.
+          {"console_port_name": "/dev/serial/by-id/usb-NEW-port0"}, {})
+
   @parameterized.named_parameters(
       ("success_short_name_primary_device", "sshdevice", "56781234",
        fake_devices.FakeSSHDevice, "sshdevice-1234"),
@@ -337,6 +370,52 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
     # cambrionix-0123 should not be detected because it raises an error.
     self.assertFalse(persistent_configs["other_devices"])
     self.assertFalse(option_configs["other_device_options"])
+
+  def test_301_detect_new_devices_already_exist(self):
+    """Tests that detect_new_devices detects already existing devices and _print_summary reports the error."""
+    self.detector.persistent_configs = {
+        "devices": {
+            # already existing device
+            "sshdevice-5678": {
+                # existing console_port_name
+                "console_port_name": "11.22.33.44",
+                "serial_number": "22345678"
+            }
+        },
+        "other_devices": {}
+    }
+
+    with mock.patch.object(
+        self.detector, "_detect_get_info",
+        return_value=(
+            "sshdevice-5678",  # already existing name
+            {  # new console_port_name
+                "console_port_name": "12.34.56.78"
+            },
+            {})):
+      with mock.patch.object(
+          self.detector, "_print_summary",
+          return_value=None) as mock_print_summary:
+        persistent_configs, option_configs = self.detector.detect_new_devices(
+            connections_dict={"SshComms": ["12.34.56.78"]})
+    msg = ("Error extracting info from sshdevice '12.34.56.78'. "
+           "Err: DetectionOvewriteConfigError(\"Device sshdevice-5678 "
+           "is already detected with communication address 11.22.33.44. "
+           "Detection returned a new config entry for sshdevice-5678 "
+           "with communication address 12.34.56.78. "
+           "This is likely a bug in the device\'s detection criteria. "
+           "Refusing to overwrite the existing device configuration. "
+           "If the communication address change is intentional, "
+           "run 'gdm redetect sshdevice-5678' instead.\")")
+    mock_print_summary.assert_called_once_with(
+        ["sshdevice-5678"],
+        [msg],
+        ["12.34.56.78"])
+    self.assertIn("sshdevice-5678", persistent_configs["devices"])
+    self.assertEqual(
+        "11.22.33.44",  # refuse to overwrites old console_port_name.
+        persistent_configs["devices"]["sshdevice-5678"]["console_port_name"])
+    self.assertNotIn("sshdevice-5678", option_configs["device_options"])
 
   @mock.patch.object(
       cambrionix.Cambrionix,

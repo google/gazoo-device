@@ -3,6 +3,7 @@
   "shell_cmd": "",
   "expect": [""],
   "do_not_run_tests": [
+    "CommonTestSuite.test_reboot_and_expect_known_logline",
     "CommonTestSuite.test_shell",
     "SwitchboardTestSuite.test_send_and_expect"
   ],

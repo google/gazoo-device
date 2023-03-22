@@ -21,7 +21,7 @@ import inspect
 import os
 import re
 import time
-from typing import Any, Callable, List, Set, Tuple, Type
+from typing import Any, Callable, List, Optional, Set, Tuple, Type
 import weakref
 
 from gazoo_device import config
@@ -38,12 +38,22 @@ from gazoo_device.switchboard import log_process
 from gazoo_device.switchboard import switchboard
 from gazoo_device.utility import common_utils
 from gazoo_device.utility import deprecation_utils
+from gazoo_device.utility import retry
+import immutabledict
 
 logger = gdm_logger.get_logger()
 
 ERROR_PREFIX = "Exception_"
 
-TIMEOUTS = {"CONNECTED": 3, "POWER_CYCLE": 2, "SHELL": 60}
+TIMEOUTS = immutabledict.immutabledict({
+    # "CHECK_IS_CONNECTED" timeout must be kept short. When 'gdm devices' runs,
+    # it checks whether each device is connected, so the worst case run time is
+    # num_connected_devices * TIMEOUTS["CHECK_IS_CONNECTED"].
+    "CHECK_IS_CONNECTED": 3,
+    "SHELL": 60,
+    "WAIT_UNTIL_CONNECTED": 90,
+})
+_DEVICE_POLLING_INTERVAL = 0.5
 
 
 def create_symlink(file_path, symlink_file_name):
@@ -97,7 +107,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
   # Absolute paths to event filter files (filters/<device_type>/filter.json)
   _COMMUNICATION_KWARGS = {}
   _CONNECTION_TIMEOUT = 3
-  _DEFAULT_FILTERS = ()  # type: Tuple[str, ...]
+  DEFAULT_FILTERS = ()  # type: Tuple[str, ...]
   _OWNER_EMAIL = ""  # override in child classes
 
   def __init__(self,
@@ -135,9 +145,9 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
 
     self._commands = {}
     self._regexes = {}
-    self._timeouts = TIMEOUTS.copy()
+    self._timeouts = dict(TIMEOUTS)
     self.device_type = self.DEVICE_TYPE
-    self.filter_paths = self._DEFAULT_FILTERS + tuple(
+    self.filter_paths = self.DEFAULT_FILTERS + tuple(
         device_config.get("filters") or ())
 
     # Initialize log files
@@ -278,21 +288,38 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
         self.name))
 
   @decorators.health_check
-  def check_device_connected(self):
+  def check_device_connected(self) -> None:
     """Checks that device shows up as a connection on the host machine.
 
     Raises:
         DeviceNotConnectedError: if device is not connected.
     """
+    self.wait_until_connected(timeout=self.timeouts["CHECK_IS_CONNECTED"])
+
+  @decorators.LogDecorator(logger)
+  def wait_until_connected(self, timeout: Optional[int] = None) -> None:
+    """Wait until the device is connected to the host.
+
+    Args:
+        timeout: Max time to wait for the device to be reachable from the host.
+
+    Raises:
+        DeviceNotConnectedError: device did not become reachable from the host
+            before the timeout was exceeded.
+    """
+    if timeout is None:
+      timeout = self.timeouts["WAIT_UNTIL_CONNECTED"]
     logger.info("{} waiting up to {}s for device to be connected.".format(
-        self.name, self.timeouts["CONNECTED"]))
-    end_time = time.time() + self.timeouts["CONNECTED"]
-    while time.time() < end_time:
-      if self.connected:  # pylint: disable=using-constant-test
-        return
-      time.sleep(.5)
-    raise errors.DeviceNotConnectedError(
-        self.name, msg="device not reachable from host machine.")
+        self.name, timeout))
+    try:
+      retry.retry(
+          func=lambda: self.connected,
+          is_successful=retry.is_true,
+          timeout=timeout,
+          interval=_DEVICE_POLLING_INTERVAL)
+    except errors.CommunicationTimeoutError as err:
+      raise errors.DeviceNotConnectedError(
+          self.name, msg="device not reachable from host machine.") from err
 
   @decorators.LogDecorator(logger, decorators.DEBUG)
   def close(self):
@@ -490,7 +517,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
 
   @decorators.LogDecorator(logger, decorators.DEBUG)
   def make_device_ready(
-      self, setting: data_types.MAKE_DEVICE_READY_SETTING = "on") -> None:
+      self, setting: data_types.MakeDeviceReadySettingStr = "on") -> None:
     """Checks device readiness and attempts recovery if allowed.
 
     If setting is 'off': does nothing.
@@ -570,6 +597,8 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
                        "but device does not support 'flash_build' capability")
       logger.info(f"{self.name} was not able to recover from "
                   f"{unrecoverable_error!r}")
+      if recoverable_error is unrecoverable_error:
+        recoverable_error = None  # avoid exception chaining loop
       raise unrecoverable_error from recoverable_error
 
     logger.info(f"{self.name} re-flashing device with the default build")
@@ -865,10 +894,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
 
       match = re.search(regex, response, re.MULTILINE | re.DOTALL)
       if match:
-        max_group = match.lastindex
-        if max_group is None:
-          max_group = 0
-
+        max_group = len(match.groups())
         if regex_group > max_group:
           logger.warning(
               "{}: requested group index ({}) exceeds index of last matched group ({}). "

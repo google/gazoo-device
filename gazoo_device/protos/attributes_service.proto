@@ -19,7 +19,7 @@ syntax = "proto3";
 
 package chip.rpc;
 
-import "third_party/py/gazoo_device/protos/common.proto";
+import "third_party/pigweed/pigweed/pw_protobuf/pw_protobuf_protos/common.proto";
 
 enum AttributeType {
   ZCL_NO_DATA_ATTRIBUTE_TYPE = 0x00;            // No data

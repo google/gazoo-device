@@ -253,6 +253,25 @@ def get_usb_hub_address_from_address(address: str) -> Optional[str]:
   return usb_info_inst.usb_hub_address
 
 
+def get_usb_device_address_from_serial_number(
+    serial_number: str) -> Optional[str]:
+  """Returns the usb device address associated with a serial number.
+
+  Args:
+      serial_number: Device serial_number to associate with usb device address.
+
+  Returns:
+      usb device address or None if no associated device.
+  """
+  devices = find_matching_connections(
+      {"serial_number": {
+          "include_regex": serial_number
+      }})
+  if devices:
+    return devices[0].address
+  return None
+
+
 def get_usb_hub_address_from_serial_number(serial_number: str) -> Optional[str]:
   """Returns the communication address for usb hub the device is connected to.
 

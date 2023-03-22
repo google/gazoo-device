@@ -189,3 +189,13 @@ class CommonTestMixin(parameterized.TestCase):
         with self.assertRaises(errors.DeviceError):
           self.uut.make_device_ready()
         mock_info.assert_called()
+
+  def test_make_device_ready_methods_exception_loop(self):
+    """Test make_device_ready if exception.__cause__ contains a cycle."""
+    with mock.patch.object(
+        self.uut, "check_device_ready",
+        side_effect=errors.DeviceError("CheckDeviceReadyError")):
+      with mock.patch.object(type(self.uut), "_RECOVERY_ATTEMPTS", new=1):
+        with self.assertRaises(errors.DeviceError) as cm:
+          self.uut.make_device_ready(setting="on")
+    self.assertIsNot(cm.exception.__cause__, cm.exception)

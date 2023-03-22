@@ -99,6 +99,33 @@ class TransportNotAvailableError(DeviceError):
   err_code = 22
 
 
+class DetectionOvewriteConfigError(DeviceError):
+  """Exception raised when detecting new device which is already known."""
+  err_code = 23
+
+  def __init__(self,
+               device_name: str,
+               new_communication_address: str,
+               old_communication_address: str):
+    """Inits a DetectionOvewriteConfigError exception.
+
+    Args:
+        device_name: The name of the device.
+        new_communication_address: New device's communication address.
+        old_communication_address: Old device's communication address.
+    """
+    super().__init__(
+        f"Device {device_name} is already detected with "
+        f"communication address {old_communication_address}. "
+        f"Detection returned a new config entry for {device_name} with "
+        f"communication address {new_communication_address}. "
+        "This is likely a bug in the device's detection criteria. "
+        "Refusing to overwrite the existing device configuration. "
+        "If the communication address change is intentional, "
+        f"run 'gdm redetect {device_name}' instead."
+    )
+
+
 class CheckDeviceReadyError(DeviceError):
   """DeviceError variant used in device ready checks."""
   err_code = 30
@@ -566,6 +593,22 @@ class ProcessNotRunningError(CheckDeviceReadyError):
         device_name, msg, details=details)
 
 
+class ProcessCommunicationError(CheckDeviceReadyError):
+  """Raised when command is not consumed by a child process."""
+  err_code = 61
+
+  def __init__(self, device_name: str, msg: str, details=None):
+    """Inits a ProcessCommunicationError exception.
+
+    Args:
+        device_name: The name of the device.
+        msg: An error message string of the form <error_message><details>.
+        details (str): An optional message string describing error details.
+    """
+    super().__init__(
+        device_name, msg, details=details)
+
+
 class IncompatibleFirmwareError(CheckDeviceReadyError):
   """Raised when the device has a firmware build incompatible with GDM."""
   err_code = 63
@@ -651,3 +694,8 @@ class PigweedRpcTimeoutError(DeviceNotResponsiveError):
 class ServiceNotEnabledError(CheckDeviceReadyError):
   """Raised when a service daemon is not enabled."""
   err_code = 72
+
+
+class DataTransmissionError(DeviceError):
+  """Raises when there's data loss or error in device communication."""
+  err_code = 73

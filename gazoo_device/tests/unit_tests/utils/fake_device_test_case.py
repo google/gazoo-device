@@ -41,10 +41,10 @@ main = unit_test_case.main
 MockSubprocess = unit_test_case.MockSubprocess
 MockFile = unit_test_case.MockFile
 
-MOCK_DEVICE_USB_HUB_INFO = {
+MOCK_DEVICE_USB_HUB_INFO = immutabledict.immutabledict({
     "device_usb_port": 2,
     "device_usb_hub_name": "cambrionix-1234",
-}
+})
 
 
 def _mock_get_last_event(device_event_file_name, event_label, timeout=1.0):
@@ -129,7 +129,8 @@ class FakeDeviceTestCase(unit_test_case.UnitTestCase):
         gazoo_device_base.GazooDeviceBase,
         "check_device_connected",
         autospec=True)
-    self.check_device_connected_patch_primary.start()
+    self.check_device_connected_primary_mock = (
+        self.check_device_connected_patch_primary.start())
     self.addCleanup(self.check_device_connected_patch_primary.stop)
     self.check_device_connected_patch_auxiliary = mock.patch.object(
         auxiliary_device.AuxiliaryDevice,
@@ -206,8 +207,12 @@ class FakeDeviceTestCase(unit_test_case.UnitTestCase):
     with mock.patch.object(
         usb_utils,
         "get_usb_hub_info",
-        return_value=MOCK_DEVICE_USB_HUB_INFO.copy()):
-      self.uut.get_detection_info()
+        return_value={**MOCK_DEVICE_USB_HUB_INFO}):
+      with mock.patch.object(
+          usb_utils,
+          "get_usb_device_address_from_serial_number",
+          return_value="12345"):
+        self.uut.get_detection_info()
     self.create_example_event_file()  # in case logs are needed
     self.validate_properties(
         self.uut.get_persistent_properties(), persistent_properties,
@@ -262,8 +267,7 @@ class FakeDeviceTestCase(unit_test_case.UnitTestCase):
     """
     if not hasattr(self.uut, "event_parser"):
       return
-    examples = self._get_filter_examples(
-        self.uut._DEFAULT_FILTERS)  # pylint: disable=protected-access
+    examples = self._get_filter_examples(self.uut.DEFAULT_FILTERS)
     with open(self.uut.event_file_name, "w") as open_file:
       for example_log in examples:
         self.uut.event_parser.process_line(open_file, example_log)
@@ -272,13 +276,21 @@ class FakeDeviceTestCase(unit_test_case.UnitTestCase):
   def _get_filter_examples(self, default_filters):
     """Loads the filter example loglines."""
     examples = []
-    for filter_file in default_filters:
 
-      with open(filter_file) as filter_file:
+    def load_filter_file(filter_path):
+      nonlocal examples
+      with open(filter_path) as filter_file:
         a_dict = json.load(filter_file)
+        for entry in a_dict["filters"]:
+          examples += entry.get("examples", [])
 
-      for entry in a_dict["filters"]:
-        examples += entry.get("examples", [])
+    for filter_path in default_filters:
+      if os.path.isdir(filter_path):
+        for filter_file in os.listdir(filter_path):
+          if filter_file.endswith(".json"):
+            load_filter_file(os.path.join(filter_path, filter_file))
+      else:
+        load_filter_file(filter_path)
     return examples
 
   def tearDown(self):

@@ -22,7 +22,6 @@ from typing import Dict, NoReturn, Optional, Sequence
 
 import fire
 import gazoo_device
-from gazoo_device import errors
 from gazoo_device import extensions
 from gazoo_device import fire_manager
 from gazoo_device import fire_patch
@@ -97,9 +96,6 @@ def _execute_command(command: Optional[str] = None,
   try:
     fire_patch.apply_patch()
     fire.Fire(manager_inst, commands, name=cli_name)
-  except (ValueError, errors.DeviceError) as err:
-    logger.error((repr(err)))
-    exit_code = 1
   except KeyboardInterrupt:
     exit_code = 2
   finally:

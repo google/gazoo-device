@@ -33,7 +33,6 @@ class DC2200Test(fake_device_test_case.FakeDeviceTestCase):
   def setUp(self):
     super().setUp()
     self.setup_fake_device_requirements(_PERSISTENT_PROPERTIES["name"])
-    self.device_config["persistent"] = dict(_PERSISTENT_PROPERTIES)
     self.device = dc2200.DC2200(
         self.mock_manager,
         self.device_config,

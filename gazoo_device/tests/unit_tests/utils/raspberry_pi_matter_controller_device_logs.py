@@ -675,6 +675,27 @@ _RESPONSES = ({
         """),
     "code":
         0,
+}, {
+    "cmd": "kill $(pgrep -f '/usr/local/bin/chip-tool interactive start')",
+    "resp": "",
+    "code": 0,
+}, {
+    "cmd": "grep 'Data =' /tmp/chip.log",
+    "resp": "[1671146232.162251][120573:120579] CHIP:DMG: 				Data = 1,\n"
+            "[1671146226.271909][120564:120570] CHIP:DMG: 				Data = 2,",
+    "code": 0,
+}, {
+    "cmd": "mkdir -p /tmp/chip_certs_folder_temp",
+    "resp": "",
+    "code": 0,
+}, {
+    "cmd": "mkdir -p path/to/device-dest",
+    "resp": "",
+    "code": 0,
+}, {
+    "cmd": "mv /tmp/chip_certs_folder_temp/some_temp_dir/* path/to/device-dest",
+    "resp": "",
+    "code": 0,
 })
 
 DEFAULT_BEHAVIOR = immutabledict({

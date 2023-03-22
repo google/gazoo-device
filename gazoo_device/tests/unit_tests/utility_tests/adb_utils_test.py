@@ -16,6 +16,7 @@
 import grp
 import json
 import os
+import re
 import subprocess
 from unittest import mock
 
@@ -400,79 +401,53 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
     mock_is_adb_mode.assert_called()
     mock_is_fastboot_mode.assert_not_called()
 
+  @parameterized.named_parameters(
+      ("without_adb_serial",
+       ("fake_command",), dict(),
+       b"fake stdout", "fake stdout"),
+      ("with_string_command",
+       ("fake_command", DEVICE_ADB_SERIAL), dict(),
+       b"fake stdout", "fake stdout"),
+      ("with_list_command",
+       (["fake_command", "arg1"], DEVICE_ADB_SERIAL), dict(),
+       b"fake stdout", "fake stdout"),
+      ("with_tuple_command",
+       (("fake_command", "arg1"), DEVICE_ADB_SERIAL), dict(),
+       b"fake stdout", "fake stdout"),
+      ("include_return_code",
+       ("fake_command", DEVICE_ADB_SERIAL), dict(include_return_code=True),
+       b"fake stdout", ("fake stdout", 0)),
+      ("with_offline",
+       ("fake_command", DEVICE_ADB_SERIAL), dict(),
+       FAKE_ADB_DEVICES_OUTPUT.encode(), FAKE_ADB_DEVICES_OUTPUT),
+  )
   @mock.patch.object(adb_utils, "get_adb_path", return_value=ADB_CMD_PATH)
-  def test_100_adb_utils_adb_command_without_adb_serial(self,
-                                                        mock_get_adb_path):
-    """Verify _adb_command without adb_serial."""
-    command = "fake_command"
-    command_output = "fake output\n"
-    mock_popen = mock.MagicMock(spec=subprocess.Popen, returncode=0)
-    mock_popen.communicate.return_value = (command_output.encode(
-        "utf-8", errors="replace"), None)
-    with mock.patch.object(subprocess, "Popen", return_value=mock_popen):
-      output = adb_utils._adb_command(command)
-    self.assertEqual(command_output, output)
+  def test_adb_utils_adb_command_success(
+      self, adb_command_args, adb_command_kwargs, subprocess_stdout_and_stderr,
+      expected_return, mock_get_adb_path):
+    """Tests _adb_command in successful scenarios."""
+    mock_proc = mock.MagicMock(spec=subprocess.Popen, returncode=0)
+    mock_proc.communicate.return_value = (subprocess_stdout_and_stderr, None)
+    with mock.patch.object(subprocess, "Popen", return_value=mock_proc):
+      with mock.patch.object(
+          adb_utils.logger, "debug",
+          wraps=adb_utils.logger.debug) as logger_debug_wrapper:
+        output = adb_utils._adb_command(
+            *adb_command_args, **adb_command_kwargs)
+    self.assertEqual(expected_return, output)
     mock_get_adb_path.assert_called()
-
-  @mock.patch.object(adb_utils, "get_adb_path", return_value=ADB_CMD_PATH)
-  def test_101_adb_utils_adb_command_with_string_command(
-      self, mock_get_adb_path):
-    """Verify _adb_command with string command."""
-    command = "fake_command"
-    command_output = "fake output\n"
-    mock_popen = mock.MagicMock(spec=subprocess.Popen, returncode=0)
-    mock_popen.communicate.return_value = (command_output.encode(
-        "utf-8", errors="replace"), None)
-    with mock.patch.object(subprocess, "Popen", return_value=mock_popen):
-      output = adb_utils._adb_command(command, DEVICE_ADB_SERIAL)
-    self.assertEqual(command_output, output)
-    mock_get_adb_path.assert_called()
-
-  @mock.patch.object(adb_utils, "get_adb_path", return_value=ADB_CMD_PATH)
-  def test_102_adb_utils_adb_command_with_string_command(
-      self, mock_get_adb_path):
-    """Verify _adb_command with unicode command."""
-    command = u"fake_command"
-    command_output = "fake output\n"
-    mock_popen = mock.MagicMock(spec=subprocess.Popen, returncode=0)
-    mock_popen.communicate.return_value = (command_output.encode(
-        "utf-8", errors="replace"), None)
-    with mock.patch.object(subprocess, "Popen", return_value=mock_popen):
-      output = adb_utils._adb_command(command, DEVICE_ADB_SERIAL)
-    self.assertEqual(command_output, output)
-    mock_get_adb_path.assert_called()
-
-  @mock.patch.object(adb_utils, "get_adb_path", return_value=ADB_CMD_PATH)
-  def test_103_adb_utils_adb_command_with_list_command(self, mock_get_adb_path):
-    """Verify _adb_command with command list."""
-    command = ["fake_command", "arg1"]
-    command_output = "fake output\n"
-    mock_popen = mock.MagicMock(spec=subprocess.Popen, returncode=0)
-    mock_popen.communicate.return_value = (command_output.encode(
-        "utf-8", errors="replace"), None)
-    with mock.patch.object(subprocess, "Popen", return_value=mock_popen):
-      output = adb_utils._adb_command(command, DEVICE_ADB_SERIAL)
-    self.assertEqual(command_output, output)
-    mock_get_adb_path.assert_called()
-
-  @mock.patch.object(adb_utils, "get_adb_path", return_value=ADB_CMD_PATH)
-  def test_104_adb_utils_adb_command_with_tuple_command(self,
-                                                        mock_get_adb_path):
-    """Verify _adb_command with tuple list."""
-    command = ("fake_command", "arg1")
-    command_output = "fake output\n"
-    mock_popen = mock.MagicMock(spec=subprocess.Popen, returncode=0)
-    mock_popen.communicate.return_value = (command_output.encode(
-        "utf-8", errors="replace"), None)
-    with mock.patch.object(subprocess, "Popen", return_value=mock_popen):
-      output = adb_utils._adb_command(command, DEVICE_ADB_SERIAL)
-    self.assertEqual(command_output, output)
-    mock_get_adb_path.assert_called()
+    logger_debug_wrapper.assert_called_once()
+    adb_command_regex = re.escape(repr(adb_command_args[0]))
+    self.assertRegex(
+        logger_debug_wrapper.call_args[0][0],
+        (f"adb command {adb_command_regex} to "
+         rf"{DEVICE_FASTBOOT_SERIAL}|None returned 'fake stdout' "
+         "with return code 0"))
 
   @mock.patch.object(os.path, "exists", return_value=False)
   @mock.patch.object(host_utils, "has_command", return_value=False)
-  def test_105_adb_utils_adb_command_bad_adb_path(self, mock_has_command,
-                                                  mock_os_path_exists):
+  def test_adb_utils_adb_command_bad_adb_path(
+      self, mock_has_command, mock_os_path_exists):
     """Verify _adb_command skips get_adb_path raises error on bad path."""
     with self.assertRaises(RuntimeError):
       adb_utils._adb_command(
@@ -480,36 +455,6 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
 
     mock_os_path_exists.assert_called()
     mock_has_command.assert_called()
-
-  @mock.patch.object(adb_utils, "get_adb_path", return_value=ADB_CMD_PATH)
-  def test_106_adb_utils_adb_command_include_return_code(
-      self, mock_get_adb_path):
-    """Verify _adb_command include_return_code returns tuple."""
-    command = "fake_command"
-    command_output = "fake output\n"
-    command_return_code = 1
-    mock_popen = mock.MagicMock(
-        spec=subprocess.Popen, returncode=command_return_code)
-    mock_popen.communicate.return_value = (command_output.encode(
-        "utf-8", errors="replace"), None)
-    with mock.patch.object(subprocess, "Popen", return_value=mock_popen):
-      output, return_code = adb_utils._adb_command(
-          command, DEVICE_ADB_SERIAL, include_return_code=True)
-    self.assertEqual(command_output, output)
-    self.assertEqual(command_return_code, return_code)
-    mock_get_adb_path.assert_called()
-
-  @mock.patch.object(adb_utils, "get_adb_path", return_value=ADB_CMD_PATH)
-  def test_107_adb_utils_adb_command_with_offline(self, mock_get_adb_path):
-    """Verify _adb_command succeeds if output includes "offline"."""
-    command = "fake_command"
-    mock_popen = mock.MagicMock(spec=subprocess.Popen, returncode=0)
-    mock_popen.communicate.return_value = (
-        FAKE_ADB_DEVICES_OUTPUT.encode("utf-8"), None)
-    with mock.patch.object(subprocess, "Popen", return_value=mock_popen):
-      output = adb_utils._adb_command(command)
-    self.assertEqual(FAKE_ADB_DEVICES_OUTPUT, output)
-    mock_get_adb_path.assert_called()
 
   @mock.patch.object(adb_utils, "_adb_command", return_value="Success\n")
   @mock.patch.object(os.path, "exists", return_value=True)
@@ -834,9 +779,9 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
   @mock.patch.object(
       adb_utils, "get_fastboot_path", return_value="/fake/path/to/fastboot")
   @mock.patch.object(os.path, "exists", return_value=False)
-  def test_300_adb_utils_fastboot_command_without_fastboot_path(
+  def test_adb_utils_fastboot_command_bad_default_fastboot_path(
       self, mock_exists, mock_get_fastboot_path):
-    """Verify get_fastboot_path called when fastboot_path is not given."""
+    """Verify _fastboot_command raises error when default fastboot path does not exist."""
     with self.assertRaises(RuntimeError):
       adb_utils._fastboot_command("fake command")
     mock_get_fastboot_path.assert_called_once()
@@ -845,119 +790,61 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
   @mock.patch.object(
       adb_utils, "get_fastboot_path", return_value="/fake/path/to/fastboot")
   @mock.patch.object(os.path, "exists", return_value=False)
-  def test_301_adb_utils_fastboot_command_with_bad_fastboot_path(
+  def test_adb_utils_fastboot_command_bad_given_fastboot_path(
       self, mock_exists, mock_get_fastboot_path):
-    """Verify _fastboot_command raise error when given a bad fastboot_path."""
+    """Verify _fastboot_command raises error when given a bad fastboot_path."""
     with self.assertRaises(RuntimeError):
       adb_utils._fastboot_command(
           "fake_command", fastboot_path="/fake/path/to/fastboot")
     mock_get_fastboot_path.assert_not_called()
     mock_exists.assert_called()
 
-  @mock.patch.object(os.path, "exists", return_value=True)
-  def test_302_adb_utils_fastboot_command_without_fastboot_serial(
-      self, mock_exists):
-    """Verify _fastboot_command without fastboot_serial."""
-    fastboot_executable = "fastboot"
-    command = "fake_command"
-    command_output = "fake_command_output"
-    mock_proc = mock.MagicMock(spec=subprocess.Popen)
-    mock_proc.communicate.return_value = (command_output.encode(
-        "utf-8", errors="replace"), None)
-    with mock.patch.object(subprocess, "Popen", return_value=mock_proc):
-      output = adb_utils._fastboot_command(
-          command, fastboot_path=fastboot_executable)
-    self.assertEqual(output, command_output)
-    mock_exists.assert_called()
-
-  @mock.patch.object(os.path, "exists", return_value=True)
-  @mock.patch.object(
-      adb_utils, "get_fastboot_path", return_value=FASTBOOT_CMD_PATH)
-  def test_303_adb_utils_fastboot_command_with_string_command(
-      self, mock_get_fastboot_path, mock_exists):
-    """Verify _fastboot_command with string command."""
-    command = "fake_command"
-    command_output = "fake command output"
-    mock_proc = mock.MagicMock(spec=subprocess.Popen)
-    mock_proc.communicate.return_value = (command_output.encode(
-        "utf-8", errors="replace"), None)
-    with mock.patch.object(subprocess, "Popen", return_value=mock_proc):
-      output = adb_utils._fastboot_command(command, DEVICE_FASTBOOT_SERIAL)
-    self.assertEqual(command_output, output)
-    mock_get_fastboot_path.assert_called()
-    mock_exists.assert_called()
-
+  @parameterized.named_parameters(
+      ("without_fastboot_serial",
+       ("fake_command",), dict(fastboot_path="/custom/path/to/fastboot"),
+       False, "fake stdout"),
+      ("with_string_command",
+       ("fake_command", DEVICE_FASTBOOT_SERIAL), dict(),
+       True, "fake stdout"),
+      ("with_list_command",
+       (["fake_command", "arg1"], DEVICE_FASTBOOT_SERIAL), dict(),
+       True, "fake stdout"),
+      ("with_tuple_command",
+       (("fake_command", "arg1"), DEVICE_FASTBOOT_SERIAL), dict(),
+       True, "fake stdout"),
+      ("include_return_code",
+       ("fake_command", DEVICE_FASTBOOT_SERIAL), dict(include_return_code=True),
+       True, ("fake stdout", 0)),
+  )
   @mock.patch.object(os.path, "exists", return_value=True)
   @mock.patch.object(
       adb_utils, "get_fastboot_path", return_value=FASTBOOT_CMD_PATH)
-  def test_304_adb_utils_fastboot_command_with_string_command_unicode(
-      self, mock_get_fastboot_path, mock_exists):
-    """Verify _fastboot_command with unicode string command."""
-    command = u"fake_command"
-    command_output = "fake command output"
-    mock_proc = mock.MagicMock(spec=subprocess.Popen)
-    mock_proc.communicate.return_value = (command_output.encode(
-        "utf-8", errors="replace"), None)
-    with mock.patch.object(subprocess, "Popen", return_value=mock_proc):
-      output = adb_utils._fastboot_command(command, DEVICE_FASTBOOT_SERIAL)
-    self.assertEqual(command_output, output)
-    mock_get_fastboot_path.assert_called()
-    mock_exists.assert_called()
-
-  @mock.patch.object(os.path, "exists", return_value=True)
-  @mock.patch.object(
-      adb_utils, "get_fastboot_path", return_value=FASTBOOT_CMD_PATH)
-  def test_305_adb_utils_fastboot_command_with_list_command(
-      self, mock_get_fastboot_path, mock_exists):
-    """Verify _fastboot_command with command list."""
-    command = ["fake_command", "arg1"]
-    command_output = "fake output"
+  def test_adb_utils_fastboot_command_success(
+      self, fastboot_command_args, fastboot_command_kwargs,
+      is_get_fastboot_path_call_expected, expected_return,
+      mock_get_fastboot_path, mock_exists):
+    """Tests _fastboot_command in successful scenarios."""
     mock_proc = mock.MagicMock(spec=subprocess.Popen, returncode=0)
-    mock_proc.communicate.return_value = (command_output.encode(
-        "utf-8", errors="replace"), None)
+    mock_proc.communicate.return_value = (b"fake stdout", None)
     with mock.patch.object(subprocess, "Popen", return_value=mock_proc):
-      output = adb_utils._fastboot_command(command, DEVICE_FASTBOOT_SERIAL)
-    self.assertEqual(command_output, output)
-    mock_get_fastboot_path.assert_called()
+      with mock.patch.object(
+          adb_utils.logger, "debug",
+          wraps=adb_utils.logger.debug) as logger_debug_wrapper:
+        output = adb_utils._fastboot_command(
+            *fastboot_command_args, **fastboot_command_kwargs)
+    self.assertEqual(expected_return, output)
+    if is_get_fastboot_path_call_expected:
+      mock_get_fastboot_path.assert_called()
+    else:
+      mock_get_fastboot_path.assert_not_called()
     mock_exists.assert_called()
-
-  @mock.patch.object(os.path, "exists", return_value=True)
-  @mock.patch.object(
-      adb_utils, "get_fastboot_path", return_value=FASTBOOT_CMD_PATH)
-  def test_306_adb_utils_fastboot_command_with_tuple_command(
-      self, mock_get_fastboot_path, mock_exists):
-    """Verify _fastboot_command with command tuple."""
-    command = ("fake_command", "arg1")
-    command_output = "fake output"
-    mock_proc = mock.MagicMock(spec=subprocess.Popen, returncode=0)
-    mock_proc.communicate.return_value = (command_output.encode(
-        "utf-8", errors="replace"), None)
-    with mock.patch.object(subprocess, "Popen", return_value=mock_proc):
-      output = adb_utils._fastboot_command(command, DEVICE_FASTBOOT_SERIAL)
-    self.assertEqual(command_output, output)
-    mock_get_fastboot_path.assert_called()
-    mock_exists.assert_called()
-
-  @mock.patch.object(os.path, "exists", return_value=True)
-  @mock.patch.object(
-      adb_utils, "get_fastboot_path", return_value=FASTBOOT_CMD_PATH)
-  def test_307_adb_utils_fastboot_command_include_return_code(
-      self, mock_get_fastboot_path, mock_exists):
-    """Verify _fastboot_command include_return_code works."""
-    command = "fake_command"
-    command_output = "fake output"
-    command_return_code = 1
-    mock_proc = mock.MagicMock(
-        spec=subprocess.Popen, returncode=command_return_code)
-    mock_proc.communicate.return_value = (command_output.encode(
-        "utf-8", errors="replace"), None)
-    with mock.patch.object(subprocess, "Popen", return_value=mock_proc):
-      output, return_code = adb_utils._fastboot_command(
-          command, DEVICE_FASTBOOT_SERIAL, include_return_code=True)
-    self.assertEqual(command_output, output)
-    self.assertEqual(command_return_code, return_code)
-    mock_get_fastboot_path.assert_called()
-    mock_exists.assert_called()
+    logger_debug_wrapper.assert_called_once()
+    fastboot_command_regex = re.escape(repr(fastboot_command_args[0]))
+    self.assertRegex(
+        logger_debug_wrapper.call_args[0][0],
+        (f"fastboot command {fastboot_command_regex} to "
+         rf"{DEVICE_FASTBOOT_SERIAL}|None returned 'fake stdout' "
+         "with return code 0"))
 
   @mock.patch.object(adb_utils, "_fastboot_command")
   def test_308_adb_utils_fastboot_unlock_device(self, mock_fastboot_command):
@@ -1231,18 +1118,35 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
 
   @mock.patch.object(
       adb_utils, "_adb_command", return_value=("bugreport output\n", 0))
-  def test_340_adb_utils_bugreport(self, mock_adb_command):
+  def test_adb_utils_bugreport(self, mock_adb_command):
     """Verifies bugreport."""
-    adb_utils.bugreport(DEVICE_ADB_SERIAL)
+    output = adb_utils.bugreport(DEVICE_ADB_SERIAL, destination_path="/abc")
+
+    self.assertEqual(output, "bugreport output\n")
     mock_adb_command.assert_called()
 
   @mock.patch.object(
-      adb_utils, "_adb_command", return_value=("bugreport output\n", 1))
-  def test_341_adb_utils_bugreport_bad_returncode(
+      adb_utils, "_adb_command", return_value=("", -15))
+  def test_adb_utils_bugreport_timeout(
       self, mock_adb_command):
     """Verifies bugreport raises if ADB command fails."""
-    with self.assertRaises(RuntimeError):
-      adb_utils.bugreport(DEVICE_ADB_SERIAL)
+    with self.assertRaisesRegex(
+        RuntimeError,
+        (f"Timeout getting bugreport on ADB device {DEVICE_ADB_SERIAL} after "
+         f"1 seconds")):
+      adb_utils.bugreport(DEVICE_ADB_SERIAL, destination_path="/abc", timeout=1)
+    mock_adb_command.assert_called()
+
+  @mock.patch.object(
+      adb_utils, "_adb_command", return_value=("bugreport failure", 1))
+  def test_adb_utils_bugreport_bad_returncode(
+      self, mock_adb_command):
+    """Verifies bugreport raises if ADB command fails."""
+    with self.assertRaisesRegex(
+        RuntimeError,
+        (f"Getting bugreport on ADB device {DEVICE_ADB_SERIAL} to "
+         f"/abc failed. Error: 'bugreport failure' with return code 1")):
+      adb_utils.bugreport(DEVICE_ADB_SERIAL, destination_path="/abc", timeout=1)
     mock_adb_command.assert_called()
 
   @mock.patch.object(adb_utils, "_adb_command")
@@ -1316,6 +1220,40 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
     """Tests wait_for_device_raises error when times out waiting."""
     with self.assertRaises(errors.CommunicationTimeoutError):
       adb_utils.wait_for_device_offline("abcde123", 0.005, 0.001)
+
+  @mock.patch.object(
+      adb_utils, "_adb_command", return_value="remount succeeded")
+  @mock.patch.object(adb_utils, "root_device")
+  def test_adb_utils_remount_device_success(
+      self, mock_root_device, mock_adb_command):
+    """Verifies remount_device when remount succeed directly."""
+    mock_reboot_device = mock.MagicMock()
+    result = adb_utils.remount_device(
+        DEVICE_ADB_SERIAL, reboot_fn=mock_reboot_device)
+
+    self.assertEqual("remount succeeded", result)
+    mock_root_device.assert_called_once()
+    mock_adb_command.assert_called_once_with(
+        "remount", DEVICE_ADB_SERIAL, adb_path=None)
+    mock_reboot_device.assert_not_called()
+
+  @mock.patch.object(
+      adb_utils, "_adb_command",
+      side_effect=("Now reboot your device for settings to take effect",
+                   "remount succeeded"))
+  @mock.patch.object(adb_utils, "root_device")
+  def test_adb_utils_remount_device_reboot_and_remount_again(
+      self, mock_root_device, mock_adb_command):
+    """Verifies remount_device when requiring rebooting and remounting again."""
+    mock_reboot_device = mock.MagicMock()
+    result = adb_utils.remount_device(
+        DEVICE_ADB_SERIAL, reboot_fn=mock_reboot_device)
+
+    self.assertEqual("remount succeeded", result)
+    self.assertEqual(mock_root_device.call_count, 2)
+    mock_adb_command.assert_called_with(
+        "remount", DEVICE_ADB_SERIAL, adb_path=None)
+    mock_reboot_device.assert_called_once()
 
 
 if __name__ == "__main__":

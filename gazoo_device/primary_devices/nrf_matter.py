@@ -21,11 +21,10 @@ from gazoo_device import decorators
 from gazoo_device import detect_criteria
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import matter_device_base
-from gazoo_device.capabilities import flash_build_jlink
+from gazoo_device.capabilities import flash_build_nrfjprog
 from gazoo_device.capabilities.interfaces import matter_controller_base
 
 logger = gdm_logger.get_logger()
-_NRF_JLINK_NAME = "NRF52840_XXAA"
 
 
 class NrfMatter(matter_device_base.MatterDeviceBase):
@@ -53,12 +52,14 @@ class NrfMatter(matter_device_base.MatterDeviceBase):
     """NRF platform."""
     return "nRF Connect"
 
-  @decorators.CapabilityDecorator(flash_build_jlink.FlashBuildJLink)
-  def flash_build(self) -> flash_build_jlink.FlashBuildJLink:
-    """FlashBuildJLink capability to flash hex image."""
-    return self.lazy_init(flash_build_jlink.FlashBuildJLink,
-                          device_name=self.name,
-                          serial_number=self.serial_number,
-                          platform_name=_NRF_JLINK_NAME,
-                          reset_endpoints_fn=self.matter_endpoints.reset,
-                          switchboard=self.switchboard)
+  @decorators.CapabilityDecorator(flash_build_nrfjprog.FlashBuildNrfjprog)
+  def flash_build(self) -> flash_build_nrfjprog.FlashBuildNrfjprog:
+    """FlashBuildNrfjprog capability to flash hex image."""
+    return self.lazy_init(
+        flash_build_nrfjprog.FlashBuildNrfjprog,
+        device_name=self.name,
+        serial_number=self.serial_number,
+        reset_endpoints_fn=self.matter_endpoints.reset,
+        switchboard=self.switchboard,
+        wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
+        power_cycle_fn=self.device_power.cycle)

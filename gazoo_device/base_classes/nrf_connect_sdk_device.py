@@ -21,12 +21,11 @@ from gazoo_device import custom_types
 from gazoo_device import decorators
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import auxiliary_device
-from gazoo_device.capabilities import flash_build_jlink
+from gazoo_device.capabilities import flash_build_nrfjprog
 from gazoo_device.utility import usb_utils
 
 logger = gdm_logger.get_logger()
 BAUDRATE = 115200
-_NRF_JLINK_NAME = "NRF52840_XXAA"
 
 
 class NRFConnectSDKDevice(auxiliary_device.AuxiliaryDevice):
@@ -70,9 +69,8 @@ class NRFConnectSDKDevice(auxiliary_device.AuxiliaryDevice):
   def platform(self) -> str:
     return "nRF Connect"
 
-  @decorators.CapabilityDecorator(flash_build_jlink.FlashBuildJLink)
+  @decorators.CapabilityDecorator(flash_build_nrfjprog.FlashBuildNrfjprog)
   def flash_build(self):
-    return self.lazy_init(flash_build_jlink.FlashBuildJLink,
+    return self.lazy_init(flash_build_nrfjprog.FlashBuildNrfjprog,
                           device_name=self.name,
-                          serial_number=self.serial_number,
-                          platform_name=_NRF_JLINK_NAME)
+                          serial_number=self.serial_number)

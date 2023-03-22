@@ -4,7 +4,6 @@
   "expect": [""],
   "do_not_run_tests": [
     "CommonTestSuite.test_shell",
-    "PwRPCCommonTestSuite.test_set_ota_metadata",
     "SwitchboardTestSuite.test_send_and_expect"
   ],
   "slow_tests": [],

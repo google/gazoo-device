@@ -13,11 +13,10 @@
 # limitations under the License.
 
 """Common types used across the gazoo_device module and externally."""
-from typing import Dict, Mapping, Tuple, Union
+from typing import Dict, Literal, Mapping, Tuple, Union
 
 from gazoo_device.base_classes import auxiliary_device
 from gazoo_device.base_classes import gazoo_device_base
-from typing_extensions import Literal  # Moved to typing in 3.8+
 
 # A device object, as returned by Manager.create_device().
 Device = Union[auxiliary_device.AuxiliaryDevice,

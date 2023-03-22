@@ -96,7 +96,8 @@ class AdbTransportTests(unit_test_case.UnitTestCase):
   def test_006_transport_uses_logcat_in_args(self):
     """AdbTransport uses logcat in args if log_only=True."""
     adb_serial = "bogus"
-    uut = adb_transport.AdbTransport(adb_serial, command="logcat -v threadtime")
+    uut = adb_transport.AdbTransport(adb_serial,
+                                     command=("logcat", "-v", "threadtime"))
     self.assertIn(
         adb_serial, uut._args,
         "Expected {} in args found {}".format(adb_serial, uut._args))

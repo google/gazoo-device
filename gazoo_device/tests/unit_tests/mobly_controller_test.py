@@ -22,6 +22,7 @@ import gazoo_device
 from gazoo_device import errors
 from gazoo_device import manager
 from gazoo_device import mobly_controller
+from gazoo_device.capabilities import package_management_android
 from gazoo_device.tests.unit_tests.utils import fake_devices
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from mobly import asserts
@@ -133,34 +134,31 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
         "communication_address": "123.456.78.9",
         "secondary_communication_address": "Undefined",
         "build_date": "Undefined",
-        "initial_code_name": "Undefined"
+        "initial_code_name": "Undefined",
+        "package_management.package_versions": {
+            "apk1": "v1.0.0",
+            "apk2": "v2.0.0",
+        },
     }]
 
     mock_manager = mock.Mock()
     mock_device = fake_devices.FakeSSHDevice(
         mock_manager, FAKE_CONFIGURATION, log_directory="/a/b/c")
-    mocks = {
-        "firmware_version": mock.PropertyMock(return_value="123"),
-        "platform": mock.PropertyMock(return_value="sshdevice"),
-        "firmware_branch": mock.PropertyMock(
-            side_effect=errors.DeviceError("Communication error")),
-        "firmware_type": mock.PropertyMock(return_value="eng"),
-    }
-    original_properties = {}
-    for attribute_name, replacement in mocks.items():
-      original_properties[attribute_name] = getattr(
-          type(mock_device), attribute_name, None)
-      setattr(type(mock_device), attribute_name, replacement)
+    mock_package_management = mock.MagicMock(
+        spec=package_management_android.PackageManagementAndroid,
+        package_versions={"apk1": "v1.0.0", "apk2": "v2.0.0"})
 
-    try:
+    with mock.patch.multiple(
+        type(mock_device), create=True,
+        firmware_version=mock.PropertyMock(return_value="123"),
+        platform=mock.PropertyMock(return_value="sshdevice"),
+        firmware_branch=mock.PropertyMock(
+            side_effect=errors.DeviceError("Communication error")),
+        firmware_type=mock.PropertyMock(return_value="eng"),
+        package_management=mock.PropertyMock(
+            return_value=mock_package_management)):
       info = gazoo_device.get_info([mock_device])
       self.assertDictEqual(info[0], expected_info[0])
-    finally:
-      for attribute_name, original in original_properties.items():
-        if original is None:
-          delattr(type(mock_device), attribute_name)
-        else:
-          setattr(type(mock_device), attribute_name, original)
 
   def test_destroy(self):
     mock_manager = mock.Mock()

@@ -18,7 +18,9 @@ from gazoo_device.capabilities.matter_endpoints import contact_sensor
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.capabilities.matter_endpoints import extended_color_light
+from gazoo_device.capabilities.matter_endpoints import fan
 from gazoo_device.capabilities.matter_endpoints import flow_sensor
+from gazoo_device.capabilities.matter_endpoints import heating_cooling_unit
 from gazoo_device.capabilities.matter_endpoints import humidity_sensor
 from gazoo_device.capabilities.matter_endpoints import light_sensor
 from gazoo_device.capabilities.matter_endpoints import occupancy_sensor
@@ -113,6 +115,18 @@ class MatterEndpointAliasesMixin:
     return self.matter_endpoints.get_endpoint_instance_by_class(
         extended_color_light.ExtendedColorLightEndpoint)
 
+  @decorators.CapabilityDecorator(fan.FanEndpoint)
+  def fan(self) -> fan.FanEndpoint:
+    """Matter Fan endpoint instance.
+
+    Returns:
+      Fan endpoint instance.
+
+    Raises:
+      DeviceError when Fan endpoint is not supported on the device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(fan.FanEndpoint)
+
   @decorators.CapabilityDecorator(flow_sensor.FlowSensorEndpoint)
   def flow_sensor(self) -> flow_sensor.FlowSensorEndpoint:
     """Matter Flow sensor endpoint instance.
@@ -126,6 +140,22 @@ class MatterEndpointAliasesMixin:
     """
     return self.matter_endpoints.get_endpoint_instance_by_class(
         flow_sensor.FlowSensorEndpoint)
+
+  @decorators.CapabilityDecorator(
+      heating_cooling_unit.HeatingCoolingUnitEndpoint)
+  def heating_cooling_unit(
+      self) -> heating_cooling_unit.HeatingCoolingUnitEndpoint:
+    """Matter heating_cooling_unit endpoint instance.
+
+    Returns:
+      Heating cooling unit endpoint instance.
+
+    Raises:
+      DeviceError when Heating cooling unit endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        heating_cooling_unit.HeatingCoolingUnitEndpoint)
 
   @decorators.CapabilityDecorator(humidity_sensor.HumiditySensorEndpoint)
   def humidity_sensor(self) -> humidity_sensor.HumiditySensorEndpoint:

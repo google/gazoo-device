@@ -93,8 +93,8 @@ class FileTransferScp(file_transfer_base.FileTransferBase):
                                                     dest, err))
 
   @decorators.CapabilityLogDecorator(logger)
-  def send_file_to_device(self, src, dest):
-    """Copies src from host to dest on the device.
+  def send_file_to_device(self, src: str, dest: str):
+    """Copies srcs from host to dest on the device.
 
     Args:
         src (str): local file or folder path on host computer.
@@ -103,10 +103,16 @@ class FileTransferScp(file_transfer_base.FileTransferBase):
     Raises:
         DeviceError: if source file doesn't exist or copy failed.
     """
+    # Convert to absolute path in case src contains any special characters.
+    # abspath always starts with a slash that scp will treat it as a file path
+    # rather than remote file with host
+    src = os.path.abspath(src)
     if not os.path.exists(src):
-      raise errors.DeviceError("Device {} send to device failed. "
-                               "Source file {} doesn't appear to exist.".format(
-                                   self._device_name, src))
+      raise errors.DeviceError(
+          "Device {} send to device failed. "
+          "Source file {} doesn't appear to exist.".format(
+              self._device_name, src))
+
     ip_address = self._get_valid_ip_address()
     logger.info(
         "{} sending file to device. Source: {}, destination: {}.".format(

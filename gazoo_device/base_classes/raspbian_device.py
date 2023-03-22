@@ -31,15 +31,15 @@ from gazoo_device.utility import host_utils
 
 logger = gdm_logger.get_logger()
 
-MARKER = "--- GDM Log Marker ---"
-LOGGING_FILE_PATH = "/var/log/syslog"
-LOG_MARKER_LINE_POS_OR_EMPTY = (
+_MARKER = "--- GDM Log Marker ---"
+_LOGGING_FILE_PATH = "/var/log/syslog"
+_LOG_MARKER_LINE_POS_OR_EMPTY = (
     'grep -n -e "{marker}" {file_path} --text | tail -n 1 | cut -d '
     '":" -f 1').format(
-        marker=MARKER, file_path=LOGGING_FILE_PATH)
-LOG_MARKER_LINE_POS = (
+        marker=_MARKER, file_path=_LOGGING_FILE_PATH)
+_LOG_MARKER_LINE_POS = (
     "line_num=$({cmd}); [ -z \"$line_num\" ] && echo 1 || echo"
-    " $line_num".format(cmd=LOG_MARKER_LINE_POS_OR_EMPTY))
+    " $line_num".format(cmd=_LOG_MARKER_LINE_POS_OR_EMPTY))
 
 COMMANDS = {
     "BOOTUP_COMPLETE":
@@ -48,12 +48,11 @@ COMMANDS = {
         "cat /etc/os-release",
     "INJECT_LOG_MARKER":
         "sudo bash -c 'echo \"{marker}\" >> {file_path}'".format(
-            marker=MARKER, file_path=LOGGING_FILE_PATH),
+            marker=_MARKER, file_path=_LOGGING_FILE_PATH),
     "KERNEL_VERSION":
         "uname -r",
     "LOGGING":
-        "tail -F -n +$({cmd}) {file_path}".format(
-            cmd=LOG_MARKER_LINE_POS, file_path=LOGGING_FILE_PATH),
+        ("tail", "-F", "-n", f"+$({_LOG_MARKER_LINE_POS})", _LOGGING_FILE_PATH),
     "MODEL_INFO":
         "cat /proc/device-tree/model",
     "GDM_HELLO":
@@ -404,19 +403,21 @@ class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
         DeviceError: Device failed to come online before the timeout.
     """
     timeout = timeout or self.timeouts["ONLINE"]
+
     start_time = time.time()
     max_disconnect_time = start_time + timeout
-    while time.time() < max_disconnect_time:
-      if host_utils.is_pingable(self.ip_address):
-        # There's a delay between the device being responsive to ping
-        # and being able to open SSH connections
-        time.sleep(10)
-        self.switchboard.open_all_transports()
-        break
-      time.sleep(.5)
-    else:
-      raise errors.DeviceError("{} failed to become pingable in {}s.".format(
-          self.name, timeout))
+    try:
+      self.wait_until_connected(timeout=timeout)
+    except errors.DeviceNotConnectedError as error:
+      raise errors.DeviceNotBootupCompleteError(
+          self.name,
+          f"boot up failed. Device failed to become pingable in {timeout}s"
+      ) from error
+
+    # There's a delay between the device being responsive to ping and being able
+    # to open SSH connections
+    time.sleep(10)
+    self.switchboard.open_all_transports()
 
     output = "Device still offline"
     while time.time() < max_disconnect_time:

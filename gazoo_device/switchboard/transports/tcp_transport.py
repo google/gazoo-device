@@ -22,7 +22,6 @@ identification address of a process-to-process communication). The socket can
 then used by an application to handle a data stream for various needs.
 """
 import socket
-import six
 from gazoo_device.switchboard import transport_properties
 from gazoo_device.switchboard.transports import transport_base
 
@@ -165,7 +164,7 @@ class TcpTransport(transport_base.TransportBase):
     Returns:
         int: number of bytes written or None if no bytes were written
     """
-    if isinstance(data, six.text_type):
+    if isinstance(data, str):
       data = data.encode("utf-8", errors="replace")
 
     self._socket.settimeout(timeout)

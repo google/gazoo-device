@@ -13,12 +13,13 @@
 # limitations under the License.
 """chip-tool implementation of the Matter Door Lock cluster capability.
 """
+from typing import Literal
+
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import door_lock_base
-from typing_extensions import Literal
 
 logger = gdm_logger.get_logger()
 

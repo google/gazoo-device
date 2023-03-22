@@ -53,8 +53,9 @@ class SshUtilsTests(unit_test_case.UnitTestCase):
       local = f
 
     mock_popen.assert_called_with([
-        'ssh', '-N', '-T', '-oPasswordAuthentication=no',
-        '-oStrictHostKeyChecking=no', '-oBatchMode=yes', '-oConnectTimeout=3',
+        'ssh', '-N', '-T', '-o', 'PasswordAuthentication=no',
+        '-o', 'StrictHostKeyChecking=no', '-o', 'BatchMode=yes',
+        '-o', 'ConnectTimeout=3',
         '-i',
         host_utils.get_key_path(key_info), 'username@address',
         f'-L{local}:localhost:80'

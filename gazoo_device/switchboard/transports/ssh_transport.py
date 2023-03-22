@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Defines an ssh transport interface by extending the process_transport.py."""
-from typing import Optional
+from typing import Optional, Sequence
 
 from gazoo_device import data_types
 from gazoo_device.switchboard.transports import process_transport
@@ -25,9 +25,9 @@ class SSHTransport(process_transport.ProcessTransport):
 
   def __init__(self,
                comms_address: str,
-               args: str = host_utils.DEFAULT_SSH_OPTIONS,
+               args: Sequence[str] = host_utils.DEFAULT_SSH_OPTIONS,
                key_info: Optional[data_types.KeyInfo] = None,
-               log_cmd: str = "",
+               log_cmd: Sequence[str] = (),
                auto_reopen: bool = True,
                open_on_start: bool = True,
                username: str = "root"):
@@ -45,7 +45,7 @@ class SSHTransport(process_transport.ProcessTransport):
       username: Username to log in as.
     """
     self.comms_address = comms_address
-    args = host_utils.generate_ssh_args(
+    args_list = host_utils.generate_ssh_args(
         comms_address,
         log_cmd,
         username,
@@ -53,7 +53,7 @@ class SSHTransport(process_transport.ProcessTransport):
         key_info=key_info)
     super().__init__(
         command="ssh",
-        args=args,
+        args=args_list,
         auto_reopen=auto_reopen,
         open_on_start=open_on_start)
 

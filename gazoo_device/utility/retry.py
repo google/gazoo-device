@@ -80,13 +80,15 @@ def retry(
   tried_times = 0
   start_time = time.time()
   end_time = start_time + timeout
+  func_results = []
 
   while time.time() < end_time:
     exception_occurred = False
     tried_times += 1
     try:
       func_result = func(*func_args, **func_kwargs)
-    except Exception:  # pylint: disable=broad-except
+    except Exception as e:  # pylint: disable=broad-except
+      func_result = e
       if reraise:
         raise
       else:
@@ -96,7 +98,11 @@ def retry(
       return func_result
 
     time.sleep(interval)
+    func_results.append(repr(func_result))
 
   time_elapsed = time.time() - start_time
-  raise exc_type("Timeout in {}s. Tried calling {} {} times.".format(
-      time_elapsed, func.__name__, tried_times))
+  func_summary = "\n".join([f"{seq+1}: {func_result}"
+                            for seq, func_result in enumerate(func_results)])
+  raise exc_type(f"Timeout in {time_elapsed}s. Tried calling {func.__name__} "
+                 f"{tried_times} times with a {interval}-second interval. "
+                 f"Call results:\n{func_summary}.")

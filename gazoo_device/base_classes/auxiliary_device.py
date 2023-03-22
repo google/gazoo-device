@@ -20,7 +20,7 @@ import inspect
 import os
 import re
 import time
-from typing import Any, List, Set, Type
+from typing import Any, List, Optional, Set, Type
 import weakref
 
 from gazoo_device import config
@@ -35,11 +35,20 @@ from gazoo_device.switchboard import log_process
 from gazoo_device.utility import common_utils
 from gazoo_device.utility import deprecation_utils
 from gazoo_device.utility import retry
+import immutabledict
 
 logger = gdm_logger.get_logger()
 
 ERROR_PREFIX = "Exception_"
-TIMEOUTS = {"CONNECTED": 3, "SHELL": 60}
+TIMEOUTS = immutabledict.immutabledict({
+    # "CHECK_IS_CONNECTED" timeout must be kept short. When 'gdm devices' runs,
+    # it checks whether each device is connected, so the worst case run time is
+    # num_connected_devices * TIMEOUTS["CHECK_IS_CONNECTED"].
+    "CHECK_IS_CONNECTED": 3,
+    "SHELL": 60,
+    "WAIT_UNTIL_CONNECTED": 90,
+})
+_DEVICE_POLLING_INTERVAL = 0.5
 
 
 def get_log_filename(log_directory, device_name, name_prefix=""):
@@ -94,7 +103,7 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
 
     self._regexes = {}
     self._commands = {}
-    self._timeouts = TIMEOUTS.copy()
+    self._timeouts = dict(TIMEOUTS)
     # Initialize log files
     self.log_directory = log_directory
     if log_file_name:
@@ -284,22 +293,38 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
     return str(self)
 
   @decorators.health_check
-  def check_device_connected(self):
+  def check_device_connected(self) -> None:
     """Checks that device shows up as a connection on the host machine.
 
     Raises:
-       DeviceNotConnectedError: if device is not connected.
+        DeviceNotConnectedError: if device is not connected.
     """
-    device_config = {"persistent": self.props["persistent_identifiers"]}
+    self.wait_until_connected(timeout=self.timeouts["CHECK_IS_CONNECTED"])
+
+  @decorators.LogDecorator(logger)
+  def wait_until_connected(self, timeout: Optional[int] = None) -> None:
+    """Wait until the device is connected to the host.
+
+    Args:
+        timeout: Max time to wait for the device to be reachable from the host.
+
+    Raises:
+        DeviceNotConnectedError: device did not become reachable from the host
+            before the timeout was exceeded.
+    """
+    if timeout is None:
+      timeout = self.timeouts["WAIT_UNTIL_CONNECTED"]
+    logger.info("{} waiting up to {}s for device to be connected.".format(
+        self.name, timeout))
     try:
       retry.retry(
-          func=self.is_connected,
-          func_args=(device_config,),
-          is_successful=bool,
-          timeout=self.timeouts["CONNECTED"])
-    except errors.CommunicationTimeoutError:
+          func=lambda: self.connected,
+          is_successful=retry.is_true,
+          timeout=timeout,
+          interval=_DEVICE_POLLING_INTERVAL)
+    except errors.CommunicationTimeoutError as err:
       raise errors.DeviceNotConnectedError(
-          self.name, msg="device not reachable from host machine.")
+          self.name, msg="device not reachable from host machine.") from err
 
   def get_capability_classes(
       self, capability_name: str) -> List[Type[capability_base.CapabilityBase]]:
@@ -595,6 +620,8 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
                        "but device does not support 'flash_build' capability")
       logger.info(f"{self.name} was not able to recover from "
                   f"{unrecoverable_error!r}")
+      if recoverable_error is unrecoverable_error:
+        recoverable_error = None  # avoid exception chaining loop
       raise unrecoverable_error from recoverable_error
 
     logger.info(f"{self.name} re-flashing device with the default build")

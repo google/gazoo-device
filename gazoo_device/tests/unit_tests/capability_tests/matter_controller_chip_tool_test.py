@@ -13,15 +13,19 @@
 # limitations under the License.
 """Unit tests for the MatterControllerChipTool capability."""
 
+import os
+import shutil
+import tempfile
 from unittest import mock
-
 from absl.testing import parameterized
 from gazoo_device import errors
 from gazoo_device.auxiliary_devices import raspberry_pi_matter_controller
 from gazoo_device.capabilities import file_transfer_scp
+from gazoo_device.capabilities import matter_controller_chip_tool
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.tests.unit_tests.utils import raspberry_pi_matter_controller_device_logs
 from gazoo_device.tests.unit_tests.utils import ssh_device_logs
+import requests
 
 
 class MatterControllerChipToolCapabilityTests(
@@ -57,8 +61,7 @@ class MatterControllerChipToolCapabilityTests(
         password="wifi-password",
         setup_code=self._setup_code,
         long_discriminator=self._long_discriminator)
-    self.uut.get_manager(
-    ).save_property_to_config.assert_called_once_with(
+    self.uut.get_manager().save_property_to_config.assert_called_once_with(
         self.uut.name, "matter_node_id", self._node_id)
 
   def test_commission_over_ble_wifi_with_hex(self):
@@ -68,15 +71,13 @@ class MatterControllerChipToolCapabilityTests(
         password="hex:776966692d70617373776f7264",
         setup_code=self._setup_code,
         long_discriminator=self._long_discriminator)
-    self.uut.get_manager(
-    ).save_property_to_config.assert_called_once_with(
+    self.uut.get_manager().save_property_to_config.assert_called_once_with(
         self.uut.name, "matter_node_id", self._node_id)
 
   def test_commission_on_network(self):
     self.uut.matter_controller.commission(
         node_id=self._node_id, setup_code=self._setup_code)
-    self.uut.get_manager(
-    ).save_property_to_config.assert_called_once_with(
+    self.uut.get_manager().save_property_to_config.assert_called_once_with(
         self.uut.name, "matter_node_id", self._node_id)
 
   def test_commission_on_network_long(self):
@@ -84,8 +85,7 @@ class MatterControllerChipToolCapabilityTests(
         node_id=self._node_id,
         setup_code=self._setup_code,
         long_discriminator=self._long_discriminator)
-    self.uut.get_manager(
-    ).save_property_to_config.assert_called_once_with(
+    self.uut.get_manager().save_property_to_config.assert_called_once_with(
         self.uut.name, "matter_node_id", self._node_id)
 
   def test_commission_over_ble_thread(self):
@@ -94,8 +94,7 @@ class MatterControllerChipToolCapabilityTests(
         setup_code=self._setup_code,
         long_discriminator=self._long_discriminator,
         operational_dataset="abcd")
-    self.uut.get_manager(
-    ).save_property_to_config.assert_called_once_with(
+    self.uut.get_manager().save_property_to_config.assert_called_once_with(
         self.uut.name, "matter_node_id", self._node_id)
 
   def test_commission_timeout_failure(self):
@@ -118,14 +117,12 @@ class MatterControllerChipToolCapabilityTests(
         node_id=self._node_id,
         setup_code=self._setup_code,
         paa_trust_store_path="/home/pi/credentials/development/paa-root-certs")
-    self.uut.get_manager(
-    ).save_property_to_config.assert_called_once_with(
+    self.uut.get_manager().save_property_to_config.assert_called_once_with(
         self.uut.name, "matter_node_id", self._node_id)
 
   def test_decommission(self):
     self.uut.matter_controller.decommission()
-    self.uut.get_manager(
-    ).save_property_to_config.assert_called_once_with(
+    self.uut.get_manager().save_property_to_config.assert_called_once_with(
         self.uut.name, "matter_node_id", None)
 
   def test_decommission_timeout_failure(self):
@@ -153,9 +150,8 @@ class MatterControllerChipToolCapabilityTests(
     self.fake_responder.behavior_dict.update(
         ssh_device_logs.make_device_responses((response,)))
     self.assertEqual(
-        self.uut.matter_controller.read(
-            self._endpoint_id, self._cluster, "test-attribute"),
-        expected_value)
+        self.uut.matter_controller.read(self._endpoint_id, self._cluster,
+                                        "test-attribute"), expected_value)
 
   def test_write_attribute(self):
     self.uut.matter_controller.write(self._endpoint_id, self._cluster,
@@ -191,9 +187,26 @@ class MatterControllerChipToolCapabilityTests(
   def test_upgrade(self):
     with mock.patch.object(file_transfer_scp.FileTransferScp,
                            "send_file_to_device") as file_send:
-      self.uut.matter_controller.upgrade("path/to/chip-tool", "1234")
-      file_send.assert_called_once_with("path/to/chip-tool",
-                                        "/usr/local/bin/chip-tool")
+      with mock.patch.object(self.uut.matter_controller,
+                             "update_certs") as update_certs_mock:
+        self.uut.matter_controller.upgrade("path/to/chip-tool",
+                                           "1234",
+                                           "path/to/certs-dir/")
+        file_send.assert_called_once_with("path/to/chip-tool",
+                                          "/usr/local/bin/chip-tool")
+        update_certs_mock.assert_called_once_with("path/to/certs-dir/")
+
+  def test_upgrade_with_default_certs_dir(self):
+    with mock.patch.object(file_transfer_scp.FileTransferScp,
+                           "send_file_to_device") as file_send:
+      with mock.patch.object(self.uut.matter_controller,
+                             "update_certs") as update_certs_mock:
+        self.uut.matter_controller.upgrade("path/to/chip-tool",
+                                           "1234")
+        file_send.assert_called_once_with("path/to/chip-tool",
+                                          "/usr/local/bin/chip-tool")
+        update_certs_mock.assert_called_once_with(matter_controller_chip_tool
+                                                  .DEFAULT_PAA_TRUST_STORE_PATH)
 
   def test_factory_reset(self):
     with mock.patch.object(
@@ -203,6 +216,85 @@ class MatterControllerChipToolCapabilityTests(
           mock.call("rm -rf /tmp/chip*"),
           mock.call("/usr/local/bin/chip-tool storage clear-all"),
       ])
+
+  @mock.patch.object(requests.Session, "get")
+  def test_update_certs_failure_calling_api(self, mock_api):
+    host_dest_path = "path/to/host-dest/"
+    mock_api.return_value = requests.Response()
+    mock_api.return_value.status_code = 400
+    mock_api.return_value._content = b"{}"
+    mock_api.return_value.reason = "400 Bad Request"
+    with self.assertRaises(errors.DeviceError):
+      self.uut.matter_controller.update_certs("path/to/device-dest",
+                                              host_dest_path)
+
+  @mock.patch.object(requests.Session, "get")
+  @mock.patch.object(file_transfer_scp.FileTransferScp, "send_file_to_device")
+  @mock.patch.object(shutil, "copytree")
+  @mock.patch.object(tempfile, "TemporaryDirectory")
+  @mock.patch.object(os, "makedirs")
+  def test_update_certs_success(self, mock_os_makedirs, mock_tempfile,
+                                mock_shutil, mock_scp, mock_api):
+    host_dest_path = "path/to/host-dest/"
+    mock_api.return_value = requests.Response()
+    mock_api.return_value.status_code = 200
+    mock_api.return_value.reason = "OK"
+    mock_api.return_value._content = (
+        b"[{ \"name\": \"Chip-Test-Cert.der\",\"path\":"
+        b"\"credentials/development/paa-root-certs/Chip-Test-Cert.der\",\"type\":"
+        b"\"file\",\"download_url\":\"https://raw.githubusercontent.com/path/\"}]"
+    )
+    mock_tempfile.return_value.__enter__.return_value = "some_temp_dir"
+    with mock.patch("builtins.open", mock.mock_open()) as mock_open:
+      self.uut.matter_controller.update_certs("path/to/device-dest",
+                                              host_dest_path)
+    mock_open.assert_called_once_with(
+        os.path.join("some_temp_dir", "Chip-Test-Cert.der"), "wb")
+    mock_api.assert_any_call(
+        "https://api.github.com/repos/project-chip/connectedhomeip/commits/master",
+        auth=None,
+        params=None,
+        data=None,
+        headers={"Accept": "application/vnd.github.VERSION.sha"},
+        timeout=10,
+        verify=False)
+
+  @mock.patch.object(requests.Session, "get")
+  @mock.patch.object(file_transfer_scp.FileTransferScp, "send_file_to_device")
+  @mock.patch.object(tempfile, "TemporaryDirectory")
+  def test_update_certs_success_with_no_host_dest(self, mock_tempfile, mock_scp,
+                                                  mock_api):
+    mock_api.return_value = requests.Response()
+    mock_api.return_value.status_code = 200
+    mock_api.return_value.reason = "OK"
+    mock_api.return_value._content = b"{}"
+    mock_tempfile.return_value.__enter__.return_value = "some_temp_dir"
+    self.uut.matter_controller.update_certs("path/to/device-dest")
+
+  def test_start_subscription(self):
+    with mock.patch.object(self.uut, "shell") as mock_shell:
+      self.uut.matter_controller.start_subscription(self._endpoint_id,
+                                                    self._cluster,
+                                                    "test-attribute", 1, 2)
+
+      mock_shell.assert_has_calls([
+          mock.call("nohup /usr/local/bin/chip-tool interactive start < "
+                    "<(echo 'onoff subscribe test-attribute 1 2 1234 1') "
+                    "> /tmp/chip.log 2>&1 &"),
+      ])
+
+  def test_stop_subscription(self):
+    with mock.patch.object(
+        self.uut, "shell", wraps=self.uut.shell) as shell_wrapper:
+      results = self.uut.matter_controller.stop_subscription()
+
+      shell_wrapper.assert_has_calls([
+          mock.call("kill $(pgrep -f '/usr/local/bin/chip-tool interactive "
+                    "start')"),
+          mock.call("grep 'Data =' /tmp/chip.log"),
+      ])
+
+      self.assertListEqual(results, [1, 2])
 
 
 if __name__ == "__main__":

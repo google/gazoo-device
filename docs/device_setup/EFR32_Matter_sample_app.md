@@ -87,6 +87,50 @@ After flashing it'll need to be redetected (if going from `efr32` to
 >>> m.redetect('efr32-3453')
 ```
 
+#### Install Simplicity Commander in the lab host
+
+The Silabs `Simplicity Commander` tool is used for flashing EFR32 development boards.
+See more details at https://www.silabs.com/documents/public/user-guides/ug162-simplicity-commander-reference-guide.pdf
+
+Follow the below steps to install the `Simplicity Commander` on the lab host:
+
+* SSH to the host, download and unpack the commander
+
+  ```
+  ssh username@host-ip-address
+  cd /opt
+  wget https://www.silabs.com/documents/public/software/SimplicityCommander-Linux.zip
+  unzip SimplicityCommander-Linux.zip
+  tar xjvf SimplicityCommander-Linux/Commander_linux_x86_64_1v14p5b1276.tar.bz
+  ```
+
+* Open the `~/.bashrc` file in a text editor and add the following line to the end of the file:
+
+  ```
+  export PATH="/opt/commander:$PATH"
+  ```
+
+* Check if the `commander` binary points to the correct location and is working properly in a new terminal：
+
+  ```
+  ＄ which commander
+  /opt/commander/commander
+
+  $ commander --version
+
+  Simplicity Commander 1v14p5b1276
+
+  JLink DLL version: 7.70d
+  Qt 5.12.11 Copyright (C) 2017 The Qt Company Ltd.
+  EMDLL Version: 0v18p8b673
+  mbed TLS version: 2.16.6
+
+  Emulator found with SN=440092101 USBAddr=0
+  Emulator found with SN=683344970 USBAddr=0
+
+  DONE
+  ```
+
 **4. (Optional) Try Descriptor RPC**
 
 Try if the Matter Descriptor endpoints work in the CHIP console.

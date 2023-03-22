@@ -18,6 +18,7 @@ from mobly import asserts
 _FAKE_DATA1 = 108
 _FAKE_DATA2 = 999
 _FAKE_DATA3 = 10
+_FAKE_LIGHT_SENSOR_TYPE = 0
 
 
 class IlluminanceMeasurementClusterTestSuite:
@@ -46,3 +47,12 @@ class IlluminanceMeasurementClusterTestSuite:
     asserts.assert_equal(
         _FAKE_DATA3,
         self.endpoint.illuminance_measurement.max_measured_value)
+
+  # TODO(b/241698164) Enable the test case once b/241698164 is fixed
+  # def test_light_sensor_type_attribute(self):
+  #  """Tests the LightSensorType attribute."""
+  #  self.endpoint.illuminance_measurement.light_sensor_type = (
+  #      _FAKE_LIGHT_SENSOR_TYPE)
+  #  asserts.assert_equal(
+  #      _FAKE_LIGHT_SENSOR_TYPE,
+  #      self.endpoint.illuminance_measurement.light_sensor_type)

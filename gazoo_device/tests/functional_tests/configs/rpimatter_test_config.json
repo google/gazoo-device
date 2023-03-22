@@ -4,7 +4,8 @@
   "expect": ["\\d+\\n.*"],
   "do_not_run_tests": [
     "PwRPCButtonTestSuite.test_button_push",
-    "PwRPCCommonTestSuite.test_start_and_stop_advertising_for_commissioning"
+    "PwRPCCommonTestSuite.test_start_and_stop_advertising_for_commissioning",
+    "CommonTestSuite.test_logging"
   ],
   "slow_tests": [],
   "volatile_tests": []

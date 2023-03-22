@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Unit tests for unifi_poe_switch module."""
+import itertools
 from unittest import mock
 
 from gazoo_device import errors
@@ -45,54 +46,62 @@ class UnifiPoeSwitchTests(fake_device_test_case.FakeDeviceTestCase):
     self.device_config["persistent"]["console_port_name"] = "123.45.67.89"
     self.fake_responder.behavior_dict = (
         unifi_poe_switch_device_logs.DEFAULT_BEHAVIOR.copy())
-    is_pingable_patcher = mock.patch.object(
-        host_utils, "is_pingable", return_value=True)
-    is_pingable_patcher.start()
-    self.addCleanup(is_pingable_patcher.stop)
+    self.enter_context(
+        mock.patch.object(
+            host_utils, "is_pingable", autospec=True, return_value=True))
     self.uut = unifi_poe_switch.UnifiPoeSwitch(
         self.mock_manager,
         self.device_config,
         log_directory=self.artifacts_directory)
 
-  def test_001_get_dynamic_properties(self):
+  def test_get_dynamic_properties(self):
     self.validate_dynamic_properties(_DYNAMIC_PROPERTIES)
 
-  def test_002_get_detection_info_for_unifi_switch_device(self):
-
+  def test_get_detection_info_for_unifi_switch_device(self):
     self._test_get_detection_info(
         self.device_config["persistent"]["console_port_name"],
         device_class=unifi_poe_switch.UnifiPoeSwitch,
         persistent_properties=_PERSISTENT_PROPERTIES.copy())
 
-  def test_004_is_connected_true(self):
+  def test_is_connected_true(self):
     self.assertTrue(
         unifi_poe_switch.UnifiPoeSwitch.is_connected(self.device_config))
 
   @mock.patch.object(host_utils, "is_pingable", return_value=False)
-  def test_005_is_connected_false(self, mock_is_pingable):
+  def test_is_connected_false(self, mock_is_pingable):
     self.assertFalse(
         unifi_poe_switch.UnifiPoeSwitch.is_connected(self.device_config))
 
   @mock.patch.object(
       host_utils, "is_pingable", side_effect=iter([True, False, False, True]))
-  def test_007_reboot(self, mock_is_pingable):
+  def test_reboot(self, mock_is_pingable):
     self.uut.reboot()
     self.assertEqual(mock_is_pingable.call_count, 4)
 
   @mock.patch.object(
+      host_utils, "is_pingable",
+      side_effect=itertools.chain([True], itertools.repeat(False)))
+  def test_reboot_error_device_not_pingable(self, mock_is_pingable):
+    """Tests that reboot raises an error when device is unresponsive to ping."""
+    with self.assertRaisesRegex(
+        errors.DeviceNotBootupCompleteError,
+        "boot up failed. Device failed to become pingable"):
+      self.uut.reboot()
+
+  @mock.patch.object(
       host_utils, "is_pingable", side_effect=iter([False, False, True]))
-  def test_008_recover(self, mock_is_pingable):
+  def test_recover(self, mock_is_pingable):
     self.uut.recover(errors.DeviceNotResponsiveError(self.uut.name, ""))
     self.assertEqual(mock_is_pingable.call_count, 3)
 
-  def test_008_recover_called_with_not_recoverable_exception(self):
+  def test_recover_called_with_not_recoverable_exception(self):
     with self.assertRaisesRegex(errors.DeviceError, "Raise the test message"):
       self.uut.recover(errors.DeviceError("Raise the test message"))
 
-  def test_009_check_telnet_connect_success(self):
+  def test_check_telnet_connect_success(self):
     self.uut.check_device_ready()
 
-  def test_009_check_telnet_connect_non_zero_return_code(self):
+  def test_check_telnet_connect_non_zero_return_code(self):
     self.fake_responder.behavior_dict = (
         unifi_poe_switch_device_logs.HEALTH_CHECK_FAILURE.copy())
     with self.assertRaisesRegex(errors.DeviceNotResponsiveError,

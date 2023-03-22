@@ -17,10 +17,11 @@ import ipaddress
 import os
 import re
 import subprocess
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Tuple
 
 from gazoo_device import config
 from gazoo_device import data_types
+from gazoo_device import errors
 from gazoo_device import extensions
 from gazoo_device import gdm_logger
 
@@ -36,26 +37,26 @@ DOCKER_CP_COMMAND = "cp {src} {dest}"
 IP_ADDRESS = r"\d+\.\d+\.\d+\.\d+"
 SSHABLE_COMMAND = "nc -z -w 2 {} 22"  # Connect to ssh port for up to 2 seconds.
 
-SSH_ARGS = "{options} {user}@{ip_address} {command}"
-SCP_COMMAND = "scp -r {ssh_opt} {src} {dest}"
 SSH_TIMEOUT = 3
-SSH_CONFIG_SEQ = (
-    "-oPasswordAuthentication=no", "-oStrictHostKeyChecking=no",
-    "-oBatchMode=yes", f"-oConnectTimeout={SSH_TIMEOUT}"
+SSH_CONFIG = (
+    "-o", "PasswordAuthentication=no", "-o", "StrictHostKeyChecking=no",
+    "-o", "BatchMode=yes", "-o", f"ConnectTimeout={SSH_TIMEOUT}"
 )
-SSH_CONFIG = " ".join(SSH_CONFIG_SEQ)
 
 _SSH_DISABLE_PSEUDO_TTY = "-T"
-DEFAULT_SSH_OPTIONS_SEQ = (_SSH_DISABLE_PSEUDO_TTY, *SSH_CONFIG_SEQ)
-DEFAULT_SSH_OPTIONS = " ".join(DEFAULT_SSH_OPTIONS_SEQ)
+DEFAULT_SSH_OPTIONS = (_SSH_DISABLE_PSEUDO_TTY, *SSH_CONFIG)
 
 GET_COMMAND_PATH = "which {}"
 GET_CONNECTED_IPS = "/usr/sbin/arp -e"
 
-_SNMPWALK_COMMAND = "snmpwalk -v 2c -c private {ip_address}"
-_SNMPWALK_TIMEOUT = 90
+_SNMPGET_SYSTEM_DESCRIPTION_COMMAND = (
+    "snmpget -v 2c -c private {ip_address} 1.3.6.1.2.1.1.1.0")
+_SNMPGET_SYSTEM_DESCRIPTION_TIMEOUT = 3
 
 _gsutil_cli = None  # Set by _set_gsutil_cli().
+
+# Set by _get_scp_command().
+_scp_use_legacy_option: Optional[Tuple[str, ...]] = None
 
 
 def docker_cp_to_device(docker_container, local_file_path, container_file_path):
@@ -130,31 +131,31 @@ def _download_key(key_info: data_types.KeyInfo) -> None:
 
 
 def generate_ssh_args(ip_address: str,
-                      command: str,
+                      command: Sequence[str],
                       user: str,
-                      options: str = DEFAULT_SSH_OPTIONS,
-                      key_info: Optional[data_types.KeyInfo] = None) -> str:
+                      options: Sequence[str] = DEFAULT_SSH_OPTIONS,
+                      key_info: Optional[data_types.KeyInfo] = None
+                      ) -> list[str]:
   """Returns a formatted SSH command to send to subprocess.
 
   Args:
       ip_address: IP address to ssh to.
-      command: Command to run over SSH. Can be an empty string.
+      command: Command to run over SSH. Can be an empty sequence.
       user: Username to use for SSH.
       options: Extra SSH command line options.
       key_info: SSH key info to use. If None, don't use an SSH key.
   """
   if key_info:
     verify_key(key_info)
-    options += " -i " + get_key_path(key_info)
-  return SSH_ARGS.format(
-      options=options, ip_address=ip_address, user=user, command=command)
+    options = list(options) + ["-i", get_key_path(key_info)]
+  return [*options, f"{user}@{ip_address}", *command]
 
 
 def get_command_path(command_name):
   """Return the full path for the given command name.
 
   Args:
-      command_name (str): Name of the command to look for. Example: 'fastboot'
+      command_name (str): Name of the command to look for. Example: 'fastboot'.
 
   Raises:
       CalledProcessError: Retrieving the command name path failed.
@@ -313,15 +314,15 @@ def gsutil_command(cmd: str,
     logger.debug("[GSUTIL] Returning from gsutil call with: %r", output)
     return output
   except subprocess.CalledProcessError as err:
-    raise RuntimeError("{!r} failed. Err: {}".format(" ".join(cmd_list),
-                                                     err.output))
+    raise RuntimeError(
+        "{!r} failed. Err: {}".format(" ".join(cmd_list), err.output)) from err
 
 
 def has_command(command_name):
   """Determine if the given command executable is present on the local host.
 
   Args:
-      command_name (str): Name of the command to look for. Example: 'fastboot'
+      command_name (str): Name of the command to look for. Example: 'fastboot'.
 
   Returns:
       bool: True if the command is found in the user's $PATH, False otherwise.
@@ -334,7 +335,7 @@ def is_in_arp_table(ip_address):
   """Determine if the given IP address is present in arp table.
 
   Args:
-      ip_address (str): to check for in arp table
+      ip_address (str): to check for in arp table.
 
   Returns:
       bool: True if IP or MAC address is in arp table, False otherwise.
@@ -449,8 +450,10 @@ def accepts_snmp(ip_address: str) -> bool:
     True if IP returns anything from snmpwalk command; False if not.
   """
   try:
-    snmpwalk_command = _SNMPWALK_COMMAND.format(ip_address=ip_address).split()
-    subprocess.check_output(snmpwalk_command, timeout=_SNMPWALK_TIMEOUT)
+    snmpwalk_command = _SNMPGET_SYSTEM_DESCRIPTION_COMMAND.format(
+        ip_address=ip_address).split()
+    subprocess.check_output(
+        snmpwalk_command, timeout=_SNMPGET_SYSTEM_DESCRIPTION_TIMEOUT)
     return True
   except subprocess.CalledProcessError as err:
     logger.debug(f"IP {ip_address} may not be snmp enabled or snmp is not "
@@ -460,9 +463,9 @@ def accepts_snmp(ip_address: str) -> bool:
 
 
 def ssh_command(ip_address: str,
-                command: str,
+                command: Sequence[str],
                 user: str = "root",
-                options: str = DEFAULT_SSH_OPTIONS,
+                options: Sequence[str] = DEFAULT_SSH_OPTIONS,
                 key_info: Optional[data_types.KeyInfo] = None,
                 timeout: Optional[float] = None) -> str:
   """Sends an SSH command to the given IP address and returns the response.
@@ -481,8 +484,10 @@ def ssh_command(ip_address: str,
   Raises:
       RuntimeError: If SSH command fails.
   """
+  if not isinstance(command, (list, tuple)):
+    raise errors.DeviceError("command {} is not list nor tuple".format(command))
   ssh_args = generate_ssh_args(ip_address, command, user, options, key_info)
-  ssh_list = ["ssh"] + ssh_args.split()
+  ssh_list = ["ssh"] + ssh_args
   try:
     result = subprocess.check_output(
         ssh_list, stderr=subprocess.STDOUT, timeout=timeout)
@@ -496,7 +501,30 @@ def ssh_command(ip_address: str,
     raise RuntimeError(msg)
 
 
-def _scp(source: str, destination: str, options: str = SSH_CONFIG,
+def _get_scp_command(src: str, dest: str,
+                     ssh_opt: Sequence[str]) -> Sequence[str]:
+  """Returns a formatted 'scp' shell command."""
+  global _scp_use_legacy_option
+  if _scp_use_legacy_option is None:
+    # From ssh 9.0, it requires an option -O to order scp use legacy method
+    # instead of sftp, but it doesn't provide a way to check the version.
+    #
+    # Here "scp -O" is called, if it returns "unknown option -- O", then it is
+    # less than 9.0, we should not provide the option, otherwise add the option.
+    # Linux returns "unknown option -- O". MacOS returns "illegal option -- O".
+    process = subprocess.run(["scp", "-O"],
+                             capture_output=True,
+                             text=True,
+                             check=False)
+    if not re.search("(unknown|illegal) option -- O", process.stderr):
+      _scp_use_legacy_option = ("-O",)
+    else:
+      _scp_use_legacy_option = ()
+  return ["scp", "-r", *_scp_use_legacy_option, *ssh_opt, src, dest]
+
+
+def _scp(source: str, destination: str,
+         options: Sequence[str] = SSH_CONFIG,
          key_info: Optional[data_types.KeyInfo] = None) -> str:
   """Sends file to or from the device using "scp" utility.
 
@@ -515,12 +543,12 @@ def _scp(source: str, destination: str, options: str = SSH_CONFIG,
   """
   if key_info:
     verify_key(key_info)
-    options += " -i " + get_key_path(key_info)
+    options = [*options, "-i", get_key_path(key_info)]
 
-  command = SCP_COMMAND.format(ssh_opt=options, src=source, dest=destination)
+  command = _get_scp_command(src=source, dest=destination, ssh_opt=options)
   try:
     logger.debug("Executing {!r}".format(command))
-    result = subprocess.check_output(command.split(), stderr=subprocess.STDOUT)
+    result = subprocess.check_output(command, stderr=subprocess.STDOUT)
     return result.decode("utf-8", "replace")
   except subprocess.CalledProcessError as err:
     raise RuntimeError("Scp {!r} failed. Error: {!r}. Output: {}.".format(
@@ -531,7 +559,7 @@ def scp_to_device(ip_address: str,
                   local_file_path: str,
                   remote_file_path: str,
                   user: str = "root",
-                  options: str = SSH_CONFIG,
+                  options: Sequence[str] = SSH_CONFIG,
                   key_info: Optional[data_types.KeyInfo] = None) -> str:
   """Sends file from host to device via "scp".
 
@@ -561,7 +589,7 @@ def scp_from_device(ip_address: str,
                     local_file_path: str,
                     remote_file_path: str,
                     user: str = "root",
-                    options: str = SSH_CONFIG,
+                    options: Sequence[str] = SSH_CONFIG,
                     key_info: Optional[data_types.KeyInfo] = None) -> str:
   """Sends file from device to host via "scp".
 

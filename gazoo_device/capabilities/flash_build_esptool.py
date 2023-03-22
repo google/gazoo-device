@@ -16,13 +16,14 @@
 import os
 import re
 import time
-from typing import Callable, Dict, List, NoReturn, Optional
+from typing import Callable, List, NoReturn, Optional
 
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import flash_build_base
 from gazoo_device.capabilities.interfaces import switchboard_base
+
 
 logger = gdm_logger.get_logger()
 
@@ -165,7 +166,7 @@ class FlashBuildEsptool(flash_build_base.FlashBuildBase):
 
     Args:
       image_path: Path to the image file.
-      ends_with: Expected image suffix. E.g bootloader files are expected to
+      ends_with: Expected image suffix. E.g. bootloader files are expected to
         have suffix 'bootloader.bin'.
 
     Raises:
@@ -244,60 +245,15 @@ class FlashBuildEsptool(flash_build_base.FlashBuildBase):
       self._reset_endpoints_fn()
 
   @decorators.CapabilityLogDecorator(logger)
-  def download_build_file(self,
-                          remote_build_folder: str,
-                          local_folder: str) -> NoReturn:
-    """Retrieves the build file(s) from the remote location."""
-    del remote_build_folder, local_folder
-    raise NotImplementedError(
-        'download_build_file is not available in flash_build_esptool for now.')
-
-  @decorators.CapabilityLogDecorator(logger)
-  def get_defaults(self) -> NoReturn:
-    """Returns a dictionary of default build arguments."""
-    raise NotImplementedError(
-        'get_defaults is not available in flash_build_esptool for now.')
-
-  @decorators.CapabilityLogDecorator(logger)
-  def get_firmware_type(self, build_args: Optional[str] = None) -> str:
-    """Returns the firmware type based on the build arguments."""
-    del build_args
-    return flash_build_base.UNKNOWN
-
-  @decorators.CapabilityLogDecorator(logger)
-  def get_firmware_version(self, build_args: Optional[str] = None) -> str:
-    """Returns the firmware version based on the build arguments."""
-    del build_args
-    return flash_build_base.UNKNOWN
-
-  @decorators.CapabilityLogDecorator(logger)
-  def get_remote_build_folder(self,
-                              build_args: Optional[str] = None) -> NoReturn:
-    """Uses the build arguments to determine the remote build folder."""
-    raise NotImplementedError('get_remote_build_folder is not available in '
-                              'flash_build_esptool for now.')
-
-  @decorators.CapabilityLogDecorator(logger)
-  def extract_build_info(self, build_args: Optional[str] = None) -> NoReturn:
+  def extract_build_info(self, *args, **kwargs) -> NoReturn:
     """Converts the provided build arguments into info about the build."""
     raise NotImplementedError(
         'extract_build_info is not available in flash_build_esptool for now.')
 
   @decorators.CapabilityLogDecorator(logger)
-  def latest_verified_build_folder(self) -> NoReturn:
-    """Returns the remote build folder path for the latest verified build."""
-    raise NotImplementedError(
-        'latest_verified_build_folder is not available in '
-        'flash_build_esptool for now.')
-
-  @decorators.CapabilityLogDecorator(logger)
   def upgrade(
       self,
-      build_number: Optional[int] = None,
-      build_url: Optional[str] = None,
       build_file: Optional[str] = None,
-      forced_upgrade: bool = False,
-      latest_verified: bool = False,
       partition_file: Optional[str] = None,
       bootloader_file: Optional[str] = None,
       erase_flash: bool = False,
@@ -311,7 +267,6 @@ class FlashBuildEsptool(flash_build_base.FlashBuildBase):
       partition_offset: Optional[int] = None,
       bootloader_offset: Optional[int] = None,
       flash_settings_file: Optional[str] = None,
-      **other_build_args: str,
   ) -> None:
     """Upgrade the device based on the provided build arguments.
 
@@ -332,11 +287,7 @@ class FlashBuildEsptool(flash_build_base.FlashBuildBase):
     https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/bootloader.html#bootloader
 
     Args:
-     build_number: Not used.
-     build_url: Not used.
      build_file: Local path to the application file.
-     forced_upgrade: Not used.
-     latest_verified: Not used.
      partition_file: Local path to the partition table file.
      bootloader_file: Local path to the bootloader file.
      erase_flash: True if everything needs to be erased before flashing.
@@ -355,32 +306,15 @@ class FlashBuildEsptool(flash_build_base.FlashBuildBase):
        from matter-automation-project. This file will be used to read default
        flash settings. These can be overridden if user explicitly passes them as
        an argument.
-     **other_build_args: Not used.
     """
-    del build_number, build_url, forced_upgrade, latest_verified  # Unused.
-    del other_build_args  # Unused.
     build_args = {
         name: value for name, value in locals().items() if name not in ['self']
     }
-    self.upgrade_over_the_wire(**build_args)
-
-  @decorators.CapabilityLogDecorator(logger)
-  def upgrade_over_the_wire(self, **build_args: str) -> None:
-    """Using the build arguments, flash the build on the device.
-
-    Args:
-      **build_args: Dictionary of build arguments.
-    """
-    list_of_files = [
-        build_args['build_file'], build_args['bootloader_file'],
-        build_args['partition_file']
-    ]
-
     flash_args_keys = self._flash_args.keys()
 
     # Update flash arguments from *.flash.py
-    if build_args['flash_settings_file']:
-      with open(build_args['flash_settings_file']) as settings_file:
+    if flash_settings_file:
+      with open(flash_settings_file) as settings_file:
         settings = settings_file.read()
         # Regex for flash arguments such as `'flash_freq': '30m',`.
         pattern = re.compile(r"'(\w+)': '(\w+)',", re.MULTILINE | re.ASCII)
@@ -398,4 +332,6 @@ class FlashBuildEsptool(flash_build_base.FlashBuildBase):
     })
 
     self.flash_device(
-        list_of_files=list_of_files, erase_flash=build_args['erase_flash'])
+        list_of_files=[build_file, bootloader_file, partition_file],
+        erase_flash=erase_flash)
+

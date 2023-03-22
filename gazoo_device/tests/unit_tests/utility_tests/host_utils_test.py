@@ -64,7 +64,7 @@ class HostUtilsTests(unit_test_case.UnitTestCase):
             _TEST_PACKAGE: immutabledict.immutabledict({
                 "version": "0.0.1",
                 "key_download_function": self.mock_download_key,
-            })
+                })
         })
     package_info_patch.start()
     self.addCleanup(package_info_patch.stop)
@@ -176,6 +176,97 @@ class HostUtilsTests(unit_test_case.UnitTestCase):
     mock_chmod.assert_called_once_with(_EXPECTED_KEY_SSH_PRIVATE_PATH,
                                        int("400", 8))
 
+  @mock.patch.object(
+      subprocess,
+      "run",
+      autospec=True,
+      return_value=mock.Mock(spec=subprocess.CompletedProcess, stderr=""))
+  @mock.patch.object(host_utils, "_scp_use_legacy_option", new=None)
+  def test_get_scp_command(self, mock_subprocess_run):
+    """Tests _get_scp_command."""
+    self.assertEqual(
+        host_utils._get_scp_command(
+            src="path/to/src", dest="path/to/dest", ssh_opt=["opts"]),
+        ["scp", "-r", "-O", "opts", "path/to/src", "path/to/dest"])
+    self.assertEqual(host_utils._scp_use_legacy_option, ("-O",))
+    mock_subprocess_run.assert_called_once_with(["scp", "-O"],
+                                                capture_output=True,
+                                                text=True,
+                                                check=False)
+
+  @parameterized.named_parameters(
+      ("linux", "unknown option -- O"),
+      ("macos", "scp: illegal option -- O"))
+  @mock.patch.object(host_utils, "_scp_use_legacy_option", new=None)
+  def test_get_scp_command_legacy(self, mock_subprocess_stderr):
+    """Tests _get_scp_command for legacy scp."""
+
+    with mock.patch.object(
+        subprocess, "run", autospec=True,
+        return_value=mock.Mock(
+            spec=subprocess.CompletedProcess,
+            stderr=mock_subprocess_stderr)) as mock_subprocess_run:
+      self.assertEqual(
+          host_utils._get_scp_command(
+              src="path/to/src", dest="path/to/dest", ssh_opt=["opts"]),
+          ["scp", "-r", "opts", "path/to/src", "path/to/dest"])
+    self.assertEqual(host_utils._scp_use_legacy_option, ())
+    mock_subprocess_run.assert_called_once_with(["scp", "-O"],
+                                                capture_output=True,
+                                                text=True,
+                                                check=False)
+
+  @mock.patch.object(subprocess, "check_output", return_value=b"command output")
+  def test_scp_success(self, mock_check_output):
+    """Tests the success of _scp util."""
+    host_utils._scp(
+        source="path/to/src",
+        destination="path/to/dest",
+        options=["opt1", "opt2"])
+    args = [
+        "scp", "-r", *host_utils._scp_use_legacy_option, "opt1", "opt2",
+        "path/to/src", "path/to/dest"
+    ]
+    mock_check_output.assert_called_once_with(args, stderr=subprocess.STDOUT)
+
+  @mock.patch.object(host_utils, "verify_key", return_value=None)
+  @mock.patch.object(subprocess, "check_output", return_value=b"command output")
+  def test_scp_to_device(self, mock_check_output, unused_mock_verify_key):
+    """Tests the success of scp_to_device."""
+    key_info = data_types.KeyInfo(
+        file_name="key", type=data_types.KeyType.SSH, package="package")
+    host_utils.scp_to_device(
+        ip_address="192.168.0.1",
+        local_file_path="path/to/src",
+        remote_file_path="path/to/dest",
+        options=["opt1", "opt2"],
+        key_info=key_info)
+    args = [
+        "scp", "-r", *host_utils._scp_use_legacy_option, "opt1", "opt2", "-i",
+        host_utils.get_key_path(key_info), "path/to/src",
+        "root@192.168.0.1:path/to/dest"
+    ]
+    mock_check_output.assert_called_once_with(args, stderr=subprocess.STDOUT)
+
+  @mock.patch.object(host_utils, "verify_key", return_value=None)
+  @mock.patch.object(subprocess, "check_output", return_value=b"command output")
+  def test_scp_from_device(self, mock_check_output, unused_mock_verify_key):
+    """Tests the success of scp_from_device."""
+    key_info = data_types.KeyInfo(
+        file_name="key", type=data_types.KeyType.SSH, package="package")
+    host_utils.scp_from_device(
+        ip_address="192.168.0.1",
+        local_file_path="path/to/dest",
+        remote_file_path="path/to/src",
+        options=["opt1", "opt2"],
+        key_info=key_info)
+    args = [
+        "scp", "-r", *host_utils._scp_use_legacy_option, "opt1", "opt2", "-i",
+        host_utils.get_key_path(key_info), "root@192.168.0.1:path/to/src",
+        "path/to/dest"
+    ]
+    mock_check_output.assert_called_once_with(args, stderr=subprocess.STDOUT)
+
 
 class SnmpHostUtilsTests(unit_test_case.UnitTestCase):
   """Unit tests for SNMP methods in gazoo_device.utility.host_utils.py."""
@@ -250,9 +341,10 @@ class SnmpHostUtilsTests(unit_test_case.UnitTestCase):
   def test_accepts_snmp__pass(self, mock_check_output):
     ip_address = "0.0.0.0"
     self.assertTrue(host_utils.accepts_snmp(ip_address=ip_address))
-    cmd = host_utils._SNMPWALK_COMMAND.format(ip_address=ip_address).split()
+    cmd = host_utils._SNMPGET_SYSTEM_DESCRIPTION_COMMAND.format(
+        ip_address=ip_address).split()
     mock_check_output.assert_called_once_with(
-        cmd, timeout=host_utils._SNMPWALK_TIMEOUT)
+        cmd, timeout=host_utils._SNMPGET_SYSTEM_DESCRIPTION_TIMEOUT)
 
   @mock.patch.object(
       subprocess,

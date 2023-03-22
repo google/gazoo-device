@@ -143,13 +143,16 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
     super().tearDown()
 
-  def test_switchboard_health_check_error_propagation(self):
-    """Tests that an error in health_check method gets surfaced."""
+  def _setup_switchboard_with_fake_transport(self):
     self.fake_transport = fake_transport.FakeTransport()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               [self.fake_transport],
                                               self.log_path)
+
+  def test_switchboard_health_check_error_propagation(self):
+    """Tests that an error in health_check method gets surfaced."""
+    self._setup_switchboard_with_fake_transport()
     # self.uut._healthy = False
     with mock.patch.object(
         self.uut, "_add_transport_processes") as mock_add_transports:
@@ -172,11 +175,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_switchboard_close_with_one_transport(self):
     """Test switchboard close with one transport."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
 
   def test_switchboard_close_with_two_transports(self):
     """Test switchboard close with two transports."""
@@ -233,11 +232,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_switchboard_multiple_close_with_one_transport(self):
     """Test switchboard multiple close with one transport."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
     self.uut.close()
     self.uut.close()
 
@@ -263,15 +258,19 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     lines = self._verify_log_file_and_lines(1)
     self.assertIn("GDM-M: Note: ", lines[0])
 
-  def test_switchboard_start_new_log_raises_error(self):
-    """Test switchboard start_new_log method raises error if closed."""
-    transport_list = []
+  def _get_old_new_log_path(self):
     old_log_path = os.path.join(self.artifacts_directory,
                                 self._testMethodName + "-old",
                                 "fake-device.txt")
     new_log_path = os.path.join(self.artifacts_directory,
                                 self._testMethodName + "-new",
                                 "fake-device.txt")
+    return old_log_path, new_log_path
+
+  def test_switchboard_start_new_log_raises_error(self):
+    """Test switchboard start_new_log method raises error if closed."""
+    transport_list = []
+    old_log_path, new_log_path = self._get_old_new_log_path()
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
                                               transport_list, old_log_path)
@@ -283,26 +282,78 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     with self.assertRaisesRegex(errors.DeviceError, err_regex):
       self.uut.start_new_log(new_log_path)
 
-  def test_switchboard_start_new_log_no_deadlock(self):
-    """Test switchboard start_new_log method can't deadlock on log processes."""
+  def _create_switchboard(self, old_log_path):
     transport_list = []
-    old_log_path = os.path.join(self.artifacts_directory,
-                                self._testMethodName + "-old",
-                                "fake-device.txt")
-    new_log_path = os.path.join(self.artifacts_directory,
-                                self._testMethodName + "-new",
-                                "fake-device.txt")
     filter_list = []
     parser_obj = event_parser_default.EventParserDefault(
         filters=filter_list,
         event_file_path="/foo.txt",
         device_name="device-1234")
-    self.uut = switchboard.SwitchboardDefault(
+    return switchboard.SwitchboardDefault(
         "test_device",
         self.exception_queue,
         transport_list,
         old_log_path,
         parser=parser_obj)
+
+  def test_switchboard_start_new_log_log_filter_process_not_consume(self):
+    """Test switchboard start_new_log method when log filter process does not consume command."""
+    old_log_path, new_log_path = self._get_old_new_log_path()
+    self.uut = self._create_switchboard(old_log_path)
+    with mock.patch.object(self.uut._log_filter_process,
+                           "is_command_consumed",
+                           return_value=False,
+                           autospec=True):
+      with mock.patch.object(
+          self.uut._log_filter_process, "stop",
+          autospec=True) as mock_log_filter_process_stop:
+        with self.assertRaisesRegex(
+            errors.ProcessCommunicationError,
+            "Device test_device Process test_device-LogFilter "
+            "command NEW_LOG_FILE consumption timed out. "
+            "Stopped the process."):
+          self.uut.start_new_log(new_log_path)
+      mock_log_filter_process_stop.assert_called_once()
+
+  def test_switchboard_start_new_log_log_writer_process_not_consume(self):
+    """Test switchboard start_new_log method when log writer process does not consume command."""
+    old_log_path, new_log_path = self._get_old_new_log_path()
+    self.uut = self._create_switchboard(old_log_path)
+    with mock.patch.object(self.uut._log_writer_process,
+                           "is_command_consumed",
+                           return_value=False,
+                           autospec=True):
+      with mock.patch.object(
+          self.uut._log_writer_process, "stop",
+          autospec=True) as mock_log_writer_process_stop:
+        with self.assertRaisesRegex(
+            errors.ProcessCommunicationError,
+            "Device test_device Process test_device-LogWriter "
+            "command NEW_LOG_FILE consumption timed out"):
+          self.uut.start_new_log(new_log_path)
+      mock_log_writer_process_stop.assert_called_once()
+
+  def test_switchboard_start_new_log_log_file_not_appear(self):
+    """Test switchboard start_new_log method when log file does not appear."""
+    old_log_path, new_log_path = self._get_old_new_log_path()
+    self.uut = self._create_switchboard(old_log_path)
+    with mock.patch.object(os.path, "exists", return_value=False):
+      with mock.patch.object(
+          self.uut._log_filter_process, "stop",
+          autospec=True) as mock_log_filter_process_stop:
+        with mock.patch.object(
+            self.uut._log_writer_process, "stop",
+            autospec=True) as mock_log_writer_process_stop:
+          with self.assertRaisesRegex(errors.ProcessCommunicationError,
+                                      "cannot change to new log file:"):
+            self.uut.start_new_log(new_log_path)
+        mock_log_filter_process_stop.assert_called_once()
+        mock_log_writer_process_stop.assert_called_once()
+
+  def test_switchboard_start_new_log_no_deadlock(self):
+    """Test switchboard start_new_log method can't deadlock on log processes."""
+    old_log_path, new_log_path = self._get_old_new_log_path()
+    self.uut = self._create_switchboard(old_log_path)
 
     self.uut._log_filter_process.stop()
     self.uut.start_new_log(new_log_path)
@@ -316,24 +367,8 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_switchboard_start_new_log(self):
     """Test switchboard start_new_log method switches to new log file."""
-    transport_list = []
-    old_log_path = os.path.join(self.artifacts_directory,
-                                self._testMethodName + "-old",
-                                "fake-device.txt")
-    new_log_path = os.path.join(self.artifacts_directory,
-                                self._testMethodName + "-new",
-                                "fake-device.txt")
-    filter_list = []
-    parser_obj = event_parser_default.EventParserDefault(
-        filters=filter_list,
-        event_file_path="/foo.txt",
-        device_name="device-1234")
-    self.uut = switchboard.SwitchboardDefault(
-        "test_device",
-        self.exception_queue,
-        transport_list,
-        old_log_path,
-        parser=parser_obj)
+    old_log_path, new_log_path = self._get_old_new_log_path()
+    self.uut = self._create_switchboard(old_log_path)
     self.uut.add_log_note(_LOG_MESSAGE)
     self._wait_for_log_write(log_path=old_log_path)
     self._verify_log_file_and_lines(1, log_path=old_log_path)
@@ -431,13 +466,31 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     with self.assertRaisesRegex(errors.DeviceError, err_regex):
       self.uut.set_max_log_size(1)
 
-  def test_switchboard_send_raises_error(self):
-    """Test switchboard send method raises error for invalid port."""
-    self.fake_transport = fake_transport.FakeTransport()
+  def test_switchboard_set_max_log_size_timeout_log_writer_stop(self):
+    """Test switchboard set_max_log_size method timeout and log writer process stop."""
+    transport_list = []
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+                                              transport_list, self.log_path)
+    with mock.patch.object(self.uut._log_writer_process,
+                           "is_command_consumed",
+                           return_value=False,
+                           autospec=True):
+      with mock.patch.object(
+          self.uut._log_writer_process, "stop",
+          autospec=True) as mock_log_writer_process_stop:
+        with self.assertRaisesRegex(
+            errors.ProcessCommunicationError,
+            "Device test_device Process test_device-LogWriter "
+            "command MAX_LOG_SIZE consumption timed out. "
+            "Stopped the process."):
+          self.uut.set_max_log_size(1)
+      mock_log_writer_process_stop.assert_called_once()
+    self.uut.close()
+
+  def test_switchboard_send_raises_error(self):
+    """Test switchboard send method raises error for invalid port."""
+    self._setup_switchboard_with_fake_transport()
 
     # port is None
     with self.assertRaisesRegex(
@@ -451,11 +504,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_switchboard_send_to_default_port(self):
     """Test send method sends command and writes port number to log file."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
     self.uut.send(_DEVICE_COMMAND, add_newline=False)
     self._wait_for_log_write()
     lines = self._verify_log_file_and_lines(1)
@@ -489,11 +538,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_switchboard_send_adds_newline_if_not_found(self):
     """Test send method adds a newline to command if it doesn't end with one."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
     newline = "!"
     self.uut.send(_DEVICE_COMMAND, newline=newline)
     self._wait_for_log_write()
@@ -507,11 +552,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_switchboard_send_doesnt_add_newline_if_found(self):
     """Test send doesn't add a newline to command if it is ends with one."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
     newline = "!"
     self.uut.send(_DEVICE_COMMAND + newline, newline=newline)
     command = self._get_command(self.fake_transport)
@@ -523,11 +564,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_switchboard_send_slow(self):
     """Test switchboard send sends one byte at a time when slow=True."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
     self.uut.send(_DEVICE_COMMAND_NEWLINE, slow=True)
     self._wait_for_log_write()
     command = ""
@@ -568,12 +605,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_switchboard_do_and_expect_non_callable_raises_error(self):
     """Test do_and_expect with non callable function raises an error."""
-
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
 
     # pattern_list is a string
     with self.assertRaisesRegex(errors.DeviceError, "is not callable"):
@@ -700,12 +732,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_switchboard_expect_raises_errors(self):
     """Test switchboard expect raises errors for bad arguments."""
-
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
     # pattern_list is a string
     with self.assertRaisesRegex(errors.DeviceError,
                                 "Expecting list for pattern_list"):
@@ -963,11 +990,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_switchboard_click_raises_errors_no_button_list(self):
     """Test switchboard click method raises errors with no button list."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
 
     with self.assertRaisesRegex(errors.DeviceError,
                                 "Buttons are not supported for this device."):
@@ -1079,11 +1102,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_switchboard_press_raises_errors_no_button_list(self):
     """Test switchboard press method raises errors with no button list."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
 
     with self.assertRaisesRegex(errors.DeviceError,
                                 "Buttons are not supported for this device."):
@@ -1183,11 +1202,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_switchboard_release_raises_errors_no_button_list(self):
     """Test switchboard release method raises errors with no button list."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
 
     with self.assertRaisesRegex(errors.DeviceError,
                                 "Buttons are not supported for this device."):
@@ -1276,11 +1291,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_switchboard_close_transport_raises_error(self):
     """Test switchboard close_transport method raises error for invalid port."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
 
     # port is None
     with self.assertRaisesRegex(errors.DeviceError, "Invalid port type"):
@@ -1290,13 +1301,25 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     with self.assertRaisesRegex(errors.DeviceError, "Invalid port number"):
       self.uut.close_transport(port=1)
 
+  def test_switchboard_close_transport_stay_open(self):
+    """Test close_transport method when stay open, transport proc stop."""
+    self._setup_switchboard_with_fake_transport()
+    with mock.patch.object(self.uut._transport_processes[0],
+                           "is_open",
+                           return_value=True,
+                           autospec=True):
+      with mock.patch.object(
+          self.uut._transport_processes[0],
+          "stop",
+          autospec=True) as mock_transport_process_stop:
+        with self.assertRaisesRegex(errors.ProcessCommunicationError,
+                                    r"Transport0 did not close"):
+          self.uut.close_transport()
+      mock_transport_process_stop.assert_called_once()
+
   def test_switchboard_close_transport_to_default_port(self):
     """Test close_transport method closes transport and logs message."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
     self.uut.close_transport()
     self._wait_for_log_write()
     self._wait_for_transport_write(self.fake_transport)
@@ -1368,11 +1391,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_switchboard_open_transport_raises_error(self):
     """Test switchboard open_transport method raises error for invalid port."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
 
     # port is None
     with self.assertRaisesRegex(errors.DeviceError, "Invalid port type"):
@@ -1385,11 +1404,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_switchboard_open_transport_to_default_port(self):
     """Test open_transport method closes transport and logs message."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
     self.uut.open_transport()
     self._wait_for_log_write()
     self._wait_for_transport_write(self.fake_transport)
@@ -1464,11 +1479,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     """Test switchboard xmodem_file_to_transport method raises errors."""
     if "linux" not in sys.platform:
       self.skipTest("Doesn't work on mac")
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
 
     source_file = os.path.join(self.artifacts_directory,
                                self._testMethodName + ".json")
@@ -1549,11 +1560,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     """Test switchboard echo_file_to_transport method raises errors."""
     if "linux" not in sys.platform:
       self.skipTest("Doesn't work on mac")
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
 
     source_file = os.path.join(self.artifacts_directory,
                                self._testMethodName + ".json")
@@ -1642,11 +1649,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
     """Test switchboard verify_file_on_transport method raises errors."""
     if "linux" not in sys.platform:
       self.skipTest("Doesn't work on mac")
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
 
     source_file = os.path.join(self.artifacts_directory,
                                self._testMethodName + ".json")
@@ -1776,12 +1779,11 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
         "Expected no more commands but found {} more commands".format(
             get_queue_size(self.fake_transport.writes)))
 
-  def test_switchboard_add_new_filter_raises_error(self):
-    """Test add_new_filter if given bad path or without _log_filter_process."""
-    transport_list = []
+  def test_switchboard_add_new_filter_invalid_path_exception(self):
+    """Test add_new_filter if given bad path."""
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
-                                              transport_list, self.log_path)
+                                              [], self.log_path)
 
     # Invalid path passed to add_new_filter
     err_regex = "ValueError: Filter path bogus_path doesn't exist."
@@ -1789,9 +1791,11 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
       self.uut.add_new_filter("bogus_path")
     self.uut.close()
 
+  def test_switchboard_add_new_filter_no_log_filter_process_exception(self):
+    """Test add_new_filter without _log_filter_process."""
     self.uut = switchboard.SwitchboardDefault("test_device",
                                               self.exception_queue,
-                                              transport_list, self.log_path,
+                                              [], self.log_path,
                                               parser=None)
     # The _log_filter_process is no longer running.
     err_regex = "Log filter process is not currently running"
@@ -1799,6 +1803,35 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
       filter_file = os.path.join(self.TEST_FILTER_DIR,
                                  "optional_description.json")
       self.uut.add_new_filter(filter_file)
+    self.uut.close()
+
+  def test_switchboard_add_new_filter_command_consumed_timeout_stop(self):
+    """Test add_new_filter when is_command_consumed timed out and process stops."""
+    parser_obj = event_parser_default.EventParserDefault(
+        filters=[],
+        event_file_path="/foo.txt",
+        device_name="device-1234")
+    self.uut = switchboard.SwitchboardDefault("test_device",
+                                              self.exception_queue,
+                                              [], self.log_path,
+                                              parser=parser_obj)
+    with mock.patch.object(self.uut._log_filter_process,
+                           "is_command_consumed",
+                           return_value=False,
+                           autospec=True):
+      with mock.patch.object(
+          self.uut._log_filter_process, "stop",
+          autospec=True) as mock_log_filter_process_stop:
+        # The log filter process time out to consume command.
+        new_filter_file = os.path.join(self.TEST_FILTER_DIR,
+                                       "add_this_filter.json")
+        with self.assertRaisesRegex(
+            errors.ProcessCommunicationError,
+            "Device test_device Process test_device-LogFilter "
+            "command ADD_NEW_FILTER consumption timed out"):
+          self.uut.add_new_filter(new_filter_file)
+      mock_log_filter_process_stop.assert_called_once()
+    self.uut.close()
 
   def test_switchboard_add_new_filter_successful(self):
     """Verifies add_new_filter completes successfully."""
@@ -1876,11 +1909,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_call_success(self):
     """Test a successful Switchboard.call() transport method call."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
     self.assertEqual(
         self.uut.call(
             fake_transport.FakeTransport.test_method.__name__,
@@ -1889,11 +1918,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_call_error(self):
     """Test a Switchboard.call() transport method call which raises an error."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
     full_regex = (  # (?s) sets re.DOTALL flag.
         r"(?s)test_device Switchboard\.call of method "
         r"FakeTransport\.test_method in transport 0 failed\. Traceback.*"
@@ -1905,11 +1930,7 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
 
   def test_call_error_transport_doesnt_have_requested_method(self):
     """Test a Switchboard.call() when transport doesn't have the method."""
-    self.fake_transport = fake_transport.FakeTransport()
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
+    self._setup_switchboard_with_fake_transport()
     regex = (
         r"Transport 0 \('FakeTransport'\) does not have method 'flush_buffers'")
     with self.assertRaisesRegex(AttributeError, regex):

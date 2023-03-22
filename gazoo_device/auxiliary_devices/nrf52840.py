@@ -28,6 +28,7 @@ class NRF52840(nrf_connect_sdk_device.NRFConnectSDKDevice):
       detect_criteria.PigweedQuery.IS_MATTER: False,
       detect_criteria.PigweedQuery.MANUFACTURER_NAME: "segger",
       detect_criteria.PigweedQuery.PRODUCT_NAME: "j-link",
+      detect_criteria.PigweedQuery.IS_NRF_OPENTHREAD: False,
   }
   DEVICE_TYPE = "nrf52840"
   _OWNER_EMAIL = "gdm-authors@google.com"

@@ -19,7 +19,7 @@ transports, buttons, data framers, and line identifiers.
 import abc
 import os
 import types
-from typing import Any, Collection, Dict, List, Optional, Union
+from typing import Any, Collection, Dict, List, Optional, Sequence, Union
 
 from gazoo_device import custom_types
 from gazoo_device import data_types
@@ -82,10 +82,10 @@ def _validate_comm_types(
       invalid_comm_types.append(comm_type)
 
   if invalid_comm_types:
-    logger.warning(
-        "Unknown communication types specified "
-        f"{', '.join(invalid_comm_types)}. Known communication types "
-        f"{', '.join(extensions.communication_types.keys())}.")
+    logger.warning("Unknown communication types specified %s. "
+                   "Known communication types %s.",
+                   ", ".join(invalid_comm_types),
+                   ", ".join(extensions.communication_types.keys()))
 
   return validated_comm_types
 
@@ -109,21 +109,26 @@ def detect_connections(
 
   connections_dict = {comms_name: []
                       for comms_name in extensions.communication_types}
-  for comms_name, comms_class in extensions.communication_types.items():
+  for comms_name, comms_class in sorted(extensions.communication_types.items()):
     if lowercase_comm_types is not None:
       if comms_name.lower() not in lowercase_comm_types:
         logger.info(
-            f"Skipping detection for {comms_name} communication types.")
+            "Skipping detection for %s communication types.", comms_name)
         continue
 
     logger.info(
-        "\tdetecting potential {} communication addresses".format(comms_name))
+        "\tdetecting potential %s communication addresses", comms_name)
     detection_method = comms_class.get_comms_addresses
     try:
       try:
         comms_addresses = detection_method(static_ips=static_ips)
       except TypeError:  # method does not accept static_ips
         comms_addresses = detection_method()
+      if comms_addresses:
+        logger.info(
+            "\tFound %d potential %s communication addresses.",
+            len(comms_addresses), comms_name)
+        logger.info("\t\t" + "\n\t\t".join(sorted(comms_addresses)))
       selected_comms_addresses = [
           addr for addr in comms_addresses
           if addresses is None or addr in addresses]
@@ -132,10 +137,8 @@ def detect_connections(
       connections_dict[comms_name] = selected_comms_addresses
       if not_selected_comms_addresses:
         logger.info(
-            f"Skipping detection for {not_selected_comms_addresses} "
-            "communication addresses.")
-      logger.info("Found {} new potential communication addresses: {}".format(
-          len(selected_comms_addresses), selected_comms_addresses))
+            "Skipping detection for %s communication addresses.",
+            not_selected_comms_addresses)
 
         # Verify ssh keys exist if ssh connections are detected
       if issubclass(comms_class, SshComms) and comms_addresses:
@@ -152,15 +155,15 @@ def detect_connections(
           except (errors.DownloadKeyError, FileNotFoundError, RuntimeError):
             missing_keys.append(ssh_key)
         if missing_keys:
-          logger.warning("Found {} missing SSH keys:\n{}\n"
+          logger.warning("Found %d missing SSH keys:\n%s\n"
                          "Detection of SSH devices may not work correctly. "
-                         "Run 'gdm download-keys'.".format(
-                             len(missing_keys),
-                             "\n".join(str(key) for key in missing_keys)))
+                         "Run 'gdm download-keys'.",
+                         len(missing_keys),
+                         "\n".join(str(key) for key in missing_keys))
     except Exception as err:  # pylint: disable=broad-except
       logger.warning(
-          "Unable to detect {} communication addresses. Err: {!r}".format(
-              comms_name, err))
+          "Unable to detect %s communication addresses. Err: %r",
+          comms_name, err)
   return connections_dict
 
 
@@ -194,8 +197,8 @@ def get_specific_serial_addresses(
   ]
   if inaccessible_addresses:
     logger.warning(
-        "No read/write permission for these serial address(es): {}".format(
-            inaccessible_addresses))
+        "No read/write permission for these serial address(es): %s",
+        inaccessible_addresses)
   return [
       instance.address
       for instance in accessible_instances
@@ -310,8 +313,8 @@ class AdbComms(CommunicationType):
 
   def __init__(self,
                comms_address: str,
-               log_cmd: str = "logcat -v threadtime",
-               shell_cmd: str = "shell",
+               log_cmd: Sequence[str] = ("logcat", "-v", "threadtime"),
+               shell_cmd: Sequence[str] = ("shell",),
                event_log_cmd: Optional[str] = None) -> None:
     super().__init__(comms_address)
     self.log_cmd = log_cmd
@@ -336,7 +339,7 @@ class AdbComms(CommunicationType):
               comms_address=self.comms_address, command=self.event_log_cmd))
     return transports
 
-  def get_identifier(self) -> line_identifier.LineIdentifier:
+  def get_identifier(self) -> line_identifier.LineIdentifier:  # pytype: disable=signature-mismatch  # overriding-return-type-checks
     return line_identifier.PortLogIdentifier(log_ports=[1, 2])
 
 
@@ -356,8 +359,8 @@ class DockerComms(CommunicationType):
     return host_utils.get_all_vdl_docker_connections()
 
   def get_transport_list(self) -> List[transport_base.TransportBase]:
-    docker_exec_args = "exec -i {} /bin/bash".format(self.comms_address)
-    docker_logs_args = "logs -f {}".format(self.comms_address)
+    docker_exec_args = ["exec", "-i", self.comms_address, "/bin/bash"]
+    docker_logs_args = ["logs", "-f", self.comms_address]
     return [
         pty_transport.PtyTransport("docker", docker_exec_args),
         pty_transport.PtyTransport("docker", docker_logs_args)
@@ -373,22 +376,48 @@ class JlinkSerialComms(CommunicationType):
 
   @classmethod
   def get_comms_addresses(cls):
-    return []
+    # To only detect NRF OpenThread boards for this communication type to avoid
+    # the overlap with PigweedSerialComms, which uses the same J-Link detection
+    # criteria.
+    include_product = [JLINK_COMMS_PRODUCT_NAME]
+    include_address = [
+        NRF_DK_COMMS_ADDRESS_LINUX, NRF_DK_EFR32_COMMS_ADDRESS_MAC,
+    ]
+    match_criteria = {
+        "product_name": {
+            "include_regex": "|".join(include_product)
+        },
+        "address": {
+            "include_regex": "|".join(include_address)
+        },
+        "ftdi_interface": {
+            "include_regex": "0"
+        }
+    }
+    return get_specific_serial_addresses(match_criteria)
 
-  def __init__(self, comms_address: str, baudrate: int = 115200) -> None:
+  def __init__(
+      self,
+      comms_address: str,
+      baudrate: int = 115200,
+      enable_jlink: bool = True) -> None:
     super().__init__(comms_address)
     self.secondary_address = usb_utils.get_serial_number_from_path(
         comms_address)
     self.baudrate = baudrate
+    self.enable_jlink = enable_jlink
 
   def get_transport_list(self) -> List[transport_base.TransportBase]:
-    return [
+    transports = [
         serial_transport.SerialTransport(
-            comms_address=self.comms_address, baudrate=self.baudrate),
-        jlink_transport.JLinkTransport(comms_address=self.secondary_address)
-    ]
+            comms_address=self.comms_address, baudrate=self.baudrate)]
+    if self.enable_jlink:
+      transports.append(
+          jlink_transport.JLinkTransport(
+              comms_address=self.secondary_address))
+    return transports
 
-  def get_identifier(self) -> line_identifier.PortLogIdentifier:
+  def get_identifier(self) -> line_identifier.PortLogIdentifier:  # pytype: disable=signature-mismatch  # overriding-return-type-checks
     return line_identifier.PortLogIdentifier()
 
 
@@ -436,7 +465,7 @@ class PigweedSerialComms(CommunicationType):
             baudrate=self.baudrate)
     ]
 
-  def get_identifier(self) -> line_identifier.AllLogIdentifier:
+  def get_identifier(self) -> line_identifier.AllLogIdentifier:  # pytype: disable=signature-mismatch  # overriding-return-type-checks
     return line_identifier.AllLogIdentifier()
 
 
@@ -454,7 +483,7 @@ class PtyProcessComms(CommunicationType):
     full_command_list = comms_address.split()
     comms_address = full_command_list[0]
     super().__init__(comms_address)
-    self.args = " ".join(full_command_list[1:])
+    self.args = full_command_list[1:]
 
   def get_transport_list(self) -> List[pty_transport.PtyTransport]:
     return [pty_transport.PtyTransport(self.comms_address, args=self.args)]
@@ -478,8 +507,9 @@ class SshComms(CommunicationType):
 
   def __init__(self,
                comms_address: str,
-               log_cmd: str = "tail -F -n /var/log/messages",
-               args: str = host_utils.DEFAULT_SSH_OPTIONS,
+               log_cmd: Sequence[str] = ("tail", "-F", "-n",
+                                         "/var/log/messages"),
+               args: Sequence[str] = host_utils.DEFAULT_SSH_OPTIONS,
                key_info: Optional[data_types.KeyInfo] = None,
                username: str = "root") -> None:
     super().__init__(comms_address)
@@ -503,7 +533,7 @@ class SshComms(CommunicationType):
             log_cmd=self.log_cmd)
     ]
 
-  def get_identifier(self) -> line_identifier.PortLogIdentifier:
+  def get_identifier(self) -> line_identifier.PortLogIdentifier:  # pytype: disable=signature-mismatch  # overriding-return-type-checks
     return line_identifier.PortLogIdentifier(log_ports=[1])
 
 
@@ -514,15 +544,16 @@ class PigweedSocketComms(SshComms):
                comms_address: str,
                protobufs: Collection[types.ModuleType],
                port: int = pwrpc_utils.MATTER_LINUX_APP_DEFAULT_PORT,
-               log_cmd: str = "tail -F -n /var/log/messages",
-               args: str = host_utils.DEFAULT_SSH_OPTIONS,
+               log_cmd: Sequence[str] = ("tail", "-F", "-n",
+                                         "/var/log/messages"),
+               args: Sequence[str] = host_utils.DEFAULT_SSH_OPTIONS,
                key_info: Optional[data_types.KeyInfo] = None,
                username: str = "ubuntu") -> None:
     super().__init__(comms_address, log_cmd, args, key_info, username)
     self.protobufs = protobufs
     self.port = port
 
-  def get_transport_list(self) -> List[transport_base.TransportBase]:
+  def get_transport_list(self) -> List[transport_base.TransportBase]:  # pytype: disable=signature-mismatch  # overriding-return-type-checks
     """Transports for Pigweed Socket communication types.
 
     Port 0 and port 1 are SSHTransport, port 2 is PigweedRpcSocketTransport.
@@ -594,7 +625,7 @@ class SerialComms(CommunicationType):
             comms_address=self.comms_address, baudrate=self.baudrate)
     ]
 
-  def get_identifier(
+  def get_identifier(  # pytype: disable=signature-mismatch  # overriding-return-type-checks
       self
   ) -> Union[line_identifier.AllUnknownIdentifier,
              line_identifier.RegexLogIdentifier]:

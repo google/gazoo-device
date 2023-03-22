@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """A fake playback class to enable mocks for detection tests."""
-
 from typing import Any, Collection, Optional, Sequence
 from unittest import mock
 
@@ -25,7 +24,7 @@ ADB_DEVICE_BEHAVIORS = immutabledict.immutabledict({})
 
 ALT_POE_BEHAVIORS = immutabledict.immutabledict({
     "unifi_switch": {
-        "mca-cli-op info":
+        ("mca-cli-op", "info"):
             """
         Model:       US-8-150W
         Version:     5.43.23.12533
@@ -47,7 +46,11 @@ ALT_SNMP_DEVICE_BEHAVIORS = immutabledict.immutabledict({
     },
 })
 
-JLINK_DEVICE_BEHAVIORS = immutabledict.immutabledict({})
+JLINK_DEVICE_BEHAVIORS = immutabledict.immutabledict({
+    "nrfopenthread": {
+        "product_name": "J-Link",
+    },
+})
 
 PIGWEED_SERIAL_DEVICE_BEHAVIORS = immutabledict.immutabledict({
     "efr32": {
@@ -84,8 +87,8 @@ PIGWEED_SERIAL_DEVICE_BEHAVIORS = immutabledict.immutabledict({
 
 PIGWEED_SOCKET_DEVICE_BEHAVIORS = immutabledict.immutabledict({
     "rpimatter": {
-        "cat /proc/device-tree/model": "Raspberry Pi 4 Model B Rev 1.4",
-        "pgrep -f matter-linux-app": "84744",
+        ("cat", "/proc/device-tree/model"): "Raspberry Pi 4 Model B Rev 1.4",
+        ("pgrep", "-f", "matter-linux-app"): "84744",
     },
 })
 
@@ -117,14 +120,14 @@ SSH_DEVICE_BEHAVIORS = immutabledict.immutabledict({
         ]
     },
     "raspberrypi": {
-        "cat /proc/device-tree/model": "Raspberry Pi 3 Model B Rev 1.1",
+        ("cat", "/proc/device-tree/model"): "Raspberry Pi 3 Model B Rev 1.1",
     },
     "rpi_matter_controller": {
-        "cat /proc/device-tree/model": "Raspberry Pi 4 Model B Rev 1.4",
-        "which chip-tool": "/usr/bin/chip-tool",
+        ("cat", "/proc/device-tree/model"): "Raspberry Pi 4 Model B Rev 1.4",
+        ("which", "chip-tool"): "/usr/bin/chip-tool",
     },
     "unifi_switch": {
-        "mca-cli-op info":
+        ("mca-cli-op", "info"):
             """
         Model:       USW-8P-150
         Version:     4.3.13.11253
@@ -146,6 +149,13 @@ USB_DEVICE_BEHAVIORS = immutabledict.immutabledict({
         "serial_number": "123456",
         "vendor_id": 0x1313,
     },
+})
+
+
+SWITCHBOARD_BEHAVIORS_DICT = immutabledict.immutabledict({
+    "nrfopenthread": {
+        "invalid\n": "InvalidCommand\n",
+    }
 })
 
 
@@ -196,7 +206,7 @@ class FakeDetectPlayback:
 
   def ssh_command(self,
                   ip_address: str,
-                  command: str,
+                  command: Sequence[str],
                   **kwargs: Any) -> str:
     """Mocks ssh command.
 

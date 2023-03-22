@@ -13,8 +13,6 @@
 # limitations under the License.
 
 """Mixin for Matter Level Control cluster test suite."""
-from gazoo_device.capabilities.matter_endpoints import speaker
-
 from mobly import asserts
 
 _TARGET_LEVEL = 108
@@ -29,25 +27,31 @@ class LevelControlClusterTestSuite:
   def test_move_to_level_command_and_current_level_attribute(self):
     """Tests the MoveToLevel command and CurrentLevel attribute."""
     if self.endpoint.has_clusters(["level_control"]):
-      self.endpoint.level.move_to_level(level=_TARGET_LEVEL)
-      asserts.assert_equal(_TARGET_LEVEL, self.endpoint.level.current_level)
+      self.endpoint.level_control.move_to_level(level=_TARGET_LEVEL)
+      asserts.assert_equal(
+          _TARGET_LEVEL, self.endpoint.level_control.current_level)
     else:
       asserts.skip(
           f"Endpoint {self.endpoint} does not implement the Level Control "
           "cluster.")
 
-  def test_max_and_min_level_attributes(self):
-    """Tests the MaxLevel and MinLevel attributes."""
+  def test_max_level_attributes(self):
+    """Tests the MaxLevel attributes."""
     if self.endpoint.has_clusters(["level_control"]):
       asserts.assert_is_instance(
-          self.endpoint.level.max_level, int,
+          self.endpoint.level_control.max_level, int,
           "MaxLevel attribute must be the int type.")
+    else:
+      asserts.skip(
+          f"Endpoint {self.endpoint} does not implement the Level Control "
+          "cluster.")
 
-      # TODO(b/248451689) Remove the bypass after Speaker issue is resolved
-      if not isinstance(self.endpoint, speaker.SpeakerEndpoint):
-        asserts.assert_is_instance(
-            self.endpoint.level.min_level, int,
-            "MinLevel attribute must be the int type.")
+  def test_min_level_attributes(self):
+    """Tests the MinLevel attributes."""
+    if self.endpoint.has_clusters(["level_control"]):
+      asserts.assert_is_instance(
+          self.endpoint.level_control.min_level, int,
+          "MinLevel attribute must be the int type.")
     else:
       asserts.skip(
           f"Endpoint {self.endpoint} does not implement the Level Control "

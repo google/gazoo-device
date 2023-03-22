@@ -245,6 +245,18 @@ Alias for accessing `ExtendedColorLight` endpoint and its supported clusters.
 The supported clusters can be found in the
 [GDM ExtendedColorLight implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/extended_color_light.py).
 
+#### `fan_control`
+
+Alias for accessing `FanEndpoint` endpoint and its supported clusters.
+
+```
+# Check the fan_mode on the FanControl cluster on the Fan endpoint.
+>>> dut.fan.fan_control.fan_mode
+```
+
+The supported clusters can be found in the
+[GDM FanEndpoint implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/fan.py).
+
 #### `flow_sensor`
 
 Alias for accessing `FlowSensorEndpoint` endpoint and its supported clusters.
@@ -256,6 +268,18 @@ Alias for accessing `FlowSensorEndpoint` endpoint and its supported clusters.
 
 The supported clusters can be found in the
 [GDM FlowSensorEndpoint implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/flow_sensor.py).
+
+#### `heating_cooling_unit`
+
+Alias for accessing `HeatingCoolingUnit` endpoint and its supported clusters.
+
+```
+# Check the OnOff attribute on the OnOff cluster on the HeatingCoolingUnit endpoint.
+>>> dut.heating_cooling_unit.on_off.onoff
+```
+
+The supported clusters can be found in the
+[GDM HeatingCoolingUnit implementation](https://github.com/google/gazoo-device/blob/master/gazoo_device/capabilities/matter_endpoints/heating_cooling_unit.py).
 
 #### `humidity_sensor`
 

@@ -1,6 +1,6 @@
-# Gazoo Device Manager (also known as gazoo_device or GDM)
+# Gazoo Device Manager (GDM)
 
-gazoo_device is a python package for interacting with smart devices. \
+`gazoo_device` is a python package for interacting with smart devices. \
 It contains Gazoo Device Manager (GDM), which defines a common device interface.
 The common device interface standardizes device interactions and allows test
 writers to share tests across devices despite the underlying differences in
@@ -14,7 +14,7 @@ GDM runs on the test host and communicates with the physical devices via one or
 more device transports (such as SSH, ADB, HTTPS, UART). GDM does not require any
 additional support from the device firmware.
 
-GDM is used for on-device testing at Google Nest.
+GDM is used in most end-to-end device tests at Google Nest.
 
 ## Table of contents
 
@@ -70,7 +70,7 @@ MacOS prerequisites:
         which python3
         ```
 
-    2.  Check that your Python 3 version is at least 3.7:
+    2.  Check that your Python 3 version is at least 3.9:
 
         ```
         python3 -V

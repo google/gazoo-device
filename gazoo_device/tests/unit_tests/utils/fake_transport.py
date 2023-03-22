@@ -102,7 +102,7 @@ class FakeTransport:
       if hasattr(self, "_generator"):
         self._generator.join()
       if hasattr(self, "close_count"):
-        self.close_count.value += 1
+        self.close_count.value += 1  # pytype: disable=attribute-error  # re-none
       if hasattr(self, "_transport_open"):
         self.clear_open()
     except IOError:
@@ -138,7 +138,7 @@ class FakeTransport:
     result = False
     try:
       if hasattr(self, "is_open_count"):
-        self.is_open_count.value += 1
+        self.is_open_count.value += 1  # pytype: disable=attribute-error  # re-none
         result = self._transport_open.is_set()
     except IOError:
       # Test probably failed and canceled the manager Event objects
@@ -162,7 +162,7 @@ class FakeTransport:
 
   def open(self):
     try:
-      self.open_count.value += 1
+      self.open_count.value += 1  # pytype: disable=attribute-error  # re-none
       self.set_open()
     except IOError:
       # Test probably failed and canceled the manager Event objects
@@ -173,7 +173,7 @@ class FakeTransport:
   def set_open(self):
     self._transport_open.set()
     if self._generate_lines:
-      self._generator = multiprocessing_utils.get_context().Process(
+      self._generator = multiprocessing_utils.get_context().Process(  # pytype: disable=attribute-error  # re-none
           target=_produce_data,
           args=(self._baudrate / 10, self.bytes_per_second, self._exit_flag,
                 self._generate_raw_log_lines, self.reads))

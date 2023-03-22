@@ -23,7 +23,7 @@ class SSHTransportTests(unit_test_case.UnitTestCase):
   def test_001_transport_default(self):
     """SSHTransport uses shell in args."""
     address = "123.45.67.89"
-    defaults = host_utils.DEFAULT_SSH_OPTIONS.split()
+    defaults = host_utils.DEFAULT_SSH_OPTIONS
     uut = ssh_transport.SSHTransport(address)
     self.assertIn("root@" + address, uut._args)
     for arg in defaults:
@@ -32,7 +32,7 @@ class SSHTransportTests(unit_test_case.UnitTestCase):
   def test_002_transport_uses_logcat_in_args(self):
     """AdbTransport uses logcat in args if log_only=True."""
     address = "123.45.67.89"
-    uut = ssh_transport.SSHTransport("123.45.67.89", log_cmd="logcat")
+    uut = ssh_transport.SSHTransport("123.45.67.89", log_cmd=["logcat"])
     self.assertIn("root@" + address, uut._args)
     self.assertIn("logcat", uut._args)
 

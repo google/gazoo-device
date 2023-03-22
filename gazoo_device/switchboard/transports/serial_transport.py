@@ -22,7 +22,6 @@ from gazoo_device import gdm_logger
 from gazoo_device.switchboard import transport_properties as props
 from gazoo_device.switchboard.transports import transport_base
 import serial
-import six
 
 logger = gdm_logger.get_logger()
 DEFAULT_BAUDRATE = 115200
@@ -181,7 +180,7 @@ class SerialTransport(transport_base.TransportBase):
         If the data provided is unicode it will be encoded into UTF-8
         compatible bytes before being written to the serial port.
     """
-    if isinstance(data, six.text_type):
+    if isinstance(data, str):
       data = data.encode("utf-8", errors="replace")
 
     # Whether to use flow control to prevent buffer issues at high baudrate
@@ -283,4 +282,4 @@ class SerialTransport(transport_base.TransportBase):
 
     Returns: None
     """
-    self._serial.write(six.b("\x03"))
+    self._serial.write(b"\x03")

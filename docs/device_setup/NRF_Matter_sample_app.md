@@ -143,6 +143,26 @@ device.device_power.on()
 
 Which is useful to recover the device from unresponsiveness.
 
+**7. (Recommended) Disable the Mass Storage Device functionality**
+
+Due to a known issue in Segger’s J-Link firmware, depending on your operating
+system and version you might experience data corruption or drops if you use the
+USB CDC ACM Serial Port with packets larger than 64 bytes. This has been
+observed on both GNU/Linux and macOS (OS X) which causes numerous NRF RPC
+issues: b/255635727, b/261901521 and b/261846864
+
+To resolve this, simply disable the `Mass Storage Device` by opening `JLinkExe`
+from a terminal, and typing
+
+```
+MSDDisable
+```
+
+And finally unplugging and replugging the board.
+
+See more detailed instructions at https://docs.zephyrproject.org/3.0.0/guides/tools/nordic_segger.html#disabling-the-mass-storage-device-functionality
+
+
 ## Usage
 
 Using the CLI

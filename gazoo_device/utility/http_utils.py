@@ -14,7 +14,6 @@
 """Utility module for HTTP GET and POST methods."""
 import contextlib
 import json
-import os
 import socket
 import ssl
 from typing import Any, Callable, ContextManager, Dict, List, Optional, Union
@@ -51,61 +50,6 @@ class SSLAdapter(adapters.HTTPAdapter):
         maxsize=maxsize,
         block=block,
         ssl_version=self.ssl_version)
-
-
-def download_file(url: str, local_path: str) -> None:
-  """Downloads the file to the local path.
-
-  Args:
-      url: URL to file.
-      local_path: location to download file to.
-
-  Raises:
-      RuntimeError: if unable to access domain or to download file in 3 tries.
-  """
-  for _ in range(MAX_URL_RETRY):
-    try:
-      validate_url_access(url)
-      (_, header) = urllib.request.urlretrieve(url, local_path)
-    except Exception as err:
-      raise RuntimeError("Unable to download {}".format(url)) from err
-    if "last-modified" in header and os.path.exists(local_path):
-      logger.info("Successfully downloaded file to {}".format(local_path))
-      return
-  raise RuntimeError("Unable to download {} after {} tries.".format(
-      url, MAX_URL_RETRY))
-
-
-def read_raw_html_page(url: str) -> str:
-  """Returns the raw text on the HTML page.
-
-  Args:
-      url: URL for page.
-
-  Returns:
-      str: raw text on the HTML page.
-
-  Raises:
-      RuntimeError: if unable to access domain or to download file in 3 tries.
-  """
-  code = 0
-  for _ in range(MAX_URL_RETRY):
-    try:
-      validate_url_access(url)
-      response = urllib.request.urlopen(url)
-      code = response.getcode()
-      raw_page = response.read().decode("utf-8")
-      if code == 200:
-        # get all relative links to files
-        return raw_page
-      else:
-        err = raw_page
-    except urllib.error.HTTPError as err:
-      code = err.code  # retry
-      raw_page = err
-  raise RuntimeError(
-      "Unable to get files at URL {}. HTTP return code {}: {}".format(
-          url, code, raw_page))
 
 
 def send_http_get(url: str,
@@ -152,6 +96,7 @@ def send_http_get(url: str,
             type(headers)))
   try:
     with session_factory() as session:
+      session: requests.Session
       if ssl_version:
         session.mount("https://", SSLAdapter(ssl_version))
       if data and isinstance(data, dict):
@@ -159,7 +104,7 @@ def send_http_get(url: str,
 
       for attempt in range(tries):
         try:
-          response = session.get(
+          response: requests.Response = session.get(
               url,
               auth=auth,
               params=params,
@@ -182,8 +127,10 @@ def send_http_get(url: str,
         url, data)) from err
 
   if response.status_code not in valid_return_codes:
-    raise RuntimeError("HTTP GET to URL {} returned: {}".format(
-        url, response.reason))
+    raise RuntimeError(
+        f"HTTP GET to URL {url} "
+        f"status code: {response.status_code}, reason: {response.reason}"
+    )
 
   return response
 
@@ -227,27 +174,26 @@ def send_http_post(url: str,
   Returns:
       requests.Response: Response returned by requests.post
   """
-  headers = headers or {}
-  json_data = json_data or {}
   valid_return_codes = valid_return_codes or [200]
 
-  if not isinstance(json_data, (dict, list)):
+  if json_data is not None and not isinstance(json_data, (dict, list)):
     raise TypeError(
         "Expecting a dict or list value in json_data params but received: "
         "{}.".format(type(json_data)))
 
-  if not isinstance(headers, dict):
+  if headers is not None and not isinstance(headers, dict):
     raise TypeError("Expecting a dict value in headers params but received: "
                     "{}.".format(type(headers)))
 
   try:
     with session_factory() as session:
+      session: requests.Session
       if ssl_version:
         session.mount("https://", SSLAdapter(ssl_version))
 
       for attempt in range(tries):
         try:
-          response = session.post(
+          response: requests.Response = session.post(
               url,
               auth=auth,
               data=data,
@@ -274,8 +220,10 @@ def send_http_post(url: str,
 
   if response.status_code not in valid_return_codes:
     raise RuntimeError(
-        "HTTP POST to URL {} with headers {}, data {} and json data {} "
-        "returned: {}".format(url, headers, data, json_data, response.reason))
+        f"HTTP POST to URL {url} with headers {headers}, data {data} and json"
+        f" data {json_data} status code: {response.status_code}, reason:"
+        f" {response.reason}"
+    )
 
   return response
 

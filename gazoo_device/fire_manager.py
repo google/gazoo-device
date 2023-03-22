@@ -134,7 +134,7 @@ def pretty_print_props(props_dicts: Mapping[str, Mapping[str, Any]]):
       elif isinstance(prop_value, dict) and len(prop_value) > 1:
         logger.info(_FORMAT_DEF.format(prop_name, ""))
         for key in sorted(prop_value):
-          logger.info(_FORMAT_DIC.format(key, prop_value[key]))
+          logger.info(_FORMAT_DIC.format(str(key), prop_value[key]))
         logger.info("")
 
       else:

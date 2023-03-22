@@ -34,14 +34,12 @@ All others are unknown.
 """
 import abc
 import re
-from typing import Optional
-
-from typing_extensions import Literal
+from typing import Literal, Optional
 
 LINE_TYPE_ALL = "all"
 LINE_TYPE_LOG = "log"
 LINE_TYPE_RESPONSE = "response"
-LINE_TYPE = Literal[LINE_TYPE_ALL, LINE_TYPE_LOG, LINE_TYPE_RESPONSE]
+LineTypeStr = Literal[LINE_TYPE_ALL, LINE_TYPE_LOG, LINE_TYPE_RESPONSE]
 
 
 class LineIdentifier(abc.ABC):
@@ -131,7 +129,7 @@ class RegexIdentifier(LineIdentifier):
     else:
       self._response_pattern = None
 
-  def accept(self, port: int, line: str, line_type: LINE_TYPE) -> bool:
+  def accept(self, port: int, line: str, line_type: LineTypeStr) -> bool:
     """Returns whether the given line should be accepted."""
     if line_type == LINE_TYPE_ALL:
       return True

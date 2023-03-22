@@ -20,9 +20,20 @@ _SAMPLE_RESPONSE = {"a": {"b": {"c": "d"}}}
 
 # Tuples of (Input string, Expected snake_case output string)
 _CASE_CONVERSION_TEST_CASES = (
-    ("ABc", "a_bc"), ("AB", "ab"), ("A", "a"), ("aB", "a_b"), ("A9x", "a9x"),
-    ("A9X", "a9_x"), ("FooBarBAZ", "foo_bar_baz"), ("FooBarBaz", "foo_bar_baz"),
-    ("foo", "foo"), ("fooBar", "foo_bar"), ("fooBarBAz", "foo_bar_b_az"))
+    ("ABc", "a_bc"), ("AB", "ab"), ("A", "a"), ("aB", "a_b"),
+    # number starts new word if it follows upper letter.
+    ("A9x", "a_9x"), ("A9X", "a_9_x"),
+    ("A123", "a_123"), ("a123", "a_123"),
+    ("NetworkInterface6g", "network_interface_6g"),
+    ("FooBarBAZ", "foo_bar_baz"), ("FooBarBaz", "foo_bar_baz"),
+    ("foo", "foo"), ("fooBar", "foo_bar"), ("fooBarBAz", "foo_bar_b_az"),
+    # keyword["Sl4a", "Sl4f"] testing
+    ("BluetoothSl4a", "bluetooth_sl4a"),
+    ("Sl4fBluetooth", "sl4f_bluetooth"),
+    ("BluetoothSl4aBaz", "bluetooth_sl4a_baz"),
+    # acronyms
+    ("HVACEvents", "hvac_events")
+    )
 
 _GENERATE_NAME_TEST_CASES = _CASE_CONVERSION_TEST_CASES + (
     ("much_wow", "much_wow"), ("__strangename__", "__strangename__"),

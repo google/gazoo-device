@@ -15,10 +15,9 @@
 """Simple data types without dependencies on other gazoo_device modules."""
 import dataclasses
 import enum
+from typing import Literal
 
-from typing_extensions import Literal
-
-MAKE_DEVICE_READY_SETTING = Literal["on", "off", "check_only", "flash_build"]
+MakeDeviceReadySettingStr = Literal["on", "off", "check_only", "flash_build"]
 
 
 @enum.unique

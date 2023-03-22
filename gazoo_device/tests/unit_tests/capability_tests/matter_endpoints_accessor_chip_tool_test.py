@@ -31,8 +31,8 @@ class MatterEndpointsAccessorChipToolCapabilityTests(
     super().setUp()
     self.setup_fake_device_requirements("rpi_matter_controller-1234")
     self.device_config["persistent"]["console_port_name"] = "123.45.67.89"
-    self.fake_responder.behavior_dict = (
-        raspberry_pi_matter_controller_device_logs.DEFAULT_BEHAVIOR.copy())
+    self.fake_responder.behavior_dict = {
+        **raspberry_pi_matter_controller_device_logs.DEFAULT_BEHAVIOR}
 
     self.uut = raspberry_pi_matter_controller.RaspberryPiMatterController(
         self.mock_manager,
@@ -129,3 +129,25 @@ class MatterEndpointsAccessorChipToolCapabilityTests(
     """Tests endpoint_id_to_device_type_id property."""
     self.assertEmpty(self.uut.matter_endpoints._endpoint_id_to_device_type_id)
     self.assertNotEmpty(self.uut.matter_endpoints.endpoint_id_to_device_type_id)
+
+  def test_get_endpoint_class_and_device_type_id_on_failure(self):
+    """Tests get_endpoint_class_and_device_type_id on failure."""
+    response1 = {
+        "cmd": "/usr/local/bin/chip-tool descriptor read device-list 1234 1",
+        "resp": "",
+        "code": 0,
+    }
+    response2 = {
+        "cmd":
+            "/usr/local/bin/chip-tool descriptor read device-type-list 1234 1",
+        "resp": "",
+        "code": 0,
+    }
+    for response in (response1, response2):
+      self.fake_responder.behavior_dict.update(
+          raspberry_pi_matter_controller_device_logs.make_device_responses(
+              (response,)))
+    with self.assertRaisesRegex(
+        errors.DeviceError, "Failed to get device type"):
+      self.uut.matter_endpoints.get_endpoint_class_and_device_type_id(1)
+

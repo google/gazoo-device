@@ -14,6 +14,7 @@
 """Unit tests for device_power_default capability."""
 from unittest import mock
 
+from absl.testing import parameterized
 from gazoo_device import errors
 from gazoo_device import manager
 from gazoo_device.auxiliary_devices import cambrionix
@@ -44,70 +45,120 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     }
     self.mock_cambrionix = mock.MagicMock(spec=cambrionix.Cambrionix)
     self.mock_manager.create_device.return_value = self.mock_cambrionix
-    self.wait_for_bootup_complete = mock.MagicMock()
-    self.wait_for_connection_fn = mock.MagicMock(
-        spec=gazoo_device_base.GazooDeviceBase.check_device_connected)
+    gazoo_device_base_instance_spec = mock.create_autospec(
+        spec=gazoo_device_base.GazooDeviceBase, instance=True)
+    self.wait_until_connected = mock.MagicMock(
+        spec=gazoo_device_base_instance_spec.wait_until_connected)
+    self.get_switchboard_if_initialized = mock.MagicMock(
+        spec=gazoo_device_base_instance_spec._get_switchboard_if_initialized,
+        return_value=self.mock_switchboard)
+    self.wait_for_bootup_complete = mock.MagicMock(
+        spec=gazoo_device_base_instance_spec.wait_for_bootup_complete)
+    # To verify the call sequence of unrelated mocks, attach them to a common
+    # mock and assert on the call sequence of the common mock.
+    self.mock_call_sequence_tracker = mock.MagicMock()
+    self.mock_call_sequence_tracker.attach_mock(
+        self.mock_cambrionix.switch_power.power_on, "power_on")
+    self.mock_call_sequence_tracker.attach_mock(
+        self.mock_cambrionix.switch_power.power_off, "power_off")
+    self.mock_call_sequence_tracker.attach_mock(
+        self.mock_switchboard.open_all_transports, "open_all_transports")
+    self.mock_call_sequence_tracker.attach_mock(
+        self.mock_switchboard.close_all_transports, "close_all_transports")
+    self.mock_call_sequence_tracker.attach_mock(
+        self.wait_until_connected, "wait_until_connected")
+    self.mock_call_sequence_tracker.attach_mock(
+        self.wait_for_bootup_complete, "wait_for_bootup_complete")
+
     self.uut = device_power_default.DevicePowerDefault(
         device_name=self.name,
         create_device_func=self.mock_manager.create_device,
         default_hub_type="cambrionix",
         props=self.props,
         usb_ports_discovered=False,
+        wait_until_connected_fn=self.wait_until_connected,
         wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
-        wait_for_connection_fn=self.wait_for_connection_fn,
-        switchboard_inst=self.mock_switchboard,
+        get_switchboard_if_initialized=self.get_switchboard_if_initialized,
         change_triggers_reboot=False)
 
   def test_off(self):
     """Verifies device_power.off calls switch_power."""
     self.uut.off()
-    self.uut._hub.switch_power.power_off.assert_called_once_with(self.port_num)
-    self.mock_switchboard.close_all_transports.assert_called_once()
+    self.mock_call_sequence_tracker.assert_has_calls([
+        mock.call.close_all_transports(),
+        mock.call.power_off(self.port_num),
+    ])
 
   def test_power_on(self):
     """Verifies device_power.on calls switch_power."""
     self.uut.on()
-    self.uut._hub.switch_power.power_on.assert_called_once_with(self.port_num)
-    self.mock_switchboard.open_all_transports.assert_called_once()
-    self.wait_for_connection_fn.assert_called_once()
+    self.mock_call_sequence_tracker.assert_has_calls([
+        mock.call.power_on(self.port_num),
+        mock.call.wait_until_connected(),
+        mock.call.open_all_transports(),
+        mock.call.wait_for_bootup_complete(),
+    ])
 
-  def test_power_on_unhealthy_switchboard(self):
-    """Verifies device_power.on doesn't call switchboard if it's not healthy."""
+  @parameterized.named_parameters(
+      ("not_initialized", None),
+      ("not_health_checked", mock.MagicMock(
+          spec=switchboard.SwitchboardDefault,
+          health_checked=False,
+          healthy=mock.PropertyMock(
+              side_effect=AssertionError(
+                  "'healthy' attribute should not have been accessed")))),
+      ("not_healthy", mock.MagicMock(
+          spec=switchboard.SwitchboardDefault,
+          health_checked=True,
+          healthy=False)),
+  )
+  def test_power_on_uninitialized_or_unhealthy_switchboard(
+      self, mock_get_switchboard_return_value):
+    """Verifies device_power.on doesn't call switchboard if it's unhealthy or uninitialized."""
     self.uut.health_check()
-    self.mock_switchboard.health_checked = False
+    self.get_switchboard_if_initialized.return_value = (
+        mock_get_switchboard_return_value)
     self.uut._change_triggers_reboot = False
-    self.uut._wait_for_connection_fn = mock.MagicMock()
     self.uut.on(no_wait=True)
-    self.uut._hub.switch_power.power_on.assert_called_once_with(self.port_num)
+    self.mock_cambrionix.switch_power.power_on.assert_called_once_with(
+        self.port_num)
+    self.wait_until_connected.assert_not_called()
     self.mock_switchboard.open_all_transports.assert_not_called()
-    self.uut._wait_for_connection_fn.assert_called_once()
-    self.wait_for_connection_fn.assert_not_called()
+    self.wait_for_bootup_complete.assert_not_called()
 
   def test_power_off_noop(self):
     """Verifies device_power.off doesn't do anything if state is already off."""
     self.uut.health_check()
-    self.uut._hub.switch_power.get_mode.return_value = "off"
+    self.mock_cambrionix.switch_power.get_mode.return_value = "off"
     self.uut.off()
-    self.uut._hub.switch_power.power_off.assert_not_called()
+    self.mock_cambrionix.switch_power.power_off.assert_not_called()
 
   def test_on_with_no_wait_true(self):
     """Verifies wait_for_boot_up_complete is skipped if no_wait is False."""
     self.uut.on(no_wait=True)
-    self.uut._hub.switch_power.power_on.assert_called_once_with(self.port_num)
+    self.mock_cambrionix.switch_power.power_on.assert_called_once_with(
+        self.port_num)
+    self.wait_until_connected.assert_not_called()
     self.wait_for_bootup_complete.assert_not_called()
 
   def test_power_cycle(self):
     """Verifies device_power.power_cycle calls off and on methods."""
     self.uut.cycle()
-    self.uut._hub.switch_power.power_off.assert_called_once()
-    self.uut._hub.switch_power.power_on.assert_called_once()
-    self.wait_for_bootup_complete.assert_called_once()
+    self.mock_call_sequence_tracker.assert_has_calls([
+        mock.call.close_all_transports(),
+        mock.call.power_off(self.port_num),
+        mock.call.power_on(self.port_num),
+        mock.call.wait_until_connected(),
+        mock.call.open_all_transports(),
+        mock.call.wait_for_bootup_complete(),
+    ])
 
   def test_off_change_triggers_reboot_true(self):
     """Verifies off calls switch_power and does not close transports."""
     self.uut._change_triggers_reboot = True
     self.uut.off()
-    self.uut._hub.switch_power.power_off.assert_called_once_with(self.port_num)
+    self.mock_cambrionix.switch_power.power_off.assert_called_once_with(
+        self.port_num)
     self.mock_switchboard.close_all_transports.assert_not_called()
     self.wait_for_bootup_complete.assert_called_once()
 
@@ -115,7 +166,8 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     """Verifies on calls switch_power and does not open transports."""
     self.uut._change_triggers_reboot = True
     self.uut.on()
-    self.uut._hub.switch_power.power_on.assert_called_once_with(self.port_num)
+    self.mock_cambrionix.switch_power.power_on.assert_called_once_with(
+        self.port_num)
     self.mock_switchboard.open_all_transports.assert_not_called()
     self.wait_for_bootup_complete.assert_called_once()
 
@@ -131,8 +183,9 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
         default_hub_type="cambrionix",
         props=self.props,
         usb_ports_discovered=False,
+        wait_until_connected_fn=self.wait_until_connected,
         wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
-        switchboard_inst=self.mock_switchboard,
+        get_switchboard_if_initialized=self.get_switchboard_if_initialized,
         change_triggers_reboot=False)
     with self.assertRaisesRegex(errors.DeviceError, err_msg):
       self.uut.health_check()
@@ -148,8 +201,9 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
         default_hub_type="cambrionix",
         props=self.props,
         usb_ports_discovered=False,
+        wait_until_connected_fn=self.wait_until_connected,
         wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
-        switchboard_inst=self.mock_switchboard,
+        get_switchboard_if_initialized=self.get_switchboard_if_initialized,
         change_triggers_reboot=False)
     with self.assertRaisesRegex(errors.DeviceError, err_msg):
       self.uut.health_check()
@@ -176,8 +230,9 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
           default_hub_type="cambrionix",
           props=self.props,
           usb_ports_discovered=True,
+          wait_until_connected_fn=self.wait_until_connected,
           wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
-          switchboard_inst=self.mock_switchboard)
+          get_switchboard_if_initialized=self.get_switchboard_if_initialized)
 
   def test_usb_ports_detected_true_raises_with_redetect_message(self):
     """Tests that the error message indicates to use gdm redetect."""
@@ -187,8 +242,9 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
         default_hub_type="cambrionix",
         props=self.props,
         usb_ports_discovered=True,
+        wait_until_connected_fn=self.wait_until_connected,
         wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
-        switchboard_inst=self.mock_switchboard,
+        get_switchboard_if_initialized=self.get_switchboard_if_initialized,
         usb_hub_name_prop="different_usb_hub_name",
         usb_port_prop="different_usb_port")
     error_msg = f"set them via 'gdm redetect {self.name}'"

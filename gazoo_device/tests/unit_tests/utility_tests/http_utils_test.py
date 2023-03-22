@@ -17,14 +17,12 @@ import datetime
 import http.client
 import http.server
 import json
-import os.path
 import socket
 import socketserver
 import ssl
 import tempfile
 import threading
 from unittest import mock
-import urllib
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
@@ -215,47 +213,6 @@ class HTTPUtilsTests(unit_test_case.UnitTestCase):
           json_data="invalid_headers")
     self.assertNotIn("Expecting a dict or list value in json_data", str(error))
 
-  @mock.patch.object(
-      urllib.request, "urlopen", return_value=FakeURLResponse(200))
-  @mock.patch.object(
-      urllib.request, "urlretrieve", return_value=("", "last-modified"))
-  @mock.patch.object(os.path, "exists", return_value=True)
-  def test_020_download_file(self, mock_exists, mock_url_retrieve,
-                             mock_url_open):
-    """Test download_file() succeeding."""
-    http_utils.download_file("http://fake.com/file.txt", "fake_destination")
-    mock_url_open.assert_called()
-    mock_url_retrieve.assert_called()
-    mock_exists.assert_called()
-
-  @mock.patch.object(
-      urllib.request, "urlopen", return_value=FakeURLResponse(200))
-  @mock.patch.object(urllib.request, "urlretrieve", return_value=("", ""))
-  def test_021_download_fails_with_empty_file(self, mock_url_retrieve,
-                                              mock_url_open):
-    """Test download_file() failing due to the file being empty."""
-    with self.assertRaisesRegex(RuntimeError,
-                                "Unable to download http://fake.com/file.txt"):
-      http_utils.download_file("http://fake.com/file.txt", "fake.txt")
-    # Ensure multiple attempts were made
-    self.assertGreater(mock_url_retrieve.call_count, 2)
-    mock_url_open.assert_called()
-
-  @mock.patch.object(
-      urllib.request, "urlopen", return_value=FakeURLResponse(200))
-  @mock.patch.object(
-      urllib.request,
-      "urlretrieve",
-      side_effect=RuntimeError("Something", "Fake"))
-  def test_022_download_fails_with_error(self, mock_url_retrieve,
-                                         mock_url_open):
-    """Test download_file() failing with an error."""
-    with self.assertRaisesRegex(RuntimeError,
-                                "Unable to download http://fake.com/file.txt"):
-      http_utils.download_file("http://fake.com/file.txt", "fake.txt")
-    mock_url_retrieve.assert_called()
-    mock_url_open.assert_called()
-
   @mock.patch.object(socket, "inet_pton", side_effect=["", socket.error("")])
   def test_024_valid_ipv4_address(self, mock_socket_inet_pton):
     """Test is_valid_ip_address() succeeding with an ipv4 address."""
@@ -283,7 +240,7 @@ class HTTPUtilsTests(unit_test_case.UnitTestCase):
     mock_requests_get.return_value.status_code = 400
     mock_requests_get.return_value.headers = None
     mock_requests_get.return_value.reason = "400 Bad Request"
-    err = "HTTP GET to URL test_URL returned: 400 Bad Request"
+    err = "HTTP GET to URL test_URL status code: 400, reason: 400 Bad Request"
     with self.assertRaisesRegex(RuntimeError, err):
       http_utils.send_http_get("test_URL")
 
@@ -294,8 +251,10 @@ class HTTPUtilsTests(unit_test_case.UnitTestCase):
     mock_requests_post.return_value = requests.Response()
     mock_requests_post.return_value.status_code = 400
     mock_requests_post.return_value.reason = "400 Bad Request"
-    err = ("HTTP POST to URL test_URL with headers {}, data None and json "
-           "data {} returned: 400 Bad Request")
+    err = (
+        "HTTP POST to URL test_URL with headers None, data None and json data"
+        " None status code: 400, reason: 400 Bad Request"
+    )
     with self.assertRaisesRegex(RuntimeError, err):
       http_utils.send_http_post("test_URL", headers=None, json_data=None)
 

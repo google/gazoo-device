@@ -2,11 +2,11 @@
 
 Manufacturer: https://www.cambrionix.com/.
 
-Supported models: PP15, PP8, U16S.
+Supported models: PP15, PP8, U16S, SuperSync15.
 
-Port numbers:
-![Cambrionix PP8 Port Numbers](images/cambrionix_pp8.jpg)
+Port numbers: ![Cambrionix PP8 Port Numbers](images/cambrionix_pp8.jpg)
 ![Cambrionix PP15 Port Numbers](images/cambrionix_pp15.jpg)
+![Cambrionix SuperSync15 Port Numbers](images/cambrionix_supersync15.jpg)
 
 ## Setup
 

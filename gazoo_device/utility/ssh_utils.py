@@ -51,7 +51,7 @@ def port_forward(username: str,
     key_args = (["-i", host_utils.get_key_path(key_info)]
                 if key_info is not None else [])
     ssh_command = [
-        "ssh", "-N", *host_utils.DEFAULT_SSH_OPTIONS_SEQ, *key_args,
+        "ssh", "-N", *host_utils.DEFAULT_SSH_OPTIONS, *key_args,
         f"{username}@{address}", f"-L{local}:{remote}"
     ]
     logger.debug(f"Forking ssh command {ssh_command}")

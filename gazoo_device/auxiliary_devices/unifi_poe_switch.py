@@ -31,14 +31,14 @@ from gazoo_device.utility import host_utils
 
 logger = gdm_logger.get_logger()
 CLASS_NAME = "UnifiPoeSwitch"
-MARKER = "--- GDM Log Marker ---"
-LOGGING_FILE_PATH = "/var/log/messages"
-LOG_MARKER_LINE_POS_OR_EMPTY = (
+_MARKER = "--- GDM Log Marker ---"
+_LOGGING_FILE_PATH = "/var/log/messages"
+_LOG_MARKER_LINE_POS_OR_EMPTY = (
     'grep -n -e "{marker}" {file_path} | tail -n 1 | cut -d '
     '":" -f 1').format(
-        marker=MARKER, file_path=LOGGING_FILE_PATH)
-LOG_MARKER_LINE_POS = ("line_num=$({cmd}); echo ${{line_num:=1}}".format(
-    cmd=LOG_MARKER_LINE_POS_OR_EMPTY))
+        marker=_MARKER, file_path=_LOGGING_FILE_PATH)
+_LOG_MARKER_LINE_POS = ("line_num=$({cmd}); echo ${{line_num:=1}}".format(
+    cmd=_LOG_MARKER_LINE_POS_OR_EMPTY))
 
 COMMANDS = {
     "MODEL":
@@ -60,11 +60,10 @@ COMMANDS = {
     "NUMBER_OF_PORTS":
         "mca-cli-op info",
     "LOGGING":
-        "tail -F -n +$({cmd}) {file_path}".format(
-            cmd=LOG_MARKER_LINE_POS, file_path=LOGGING_FILE_PATH),
+        ("tail", "-F", "-n", f"+$({_LOG_MARKER_LINE_POS})", _LOGGING_FILE_PATH),
     "INJECT_LOG_MARKER":
         "sh -c 'echo \"{marker}\" >> {file_path}'".format(
-            marker=MARKER, file_path=LOGGING_FILE_PATH),
+            marker=_MARKER, file_path=_LOGGING_FILE_PATH),
     "TELNET":
         "echo 'exit' | telnet localhost",
     "MAC_ADDRESS":
@@ -409,19 +408,21 @@ class UnifiPoeSwitch(auxiliary_device.AuxiliaryDevice):
         DeviceError: Device failed to come online before the timeout.
     """
     timeout = timeout or self.timeouts["ONLINE"]
+
     start_time = time.time()
     max_disconnect_time = start_time + timeout
-    while time.time() < max_disconnect_time:
-      if host_utils.is_pingable(self.ip_address):
-        # There's a delay between the device being responsive to ping
-        # and being able to open SSH connections
-        time.sleep(10)
-        self.switchboard.open_all_transports()
-        break
-      time.sleep(.5)
-    else:
-      raise errors.DeviceError("{} failed to become pingable in {}s.".format(
-          self.name, timeout))
+    try:
+      self.wait_until_connected(timeout=timeout)
+    except errors.DeviceNotConnectedError as error:
+      raise errors.DeviceNotBootupCompleteError(
+          self.name,
+          f"boot up failed. Device failed to become pingable in {timeout}s"
+      ) from error
+
+    # There's a delay between the device being responsive to ping and being able
+    # to open SSH connections
+    time.sleep(10)
+    self.switchboard.open_all_transports()
 
     output = "Device still offline"
     while time.time() < max_disconnect_time:

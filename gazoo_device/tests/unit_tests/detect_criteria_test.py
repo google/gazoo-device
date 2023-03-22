@@ -20,6 +20,7 @@ from unittest import mock
 
 from gazoo_device import detect_criteria
 from gazoo_device import errors
+from gazoo_device.switchboard import switchboard
 from gazoo_device.tests.unit_tests.utils import fake_detect_playback
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import adb_utils
@@ -100,7 +101,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
     super().setUp()
     self.add_time_mocks()
     self.fake_detect_playback = fake_detect_playback.FakeDetectPlayback()
-    self.mock_switchboard = mock.Mock()
+    self.mock_switchboard = mock.Mock(spec=switchboard.SwitchboardDefault)
     self.mock_switchboard.send_and_expect.side_effect = (
         self.fake_detect_playback.responder.send_and_expect)
     self.mock_create_switchboard = mock.Mock(return_value=self.mock_switchboard)
@@ -147,7 +148,9 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
   def test_jlink_devices(self):
     """Verifies detection criteria for the J-Link comms type."""
     self._test_comms_type(
-        "JlinkSerialComms", fake_detect_playback.JLINK_DEVICE_BEHAVIORS)
+        "JlinkSerialComms", fake_detect_playback.JLINK_DEVICE_BEHAVIORS,
+        switchboard_behaviors_dict=
+        fake_detect_playback.SWITCHBOARD_BEHAVIORS_DICT)
 
   def test_ssh_devices_alt_poe(self):
     """Verifies detection criteria for the SSH comms type with updated poe."""
@@ -328,6 +331,51 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
               create_switchboard_func=self.mock_create_switchboard
               ))
 
+  @mock.patch.object(subprocess, "check_output", return_value="WS6-DGS-1100-05")
+  def test_get_dlink_model_name_success(self, mock_check_output):
+    """Verifies get_dlink_model_name finds the model."""
+    expected_sys_desc_cmd = (
+        f"snmpget -v 2c -c private {_IP_ADDRESS}:161 1.3.6.1.2.1.1.1.0".split())
+
+    self.assertEqual(
+        detect_criteria.get_dlink_model_name(_IP_ADDRESS), "WS6-DGS-1100-05")
+
+    mock_check_output.assert_called_once_with(
+        expected_sys_desc_cmd, text=True, timeout=5)
+
+  @mock.patch.object(subprocess, "check_output")
+  def test_get_dlink_model_name_checks_both_oids(self, mock_check_output):
+    """Verifies get_dlink_model_name will check sys name OID for model."""
+    mock_check_output.side_effect = ["Switch", "DGS-1100-24"]
+    expected_sys_desc_cmd = (
+        f"snmpget -v 2c -c private {_IP_ADDRESS}:161 1.3.6.1.2.1.1.1.0".split())
+    expected_sys_name_cmd = (
+        f"snmpget -v 2c -c private {_IP_ADDRESS}:161 1.3.6.1.2.1.1.5.0".split())
+
+    self.assertEqual(
+        detect_criteria.get_dlink_model_name(_IP_ADDRESS), "DGS-1100-24")
+
+    mock_check_output.assert_has_calls(
+        [mock.call(expected_sys_desc_cmd, text=True, timeout=5),
+         mock.call(expected_sys_name_cmd, text=True, timeout=5)])
+
+  @mock.patch.object(subprocess, "check_output")
+  def test_get_dlink_model_name_fails(self, mock_check_output):
+    """Verifies get_dlink_model_name will fail for unexpected model."""
+    mock_check_output.return_value = "Unknown Model"
+    expected_sys_desc_cmd = (
+        f"snmpget -v 2c -c private {_IP_ADDRESS}:161 1.3.6.1.2.1.1.1.0".split())
+    expected_sys_name_cmd = (
+        f"snmpget -v 2c -c private {_IP_ADDRESS}:161 1.3.6.1.2.1.1.5.0".split())
+
+    with self.assertRaisesRegex(
+        errors.DeviceError, "Failed to retrieve model name from dlink_switch"):
+      detect_criteria.get_dlink_model_name(_IP_ADDRESS)
+
+    mock_check_output.assert_has_calls(
+        [mock.call(expected_sys_desc_cmd, text=True, timeout=5),
+         mock.call(expected_sys_name_cmd, text=True, timeout=5)])
+
   @mock.patch.object(detect_criteria, "get_dlink_model_name",
                      side_effect=errors.DeviceError("ErrorMessage"))
   def test_is_dlink_query_return_false(self, mock_get_dlink_model_name):
@@ -380,6 +428,18 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
             detect_logger=mock.MagicMock(spec=logging.Logger),
             create_switchboard_func=mock.MagicMock()))
 
+  def test_is_nrf_openthread_return_true(self):
+    """Verifies _is_nrf_openthread method returns true."""
+    self.fake_detect_playback.responder.behavior_dict = {
+        "invalid\n": "InvalidCommand\n"}
+    self.assertTrue(
+        detect_criteria._is_nrf_openthread(
+            address=_JLINK_ADDRESS,
+            detect_logger=mock.MagicMock(
+                spec=logging.Logger, handlers=[mock.Mock(baseFilename="log")]),
+            create_switchboard_func=self.mock_create_switchboard)
+    )
+
   def _test_comms_type(
       self, comms_type, behaviors_dict, switchboard_behaviors_dict=None):
     error_msgs = []
@@ -398,7 +458,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
                               "{}_detect.txt".format(device_type))
 
       self.fake_detect_playback.behavior = behavior
-      if switchboard_behaviors_dict:
+      if switchboard_behaviors_dict is not None:
         self.fake_detect_playback.responder.behavior_dict = (
             switchboard_behaviors_dict.get(device_type, {}))
       classes = detect_criteria.determine_device_class(

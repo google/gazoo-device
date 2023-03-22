@@ -27,6 +27,7 @@ from gazoo_device.auxiliary_devices import efr32
 from gazoo_device.auxiliary_devices import esp32
 from gazoo_device.auxiliary_devices import m5stick
 from gazoo_device.auxiliary_devices import nrf52840
+from gazoo_device.auxiliary_devices import nrf_openthread
 from gazoo_device.auxiliary_devices import raspberry_pi
 from gazoo_device.auxiliary_devices import raspberry_pi_matter_controller
 from gazoo_device.auxiliary_devices import unifi_poe_switch
@@ -43,6 +44,7 @@ from gazoo_device.capabilities import file_transfer_echo
 from gazoo_device.capabilities import file_transfer_scp
 from gazoo_device.capabilities import flash_build_esptool
 from gazoo_device.capabilities import flash_build_jlink
+from gazoo_device.capabilities import flash_build_nrfjprog
 from gazoo_device.capabilities import led_driver_default
 from gazoo_device.capabilities import matter_controller_chip_tool
 from gazoo_device.capabilities import matter_endpoints_accessor_chip_tool
@@ -60,6 +62,7 @@ from gazoo_device.capabilities import switch_power_unifi_switch
 from gazoo_device.capabilities import switch_power_usb_default
 from gazoo_device.capabilities import switch_power_usb_with_charge
 from gazoo_device.capabilities import usb_hub_default
+from gazoo_device.capabilities import wpan_nrf_ot
 from gazoo_device.capabilities.interfaces import bluetooth_service_base
 from gazoo_device.capabilities.interfaces import comm_power_base
 from gazoo_device.capabilities.interfaces import device_power_base
@@ -80,11 +83,13 @@ from gazoo_device.capabilities.interfaces import shell_base
 from gazoo_device.capabilities.interfaces import switch_power_base
 from gazoo_device.capabilities.interfaces import switchboard_base
 from gazoo_device.capabilities.interfaces import usb_hub_base
+from gazoo_device.capabilities.interfaces import wpan_base
 from gazoo_device.capabilities.matter_clusters import basic_information_chip_tool
 from gazoo_device.capabilities.matter_clusters import boolean_state_pw_rpc
 from gazoo_device.capabilities.matter_clusters import color_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import door_lock_chip_tool
 from gazoo_device.capabilities.matter_clusters import door_lock_pw_rpc
+from gazoo_device.capabilities.matter_clusters import fan_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import flow_measurement_chip_tool
 from gazoo_device.capabilities.matter_clusters import flow_measurement_pw_rpc
 from gazoo_device.capabilities.matter_clusters import illuminance_measurement_chip_tool
@@ -108,6 +113,7 @@ from gazoo_device.capabilities.matter_clusters.interfaces import basic_informati
 from gazoo_device.capabilities.matter_clusters.interfaces import boolean_state_base
 from gazoo_device.capabilities.matter_clusters.interfaces import color_control_base
 from gazoo_device.capabilities.matter_clusters.interfaces import door_lock_base
+from gazoo_device.capabilities.matter_clusters.interfaces import fan_control_base
 from gazoo_device.capabilities.matter_clusters.interfaces import level_control_base
 from gazoo_device.capabilities.matter_clusters.interfaces import measurement_base
 from gazoo_device.capabilities.matter_clusters.interfaces import occupancy_sensing_base
@@ -119,7 +125,9 @@ from gazoo_device.capabilities.matter_endpoints import contact_sensor
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.capabilities.matter_endpoints import extended_color_light
+from gazoo_device.capabilities.matter_endpoints import fan
 from gazoo_device.capabilities.matter_endpoints import flow_sensor
+from gazoo_device.capabilities.matter_endpoints import heating_cooling_unit
 from gazoo_device.capabilities.matter_endpoints import humidity_sensor
 from gazoo_device.capabilities.matter_endpoints import light_sensor
 from gazoo_device.capabilities.matter_endpoints import occupancy_sensor
@@ -138,7 +146,9 @@ from gazoo_device.capabilities.matter_endpoints.interfaces import contact_sensor
 from gazoo_device.capabilities.matter_endpoints.interfaces import dimmable_light_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import door_lock_base as door_lock_endpoint_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import extended_color_light_base
+from gazoo_device.capabilities.matter_endpoints.interfaces import fan_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import flow_sensor_base
+from gazoo_device.capabilities.matter_endpoints.interfaces import heating_cooling_unit_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import humidity_sensor_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import light_sensor_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import occupancy_sensor_base
@@ -206,6 +216,7 @@ def export_extensions() -> Dict[str, Any]:
           esp32.ESP32,
           m5stick.M5Stick,
           nrf52840.NRF52840,
+          nrf_openthread.NrfOpenThread,
           raspberry_pi.RaspberryPi,
           raspberry_pi_matter_controller.RaspberryPiMatterController,
           unifi_poe_switch.UnifiPoeSwitch,
@@ -241,10 +252,13 @@ def export_extensions() -> Dict[str, Any]:
           extended_color_light_base.ExtendedColorLightBase,
           embedded_script_base.EmbeddedScriptBase,
           event_parser_base.EventParserBase,
+          fan_base.FanBase,
+          fan_control_base.FanControlClusterBase,
           fastboot_base.FastbootBase,
           file_transfer_base.FileTransferBase,
           flash_build_base.FlashBuildBase,
           flow_sensor_base.FlowSensorBase,
+          heating_cooling_unit_base.HeatingCoolingUnitBase,
           humidity_sensor_base.HumiditySensorBase,
           led_driver_base.LedDriverBase,
           level_control_base.LevelControlClusterBase,
@@ -276,6 +290,7 @@ def export_extensions() -> Dict[str, Any]:
           usb_hub_base.UsbHubBase,
           window_covering_base.WindowCoveringClusterBase,
           window_covering_endpoint_base.WindowCoveringBase,
+          wpan_base.WpanBase,
       ],
       "capability_flavors": [
           basic_information_chip_tool.BasicInformationClusterChipTool,
@@ -293,6 +308,8 @@ def export_extensions() -> Dict[str, Any]:
           embedded_script_dli_powerswitch.EmbeddedScriptDliPowerswitch,
           event_parser_default.EventParserDefault,
           extended_color_light.ExtendedColorLightEndpoint,
+          fan.FanEndpoint,
+          fan_control_pw_rpc.FanControlClusterPwRpc,
           fastboot_default.FastbootDefault,
           file_transfer_adb.FileTransferAdb,
           file_transfer_docker.FileTransferDocker,
@@ -300,9 +317,11 @@ def export_extensions() -> Dict[str, Any]:
           file_transfer_scp.FileTransferScp,
           flash_build_esptool.FlashBuildEsptool,
           flash_build_jlink.FlashBuildJLink,
+          flash_build_nrfjprog.FlashBuildNrfjprog,
           flow_measurement_chip_tool.FlowMeasurementClusterChipTool,
           flow_measurement_pw_rpc.FlowMeasurementClusterPwRpc,
           flow_sensor.FlowSensorEndpoint,
+          heating_cooling_unit.HeatingCoolingUnitEndpoint,
           humidity_sensor.HumiditySensorEndpoint,
           illuminance_measurement_chip_tool.
           IlluminanceMeasurementClusterChipTool,
@@ -356,6 +375,7 @@ def export_extensions() -> Dict[str, Any]:
           usb_hub_default.UsbHubDefault,
           window_covering.WindowCoveringEndpoint,
           window_covering_pw_rpc.WindowCoveringClusterPwRpc,
+          wpan_nrf_ot.WpanNrfOt,
       ],
       "keys": list(config.KEYS.values()),
   }

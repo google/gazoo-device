@@ -30,6 +30,7 @@ from typing import Union
 
 from gazoo_device import decorators
 from gazoo_device.capabilities import matter_enums
+from gazoo_device.capabilities.matter_clusters import fan_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import occupancy_sensing_chip_tool
 from gazoo_device.capabilities.matter_clusters import occupancy_sensing_pw_rpc
 from gazoo_device.capabilities.matter_clusters import relative_humidity_measurement_pw_rpc
@@ -82,6 +83,11 @@ class ThermostatEndpoint(thermostat_base.ThermostatBase):
     """Matter Occupancy Sensing cluster instance."""
     return self.cluster_lazy_init(matter_enums.OccupancySensingCluster.ID)
 
+  @decorators.CapabilityDecorator(fan_control_pw_rpc.FanControlClusterPwRpc)
+  def fan_control(self) -> fan_control_pw_rpc.FanControlClusterPwRpc:
+    """Matter Fan Control cluster instance."""
+    return self.cluster_lazy_init(matter_enums.FanControlCluster.ID)
+
   # TODO(b/239741839): add optional clusters below
   # def scenes(self):
   #   """Matter scenes cluster instance."""
@@ -100,6 +106,3 @@ class ThermostatEndpoint(thermostat_base.ThermostatBase):
 
   # def time_sync(self):
   #   """Matter time sync cluster instance."""
-
-  # def fan_control(self):
-  #   """Matter fan control cluster instance."""

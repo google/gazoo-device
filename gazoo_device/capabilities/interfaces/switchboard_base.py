@@ -24,11 +24,14 @@ eventually unit test device classes independent of hardware.
 Switchboard implementation resides in gazoo_device/switchboard/switchboard.py.
 """
 import abc
-from typing import List
+from collections.abc import Mapping
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from gazoo_device import config
 from gazoo_device.capabilities.interfaces import capability_base
+from gazoo_device.switchboard import expect_response
 from gazoo_device.switchboard import line_identifier
+from gazoo_device.switchboard.transports import transport_base
 
 MODE_TYPE_ALL = "all"
 MODE_TYPE_ANY = "any"
@@ -65,7 +68,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
   """
 
   @abc.abstractmethod
-  def add_log_note(self, note):
+  def add_log_note(self, note: str) -> None:
     """Adds given note to device log file.
 
     Args:
@@ -73,7 +76,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def add_new_filter(self, filter_path):
+  def add_new_filter(self, filter_path: str) -> None:
     """Adds new log filter at path specified to LogFilterProcess.
 
     Args:
@@ -85,7 +88,68 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def click(self, button, duration=0.5, port=0):
+  def call(self,
+           method_name: str,
+           method_args: Tuple[Any, ...] = (),
+           method_kwargs: Optional[Dict[str, Any]] = None,
+           port: int = 0) -> Any:
+    """Calls a transport method in a transport process and returns the response.
+
+    Args:
+      method_name: the name of the transport method to execute.
+      method_args: positional arguments for the call.
+      method_kwargs: keyword arguments for the call.
+      port: number of the transport to call the method in.
+
+    Raises:
+      DeviceError: mismatching transport type.
+      Exception: exceptions encountered in the transport process are reraised.
+
+    Returns:
+      Return value of the transport method call.
+
+    Note that the call is executed in a different process. Therefore all
+    transport method arguments and the return value must be serializable.
+    """
+
+  @abc.abstractmethod
+  def call_and_expect(
+      self,
+      method_name: str,
+      pattern_list: List[str],
+      timeout: float = 30.0,
+      searchwindowsize: int = config.SEARCHWINDOWSIZE,
+      expect_type: str = line_identifier.LINE_TYPE_ALL,
+      mode: str = MODE_TYPE_ANY,
+      method_args: Tuple[Any, ...] = (),
+      method_kwargs: Optional[Dict[str, Any]] = None,
+      port: int = 0,
+      raise_for_timeout: bool = False
+  ) -> Tuple[expect_response.ExpectResponse, Any]:
+    """Calls a transport method and expects on the patterns provided.
+
+    Args:
+        method_name: The name of the transport method to execute.
+        pattern_list: List of regex expressions to look for in the lines.
+        timeout: Seconds to look for the patterns.
+        searchwindowsize: Number of the last bytes to look at.
+        expect_type: 'log', 'response', or 'all'.
+        mode: Type of expect to run ("any", "all" or "sequential").
+        method_args: Positional arguments for the call.
+        method_kwargs: Keyword arguments for the call.
+        port: Number of the transport to call the method in.
+        raise_for_timeout: Raise an exception if the expect times out.
+
+    Raises:
+        DeviceError: if port specified or other expect arguments are
+                     invalid, or timed out.
+
+    Returns:
+        (ExpectResponse, Returned value of the transport method)
+    """
+
+  @abc.abstractmethod
+  def click(self, button: str, duration: float = 0.5, port: int = 0) -> None:
     """Press and release the button for the duration and port specified.
 
     Args:
@@ -99,16 +163,17 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def click_and_expect(self,
-                       button,
-                       pattern_list,
-                       duration=0.5,
-                       timeout=30.0,
-                       searchwindowsize=config.SEARCHWINDOWSIZE,
-                       expect_type="log",
-                       port=0,
-                       mode="any",
-                       raise_for_timeout=False):
+  def click_and_expect(
+      self,
+      button: str,
+      pattern_list: List[str],
+      duration: float = 0.5,
+      timeout: float = 30.0,
+      searchwindowsize: int = config.SEARCHWINDOWSIZE,
+      expect_type: str = line_identifier.LINE_TYPE_ALL,
+      port: int = 0,
+      mode: str = MODE_TYPE_ANY,
+      raise_for_timeout: bool = False) -> expect_response.ExpectResponse:
     """Press and release button, log lines matching patterns are returned.
 
     Args:
@@ -146,7 +211,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def close(self):
+  def close(self) -> None:
     """Shuts down the subprocesses and closes the transports.
 
     NOTE:
@@ -157,7 +222,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def close_all_transports(self):
+  def close_all_transports(self) -> None:
     """Leaves the switchboard architecture intact but closes the communication FDs.
 
     This is used prior to the connections being closed, such as disconnecting an
@@ -166,7 +231,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def close_transport(self, port=0):
+  def close_transport(self, port: int = 0) -> None:
     """Closes the transport specified.
 
     Args:
@@ -177,16 +242,19 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def do_and_expect(self,
-                    func,
-                    func_args,
-                    func_kwargs,
-                    pattern_list,
-                    timeout=30.0,
-                    searchwindowsize=config.SEARCHWINDOWSIZE,
-                    expect_type=line_identifier.LINE_TYPE_LOG,
-                    mode=MODE_TYPE_ANY,
-                    raise_for_timeout=False):
+  def do_and_expect(
+      self,
+      func: Callable[..., Any],
+      func_args: Union[List[Any], Tuple[Any, ...]],
+      func_kwargs: Mapping[str, Any],
+      pattern_list: List[str],
+      timeout: float = 30.0,
+      searchwindowsize: int = config.SEARCHWINDOWSIZE,
+      expect_type: str = line_identifier.LINE_TYPE_ALL,
+      mode: str = MODE_TYPE_ANY,
+      raise_for_timeout: bool = False
+  )-> Union[Tuple[expect_response.ExpectResponse, Any],
+            expect_response.ExpectResponse]:
     """Executes function with given args, blocks until expect matches or timeout occurs.
 
     Args:
@@ -228,10 +296,10 @@ class SwitchboardBase(capability_base.CapabilityBase):
 
   @abc.abstractmethod
   def echo_file_to_transport(self,
-                             source_file,
-                             destination_path,
-                             port=0,
-                             bytes_per_echo=50):
+                             source_file: str,
+                             destination_path: str,
+                             port: int = 0,
+                             bytes_per_echo: int = 50) -> None:
     r"""Transfers file to transport specified using echo commands.
 
     Args:
@@ -255,17 +323,18 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def ensure_serial_paths_unlocked(self, communication_addresses: List[str]):
+  def ensure_serial_paths_unlocked(self,
+                                   communication_addresses: List[str]) -> None:
     """Ensures serial paths are longer locked by switchboard process after device is closed."""
 
   @abc.abstractmethod
   def expect(self,
-             pattern_list,
-             timeout=30.0,
-             searchwindowsize=config.SEARCHWINDOWSIZE,
-             expect_type=line_identifier.LINE_TYPE_ALL,
-             mode=MODE_TYPE_ANY,
-             raise_for_timeout=False):
+             pattern_list: List[str],
+             timeout: float = 30.0,
+             searchwindowsize: int = config.SEARCHWINDOWSIZE,
+             expect_type: str = line_identifier.LINE_TYPE_ALL,
+             mode: str = MODE_TYPE_ANY,
+             raise_for_timeout: bool = False) -> expect_response.ExpectResponse:
     """Block until a regex pattern is matched or until a timeout time has elapsed.
 
     Args:
@@ -298,7 +367,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def get_line_identifier(self):
+  def get_line_identifier(self) -> line_identifier.LineIdentifier:
     """Returns the line identifier currently used by Switchboard."""
 
   @property
@@ -307,7 +376,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """Returns the number of transport processes used by Switchboard."""
 
   @abc.abstractmethod
-  def open_all_transports(self):
+  def open_all_transports(self) -> None:
     """Opens the communication FDs, assuming switchboard architecture is intact.
 
     This is used after a physical connection has been reopened, such as
@@ -317,7 +386,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def open_transport(self, port=0, timeout=30.0):
+  def open_transport(self, port: int = 0, timeout: float = 30.0) -> None:
     """Opens the transport specified.
 
     Args:
@@ -329,7 +398,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def press(self, button, wait=0.0, port=0):
+  def press(self, button: str, wait: float = 0.0, port: int = 0) -> None:
     """Presses the button for the port specified and waits the time specified.
 
     Args:
@@ -343,15 +412,16 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def press_and_expect(self,
-                       button,
-                       pattern_list,
-                       wait=0.0,
-                       timeout=30.0,
-                       searchwindowsize=config.SEARCHWINDOWSIZE,
-                       expect_type="log",
-                       port=0,
-                       mode="any"):
+  def press_and_expect(
+      self,
+      button: str,
+      pattern_list: List[str],
+      wait: float = 0.0,
+      timeout: float = 30.0,
+      searchwindowsize: int = config.SEARCHWINDOWSIZE,
+      expect_type: str = line_identifier.LINE_TYPE_ALL,
+      port: int = 0,
+      mode: str = MODE_TYPE_ANY) -> expect_response.ExpectResponse:
     """Press button and expect for pattern_list and other arguments provided.
 
     Args:
@@ -388,7 +458,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def release(self, button, port=0):
+  def release(self, button: str, port: int = 0) -> None:
     """Release the button for the port specified.
 
     Args:
@@ -402,13 +472,13 @@ class SwitchboardBase(capability_base.CapabilityBase):
 
   @abc.abstractmethod
   def release_and_expect(self,
-                         button,
-                         pattern_list,
-                         timeout=30.0,
-                         searchwindowsize=config.SEARCHWINDOWSIZE,
-                         expect_type="log",
-                         port=0,
-                         mode="any"):
+                         button: str,
+                         pattern_list: List[str],
+                         timeout: float = 30.0,
+                         searchwindowsize: int = config.SEARCHWINDOWSIZE,
+                         expect_type: str = line_identifier.LINE_TYPE_ALL,
+                         port: int = 0,
+                         mode: str = MODE_TYPE_ANY):
     """Release button, matches pattern_list in loglines as specified by expect_type.
 
     Args:
@@ -444,7 +514,12 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def send(self, command, port=0, slow=False, add_newline=True, newline="\n"):
+  def send(self,
+           command: Union[str, bytes],
+           port: int = 0,
+           slow: bool = False,
+           add_newline: bool = True,
+           newline: str = "\n") -> None:
     """Sends the command to the device on the port (transport) specified.
 
     Args:
@@ -462,19 +537,20 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def send_and_expect(self,
-                      command,
-                      pattern_list,
-                      timeout=30.0,
-                      searchwindowsize=config.SEARCHWINDOWSIZE,
-                      expect_type=line_identifier.LINE_TYPE_ALL,
-                      mode=MODE_TYPE_ANY,
-                      port=0,
-                      slow=False,
-                      add_newline=True,
-                      newline="\n",
-                      command_tries=1,
-                      raise_for_timeout=False):
+  def send_and_expect(
+      self,
+      command: str,
+      pattern_list: List[str],
+      timeout: float = 30.0,
+      searchwindowsize: int = config.SEARCHWINDOWSIZE,
+      expect_type: str = line_identifier.LINE_TYPE_ALL,
+      mode: str = MODE_TYPE_ANY,
+      port: int = 0,
+      slow: bool = False,
+      add_newline: int = True,
+      newline: str = "\n",
+      command_tries: int = 1,
+      raise_for_timeout: bool = False) -> expect_response.ExpectResponse:
     r"""Sends the command and expects on the patterns provided.
 
     Note: this method does not prepend the command with a wakeup character
@@ -527,7 +603,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def set_max_log_size(self, max_log_size):
+  def set_max_log_size(self, max_log_size: int) -> None:
     """Sets the max_log_size value to the value provided.
 
     Args:
@@ -542,7 +618,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def start_new_log(self, log_path):
+  def start_new_log(self, log_path: str) -> None:
     """Changes log filter and writer to use a new log path provided.
 
     Args:
@@ -553,7 +629,9 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def transport_serial_set_baudrate(self, new_baudrate, port=0):
+  def transport_serial_set_baudrate(self,
+                                    new_baudrate: int,
+                                    port: int = 0) -> None:
     """Sets the serial interface baudrate to a different baudrate.
 
     Args:
@@ -566,7 +644,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def transport_serial_send_xon(self, port=0):
+  def transport_serial_send_xon(self, port: int = 0) -> None:
     """Sends the XON control character to the serial interface.
 
     Args:
@@ -574,7 +652,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def transport_serial_send_break_byte(self, port=0):
+  def transport_serial_send_break_byte(self, port: int = 0) -> None:
     """Sends the break control character to the serial interface (Ctrl + C).
 
     Args:
@@ -583,10 +661,10 @@ class SwitchboardBase(capability_base.CapabilityBase):
 
   @abc.abstractmethod
   def verify_file_on_transport(self,
-                               source_file,
-                               destination_path,
-                               port=0,
-                               method=VERIFY_METHOD_MD5SUM):
+                               source_file: str,
+                               destination_path: str,
+                               port: int = 0,
+                               method: str = VERIFY_METHOD_MD5SUM) -> bool:
     """Verifies source file contents matches destination_path on transport using method.
 
     Args:
@@ -610,7 +688,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def xmodem_file_to_transport(self, source_file, port=0):
+  def xmodem_file_to_transport(self, source_file: str, port: int = 0) -> bool:
     """Transfers file to transport specified using the XModem protocol.
 
     Args:
@@ -630,7 +708,8 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def add_transport_process(self, transport, **transport_process_kwargs):
+  def add_transport_process(self, transport: transport_base.TransportBase,
+                            **transport_process_kwargs: Any) -> int:
     """Add a new transport process to the list of transport processes.
 
     Args:
@@ -656,7 +735,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def delete_last_transport_process(self):
+  def delete_last_transport_process(self) -> None:
     """Stops and deletes the last transport process in self._transport_processes.
 
     Note:
@@ -676,7 +755,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def start_transport_process(self, process_num):
+  def start_transport_process(self, process_num: int) -> None:
     """Start the transport process at position process_num in transport list.
 
     Args:
@@ -688,7 +767,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def stop_transport_process(self, process_num):
+  def stop_transport_process(self, process_num: int) -> None:
     """Stop the transport process.
 
     Args:

@@ -56,9 +56,11 @@ class Efr32Matter(matter_device_base.MatterDeviceBase):
   @decorators.CapabilityDecorator(flash_build_jlink.FlashBuildJLink)
   def flash_build(self) -> flash_build_jlink.FlashBuildJLink:
     """FlashBuildJLink capability to flash hex image."""
-    return self.lazy_init(flash_build_jlink.FlashBuildJLink,
-                          device_name=self.name,
-                          serial_number=self.serial_number,
-                          platform_name=_EFR32_JLINK_NAME,
-                          reset_endpoints_fn=self.matter_endpoints.reset,
-                          switchboard=self.switchboard)
+    return self.lazy_init(
+        flash_build_jlink.FlashBuildJLink,
+        device_name=self.name,
+        serial_number=self.serial_number,
+        platform_name=_EFR32_JLINK_NAME,
+        reset_endpoints_fn=self.matter_endpoints.reset,
+        switchboard=self.switchboard,
+        wait_for_bootup_complete_fn=self.wait_for_bootup_complete)

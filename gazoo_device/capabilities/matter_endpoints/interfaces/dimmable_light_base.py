@@ -32,7 +32,7 @@ class DimmableLightBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def level(self) -> level_control_base.LevelControlClusterBase:
+  def level_control(self) -> level_control_base.LevelControlClusterBase:
     """Required cluster: ZCL level cluster."""
 
   @property

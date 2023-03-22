@@ -23,8 +23,10 @@ from gazoo_device.tests.functional_tests import dimmable_light_test_suite
 from gazoo_device.tests.functional_tests import door_lock_test_suite
 from gazoo_device.tests.functional_tests import embedded_script_test_suite
 from gazoo_device.tests.functional_tests import extended_color_light_test_suite
+from gazoo_device.tests.functional_tests import fan_test_suite
 from gazoo_device.tests.functional_tests import file_transfer_test_suite
 from gazoo_device.tests.functional_tests import flow_sensor_test_suite
+from gazoo_device.tests.functional_tests import heating_cooling_unit_test_suite
 from gazoo_device.tests.functional_tests import humidity_sensor_test_suite
 from gazoo_device.tests.functional_tests import light_sensor_test_suite
 from gazoo_device.tests.functional_tests import matter_endpoints_test_suite
@@ -58,8 +60,10 @@ TEST_SUITES = (
     door_lock_test_suite.DoorLockTestSuite,
     embedded_script_test_suite.EmbeddedScriptTestSuite,
     extended_color_light_test_suite.ExtendedColorLightTestSuite,
+    fan_test_suite.FanTestSuite,
     file_transfer_test_suite.FileTransferTestSuite,
     flow_sensor_test_suite.FlowSensorTestSuite,
+    heating_cooling_unit_test_suite.HeatingCoolingUnitTestSuite,
     humidity_sensor_test_suite.HumiditySensorTestSuite,
     light_sensor_test_suite.LightSensorTestSuite,
     matter_endpoints_test_suite.MatterEndpointsPwRpcTestSuite,

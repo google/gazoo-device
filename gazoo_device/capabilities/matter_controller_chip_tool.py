@@ -20,19 +20,31 @@ for chip-tool usage and command references.
 
 import ast
 import binascii
-from typing import Any, Callable, Optional, Sequence
+import os
+import re
+import shutil
+import tempfile
+import time
+from typing import Any, Callable, List, Optional, Sequence
 
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import matter_controller_base
+from gazoo_device.utility import http_utils
 import immutabledict
+import requests
 
 logger = gdm_logger.get_logger()
 
 _CHIP_TOOL_BINARY_PATH = "/usr/local/bin/chip-tool"
 _HEX_PREFIX = "hex:"
 _MATTER_NODE_ID_PROPERTY = "matter_node_id"
+_MATTER_SDK_CERTS_DIRECTORY_PATH = "https://api.github.com/repos/project-chip/connectedhomeip/contents/credentials/development/paa-root-certs/"
+_MATTER_SDK_REPO = "https://api.github.com/repos/project-chip/connectedhomeip/commits/master"
+_RPI_TEMP_CERTS_DIR = "/tmp/chip_certs_folder_temp"
+LOGGING_FILE_PATH = "/tmp/chip.log"
+DEFAULT_PAA_TRUST_STORE_PATH = "/home/pi/certs"
 
 _COMMANDS = immutabledict.immutabledict({
     "READ_CLUSTER_ATTRIBUTE":
@@ -40,6 +52,14 @@ _COMMANDS = immutabledict.immutabledict({
     "WRITE_CLUSTER_ATTRIBUTE":
         "{chip_tool} {cluster} write {attribute} {value} {node_id} "
         "{endpoint_id}",
+    "SUBSCRIBE_CLUSTER_ATTRIBUTE_START":
+        "nohup {chip_tool} interactive start < <(echo '{cluster} subscribe "
+        "{attribute} {min_interval_s} {max_interval_s} {node_id} "
+        "{endpoint_id}') > {logging_file_path} 2>&1 &",
+    "SUBSCRIBE_CLUSTER_ATTRIBUTE_STOP":
+        "kill $(pgrep -f '{chip_tool} interactive start')",
+    "READ_SUBSCRIBE_CLUSTER_ATTRIBUTE_OUTPUT":
+        "grep 'Data =' {logging_file_path}",
     "SEND_CLUSTER_COMMMAND":
         "{chip_tool} {cluster} {command} {arguments} {node_id} {endpoint_id} "
         "{flags}",
@@ -64,6 +84,10 @@ _COMMANDS = immutabledict.immutabledict({
         "rm -rf /tmp/chip*",
     "CLEAR_STORAGE":
         "{chip_tool} storage clear-all",
+    "MAKE_CERTS_DIRECTORY":
+        "mkdir -p {rpi_certs_dir}",
+    "MOVE_CERTS_TO_CERTS_DIRECTORY":
+        "mv {rpi_temp_certs_dir} {rpi_certs_dest}",
 })
 
 _REGEXES = immutabledict.immutabledict({
@@ -71,6 +95,8 @@ _REGEXES = immutabledict.immutabledict({
         r'Data = ([a-zA-Z0-9_+.-]+|".*")',
     "WRITE_CLUSTER_ATTRIBUTE_RESPONSE":
         r"CHIP:DMG:\s+status = (0[xX][0-9a-fA-F]+)",
+    "SUBSCRIBE_CLUSTER_ATTRIBUTE_RESPONSE":
+        r'Data = ([a-zA-Z0-9_+.-]+|".*")',
     "SEND_CLUSTER_COMMAND_RESPONSE":
         r"Received Command Response Status for Endpoint=\d+ "
         r"Cluster=0[xX][0-9a-fA-F_]+ Command=0[xX][0-9a-fA-F_]+ "
@@ -112,6 +138,25 @@ def _str_to_hex(value: str) -> str:
 
   hex_str = binascii.hexlify(str.encode(value))
   return f"{_HEX_PREFIX}{hex_str.decode()}"
+
+
+def _list_certs(url: str) -> requests.Response:
+  try:
+    certs_list = http_utils.send_http_get(url)
+  except RuntimeError as e:
+    raise errors.DeviceError(
+        f"Error listing files from Matter SDK({url}) "
+    ) from e
+  return certs_list
+
+
+def _parse_response(response: str) -> Any:
+  try:
+    return ast.literal_eval(response)
+  except ValueError:
+    if response.lower() in ["true", "false"]:
+      return response.lower() == "true"
+    raise
 
 
 class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
@@ -186,8 +231,8 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
       operational_dataset: Thread dataset in base-64. This argument is mutually
         exclusive with ssid and password.
       paa_trust_store_path: Path to directory holding PAA cert information
-        on the controller device (e.g. rpi_matter_controller).
-        See https://github.com/project-chip/connectedhomeip/tree/master/credentials/development/paa-root-certs  # pylint: disable=line-too-long
+        on the controller device (e.g. rpi_matter_controller). See
+        https://github.com/project-chip/connectedhomeip/tree/master/credentials/development/paa-root-certs # pylint: disable=line-too-long
         for an example.
     """
     if ssid and not password:
@@ -263,12 +308,7 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
     response = self._shell_with_regex(
         command, _REGEXES["READ_CLUSTER_ATTRIBUTE_RESPONSE"], raise_error=True)
 
-    try:
-      return ast.literal_eval(response)
-    except ValueError:
-      if response.lower() in ["true", "false"]:
-        return response.lower() == "true"
-    return response
+    return _parse_response(response)
 
   @decorators.CapabilityLogDecorator(logger)
   def write(self, endpoint_id: int, cluster: str, attribute: str,
@@ -297,13 +337,82 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
           f"status code: {status_code}")
 
   @decorators.CapabilityLogDecorator(logger)
-  def send(
-      self,
-      endpoint_id: int,
-      cluster: str,
-      command: str,
-      arguments: Sequence[Any],
-      flags: Optional[Sequence[Any]] = None) -> None:
+  def start_subscription(self, endpoint_id: int, cluster: str, attribute: str,
+                         min_interval_s: int, max_interval_s: int) -> None:
+    """Starts a subscription to a cluster's attribute.
+
+    Args:
+      endpoint_id: Endpoint ID within the node to write attribute to.
+      cluster: Name of the cluster to write the attribute value to (e.g. onoff).
+      attribute: Name of the cluster attribute to write (e.g. on-time).
+      min_interval_s: Server should not send a new report if less than this
+        number of seconds has elapsed since the last report.
+      max_interval_s: Server must send a report if this number of seconds has
+        elapsed since the last report.
+    """
+    command = _COMMANDS["SUBSCRIBE_CLUSTER_ATTRIBUTE_START"].format(
+        chip_tool=self._chip_tool_path,
+        node_id=self._get_property_fn(_MATTER_NODE_ID_PROPERTY),
+        endpoint_id=endpoint_id,
+        cluster=cluster,
+        attribute=attribute,
+        min_interval_s=min_interval_s,
+        max_interval_s=max_interval_s,
+        logging_file_path=LOGGING_FILE_PATH,
+    )
+    self._shell(command)
+
+  @decorators.CapabilityLogDecorator(logger)
+  def stop_subscription(self) -> List[Any]:
+    """Stops existing subscription and returns subscribed values.
+
+    Returns:
+      List of attribute values.
+    """
+    self._shell(_COMMANDS["SUBSCRIBE_CLUSTER_ATTRIBUTE_STOP"].format(
+        chip_tool=self._chip_tool_path))
+
+    command = _COMMANDS["READ_SUBSCRIBE_CLUSTER_ATTRIBUTE_OUTPUT"].format(
+        logging_file_path=LOGGING_FILE_PATH)
+    responses = re.findall(_REGEXES["SUBSCRIBE_CLUSTER_ATTRIBUTE_RESPONSE"],
+                           self._shell(command))
+    return [_parse_response(response) for response in responses]
+
+  @decorators.CapabilityLogDecorator(logger)
+  def subscribe(self,
+                endpoint_id: int,
+                cluster: str,
+                attribute: str,
+                min_interval_s: int,
+                max_interval_s: int,
+                timeout_s: int = 10) -> List[Any]:
+    """Subscribes to a cluster's attribute and blocks until timeout.
+
+    Args:
+      endpoint_id: Endpoint ID within the node to write attribute to.
+      cluster: Name of the cluster to write the attribute value to (e.g. onoff).
+      attribute: Name of the cluster attribute to write (e.g. on-time).
+      min_interval_s: Server should not send a new report if less than this
+        number of seconds has elapsed since the last report.
+      max_interval_s: Server must send a report if this number of seconds has
+        elapsed since the last report.
+      timeout_s: Number of seconds to subscribe to this attribute for.
+
+    Returns:
+      List of attribute values.
+    """
+    self.start_subscription(endpoint_id, cluster, attribute, min_interval_s,
+                            max_interval_s)
+    time.sleep(timeout_s)
+    return self.stop_subscription()
+
+  @decorators.CapabilityLogDecorator(logger)
+  def send(self,
+           endpoint_id: int,
+           cluster: str,
+           command: str,
+           arguments: Sequence[Any],
+           flags: Optional[Sequence[Any]] = None) -> None:
     """Sends a command to a device with the given node id and endpoint.
 
     Args:
@@ -336,16 +445,19 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
           f"status code: {status_code}")
 
   @decorators.CapabilityLogDecorator(logger)
-  def upgrade(self, build_file: str, build_id: str) -> None:
-    """Installs chip-tool binary to the controller device.
+  def upgrade(self, build_file: str, build_id: str,
+              paa_trust_store_path: str = DEFAULT_PAA_TRUST_STORE_PATH) -> None:
+    """Installs chip-tool binary to the controller device and downloads matter certs.
 
     Args:
       build_file: Path to chip-tool binary on the host machine.
       build_id: Commit SHA the chip-tool binary is built at.
+      paa_trust_store_path: Path where matter certs will be downloaded.
     """
     self._send_file_to_device(build_file, self._chip_tool_path)
     self._shell(
         _COMMANDS["WRITE_CHIP_TOOL_VERSION"].format(chip_tool_version=build_id))
+    self.update_certs(paa_trust_store_path)
 
   @decorators.CapabilityLogDecorator(logger)
   def factory_reset(self) -> None:
@@ -353,3 +465,48 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
     self._shell(_COMMANDS["CLEAR_TEMP_DIRECTORY"])
     self._shell(_COMMANDS["CLEAR_STORAGE"].format(
         chip_tool=self._chip_tool_path))
+
+  @decorators.CapabilityLogDecorator(logger)
+  def update_certs(self,
+                   device_dest: str,
+                   host_dest: Optional[str] = None) -> None:
+    """Downloads certs from Matter SDK and to the device.
+
+    Downloads certs and stores in the specified path in the host. Later, copies
+    them to the specified path in the device.
+
+    Args:
+      device_dest: Directory path in the device to which the certs will be
+        copied from the host machine.
+      host_dest: Directory path in the host machine to store the certs. If not
+        specified, a temporary directory will be used and cleaned up before
+        exit.
+    """
+
+    with tempfile.TemporaryDirectory(prefix="chip_tool_") as tmp_dir:
+      commit_sha = http_utils.send_http_get(
+          _MATTER_SDK_REPO,
+          headers={"Accept": "application/vnd.github.VERSION.sha"}).content
+      logger.info(
+          f"{self._device_name} Downloading certs from Matter SDK with commit SHA: {commit_sha.decode()}"
+      )
+      certs_list = _list_certs(_MATTER_SDK_CERTS_DIRECTORY_PATH).json()
+      for cert in certs_list:
+        response = http_utils.send_http_get(cert["download_url"])
+        with open(os.path.join(tmp_dir, cert["name"]), "wb") as file:
+          file.write(response.content)
+
+      self._shell(_COMMANDS["MAKE_CERTS_DIRECTORY"].format(
+          rpi_certs_dir=_RPI_TEMP_CERTS_DIR,
+      ))
+      self._send_file_to_device(tmp_dir, _RPI_TEMP_CERTS_DIR)
+      self._shell(_COMMANDS["MAKE_CERTS_DIRECTORY"].format(
+          rpi_certs_dir=device_dest,
+      ))
+      self._shell(_COMMANDS["MOVE_CERTS_TO_CERTS_DIRECTORY"].format(
+          rpi_temp_certs_dir=os.path.join(
+              _RPI_TEMP_CERTS_DIR, os.path.basename(tmp_dir), "*"),
+          rpi_certs_dest=device_dest,
+      ))
+      if host_dest is not None:
+        shutil.copytree(tmp_dir, host_dest, dirs_exist_ok=True)

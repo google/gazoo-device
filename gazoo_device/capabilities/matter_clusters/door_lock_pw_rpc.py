@@ -36,7 +36,7 @@ class DoorLockClusterPwRpc(door_lock_base.DoorLockClusterBase):
     Args:
       verify: If true, verifies the state configurations before returning.
     """
-    self._lock_command(lock=True, verify=verify)
+    self._lock_command(command=matter_enums.LockState.LOCKED, verify=verify)
 
   @decorators.CapabilityLogDecorator(logger)
   def unlock_door(self, verify: bool = True) -> None:
@@ -45,10 +45,10 @@ class DoorLockClusterPwRpc(door_lock_base.DoorLockClusterBase):
     Args:
       verify: If true, verifies the state configurations before returning.
     """
-    self._lock_command(lock=False, verify=verify)
+    self._lock_command(command=matter_enums.LockState.UNLOCKED, verify=verify)
 
   @decorators.DynamicProperty
-  def lock_state(self) -> int:
+  def lock_state(self) -> matter_enums.LockState:
     """The LockState attribute.
 
     Returns:
@@ -59,14 +59,19 @@ class DoorLockClusterPwRpc(door_lock_base.DoorLockClusterBase):
         cluster_id=DoorLockCluster.ID,
         attribute_id=DoorLockCluster.ATTRIBUTE_LOCK_STATE,
         attribute_type=UNSIGNED_ATTRIBUTE_TYPE)
-    return (matter_enums.LockState.LOCKED if bool(locked_data.data_uint16)
-            else matter_enums.LockState.UNLOCKED)
+    return matter_enums.LockState(locked_data.data_uint16)
 
-  def _lock_command(self, lock: bool, verify: bool = True) -> None:
+  @lock_state.setter
+  def lock_state(self, value: int) -> None:
+    """Updates the LockState attribute with new value."""
+    self._lock_command(command=value)
+
+  def _lock_command(
+      self, command: matter_enums.LockState, verify: bool = True) -> None:
     """Locks or unlocks the device.
 
     Args:
-      lock: Locks the device if true, unlocks the device if false.
+      command: Locks or unlocks the device.
       verify: If true, verifies the lock configurations before returning.
 
     Raises:
@@ -78,12 +83,10 @@ class DoorLockClusterPwRpc(door_lock_base.DoorLockClusterBase):
         cluster_id=DoorLockCluster.ID,
         attribute_id=DoorLockCluster.ATTRIBUTE_LOCK_STATE,
         attribute_type=UNSIGNED_ATTRIBUTE_TYPE,
-        data_uint16=int(lock))
+        data_uint16=command)
 
     if verify:
-      expected_state = (matter_enums.LockState.LOCKED if lock else
-                        matter_enums.LockState.UNLOCKED)
-      if expected_state != self.lock_state:  # pylint: disable=comparison-with-callable
+      if command != self.lock_state:  # pylint: disable=comparison-with-callable
         raise errors.DeviceError(
             f"Device {self._device_name} lock state attribute did not change "
             f"from {self.lock_state}.")

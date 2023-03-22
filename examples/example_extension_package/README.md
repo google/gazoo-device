@@ -531,12 +531,12 @@ Persistent Properties:
   serial_number           56781234
   timeouts
 			  BOOT_UP                   60
-			  CONNECTED                 3
+			  CHECK_IS_CONNECTED        3
 			  DISCONNECT                60
 			  PING_TO_SSH_DELAY         10
-			  POWER_CYCLE               2
 			  SHELL                     10
 			  SHELL_DEVICE_RESPONSIVENESS 5
+			  WAIT_UNTIL_CONNECTED      90
 
 
 Optional Properties:

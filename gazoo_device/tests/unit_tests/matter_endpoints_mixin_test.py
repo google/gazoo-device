@@ -23,7 +23,9 @@ from gazoo_device.capabilities.matter_endpoints import contact_sensor
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.capabilities.matter_endpoints import extended_color_light
+from gazoo_device.capabilities.matter_endpoints import fan
 from gazoo_device.capabilities.matter_endpoints import flow_sensor
+from gazoo_device.capabilities.matter_endpoints import heating_cooling_unit
 from gazoo_device.capabilities.matter_endpoints import humidity_sensor
 from gazoo_device.capabilities.matter_endpoints import light_sensor
 from gazoo_device.capabilities.matter_endpoints import occupancy_sensor
@@ -70,7 +72,9 @@ class MatterEndpointsAliasesMixinTest(fake_device_test_case.FakeDeviceTestCase):
       ("dimmable_light", dimmable_light.DimmableLightEndpoint),
       ("door_lock", door_lock.DoorLockEndpoint),
       ("extended_color_light", extended_color_light.ExtendedColorLightEndpoint),
+      ("fan", fan.FanEndpoint),
       ("flow_sensor", flow_sensor.FlowSensorEndpoint),
+      ("heating_cooling_unit", heating_cooling_unit.HeatingCoolingUnitEndpoint),
       ("humidity_sensor", humidity_sensor.HumiditySensorEndpoint),
       ("light_sensor", light_sensor.LightSensorEndpoint),
       ("occupancy_sensor", occupancy_sensor.OccupancySensorEndpoint),

@@ -19,13 +19,14 @@ from gazoo_device import errors
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
 
-_PAIRING_CODE = 108
-_PAIRING_DISCRIMINATOR = 50
-_FAKE_VERIFIER = b"fake-verifier"
-_FAKE_SALT = b"fake-salt"
-_FAKE_ITERATION = 10
-# TODO(b/241698162): Include a utility for TLV metadata generation.
+# Hard-coded valid test constants
+# Spake info are generated from the internal Matter auth_utils module
+_PASSCODE = 61221323
+_DISCRIMINATOR = 2203
+_VERIFIER = b"\x07\tT$\xffL2\xf8\x9a\xe4\xf7H\xe4_\xcc;I{:\xfc\x80\x13\x9cj?\x15<\xaaG\xdf\x12c\x04\x0f\xa99\x15Yp\x19\x08R\xca5\xe9\x03\x12\x83\xb8\x05\xfaH\xc6@w\xf5_4\x14\xb81\x1e`\xd9[\xd8\r\xc8\xe7r_\x89\xc8ze\xfd<\xef\xadD\x89\xdbu\x99\x95\xe5`9\xe7D4\xfb\x8f\x06\xdab\xff"
 _TLV_OTA_METADATA = b"\x15\xcc\x06`\x01\x00\x00\x00\x06SERIAL\xcc\x06`\x01\x00\x01\x00$98389552-3B89-44A5-980D-BA8685AF9EA3\x18"
+_DEFAULT_VERIFIER_SALT = b"salt"
+_DEFAULT_VERIFIER_ITERATIONS = 100
 
 
 class PwRPCCommonTestSuite(gdm_test_base.GDMTestBase):
@@ -57,26 +58,28 @@ class PwRPCCommonTestSuite(gdm_test_base.GDMTestBase):
 
   def test_set_pairing_code(self):
     """Tests set_pairing_info method for setting pairing code."""
-    self.device.pw_rpc_common.set_pairing_info(code=_PAIRING_CODE)
-    asserts.assert_equal(_PAIRING_CODE, self.device.pairing_code)
+    self.device.pw_rpc_common.set_pairing_info(code=_PASSCODE)
+    asserts.assert_equal(_PASSCODE, self.device.pairing_code)
 
   def test_set_pairing_discriminator(self):
     """Tests set_pairing_info method for setting pairing discriminator."""
-    self.device.pw_rpc_common.set_pairing_info(
-        discriminator=_PAIRING_DISCRIMINATOR)
-    asserts.assert_equal(_PAIRING_DISCRIMINATOR,
-                         self.device.pairing_discriminator)
+    self.device.pw_rpc_common.set_pairing_info(discriminator=_DISCRIMINATOR)
+    asserts.assert_equal(_DISCRIMINATOR, self.device.pairing_discriminator)
 
   def test_set_and_get_spake_info(self):
     """Tests set_spake_info and get_spake_info for Spake information."""
-    self.device.pw_rpc_common.set_spake_info(
-        verifier=_FAKE_VERIFIER,
-        salt=_FAKE_SALT,
-        iteration_count=_FAKE_ITERATION)
     spake_info = self.device.pw_rpc_common.get_spake_info()
-    asserts.assert_equal(_FAKE_VERIFIER, spake_info.verifier)
-    asserts.assert_equal(_FAKE_SALT, spake_info.salt)
-    asserts.assert_equal(_FAKE_ITERATION, spake_info.iteration_count)
+    salt = spake_info.salt or _DEFAULT_VERIFIER_SALT
+    iteration_count = (
+        spake_info.iteration_count or _DEFAULT_VERIFIER_ITERATIONS)
+    self.device.pw_rpc_common.set_spake_info(
+        verifier=_VERIFIER,
+        salt=salt,
+        iteration_count=iteration_count)
+    spake_info = self.device.pw_rpc_common.get_spake_info()
+    asserts.assert_equal(_VERIFIER, spake_info.verifier)
+    asserts.assert_equal(salt, spake_info.salt)
+    asserts.assert_equal(iteration_count, spake_info.iteration_count)
 
   def test_start_and_stop_advertising_for_commissioning(self):
     """Tests device commissioning advertisement."""

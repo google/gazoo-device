@@ -13,6 +13,7 @@ for simplicity.
 import re
 from typing import Callable, List, Set, Tuple, Type
 
+from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities import matter_endpoints_and_clusters
 from gazoo_device.capabilities.interfaces import matter_controller_base
@@ -31,11 +32,13 @@ _COMMANDS = immutabledict.immutabledict({
         "{chip_tool} descriptor read server-list {node_id} {endpoint_id}",
     "READ_DESCRIPTOR_DEVICE_LIST":
         "{chip_tool} descriptor read device-list {node_id} {endpoint_id}",
+    "READ_DESCRIPTOR_DEVICE_TYPE_LIST":
+        "{chip_tool} descriptor read device-type-list {node_id} {endpoint_id}",
 })
 
 _REGEXES = immutabledict.immutabledict({
     "DESCRIPTOR_ATTRIBUTE_RESPONSE": r"CHIP:DMG:\s+Data = (\w+)",
-    "DEVICE_LIST_RESPONSE": r"CHIP:TOO:\s+Type: (\d+)",
+    "DEVICE_LIST_RESPONSE": r"CHIP:TOO:\s+(?:Device)?Type: (\d+)",
 })
 
 
@@ -97,13 +100,26 @@ class MatterEndpointsAccessorChipTool(matter_endpoints_base.MatterEndpointsBase
     Returns:
       The endpoint class module (or UnsupportedEndpoint if the endpoint is not
       yet supported in GDM) and the device type ID.
+
+    Raises:
+      DeviceError when the device type ID of this endpoint cannot be obtained.
     """
-    command = _COMMANDS["READ_DESCRIPTOR_DEVICE_LIST"].format(
-        chip_tool=self._matter_controller.path,
-        endpoint_id=endpoint_id,
-        node_id=self._node_id_getter())
-    device_type_id = int(
-        self._shell_with_regex(command, _REGEXES["DEVICE_LIST_RESPONSE"]))
+    device_type_id = None
+    # Different command syntax between 1.0 and master branches.
+    for device_type_command in (
+        "READ_DESCRIPTOR_DEVICE_LIST", "READ_DESCRIPTOR_DEVICE_TYPE_LIST"):
+      command = _COMMANDS[device_type_command].format(
+          chip_tool=self._matter_controller.path,
+          endpoint_id=endpoint_id,
+          node_id=self._node_id_getter())
+      output = self._shell_with_regex(command, _REGEXES["DEVICE_LIST_RESPONSE"])
+      if output.isdigit():
+        device_type_id = int(output)
+        break
+    if device_type_id is None:
+      raise errors.DeviceError(
+          f"Failed to get device type from endpoint {endpoint_id} on "
+          f"{self._device_name}")
 
     endpoint_class = (
         matter_endpoints_and_clusters.MATTER_DEVICE_TYPE_ID_TO_CLASS.

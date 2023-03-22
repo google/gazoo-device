@@ -20,6 +20,7 @@ button, and expect APIs.
 By separating these standardized APIs we can more easily test the logic and
 eventually unit test device classes independent of hardware.
 """
+from collections.abc import Mapping, Sequence
 import io
 import os
 import queue
@@ -28,7 +29,7 @@ import signal
 import subprocess
 import time
 import typing
-from typing import Any, Callable, Dict, List, Mapping, MutableSequence, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, MutableSequence, Optional, Protocol, Tuple, Union
 
 from gazoo_device import config
 from gazoo_device import decorators
@@ -47,8 +48,8 @@ from gazoo_device.switchboard.transports import serial_transport
 from gazoo_device.switchboard.transports import tcp_transport
 from gazoo_device.switchboard.transports import transport_base
 from gazoo_device.utility import multiprocessing_utils
+from gazoo_device.utility import retry
 from gazoo_device.utility import usb_utils
-from typing_extensions import Protocol
 import xmodem
 
 logger = gdm_logger.get_logger("core")
@@ -63,6 +64,8 @@ _VALID_EXPECT_TYPES = [
 ]
 _VALID_EXPECT_MODES = [MODE_TYPE_ALL, MODE_TYPE_ANY, MODE_TYPE_SEQUENTIAL]
 _VERIFY_METHODS = [VERIFY_METHOD_MD5SUM]
+_CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S = 3
+_CHILD_PROCESS_POLLING_INTERVAL_S = 0.01
 
 
 class ButtonInterface(Protocol):
@@ -262,7 +265,6 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     self.button_list = button_list
     self._force_slow = force_slow
     self._identifier = identifier or line_identifier.AllUnknownIdentifier()
-    time.sleep(.1)
     self._log_queue = multiprocessing_utils.get_context().Queue()
     self._call_result_queue = multiprocessing_utils.get_context().Queue()
     self._raw_data_queue = multiprocessing_utils.get_context().Queue()
@@ -322,10 +324,8 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       raise RuntimeError("Log filter process is not currently running.")
 
     self._log_filter_process.send_command(log_process.CMD_ADD_NEW_FILTER,
-                                          filter_path)
-    while (self._log_filter_process.is_running() and
-           not self._log_filter_process.is_command_consumed()):
-      time.sleep(0.001)
+                                          filter_path,
+                                          wait_for_command_consumption=True)
 
   def call(self,
            method_name: str,
@@ -544,7 +544,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       self.close_transport(port=port)
 
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
-  def close_transport(self, port=0):
+  def close_transport(self, port: int = 0) -> None:
     """Closes the transport specified.
 
     Args:
@@ -569,8 +569,20 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     start_time = time.time()
     transport_proc = self._transport_processes[port]
     transport_proc.send_command(transport_process.CMD_TRANSPORT_CLOSE)
-    while transport_proc.is_open():
-      time.sleep(0.01)
+    try:
+      retry.retry(
+          func=transport_proc.is_open,
+          is_successful=retry.not_func,
+          timeout=_CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S,
+          interval=_CHILD_PROCESS_POLLING_INTERVAL_S)
+    except errors.CommunicationTimeoutError as err:
+      transport_proc.stop()
+      raise errors.ProcessCommunicationError(
+          self._device_name,
+          "Transport process:{} did not close after {} seconds. "
+          "The process is stopped.".format(
+              transport_proc.process_name,
+              _CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S)) from err
     log_message = "closed transport for port {} in {}s".format(
         port,
         time.time() - start_time)
@@ -807,7 +819,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     finally:
       self._disable_raw_data_queue()
 
-  def get_line_identifier(self):
+  def get_line_identifier(self) -> line_identifier.LineIdentifier:
     """Returns the line identifier currently used by Switchboard."""
     return self._identifier
 
@@ -901,14 +913,19 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     transport_proc = self._transport_processes[port]
     start_time = time.time()
     transport_proc.send_command(transport_process.CMD_TRANSPORT_OPEN)
-    start_time = time.time()
-    elapsed_time = 0
-    while not transport_proc.is_open():
-      if elapsed_time < timeout:
-        time.sleep(0.01)
-        elapsed_time = time.time() - start_time
-      else:
-        return
+    try:
+      retry.retry(
+          func=transport_proc.is_open,
+          is_successful=retry.is_true,
+          timeout=timeout,
+          interval=_CHILD_PROCESS_POLLING_INTERVAL_S)
+    except errors.CommunicationTimeoutError as err:
+      transport_proc.stop()
+      raise errors.ProcessCommunicationError(
+          self._device_name,
+          "Transport process:{} did not open after {} seconds. "
+          "The process is stopped.".format(transport_proc.process_name,
+                                           timeout)) from err
     log_message = "opened transport for port {} in {}s".format(
         port,
         time.time() - start_time)
@@ -1007,7 +1024,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
                          searchwindowsize: int = config.SEARCHWINDOWSIZE,
                          expect_type: str = line_identifier.LINE_TYPE_ALL,
                          port: int = 0,
-                         mode: str = "any"):
+                         mode: str = MODE_TYPE_ANY):
     """Release button, matches pattern_list in loglines as specified by expect_type.
 
     Flushes the expect queue before and after an expect. Starts up
@@ -1039,7 +1056,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
 
   @decorators.CapabilityLogDecorator(logger, level=None)
   def send(self,
-           command: str,
+           command: Union[str, bytes],
            port: int = 0,
            slow: bool = False,
            add_newline: bool = True,
@@ -1166,10 +1183,8 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
           type(max_log_size)))
 
     self._log_writer_process.send_command(log_process.CMD_MAX_LOG_SIZE,
-                                          max_log_size)
-    while (self._log_writer_process.is_running() and
-           not self._log_writer_process.is_command_consumed()):
-      time.sleep(0.001)
+                                          max_log_size,
+                                          wait_for_command_consumption=True)
 
   @decorators.CapabilityLogDecorator(logger)
   def start_new_log(self, log_path: str) -> None:
@@ -1187,21 +1202,27 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
 
     if self._log_filter_process:  # pylint: disable=using-constant-test
       self._log_filter_process.send_command(log_process.CMD_NEW_LOG_FILE,
-                                            log_path)
-      while (self._log_filter_process.is_running() and
-             not self._log_filter_process.is_command_consumed()):
-        time.sleep(0.001)
-
+                                            log_path,
+                                            wait_for_command_consumption=True)
     self._log_writer_process.send_command(log_process.CMD_NEW_LOG_FILE,
-                                          log_path)
-    while (self._log_writer_process.is_running() and
-           not self._log_writer_process.is_command_consumed()):
-      time.sleep(0.001)
+                                          log_path,
+                                          wait_for_command_consumption=True)
 
     # Wait for new log file to appear
-    while self._log_writer_process.is_running(
-    ) and not os.path.exists(log_path):
-      time.sleep(0.1)
+    try:
+      retry.retry(
+          func=lambda: os.path.exists(log_path),
+          is_successful=retry.is_true,
+          timeout=_CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S,
+          interval=_CHILD_PROCESS_POLLING_INTERVAL_S)
+    except errors.CommunicationTimeoutError as err:
+      self._log_filter_process.stop()
+      self._log_writer_process.stop()
+      raise errors.ProcessCommunicationError(
+          self._device_name,
+          msg="cannot change to new log file: {}. "
+              "Stopped log filter process and "
+              "log writer process".format(log_path)) from err
 
   @decorators.CapabilityLogDecorator(logger)
   def transport_serial_set_baudrate(self,
@@ -1417,6 +1438,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
             self._exception_queue,
             multiprocessing_utils.get_context().Queue(),
             self._log_queue,
+            self.log_path,
             transport,
             call_result_queue=self._call_result_queue,
             raw_data_queue=self._raw_data_queue,

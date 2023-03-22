@@ -45,8 +45,9 @@ COMMANDS = {
     "BOOT_UP_COMPLETE": "echo 'gdm hello'",
     "INJECT_LOG_MARKER": "sudo sh -c 'echo \"{marker}\" >> {file_path}'".format(
         marker=_LOG_MARKER, file_path=_LOGGING_FILE_PATH),
-    "LOGGING": "sudo tail -F -n +$({cmd}) {file_path}".format(
-        cmd=_LOG_MARKER_LINE_POS, file_path=_LOGGING_FILE_PATH),
+    "LOGGING": ("sudo", "tail", "-F", "-n",
+                "+$({cmd})".format(cmd=_LOG_MARKER_LINE_POS),
+                _LOGGING_FILE_PATH),
     "GDM_HELLO": "echo 'gdm hello'",
 }
 REGEXES = {}
@@ -264,15 +265,13 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
     err_msg = ("wait_for_bootup_complete failed. "
                "Device hasn't finished booting in {}s.".format(timeout))
 
-    end_time = time.time() + timeout
-    while time.time() < end_time:
-      if host_utils.is_pingable(self.ip_address):
-        break
-      time.sleep(.5)
-    else:
-      reason = f"Device failed to become pingable in {timeout}s"
+    try:
+      self.wait_until_connected(timeout=timeout)
+    except errors.DeviceNotConnectedError as error:
       raise errors.DeviceNotBootupCompleteError(
-          self.name, err_msg, reason=reason)
+          self.name,
+          f"boot up failed. Device failed to become pingable in {timeout}s"
+      ) from error
 
     # There's a delay between the device being responsive to ping
     # and being able to open SSH connections

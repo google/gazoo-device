@@ -53,12 +53,10 @@ class GDMTestBase(suite_filter.SuiteFilterBase):
     super().__init__(*args, **kwargs)
     self.devices = []
     self.device = None
-    self.testing_properties = None
 
   def setup_class(self) -> None:
     """Creates a device instance."""
     super().setup_class()
-    self.testing_properties = self.user_params
     self.devices = retry.retry(
         func=self.register_controller,
         func_args=(self._CONTROLLER_MODULE,),

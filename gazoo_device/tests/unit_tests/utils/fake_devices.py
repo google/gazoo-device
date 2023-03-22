@@ -27,13 +27,13 @@ from gazoo_device.switchboard import switchboard
 from gazoo_device.tests.unit_tests import utils
 from gazoo_device.tests.unit_tests.utils import fake_responder
 
+
 _DEFAULT_CONFIG = {
     "persistent": {
         "name": "sshdevice-1234",
         "device_type": "sshdevice",
         "serial_number": "123456",
         "console_port_name": "123.456.78.9",
-        "wpan_mac_address": "123456",
         "model": "Development",
     },
     "options": {
@@ -54,7 +54,7 @@ _DEFAULT_NAME = "sshdevice-1234"
 
 class FakeSSHDevice(ssh_device.SshDevice):
   """Fake SSH device (primary device) for testing purposes."""
-  _DEFAULT_FILTERS = (os.path.join(_FILTER_DIRECTORY, "basic.json"),)
+  DEFAULT_FILTERS = (os.path.join(_FILTER_DIRECTORY, "basic.json"),)
   DEVICE_TYPE = "sshdevice"
   _OWNER_EMAIL = "gdm-authors@google.com"
   DETECT_MATCH_CRITERIA = {}
@@ -129,7 +129,7 @@ class FakePtyDevice(FakeSSHDevice):
 
 class FakeGazooDeviceBase(gazoo_device_base.GazooDeviceBase):
   """A dummy valid concrete primary device class."""
-  _DEFAULT_FILTERS = (os.path.join(_FILTER_DIRECTORY, "basic.json"),)
+  DEFAULT_FILTERS = (os.path.join(_FILTER_DIRECTORY, "basic.json"),)
 
   @classmethod
   def is_connected(cls, device_config):

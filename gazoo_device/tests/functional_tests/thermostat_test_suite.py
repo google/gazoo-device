@@ -14,6 +14,7 @@
 
 """Test suite for Matter devices with Thermostat endpoint."""
 from typing import Type
+from gazoo_device.tests.functional_tests.mixins import fan_control_cluster_suite
 from gazoo_device.tests.functional_tests.mixins import occupancy_sensing_cluster_suite
 from gazoo_device.tests.functional_tests.mixins import temperature_measurement_cluster_suite
 from gazoo_device.tests.functional_tests.mixins import thermostat_cluster_suite
@@ -22,6 +23,7 @@ from gazoo_device.tests.functional_tests.utils import gdm_test_base
 
 class ThermostatTestSuite(
     gdm_test_base.GDMTestBase,
+    fan_control_cluster_suite.FanControlClusterTestSuite,
     occupancy_sensing_cluster_suite.OccupancySensingClusterTestSuite,
     temperature_measurement_cluster_suite
     .TemperatureMeasurementClusterTestSuite,

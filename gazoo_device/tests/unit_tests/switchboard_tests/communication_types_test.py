@@ -107,7 +107,7 @@ STATIC_IPS = ["123.45.67.89"]
 CONNECTIONS_DICT = {
     "AdbComms": ADB_CONNECTIONS,
     "DockerComms": [_DOCKER_ID],
-    "JlinkSerialComms": [],
+    "JlinkSerialComms": [_J_LINK_ADDRESS],
     "PigweedSerialComms": [_J_LINK_ADDRESS, _M5STACK_ADDRESS],
     "PigweedSocketComms": STATIC_IPS,
     "PtyProcessComms": [_PTY_PROCESS_DIRECTORY],

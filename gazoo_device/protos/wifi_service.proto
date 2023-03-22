@@ -14,12 +14,13 @@
 //
 // RPC proto API for wifi capabilities, these roughly map to GDM's wifi
 // capabilities.
-// The source of truth of this proto can be found at https://github.com/project-chip/connectedhomeip/blob/master/examples/common/pigweed/protos/wifi_service.proto
+// The source of truth of this proto can be found at
+// https://github.com/project-chip/connectedhomeip/blob/master/examples/common/pigweed/protos/wifi_service.proto
 syntax = "proto3";
 
-import "third_party/py/gazoo_device/protos/common.proto";
-
 package chip.rpc;
+
+import "third_party/pigweed/pigweed/pw_protobuf/pw_protobuf_protos/common.proto";
 
 message Channel {
   uint32 channel = 1;
@@ -50,10 +51,10 @@ message IP6Address {
 }
 
 message ScanConfig {
-  repeated bytes ssid = 1; // if not null only that SSID is scanned for
-  repeated bytes bssid = 2; // if not null only that BSSID is scanned for
-  uint32 channel = 3; // if 0 then all channels are scanned
-  bool show_hidden = 4; // if false then hidden SSIDs are not returned
+  repeated bytes ssid = 1;   // if not null only that SSID is scanned for
+  repeated bytes bssid = 2;  // if not null only that BSSID is scanned for
+  uint32 channel = 3;        // if 0 then all channels are scanned
+  bool show_hidden = 4;      // if false then hidden SSIDs are not returned
   bool active_scan = 5;
 
   // These fields are used to control how long the scan dwells
@@ -78,19 +79,19 @@ message ScanConfig {
 
 // LINT: LEGACY_NAMES
 enum WIFI_SECURITY_TYPE {
-    WIFI_AUTH_OPEN = 0;
-    WIFI_AUTH_WEP = 1;
-    WIFI_AUTH_WPA_PSK = 2;
-    WIFI_AUTH_WPA2_PSK = 3;
-    WIFI_AUTH_WPA_WPA2_PSK = 4;
-    WIFI_AUTH_WPA2_ENTERPRISE = 5;
-    WIFI_AUTH_WPA3_PSK = 6;
-    WIFI_AUTH_WPA2_WPA3_PSK = 7;
-    WIFI_AUTH_WAPI_PSK = 8;
+  WIFI_AUTH_OPEN = 0;
+  WIFI_AUTH_WEP = 1;
+  WIFI_AUTH_WPA_PSK = 2;
+  WIFI_AUTH_WPA2_PSK = 3;
+  WIFI_AUTH_WPA_WPA2_PSK = 4;
+  WIFI_AUTH_WPA2_ENTERPRISE = 5;
+  WIFI_AUTH_WPA3_PSK = 6;
+  WIFI_AUTH_WPA2_WPA3_PSK = 7;
+  WIFI_AUTH_WAPI_PSK = 8;
 }
 
 message ScanResult {
-  bytes ssid = 1; // empty SSID means there are no more results
+  bytes ssid = 1;  // empty SSID means there are no more results
   bytes bssid = 2;
   WIFI_SECURITY_TYPE security_type = 3;
   uint32 frequency = 4;
@@ -105,7 +106,7 @@ message ScanResults {
 message ConnectionData {
   bytes ssid = 1;
   WIFI_SECURITY_TYPE security_type = 2;
-  bytes secret = 3; // e.g. passphrase or psk
+  bytes secret = 3;  // e.g. passphrase or psk
 }
 
 enum CONNECTION_ERROR {
@@ -153,37 +154,36 @@ message ConnectionResult {
 // The current state can be retrieved using the various 'Get' RPCs.
 // A device can be connected to an AP using the StartScan, and Connect RPCs.
 service WiFi {
-
-  //Gets the wifi channel used by SSID connection.
+  // Gets the wifi channel used by SSID connection.
   rpc GetChannel(pw.protobuf.Empty) returns (Channel) {}
 
-  //Gets the wifi ssid connection. Can be used to get the ssid name.
+  // Gets the wifi ssid connection. Can be used to get the ssid name.
   rpc GetSsid(pw.protobuf.Empty) returns (Ssid) {}
 
-  //Gets the state of wifi connection.
+  // Gets the state of wifi connection.
   rpc GetState(pw.protobuf.Empty) returns (State) {}
 
-  //Gets the mac address for the wifi interface.
+  // Gets the mac address for the wifi interface.
   rpc GetMacAddress(pw.protobuf.Empty) returns (MacAddress) {}
 
-  //Gets the interface used for wifi connection.
+  // Gets the interface used for wifi connection.
   rpc GetWiFiInterface(pw.protobuf.Empty) returns (WiFiInterface) {}
 
-  //Gets the IPv4 address for wifi connection.
+  // Gets the IPv4 address for wifi connection.
   rpc GetIP4Address(pw.protobuf.Empty) returns (IP4Address) {}
 
-  //Gets the IPv6 address for wifi connection.
+  // Gets the IPv6 address for wifi connection.
   rpc GetIP6Address(pw.protobuf.Empty) returns (IP6Address) {}
 
-  //Initiates a scan for wifi ssids.
+  // Initiates a scan for wifi ssids.
   rpc StartScan(ScanConfig) returns (stream ScanResults) {}
 
-  //Stops wifi scanning.
+  // Stops wifi scanning.
   rpc StopScan(pw.protobuf.Empty) returns (pw.protobuf.Empty) {}
 
-  //Connect to a ssid.
+  // Connect to a ssid.
   rpc Connect(ConnectionData) returns (ConnectionResult) {}
 
-  //Disconnect wifi connection.
+  // Disconnect wifi connection.
   rpc Disconnect(pw.protobuf.Empty) returns (pw.protobuf.Empty) {}
 }

@@ -39,8 +39,8 @@ class CommPowerDefault(comm_power_base.CommPowerBase):
                hub_name_prop,
                port_prop,
                get_switchboard_if_initialized,
+               wait_until_connected_func,
                power_and_data_share_cable=False,
-               wait_for_connection_func=None,
                wait_for_bootup_complete_func=None,
                pre_off_func=None):
     """Create an instance of the comm_power_default capability.
@@ -56,10 +56,10 @@ class CommPowerDefault(comm_power_base.CommPowerBase):
       port_prop (str): name of the hub port property
       get_switchboard_if_initialized (callable): function which returns
         a Switchboard instance or None if Switchboard hasn't been initialized.
+      wait_until_connected_func (func): a method to wait for the device to
+        become reachable.
       power_and_data_share_cable (bool): set power_and_data_share_cable to
         TRUE if device shares a common USB cable for its power and data.
-      wait_for_connection_func (func): a method to wait for the device to
-        become reachable.
       wait_for_bootup_complete_func (func): a method to call if power and
         data share cable.
       pre_off_func (func): a method to call before turning power off.
@@ -82,10 +82,10 @@ class CommPowerDefault(comm_power_base.CommPowerBase):
     self._dict_name = "optional" if self._settable else "persistent_identifiers"
     self._props = props
     self._get_switchboard_if_initialized = get_switchboard_if_initialized
+    self._wait_until_connected_func = wait_until_connected_func
     self._power_and_data_share_cable = power_and_data_share_cable
-    self._pre_off_func = pre_off_func
-    self._wait_for_connection_func = wait_for_connection_func
     self._wait_for_bootup_complete_func = wait_for_bootup_complete_func
+    self._pre_off_func = pre_off_func
     self._hub = None
 
   @decorators.OptionalProperty
@@ -176,7 +176,9 @@ class CommPowerDefault(comm_power_base.CommPowerBase):
     if self._pre_off_func:
       self._pre_off_func()
     switchboard = self._get_switchboard_if_initialized()
-    if switchboard:
+    if (switchboard is not None and
+        switchboard.health_checked and
+        switchboard.healthy):
       switchboard.close_all_transports()
       if self._power_and_data_share_cable:
         switchboard.add_log_note(
@@ -194,13 +196,11 @@ class CommPowerDefault(comm_power_base.CommPowerBase):
     if not self.healthy:
       self.health_check()
     self._hub.switch_power.power_on(self.port_number)
-    # Wait for 'dev/tty' to populate
-    if self._wait_for_connection_func:
-      self._wait_for_connection_func()
-    else:
-      time.sleep(5)
+    self._wait_until_connected_func()
     switchboard = self._get_switchboard_if_initialized()
-    if switchboard:
+    if (switchboard is not None and
+        switchboard.health_checked and
+        switchboard.healthy):
       switchboard.open_all_transports()
     if self._wait_for_bootup_complete_func:
       self._wait_for_bootup_complete_func()

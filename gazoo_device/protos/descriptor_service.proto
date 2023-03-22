@@ -13,12 +13,13 @@
 // limitations under the License.
 
 // The descriptor servcie RPC proto definition.
-// The source of truth of this proto can be found at https://github.com/project-chip/connectedhomeip/tree/master/examples/common/pigweed/protos
+// The source of truth of this proto can be found at
+// https://github.com/project-chip/connectedhomeip/tree/master/examples/common/pigweed/protos
 syntax = "proto3";
 
-import "third_party/py/gazoo_device/protos/common.proto";
-
 package chip.rpc;
+
+import "third_party/pigweed/pigweed/pw_protobuf/pw_protobuf_protos/common.proto";
 
 message DeviceType {
   uint32 device_type = 1;
@@ -34,14 +35,14 @@ message Endpoint {
 
 service Descriptor {
   // Gets a list of device types from an endpoint.
-  rpc DeviceTypeList(Endpoint) returns (stream DeviceType){}
+  rpc DeviceTypeList(Endpoint) returns (stream DeviceType) {}
 
   // Gets a list of server application clusters from an endpoint.
-  rpc ServerList(Endpoint) returns (stream Cluster){}
+  rpc ServerList(Endpoint) returns (stream Cluster) {}
 
   // Gets a list of client application clusters from an endpoint.
-  rpc ClientList(Endpoint) returns (stream Cluster){}
+  rpc ClientList(Endpoint) returns (stream Cluster) {}
 
   // Gets a list of endpoints from a node endpoint.
-  rpc PartsList(Endpoint) returns (stream Endpoint){}
+  rpc PartsList(Endpoint) returns (stream Endpoint) {}
 }

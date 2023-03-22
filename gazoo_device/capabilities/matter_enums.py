@@ -56,6 +56,46 @@ class FlowMeasurementCluster(enum.IntEnum):
   ATTRIBUTE_MAX_MEASURED_VALUE = 0x0002
 
 
+class FanControlCluster(enum.IntEnum):
+  """Fan Control cluster ID and its attribute IDs.
+
+  The enum values are defined in the Matter spec.
+  """
+  ID = attributes_service_pb2.ClusterType.ZCL_FAN_CONTROL_CLUSTER_ID
+
+  # Attribute IDs
+  ATTRIBUTE_FAN_MODE = 0x0000
+  ATTRIBUTE_FAN_MODE_SEQUENCE = 0x0001
+  ATTRIBUTE_PERCENT_SETTING = 0x0002
+  ATTRIBUTE_PERCENT_CURRENT = 0x0003
+  ATTRIBUTE_SPEED_MAX = 0x0004
+  ATTRIBUTE_SPEED_SETTING = 0x0005
+  ATTRIBUTE_SPEED_CURRENT = 0x0006
+
+
+class FanMode(enum.IntEnum):
+  """Fan Mode attribute enum.
+  """
+  OFF = 0
+  LOW = 1
+  MEDIUM = 2
+  HIGH = 3
+  ON = 4
+  AUTO = 5
+  SMART = 6
+
+
+class FanModeSequence(enum.IntEnum):
+  """Fan Mode Sequence attribute enum.
+  """
+  OFF_LOW_MED_HIGH = 0
+  OFF_LOW_HIGH = 1
+  OFF_LOW_MED_HIGH_AUTO = 2
+  OFF_LOW_HIGH_AUTO = 3
+  OFF_ON_AUTO = 4
+  OFF_ON = 5
+
+
 class IlluminanceMeasurementCluster(enum.IntEnum):
   """Illuminance Measurement cluster ID and its attribute IDs.
 
@@ -70,6 +110,13 @@ class IlluminanceMeasurementCluster(enum.IntEnum):
   ATTRIBUTE_LIGHT_SENSOR_TYPE = 0x0004
 
 
+class LightSensorType(enum.IntEnum):
+  """LightSensorType attribute.
+  """
+  PHOTODIODE = 0
+  CMOS = 1
+
+
 class LevelControlCluster(enum.IntEnum):
   """Level control cluster ID and its attribute IDs.
 
@@ -79,8 +126,8 @@ class LevelControlCluster(enum.IntEnum):
 
   # Attribute IDs
   ATTRIBUTE_CURRENT_LEVEL = 0x0000
-  ATTRIBUTE_MIN_LEVEL = 0x0001
-  ATTRIBUTE_MAX_LEVEL = 0x0002
+  ATTRIBUTE_MIN_LEVEL = 0x0002
+  ATTRIBUTE_MAX_LEVEL = 0x0003
 
 
 class OccupancySensingCluster(enum.IntEnum):

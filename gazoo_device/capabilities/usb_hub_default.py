@@ -222,7 +222,9 @@ class UsbHubDefault(usb_hub_base.UsbHubBase):
           "{} setting device USB power to '{}' for hub: {} and port: {}".format(
               self._device_name, mode, self._hub_name, port))
       switchboard = self._get_switchboard_if_initialized()
-      if switchboard:
+      if (switchboard is not None and
+          switchboard.health_checked and
+          switchboard.healthy):
         switchboard.add_log_note(
             "Setting device USB power to '{}' for hub {} and port {}".format(
                 mode, self._hub_name, port))

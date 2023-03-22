@@ -17,6 +17,7 @@ from gazoo_device import decorators
 from gazoo_device.capabilities.interfaces import capability_base
 from gazoo_device.tests.unit_tests.utils import fake_devices
 from gazoo_device.utility import common_utils
+from immutabledict import immutabledict
 
 VALID_CAPABILITY_NAME = "some_valid_capability"
 OTHER_VALID_CAPABILITY_NAME = "some_other_valid_capability"
@@ -79,20 +80,20 @@ class NonConformingCapabilityInterfaceNameNoOverride(
   pass
 
 
-_SUPPORTED_INTERFACES = [
+_SUPPORTED_INTERFACES = (
     ValidCapabilityBase, ValidOtherCapabilityBase, ValidParentCapabilityBase,
     ValidChildCapabilityBase, NonConformingCapabilityInterfaceNameWithOverride,
     NonConformingCapabilityInterfaceNameNoOverride
-]
+)
 
-SUPPORTED_INTERFACES = {
+SUPPORTED_INTERFACES = immutabledict({
     get_interface_name(interface): interface
     for interface in _SUPPORTED_INTERFACES
-}
+})
 
 # Note: NonConformingCapabilityInterfaceNameNoOverride is intentionally
 # excluded. Generating a name for it should raise an error.
-CAPABILITIES = {
+CAPABILITIES = immutabledict({
     VALID_CAPABILITY_NAME:
         get_interface_name(ValidCapabilityBase),
     OTHER_VALID_CAPABILITY_NAME:
@@ -103,7 +104,7 @@ CAPABILITIES = {
         get_interface_name(ValidParentCapabilityBase),
     CHILD_CAPABILITY_NAME:
         get_interface_name(ValidChildCapabilityBase)
-}
+})
 
 
 # Valid capability flavor definitions
@@ -132,7 +133,7 @@ class NonConformingInterfaceNameFlavor(
   pass
 
 
-DICT_VALIDATION_KEYS = ["foo", "bar"]
+DICT_VALIDATION_KEYS = ("foo", "bar")
 DICT_VALIDATION_DICT_NAME = "some_dict"
 
 
@@ -145,15 +146,15 @@ class ValidDictValidationFlavor(ValidParentCapabilityBase):
                                 DICT_VALIDATION_DICT_NAME)
 
 
-_SUPPORTED_FLAVORS = [
+_SUPPORTED_FLAVORS = (
     ValidCapabilityFlavor, ValidCapabilityFlavor1, ValidDictValidationFlavor,
     ValidOtherCapabilityFlavor, ValidParentCapabilityFlavor,
     ValidChildCapabilityFlavor, NonConformingInterfaceNameFlavor
-]
+)
 
-SUPPORTED_FLAVORS = {
+SUPPORTED_FLAVORS = immutabledict({
     get_flavor_name(flavor): flavor for flavor in _SUPPORTED_FLAVORS
-}
+})
 
 
 # Invalid capability flavor definitions

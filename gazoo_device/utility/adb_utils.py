@@ -19,7 +19,7 @@ import os
 import re
 import subprocess
 import time
-from typing import Any, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 from gazoo_device import config
 from gazoo_device import errors
@@ -58,7 +58,8 @@ logger = gdm_logger.get_logger()
 
 def bugreport(adb_identifier: str,
               destination_path: str = "./",
-              adb_path: Optional[str] = None) -> str:
+              adb_path: Optional[str] = None,
+              timeout: Optional[float] = None) -> str:
   """Gets a bugreport to destination_path on host for the adb_identifier.
 
   Args:
@@ -68,10 +69,10 @@ def bugreport(adb_identifier: str,
           should copied to.
       adb_path: optional alternative path to adb executable. If adb_path is not
           provided then path returned by get_adb_path will be used instead.
+      timeout: The timeout for adb bugreport command.
 
   Raises:
-      RuntimeError: if adb_path is invalid or adb executable was not found by
-          get_adb_path or bugreport failed.
+      RuntimeError: if the adb bugreport command timeout or failed.
       ValueError: if destination_path does not exist.
 
   Returns:
@@ -84,8 +85,13 @@ def bugreport(adb_identifier: str,
   output, returncode = _adb_command(command=["bugreport", destination_path],
                                     adb_serial=adb_identifier,
                                     adb_path=adb_path,
-                                    include_return_code=True)
+                                    include_return_code=True,
+                                    timeout=timeout)
   if returncode != 0:
+    if returncode == -15:  # process got terminated
+      raise RuntimeError(
+          f"Timeout getting bugreport on ADB device {adb_identifier} after "
+          f"{timeout} seconds. Output: {output!r}")
     raise RuntimeError(f"Getting bugreport on ADB device {adb_identifier} to "
                        f"{destination_path} failed. "
                        f"Error: {output!r} with return code {returncode}")
@@ -862,6 +868,43 @@ def root_device(adb_serial, adb_path=None):
   return _adb_command("root", adb_serial, adb_path=adb_path)
 
 
+def remount_device(
+    adb_serial: str,
+    reboot_fn: Optional[Callable[..., Any]] = None,
+    adb_path: Optional[str] = None):
+  """Remounts the device to make read-only system partitions writable.
+
+  The remount commands requires root permission.
+  Sometimes it requires rebooting and remounting again to take effect.
+
+  Args:
+    adb_serial: Device serial number.
+    reboot_fn: Optional function to reboot the device.
+    adb_path: Optional alternative path to adb executable.
+
+  Raises:
+    RuntimeError: If adb_path is invalid or adb executable was not found by
+      get_adb_path.
+
+  Returns:
+    Output from calling 'adb remount'.
+  """
+  remount_command = "remount"
+  root_device(adb_serial, adb_path=adb_path)
+  output = _adb_command(remount_command, adb_serial, adb_path=adb_path)
+
+  if "Now reboot your device for settings to take effect" in output:
+    logger.info("Reboot the device %s and remount again to take effect...",
+                adb_serial)
+    if reboot_fn is None:
+      reboot_device(adb_serial, adb_path=adb_path)
+    else:
+      reboot_fn()
+    root_device(adb_serial, adb_path=adb_path)
+    output = _adb_command(remount_command, adb_serial, adb_path=adb_path)
+  return output
+
+
 def verify_user_has_fastboot(device_name):
   """Verifies fastboot available and user is root or in plugdev group.
 
@@ -969,8 +1012,9 @@ def _adb_command(command,
       proc.terminate()
       output, _ = proc.communicate()
     output = output.decode("utf-8", "replace")
-    logger.debug("adb command {!r} to {} returned {!r}".format(
-        command, adb_serial, output))
+    logger.debug(
+        "adb command {!r} to {} returned {!r} with return code {}".format(
+            command, adb_serial, output, proc.returncode))
     if include_return_code:
       return output, proc.returncode
     adb_failure_messages = ["error: closed", "adb: device offline"]
@@ -1032,6 +1076,9 @@ def _fastboot_command(command,
       args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
   output, _ = proc.communicate()
   output = output.decode("utf-8", "replace")
+  logger.debug(
+      "fastboot command {!r} to {} returned {!r} with return code {}".format(
+          command, fastboot_serial, output, proc.returncode))
   if include_return_code:
     return output, proc.returncode
   return output

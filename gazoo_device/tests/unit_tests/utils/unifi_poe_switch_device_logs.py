@@ -14,8 +14,9 @@
 
 """Device logs for unifi poe switch."""
 from gazoo_device.tests.unit_tests.utils import ssh_device_logs
+from immutabledict import immutabledict
 
-_RESPONSES = [{
+_RESPONSES = ({
     "cmd": "mca-cli-op info",
     "resp": """
         Model:       USW-8P-150
@@ -41,7 +42,7 @@ _RESPONSES = [{
     "cmd": "echo 'exit' | telnet localhost",
     "resp": "",
     "code": 0,
-}]
+})
 DEFAULT_BEHAVIOR = ssh_device_logs.make_device_responses(_RESPONSES)
 
 HEALTH_CHECK_FAILURE = ssh_device_logs.make_device_responses([{
@@ -50,7 +51,7 @@ HEALTH_CHECK_FAILURE = ssh_device_logs.make_device_responses([{
     "code": 127,
 }])
 
-TELNET_COMMAND_RESPONSES = {
+TELNET_COMMAND_RESPONSES = immutabledict({
     "telnet localhost\n":
         """
         Entering character mode
@@ -99,9 +100,9 @@ TELNET_COMMAND_RESPONSES = {
         Software Version............................... 4.3.13.11253
 
         (UBNT) #"""
-}
+})
 
-SHOW_POE_PORT_AUTO = {
+SHOW_POE_PORT_AUTO = immutabledict({
     "show poe port 0/1\n":
         """
         (UBNT) (Config)#show poe port 0/1
@@ -192,9 +193,9 @@ SHOW_POE_PORT_AUTO = {
 
 
         (UBNT) (Config)#"""
-}
+})
 
-SHOW_POE_PORT_SHUTDOWN = {
+SHOW_POE_PORT_SHUTDOWN = immutabledict({
     "show poe port 0/1\n":
         """
         (UBNT) (Config)#show poe port 0/1
@@ -285,4 +286,4 @@ SHOW_POE_PORT_SHUTDOWN = {
 
 
         (UBNT) (Config)#"""
-}
+})

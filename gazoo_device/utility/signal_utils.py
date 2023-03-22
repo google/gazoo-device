@@ -23,6 +23,7 @@ from typing import NoReturn, Optional
 from gazoo_device import gdm_logger
 
 _LOGGER = gdm_logger.get_logger()
+_sigterm_occurred = False
 
 # Any unique exit code works here. To help indicate termination by a signal,
 # follow the "signal -> exit code" mapping employed by Bash:
@@ -30,9 +31,16 @@ _LOGGER = gdm_logger.get_logger()
 _BASH_SIGTERM_EXIT_CODE = 128 + signal.SIGTERM.value
 
 
+def has_sigterm_occurred() -> bool:
+  """Returns True if sigterm has occurred, else False."""
+  return _sigterm_occurred
+
+
 def handle_sigterm(
     signal_number: int, frame: Optional[types.FrameType]) -> NoReturn:
   """Raises a SystemExit exception with _BASH_SIGTERM_EXIT_CODE return code."""
+  global _sigterm_occurred
+  _sigterm_occurred = True
   del signal_number, frame  # Unused.
   sys.exit(_BASH_SIGTERM_EXIT_CODE)
 

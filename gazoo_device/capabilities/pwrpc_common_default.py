@@ -26,6 +26,7 @@ from gazoo_device.utility import retry
 
 logger = gdm_logger.get_logger()
 _POLL_INTERVAL_SEC = 0.5  # seconds
+_WAIT_FOR_DEVICE_READY_SEC = 1  # second
 _DEFAULT_BOOTUP_TIMEOUT = 30  # seconds
 # TODO(b/235632665) Remove this once the sample app has a default fw version.
 _DEFAULT_SW_VERSION = "0"
@@ -146,6 +147,11 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
     Raises:
       DeviceError: If device did not boot up successfully in given timeout.
     """
+    # For b/272311935, devices will enter bad state (unresponsive to RPC) when
+    # trying to send the RPC requests right after rebooting or FDR.
+    # Adding 1 second to wait for the device to be in a ready state before
+    # sending RPC for polling.
+    time.sleep(_WAIT_FOR_DEVICE_READY_SEC)
     try:
       start_time = time.time()
       retry.retry(
@@ -245,8 +251,15 @@ class PwRPCCommonDefault(pwrpc_common_base.PwRPCCommonBase):
 
   @decorators.CapabilityLogDecorator(logger)
   def set_ota_metadata(self, tlv_metadata: bytes) -> None:
-    """Set OTA metadata for OTA provider."""
-    # TODO(b/237974405) Support TLV encoder if needed.
+    """Sets OTA metadata for OTA provider.
+
+    Note that the value does not persist across reboot. Also the device needs
+    to be commissioned to the OTA provider (hub) to set the value.
+
+    Args:
+      tlv_metadata:
+        TLV OTA metadata generated via gazoo_device.utility.tlv_utils.
+    """
     self._trigger_device_action(action="SetOtaMetadataForProvider",
                                 tlv=tlv_metadata)
 

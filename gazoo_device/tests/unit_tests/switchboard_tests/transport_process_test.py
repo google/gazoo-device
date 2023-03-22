@@ -41,6 +41,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
     self.log_queue = multiprocessing_utils.get_context().Queue()
     self.raw_data_queue = multiprocessing_utils.get_context().Queue()
     self.call_result_queue = multiprocessing_utils.get_context().Queue()
+    self.log_path = self.artifacts_directory
 
   def tearDown(self):
     if hasattr(self, "uut"):
@@ -60,6 +61,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue)
     self.assertFalse(self.uut.is_started(),
@@ -92,6 +94,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue)
     for command in transport_process._ALL_VALID_COMMANDS:
@@ -112,6 +115,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue)
     with self.assertRaisesRegex(RuntimeError, r"No queue provided"):
@@ -125,6 +129,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue,
         raw_data_queue=self.raw_data_queue)
@@ -145,6 +150,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue)
     with self.assertRaisesRegex(RuntimeError, r"No queue provided"):
@@ -158,6 +164,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue)
     self.uut.start()
@@ -179,6 +186,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue)
 
@@ -205,6 +213,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue)
 
@@ -232,6 +241,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue)
     self.uut.start()
@@ -258,6 +268,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue)
 
@@ -287,6 +298,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue)
 
@@ -313,6 +325,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue)
 
@@ -334,6 +347,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue)
 
@@ -362,6 +376,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue,
         raw_data_queue=self.raw_data_queue,
@@ -405,6 +420,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue)
     self.command_queue.put(("Invalid command", None))
@@ -443,6 +459,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue)
     self.uut.start()
@@ -481,6 +498,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue)
 
@@ -516,6 +534,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue,
         framer=framer)
@@ -559,6 +578,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue,
         framer=framer)
@@ -587,6 +607,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue,
         read_timeout=read_timeout)
@@ -621,6 +642,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport,
         call_result_queue=self.call_result_queue,
         raw_data_queue=self.raw_data_queue)
@@ -663,6 +685,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport=transport,
         call_result_queue=self.call_result_queue)
 
@@ -685,6 +708,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport=transport,
         call_result_queue=self.call_result_queue)
 
@@ -703,6 +727,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport=transport,
         call_result_queue=self.call_result_queue)
 
@@ -725,6 +750,7 @@ class TransportProcessTests(unit_test_case.MultiprocessingTestCase):
         self.exception_queue,
         self.command_queue,
         self.log_queue,
+        self.log_path,
         transport=transport,
         call_result_queue=self.call_result_queue)
 

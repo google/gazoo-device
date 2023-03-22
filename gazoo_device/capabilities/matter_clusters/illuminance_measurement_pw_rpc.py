@@ -14,6 +14,7 @@
 
 """Pigweed RPC implementation of Matter Illuminance Measurement cluster capability.
 """
+from gazoo_device import decorators
 from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import measurement_base
 from gazoo_device.protos import attributes_service_pb2
@@ -27,4 +28,26 @@ class IlluminanceMeasurementClusterPwRpc(measurement_base.MeasurementClusterBase
   MATTER_CLUSTER = matter_enums.IlluminanceMeasurementCluster
   ATTRIBUTE_TYPE = (
       attributes_service_pb2.AttributeType.ZCL_INT16U_ATTRIBUTE_TYPE)
-  # TODO(b/241698164): add light sensor type attribute for light_sensor
+
+  @decorators.DynamicProperty
+  def light_sensor_type(self) -> matter_enums.LightSensorType:
+    """Fetches the LightSensorType attribute."""
+    data = self._read(
+        endpoint_id=self._endpoint_id,
+        cluster_id=self.MATTER_CLUSTER.ID,
+        attribute_id=self.MATTER_CLUSTER.ATTRIBUTE_LIGHT_SENSOR_TYPE,
+        attribute_type=(
+            attributes_service_pb2.AttributeType.ZCL_ENUM8_ATTRIBUTE_TYPE,))
+    return matter_enums.LightSensorType(data.data_uint8)
+
+  @light_sensor_type.setter
+  def light_sensor_type(self, value: matter_enums.LightSensorType) -> None:
+    """Updates the LightSensorType attribute with new value."""
+    sensor_type = matter_enums.LightSensorType(value)
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster_id=self.MATTER_CLUSTER.ID,
+        attribute_id=self.MATTER_CLUSTER.ATTRIBUTE_LIGHT_SENSOR_TYPE,
+        attribute_type=(
+            attributes_service_pb2.AttributeType.ZCL_ENUM8_ATTRIBUTE_TYPE),
+        data_uint8=sensor_type)

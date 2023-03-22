@@ -186,6 +186,7 @@ class LogFilterProcess(switchboard_process.SwitchboardProcess):
         device_name + "-LogFilter",
         exception_queue,
         command_queue,
+        log_path,
         valid_commands=_VALID_FILTER_COMMANDS)
 
     self._buffered_unicode = u""
@@ -196,7 +197,6 @@ class LogFilterProcess(switchboard_process.SwitchboardProcess):
     self._parser = parser
     self._log_file = None
     self._log_filename = os.path.basename(log_path)
-    self._log_directory = os.path.dirname(log_path)
     self._event_file = None
     self._event_path = get_event_filename(log_path)
 
@@ -294,7 +294,8 @@ class LogFilterProcess(switchboard_process.SwitchboardProcess):
 
     # NEP-3848: in Python 2, for file descriptor Foo whose EOF flag is set
     # and another file descriptor Bar which then appends to the same file,
-    # the next read() for file descriptor Foo will return "" even though B has added new data.
+    # the next read() for file descriptor Foo will return "" even though B has
+    # added new data.
     self._log_file.seek(self._log_file.tell())  # Unset EOF flag
     log_data = self._log_file.read(size=self._max_read_bytes)
 
@@ -393,10 +394,10 @@ class LogWriterProcess(switchboard_process.SwitchboardProcess):
         device_name + "-LogWriter",
         exception_queue,
         command_queue,
+        log_path,
         valid_commands=_VALID_WRITER_COMMANDS)
     self._log_queue = log_queue
     self._log_filename = os.path.basename(log_path)
-    self._log_directory = os.path.dirname(log_path)
     self._log_file = None
     self._max_log_size = max_log_size
 

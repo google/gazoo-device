@@ -16,6 +16,7 @@
 
 from typing import Optional
 
+from gazoo_device import config
 from gazoo_device import decorators
 from gazoo_device import detect_criteria
 from gazoo_device import errors
@@ -27,11 +28,18 @@ from gazoo_device.capabilities import matter_endpoints_accessor_chip_tool
 
 logger = gdm_logger.get_logger()
 
+_LOGGING_CMD = ("tail", "-F", matter_controller_chip_tool.LOGGING_FILE_PATH)
+
 
 class RaspberryPiMatterController(
     raspberry_pi.RaspberryPi,
     matter_endpoints_mixin.MatterEndpointAliasesMixin):
   """Base Class for RaspberryPiMatterController Devices."""
+  _COMMUNICATION_KWARGS = {
+      "log_cmd": _LOGGING_CMD,
+      "key_info": config.KEYS["raspberrypi3_ssh_key"],
+      "username": "pi"
+  }
   DETECT_MATCH_CRITERIA = {
       detect_criteria.SshQuery.IS_RASPBIAN_RPI: True,
       detect_criteria.SshQuery.IS_CHIP_TOOL_PRESENT: True,

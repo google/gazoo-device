@@ -31,7 +31,7 @@ class OnOffPluginUnitBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def level(self) -> level_control_base.LevelControlClusterBase:
+  def level_control(self) -> level_control_base.LevelControlClusterBase:
     """Optional cluster: ZCL level cluster."""
 
   # TODO(b/209362086) Add the below clusters

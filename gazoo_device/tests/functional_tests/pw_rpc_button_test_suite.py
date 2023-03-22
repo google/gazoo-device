@@ -21,6 +21,8 @@ from mobly import asserts
 # Pressing button 1 changes the lighting state of the board if it's a lighting
 # app. Should be no-op if it's a locking app.
 _BUTTON_ID_1 = 1
+_RPC_NOT_FOUND = "Status.NOT_FOUND: the RPC server does not support this RPC"
+_RPC_NOT_IMPLEMENTED = "UNIMPLEMENTED"
 
 
 class PwRPCButtonTestSuite(gdm_test_base.GDMTestBase):
@@ -43,7 +45,7 @@ class PwRPCButtonTestSuite(gdm_test_base.GDMTestBase):
     try:
       self.device.pw_rpc_button.push(button_id=_BUTTON_ID_1)
     except errors.DeviceError as e:
-      if "Status.NOT_FOUND: the RPC server does not support this RPC" in str(e):
+      if _RPC_NOT_FOUND in str(e) or _RPC_NOT_IMPLEMENTED in str(e):
         asserts.skip(f"{self.device.name} does not support button RPCs.")
       else:
         raise

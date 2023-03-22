@@ -13,9 +13,9 @@
 # limitations under the License.
 
 """Unit and integration (multiprocessing) tests for parallel_utils."""
-import concurrent.futures
 import functools
 import importlib
+import multiprocessing
 import time
 from typing import NoReturn
 import unittest
@@ -32,10 +32,12 @@ from gazoo_device import package_registrar
 from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.capabilities.interfaces import flash_build_base
 from gazoo_device.tests.unit_tests.utils import unit_test_case
+from gazoo_device.utility import multiprocessing_utils
 from gazoo_device.utility import parallel_utils
 
 
 _TEST_EXCEPTION = RuntimeError("Something went wrong.")
+_TIMEOUT_FUNCTION_SLEEP_DURATION_S = 60
 
 
 def _test_function_with_return(
@@ -58,7 +60,7 @@ def _test_function_raises_exception(manager_inst: manager.Manager) -> NoReturn:
 def _test_function_times_out(manager_inst: manager.Manager) -> None:
   """Function which is designed to time out."""
   assert isinstance(manager_inst, manager.Manager)
-  time.sleep(15)
+  time.sleep(_TIMEOUT_FUNCTION_SLEEP_DURATION_S)
 
 
 def load_tests(loader, standard_tests, pattern):
@@ -66,6 +68,8 @@ def load_tests(loader, standard_tests, pattern):
   del standard_tests, pattern  # Unused.
   suite = unittest.TestSuite(
       loader.loadTestsFromTestCase(ParallelUtilsUnitTests))
+  suite.addTests(
+      loader.loadTestsFromTestCase(ProcessPoolExecutorWithTerminationUnitTests))
   if not flags.FLAGS.skip_slow:
     suite.addTests(loader.loadTestsFromTestCase(ParallelUtilsIntegrationTests))
   return suite
@@ -99,15 +103,20 @@ class ParallelUtilsUnitTests(unit_test_case.UnitTestCase):
 
   def setUp(self):
     super().setUp()
-    # Mock ProcessPoolExecutor so tasks execute in sequence.
-    self.process_pool_mock = self.enter_context(
-        mock.patch.object(
-            concurrent.futures, "ProcessPoolExecutor", autospec=True))
 
-    self.executor_mock = mock.create_autospec(spec=concurrent.futures.Executor)
-    self.process_pool_mock.return_value.__enter__.return_value = self.executor_mock
-    self.executor_mock.submit = functools.partial(
-        _mock_submit_func, self.process_pool_mock)
+    # Mock ProcessPoolExecutor so tasks execute in sequence.
+    self.mock_process_pool = mock.create_autospec(
+        spec=parallel_utils._ProcessPoolExecutorWithTermination, instance=True)
+    self.mock_process_pool_class = self.enter_context(
+        mock.patch.object(
+            parallel_utils,
+            "_ProcessPoolExecutorWithTermination",
+            autospec=True))
+    self.mock_process_pool_class.return_value.__enter__.return_value = self.mock_process_pool
+    # Also pass in mock_process_pool_class to expose ProcessPoolExecutor
+    # initialization args to the mock submit function.
+    self.mock_process_pool.submit = functools.partial(
+        _mock_submit_func, self.mock_process_pool_class)
 
   @parameterized.named_parameters(
       ("factory_reset_success", parallel_utils.factory_reset, (), {}, False),
@@ -221,7 +230,8 @@ class ParallelUtilsUnitTests(unit_test_case.UnitTestCase):
     mock_import.assert_has_calls(
         [mock.call("foo.package"), mock.call("bar.package")])
     self.assertEqual(mock_register.call_count, 2)
-    mock_manager_class.assert_called_once_with(**manager_kwargs)
+    mock_manager_class.assert_called_once_with(from_parallel_utils=True,
+                                               **manager_kwargs)
     mock_function.assert_called_once_with(mock_manager, *(1, 2),
                                           **{"foo": "bar"})
     self.assertEqual(proc_results[0], args)
@@ -332,6 +342,55 @@ class ParallelUtilsUnitTests(unit_test_case.UnitTestCase):
           raise_on_process_error=True
       )
 
+
+class ProcessPoolExecutorWithTerminationUnitTests(unit_test_case.UnitTestCase):
+  """Unit tests for _ProcessPoolExecutorWithTermination."""
+
+  def test_terminate_pool_processes(self):
+    """Tests _terminate_processes()."""
+    process_pool = parallel_utils._ProcessPoolExecutorWithTermination(
+        mp_context=multiprocessing_utils.get_context())
+    completed_process = mock.MagicMock(
+        spec=multiprocessing.Process, instance=True)
+    completed_process.is_alive.return_value = False
+    running_responsive_process = mock.MagicMock(
+        spec=multiprocessing.Process, instance=True)
+    running_responsive_process.is_alive.side_effect = (
+        lambda: not running_responsive_process.terminate.called)
+    running_unresponsive_process = mock.MagicMock(
+        spec=multiprocessing.Process, instance=True)
+    running_unresponsive_process.is_alive.side_effect = (
+        lambda: not running_unresponsive_process.kill.called)
+
+    process_pool._processes = {
+        0: completed_process,
+        1: running_responsive_process,
+        2: running_unresponsive_process,
+    }
+
+    with self.assertLogs(gdm_logger.get_logger()) as logs:
+      process_pool._terminate_pool_processes()
+    self.assertEqual(len(logs.output), 2)
+    self.assertRegex(
+        logs.output[0],
+        ("The following pool processes are still alive.*"
+         f"{running_responsive_process}.*{running_unresponsive_process}.*"
+         "Terminating the processes."))
+    self.assertRegex(
+        logs.output[1],
+        (f"Process {running_unresponsive_process} failed to terminate in .*s. "
+         "Killing the process."))
+    completed_process.join.assert_not_called()
+    completed_process.terminate.assert_not_called()
+    completed_process.kill.assert_not_called()
+    running_responsive_process.terminate.assert_called_once()
+    running_responsive_process.join.assert_called_once()
+    running_responsive_process.kill.assert_not_called()
+    running_unresponsive_process.terminate.assert_called_once()
+    running_unresponsive_process.kill.assert_called_once()
+    self.assertEqual(running_unresponsive_process.join.call_count, 2)
+
+
 _GOOD_CALL_TIMEOUT_S = 30
 _GOOD_CALL_SPECS = [
     parallel_utils.CallSpec(_test_function_with_return, 5),
@@ -392,12 +451,18 @@ class ParallelUtilsIntegrationTests(unit_test_case.UnitTestCase):
     regex = ("Encountered errors in parallel processes:\n"
              "ResultNotReceivedError"
              r"\('Did not receive any results from the process.'\)")
+    start_time = time.time()
     with self.assertRaisesRegex(errors.ParallelUtilsError, regex):
       parallel_utils.execute_concurrently(
           _TIMEOUT_CALL_SPECS,
           timeout=1,
           max_processes=1,  # Limit the number of executor processes.
           raise_on_process_error=True)
+    execution_time = time.time() - start_time
+    self.assertLess(
+        execution_time,
+        _TIMEOUT_FUNCTION_SLEEP_DURATION_S,
+        "Process pool took too long to terminate. Process wasn't terminated.")
 
 
 if __name__ == "__main__":

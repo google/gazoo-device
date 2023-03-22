@@ -1552,8 +1552,8 @@ class ManagerTests(ManagerTestsSetup, gc_test_utils.GCTestUtilsMixin):
           return_value=(persistent_configs, options_configs)) as mock_detect:
         self.uut.redetect("sshdevice-0000")
         mock_detect.assert_called_with(static_ips=[u"123.123.78.9"],
-                                       comm_types=None,
-                                       addresses=None)
+                                       comm_types=["SshComms"],
+                                       addresses=[u"123.123.78.9"])
 
   @mock.patch.object(switch_power_usb_with_charge.SwitchPowerUsbWithCharge,
                      "set_mode")

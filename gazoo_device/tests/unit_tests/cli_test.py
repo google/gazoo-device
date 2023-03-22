@@ -18,6 +18,8 @@ from typing import Dict
 from unittest import mock
 
 from absl.testing import parameterized
+from gazoo_device import errors
+from gazoo_device import fire_manager
 from gazoo_device import gdm_cli
 from gazoo_device.auxiliary_devices import raspberry_pi
 from gazoo_device.tests.unit_tests.utils import unit_test_case
@@ -59,6 +61,34 @@ _GOOD_COMMANDS = (
     "--dev_debug - detect",
     "--quiet - detect",
 )
+
+
+def _func3():
+  try:
+    raise errors.DeviceError("from _func3 try block")
+  except errors.DeviceError as e:
+    raise errors.DeviceError("from _func3 except block") from e
+
+
+def _func2():
+  try:
+    _func3()
+  except errors.DeviceError as e:
+    raise errors.DeviceError("from _func2 except block") from e
+
+
+def _func1():
+  try:
+    _func2()
+  except errors.DeviceError as e:
+    raise errors.DeviceError("from _func1 except block") from e
+
+
+def _raise_error_with_cause_loop():
+  try:
+    raise errors.DeviceError("Some error")
+  except errors.DeviceError as e:
+    raise e from e  # Introduce a loop in the error __cause__.
 
 
 class CLITests(unit_test_case.UnitTestCase):
@@ -116,6 +146,34 @@ class CLITests(unit_test_case.UnitTestCase):
     """Tests that _get_flags() properly parses and returns flags."""
     flags = gdm_cli._get_flags(command.split())
     self.assertEqual(flags, expected_flags)
+
+  def test_exception_chain_error_logging(self):
+    with self.assertRaises(errors.DeviceError) as cm:
+      with mock.patch.object(
+          fire_manager.FireManager, "man", side_effect=_func1):
+        gdm_cli._execute_command("man")
+    exception1 = cm.exception
+    self.assertEqual("DeviceError('from _func1 except block')",
+                     repr(exception1))
+    exception2 = exception1.__cause__
+    self.assertEqual("DeviceError('from _func2 except block')",
+                     repr(exception2))
+    exception3 = exception2.__cause__
+    self.assertEqual("DeviceError('from _func3 except block')",
+                     repr(exception3))
+    exception4 = exception3.__cause__
+    self.assertEqual("DeviceError('from _func3 try block')",
+                     repr(exception4))
+    self.assertIsNone(exception4.__cause__)
+
+  def test_exception_chain_loop_logging(self):
+    with self.assertRaises(errors.DeviceError) as cm:
+      with mock.patch.object(
+          fire_manager.FireManager, "man",
+          side_effect=_raise_error_with_cause_loop):
+        gdm_cli._execute_command("man")
+    self.assertEqual("DeviceError('Some error')", repr(cm.exception))
+    self.assertIs(cm.exception.__cause__, cm.exception)
 
 
 if __name__ == "__main__":

@@ -28,6 +28,10 @@ def _waste_time():
   return True
 
 
+def _return_message():
+  return "FUNCTION_RETURN"
+
+
 def _func_raises():
   raise RuntimeError("Foo too bar")
 
@@ -44,6 +48,17 @@ class RetryTests(unit_test_case.UnitTestCase):
     with self.assertRaisesRegex(errors.CommunicationTimeoutError, "Timeout"):
       retry.retry(
           _waste_time, is_successful=_not, timeout=1, interval=0.25)
+
+  def test_retry_timeout_error_message(self):
+    """Test retry with a timeout; error type left as default."""
+    with self.assertRaisesRegex(errors.CommunicationTimeoutError,
+                                r"Timeout.*Tried calling _return_message "
+                                r"2 times with a 0.6-second interval. "
+                                r"Call results:\n"
+                                r"1: 'FUNCTION_RETURN'\n"
+                                r"2: 'FUNCTION_RETURN'."):
+      retry.retry(
+          _return_message, is_successful=_not, timeout=1, interval=0.6)
 
   def test_retry_timeout_custom_error(self):
     """Test retry with a timeout; error type is provided."""

@@ -83,12 +83,14 @@ Logging behavior:
   in new individual device log files.
 """
 import concurrent.futures
+import concurrent.futures.process
 import dataclasses
 import importlib
 import multiprocessing
 import os
 import time
 import traceback
+import typing
 from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple
 
 from gazoo_device import errors
@@ -102,7 +104,8 @@ import immutabledict
 NO_RESULT = "< No result received >"
 NO_TRACEBACK = "< No traceback available >"
 TIMEOUT_PROCESS = 600.0
-_TIMEOUT_TERMINATE_PROCESS = 3
+_TIMEOUT_TERMINATE_PROCESS_S = 3
+_TIMEOUT_TERMINATE_PROCESS_POOL_S = 10
 _QUEUE_READ_TIMEOUT = 1
 _AnySerializable = Any
 
@@ -186,7 +189,8 @@ def _process_wrapper(call_spec: CallSpec) -> Any:
   short_description = f"{call_spec.function.__name__} in process {os.getpid()}"
   logger.debug(f"{short_description}: starting execution of {call_spec}...")
 
-  manager_inst = manager.Manager(**call_spec.manager_kwargs)
+  manager_inst = manager.Manager(from_parallel_utils=True,
+                                 **call_spec.manager_kwargs)
 
   try:
     return_value = call_spec.function(manager_inst, *call_spec.args,
@@ -198,7 +202,7 @@ def _process_wrapper(call_spec: CallSpec) -> Any:
     manager_inst.close()
 
 
-def _format_process_errors(
+def format_process_errors(
     proc_errors: Sequence[Optional[Tuple[str, str, str]]]) -> str:
   """Returns a formatted string with all process errors."""
   formatted_errors = []
@@ -211,6 +215,90 @@ def _format_process_errors(
         formatted_error = f"{error_type}({error_message!r})"
       formatted_errors.append(formatted_error)
   return "\n".join(formatted_errors)
+
+
+class _ProcessPoolExecutorWithTermination(
+    concurrent.futures.process.ProcessPoolExecutor):
+  """Process pool executor which supports terminating hanging pool processes.
+
+  ProcessPoolExecutor's shutdown() implementation waits indefinitely for hanging
+  pool processes. This subclass terminates them instead. Note that process
+  termination breaks the process pool, making it unsuitable for further task
+  execution.
+  """
+
+  def _terminate_pool_processes(self) -> None:
+    """Abruptly terminates pool processes.
+
+    This should only be called after well-behaved (not hanging) processes have
+    shut down gracefully.
+    """
+    alive_processes = [process for process in self._processes.values()
+                       if process.is_alive()]
+    gdm_logger.get_logger().warning(
+        "The following pool processes are still alive: %s. "
+        "Terminating the processes.",
+        alive_processes)
+    for process in alive_processes:
+      process.terminate()
+      process.join(timeout=_TIMEOUT_TERMINATE_PROCESS_S)
+      if process.is_alive():
+        gdm_logger.get_logger().warning(
+            "Process %s failed to terminate in %ds. "
+            "Killing the process.", process, _TIMEOUT_TERMINATE_PROCESS_S)
+        process.kill()
+        process.join(timeout=_TIMEOUT_TERMINATE_PROCESS_S)
+
+  def shutdown(self, wait: bool = True, *, cancel_futures: bool = True):
+    """Adds hanging process termination to ProcessPoolExecutor.shutdown().
+
+    Original implementation:
+    https://github.com/python/cpython/blob/3.9/Lib/concurrent/futures/process.py#L758
+
+    Args:
+      wait: Whether to wait for the process pool executor to shut down.
+      cancel_futures: Whether to cancel all pending work items. Note that the
+        default is overridden to True here. If cancel_futures is False,
+        shutdown() will wait for all pending work items to complete.
+
+    Raises:
+      concurrent.futures.BrokenExecutor: graceful shutdown fails.
+    """
+
+    with self._shutdown_lock:
+      self._cancel_pending_futures = cancel_futures
+      self._shutdown_thread = True
+      if self._executor_manager_thread_wakeup is not None:
+        # Wake up queue management thread
+        self._executor_manager_thread_wakeup.wakeup()
+
+    # Added: graceful termination of hanging processes.
+    executor_manager_thread = typing.cast(  # Pytype gets the type wrong.
+        concurrent.futures.process._ExecutorManagerThread,  # pylint: disable=protected-access
+        self._executor_manager_thread)
+    if executor_manager_thread is not None and wait:
+      executor_manager_thread.join(_TIMEOUT_TERMINATE_PROCESS_POOL_S)
+      if executor_manager_thread.is_alive():
+        gdm_logger.get_logger().warning(
+            "ProcessPoolExecutor failed to shut down gracefully in %ds. ",
+            _TIMEOUT_TERMINATE_PROCESS_POOL_S)
+        self._terminate_pool_processes()
+        executor_manager_thread.join(_TIMEOUT_TERMINATE_PROCESS_POOL_S)
+        if executor_manager_thread.is_alive():
+          raise concurrent.futures.BrokenExecutor(
+              f"All pool processes have been terminated, but "
+              f"{type(self).__name__} still failed to shut down in "
+              f"{_TIMEOUT_TERMINATE_PROCESS_POOL_S}s.")
+
+    # To reduce the risk of opening too many files, remove references to
+    # objects that use file descriptors.
+    self._executor_manager_thread = None
+    self._call_queue = None
+    if self._result_queue is not None and wait:
+      self._result_queue.close()
+    self._result_queue = None
+    self._processes = None
+    self._executor_manager_thread_wakeup = None
 
 
 def execute_concurrently(
@@ -257,7 +345,7 @@ def execute_concurrently(
   proc_results = []
   proc_errors = []
   futures = []
-  with concurrent.futures.ProcessPoolExecutor(
+  with _ProcessPoolExecutorWithTermination(
       max_workers=max_processes,
       mp_context=multiprocessing_utils.get_context(),
       initializer=_process_init,
@@ -272,7 +360,7 @@ def execute_concurrently(
         remaining_timeout = max(0, deadline - time.time())
         proc_results.append(future.result(timeout=remaining_timeout))
         proc_errors.append(None)
-      except concurrent.futures.TimeoutError as e:
+      except concurrent.futures.TimeoutError:
         future.cancel()
         proc_results.append(NO_RESULT)
         proc_errors.append((
@@ -286,7 +374,7 @@ def execute_concurrently(
   if raise_on_process_error and any(proc_errors):
     raise errors.ParallelUtilsError(
         "Encountered errors in parallel processes:\n"
-        f"{_format_process_errors(proc_errors)}")
+        f"{format_process_errors(proc_errors)}")
 
   return proc_results, proc_errors
 

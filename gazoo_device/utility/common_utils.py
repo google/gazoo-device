@@ -16,6 +16,13 @@
 import re
 import weakref
 
+# Keywords which need special handling in TitleCase to snake_case conversion.
+_KEYWORDS_TO_CLEAN_UP = (
+    # ("Keyword_not_handled_correctly", "correctly_handled_keyword")
+    ("sl_4a", "sl4a"),
+    ("sl_4f", "sl4f"),
+)
+
 
 class MethodWeakRef(object):
   """Allows creating weak references to instance methods.
@@ -107,14 +114,14 @@ def get_value_from_json(json_data, key_sequence, raise_if_absent=True):
   return current_dict
 
 
-def title_to_snake_case(s):
+def title_to_snake_case(s: str) -> str:
   """Convert TitleCase string to snake_case.
 
   Args:
-      s (str): TitleCase string.
+      s: TitleCase string.
 
   Returns:
-      str: snake_case string.
+      snake_case string.
 
   Raises:
       ValueError: provided string contains underscores.
@@ -128,19 +135,37 @@ def title_to_snake_case(s):
         "{} is not a TitleCase string (found underscores).".format(s))
 
   word_starts = [pos for pos in range(len(s)) if _is_new_word(s, pos)
-                ] + [len(s)]
+                 ] + [len(s)]
   words = [
       s[word_starts[idx]:word_starts[idx + 1]].lower()
       for idx in range(len(word_starts) - 1)
   ]
-  return "_".join(words)
+  result = "_".join(words)
+  for misspelled_keyword, keyword_corrected in _KEYWORDS_TO_CLEAN_UP:
+    result = result.replace(misspelled_keyword, keyword_corrected)
+  return result
 
 
-def _is_new_word(s, pos):
-  """Returns whether a new words starts at s[pos] in a TitleCase string."""
-  return (pos == 0 or (s[pos].isupper() and
-                       (not s[pos - 1].isupper() or
-                        (pos + 1 < len(s) and not s[pos + 1].isupper()))))
+def _is_new_word(s: str, pos: int) -> bool:
+  """Returns whether a new words starts at s[pos] in a TitleCase string.
+
+  Args:
+      s: whole string.
+      pos: string position to check if new word starts or not.
+
+  Returns:
+      True if new word starts at pos, otherwise False
+  """
+  return (  # First character always start new word.
+      pos == 0 or
+      # First capital character starts new word if
+      # (1) whose preceeding character is not capital or
+      # (2) following character is not capital.
+      (s[pos].isupper() and
+       (not s[pos - 1].isupper() or
+        (pos + 1 < len(s) and not s[pos + 1].isupper()))) or
+      # First digit whose preceeding character is not digit.
+      (s[pos].isnumeric() and not s[pos - 1].isnumeric()))
 
 
 def extract_posix_portable_characters(string: str) -> str:

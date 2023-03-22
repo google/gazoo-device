@@ -360,6 +360,14 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
           "some command", r"([a-z]*)(\d*)", regex_group=2)
       self.assertEqual(result, "1337")
 
+  def test_shell_with_regex_success_nested_capturing_group(self):
+    """Verify shell_with_regex() works for nested capturing groups."""
+    return_value = ("asd1337", 0)
+    with mock.patch.object(self.uut, "shell", return_value=return_value):
+      result = self.uut.shell_with_regex(
+          "some command", r"(([a-z]*)(\d*))", regex_group=3)
+      self.assertEqual(result, "1337")
+
   def test_shell_with_regex_check_return_code_failure_nonzero_return_code(self):
     """Verify shell_with_regex() failure due to non-zero return code."""
     with mock.patch.object(self.uut, "shell", return_value=("gobbly gook", 1)):
@@ -383,7 +391,7 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     test_filters = ("/path/to/folder1/name1.json", "/path/to/name2.json")
 
     class GazooDeviceBaseStubWithFilters(GazooDeviceBaseStub):
-      _DEFAULT_FILTERS = test_filters
+      DEFAULT_FILTERS = test_filters
 
     uut = GazooDeviceBaseStubWithFilters(
         self.mock_manager,
@@ -481,9 +489,9 @@ class GazooDeviceBaseTests(fake_device_test_case.FakeDeviceTestCase,
     expected_dict = {
         "commands": {},
         "timeouts": {
-            "CONNECTED": 3,
-            "POWER_CYCLE": 2,
-            "SHELL": 60
+            "CHECK_IS_CONNECTED": 3,
+            "SHELL": 60,
+            "WAIT_UNTIL_CONNECTED": 90,
         },
         "DETECT_MATCH_CRITERIA": None,
         "communication_address": "la",

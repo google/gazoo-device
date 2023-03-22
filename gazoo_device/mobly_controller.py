@@ -47,7 +47,7 @@ _DEVICE_PROPS = ("name", "device_type", "model", "platform", "serial_number",
                  "wifi_mac_address", "firmware_version", "firmware_branch",
                  "firmware_type", "alias", "communication_address",
                  "secondary_communication_address", "build_date",
-                 "initial_code_name")
+                 "initial_code_name", "package_management.package_versions")
 _LOGGER = gdm_logger.get_logger()
 _MANAGER_INSTANCE = None
 

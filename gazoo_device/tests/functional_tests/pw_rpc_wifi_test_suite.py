@@ -39,32 +39,41 @@ class PwRPCWifiTestSuite(gdm_test_base.GDMTestBase):
     """Returns True if the device must be paired to run this test suite."""
     return False
 
+  def test_wifi_channel(self):
+    """Tests the channel property."""
+    asserts.assert_is_instance(self.device.pw_rpc_wifi.channel, int)
+
   def test_wifi_mac_address(self):
     """Tests the mac_address property."""
-    resp = self.device.pw_rpc_wifi.mac_address
-    asserts.assert_is_instance(resp, str)
+    asserts.assert_is_instance(self.device.pw_rpc_wifi.mac_address, str)
 
   def test_wifi_disconnect(self):
     """Tests wifi disconnect method."""
     self.device.pw_rpc_wifi.disconnect()
     asserts.assert_equal(self.device.pw_rpc_wifi.ipv4_address, _NULL_IP_ADDRESS)
     asserts.assert_equal(self.device.pw_rpc_wifi.ssid, "")
+    asserts.assert_false(
+        self.device.pw_rpc_wifi.state,
+        "The device should be disconnected from WiFi.")
 
   def test_wifi_connect_and_properties(self):
     """Tests wifi connect method, channel, ipv4 address, ssid properties."""
     require_properties = ["wifi_ssid", "wifi_security_type", "wifi_password"]
-    if not all(prop in self.testing_properties for prop in require_properties):
+    if not all(prop in self.user_params for prop in require_properties):
       asserts.skip(reason=f"Wi-Fi testing properties {require_properties} are"
                    "missing from the testbed config file.")
     self.device.pw_rpc_wifi.connect(
-        ssid=self.testing_properties["wifi_ssid"],
-        security_type=self.testing_properties["wifi_security_type"],
-        secret=self.testing_properties["wifi_password"])
+        ssid=self.user_params["wifi_ssid"],
+        security_type=self.user_params["wifi_security_type"],
+        secret=self.user_params["wifi_password"])
 
     channel = self.device.pw_rpc_wifi.channel
     asserts.assert_is_instance(channel, int)
     ssid = self.device.pw_rpc_wifi.ssid
-    asserts.assert_equal(ssid, self.testing_properties["wifi_ssid"])
+    asserts.assert_equal(ssid, self.user_params["wifi_ssid"])
+    asserts.assert_true(
+        self.device.pw_rpc_wifi.state,
+        "The device should be connected to WiFi.")
 
     # Retry until device acquires a ipv4 address from dhcp server.
     for _ in range(_IP_ADDRESS_RETRY_ATTEMPTS):
@@ -74,6 +83,7 @@ class PwRPCWifiTestSuite(gdm_test_base.GDMTestBase):
         break
     asserts.assert_is_instance(ipv4_address, str)
     asserts.assert_not_equal(ipv4_address, _NULL_IP_ADDRESS)
+    asserts.assert_is_instance(self.device.pw_rpc_wifi.ipv6_address, str)
 
 
 if __name__ == "__main__":

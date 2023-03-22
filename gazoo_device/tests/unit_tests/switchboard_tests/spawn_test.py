@@ -22,6 +22,7 @@ from gazoo_device.switchboard import switchboard
 from gazoo_device.switchboard import switchboard_process
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.tests.unit_tests.utils import unit_test_case
+from gazoo_device.utility import faulthandler_utils
 from gazoo_device.utility import multiprocessing_utils
 import psutil
 
@@ -70,7 +71,8 @@ class MultiprocessingSpawnTests(fake_device_test_case.FakeDeviceTestCase,
     proc = switchboard_process.SwitchboardProcess("some_device",
                                                   "some_process",
                                                   exception_queue,
-                                                  command_queue)
+                                                  command_queue,
+                                                  "/tmp/log/dir")
     proc.start()
     proc.stop()
 
@@ -104,6 +106,7 @@ class MultiprocessingSpawnTests(fake_device_test_case.FakeDeviceTestCase,
     mock_switchboard_process.process_name = "mock_process"
     mock_switchboard_process.logging_queue = logging_queue
     mock_switchboard_process._exception_queue = exception_queue
+    mock_switchboard_process._log_directory = "/tmp/log/dir"
     mock_switchboard_process._start_event = mock_start_event
     mock_switchboard_process._stop_event = mock_stop_event
     mock_switchboard_process._terminate_event = mock_terminate_event
@@ -115,9 +118,12 @@ class MultiprocessingSpawnTests(fake_device_test_case.FakeDeviceTestCase,
 
     with mock.patch.object(
         gdm_logger, "initialize_child_process_logging") as mock_init_logging:
-      switchboard_process._process_loop(mock_switchboard_process, 1234)
+      with mock.patch.object(
+          faulthandler_utils, "set_up_faulthandler") as mock_faulthandler:
+        switchboard_process._process_loop(mock_switchboard_process, 1234)
 
     mock_init_logging.assert_called_once()
+    mock_faulthandler.assert_called_once()
     mock_start_event.set.assert_called_once()
     mock_switchboard_process._pre_run_hook.assert_called_once()
     mock_parent_proc.status.assert_called_once()

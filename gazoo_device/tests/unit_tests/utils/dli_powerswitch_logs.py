@@ -13,11 +13,12 @@
 # limitations under the License.
 
 """Device logs for DLI powerswitch devices."""
+from immutabledict import immutabledict
 
 RETURN_CODE = "200\n"
 ERROR_RETURN_CODE = "409\n"
 
-DEFAULT_BEHAVIOR = {
+DEFAULT_BEHAVIOR = immutabledict({
     "http://123.45.67.89/restapi/config/=version/": {
         "text": '["1.7.15.0"]',
         "status_code": "207"
@@ -38,4 +39,4 @@ DEFAULT_BEHAVIOR = {
         "text": '["true"]',
         "status_code": "207"
     },
-}
+})

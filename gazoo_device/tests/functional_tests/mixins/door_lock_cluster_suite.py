@@ -16,9 +16,6 @@
 from gazoo_device.capabilities import matter_enums
 from mobly import asserts
 
-_LOCK_VALUE = matter_enums.LockState.LOCKED
-_UNLOCK_VALUE = matter_enums.LockState.UNLOCKED
-
 
 class DoorLockClusterTestSuite:
   """Mixin for Matter Door Lock cluster test suite.
@@ -26,21 +23,21 @@ class DoorLockClusterTestSuite:
   The mixin assumes self.endpoint is set.
   """
 
-  def test_lock_unlock_command_and_lock_state_attribute(self):
-    """Tests the Lock / Unlock command and LockState attribute."""
-    if self.endpoint.door_lock.lock_state == _LOCK_VALUE:
-      self._unlock_and_verify()
-      self._lock_and_verify()
-    else:
-      self._lock_and_verify()
-      self._unlock_and_verify()
-
-  def _unlock_and_verify(self):
-    """Unlocks the device and verifies the state."""
-    self.endpoint.door_lock.unlock_door()
-    asserts.assert_equal(_UNLOCK_VALUE, self.endpoint.door_lock.lock_state)
-
-  def _lock_and_verify(self):
-    """Locks the device and verifies the state."""
+  def test_lock_door(self):
+    """Tests the Lock command and checks its LockState attibute."""
     self.endpoint.door_lock.lock_door()
-    asserts.assert_equal(_LOCK_VALUE, self.endpoint.door_lock.lock_state)
+    asserts.assert_equal(matter_enums.LockState.LOCKED,
+                         self.endpoint.door_lock.lock_state)
+
+  def test_unlock_door(self):
+    """Tests the Unlock command and checks its LockState attibute."""
+    self.endpoint.door_lock.unlock_door()
+    asserts.assert_equal(matter_enums.LockState.UNLOCKED,
+                         self.endpoint.door_lock.lock_state)
+
+  def test_door_lock_is_jammed(self):
+    """Tests the case where the door lock is jammed (not fully locked)."""
+    jammed_state = matter_enums.LockState.NOT_FULLY_LOCKED
+    self.endpoint.door_lock.lock_state = jammed_state
+    asserts.assert_equal(jammed_state,
+                         self.endpoint.door_lock.lock_state)

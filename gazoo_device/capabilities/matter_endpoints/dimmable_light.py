@@ -53,7 +53,7 @@ class DimmableLightEndpoint(dimmable_light_base.DimmableLightBase):
     return self.cluster_lazy_init(matter_enums.OnOffCluster.ID)
 
   @decorators.CapabilityDecorator(level_control_pw_rpc.LevelControlClusterPwRpc)
-  def level(self) -> level_control_pw_rpc.LevelControlClusterPwRpc:
+  def level_control(self) -> level_control_pw_rpc.LevelControlClusterPwRpc:
     """Matter Level Control cluster instance."""
     return self.cluster_lazy_init(matter_enums.LevelControlCluster.ID)
 

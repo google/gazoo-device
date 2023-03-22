@@ -214,6 +214,9 @@ class UsbPortMap(object):
       if device_info:
         if 'cambrionix' in device_info.get('name', ''):
           self.cambrionix_info_list.append(device_info)
+          if device_info.get('usb_hub_port', ''):
+            # add daisy chained cambrionix to show up portmap
+            self.device_info_list.append(device_info)
         else:
           self.device_info_list.append(device_info)
 

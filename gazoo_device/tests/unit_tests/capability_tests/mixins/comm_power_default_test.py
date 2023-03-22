@@ -50,9 +50,11 @@ class CommPowerDefaultTestMixin:
       comm_power_default.CommPowerDefault, "_verify_switch_created")
   def test_power_on(self, _):
     """Test self.uut.communication_power.on is called."""
-    self.uut.comm_power._wait_for_bootup_complete_func = mock.Mock()
-    self.uut.comm_power._wait_for_connection_func = mock.Mock()
-    self.uut.comm_power.on()
+    with mock.patch.object(self.uut.comm_power, "_wait_until_connected_func"):
+      with mock.patch.object(
+          self.uut.comm_power, "_wait_for_bootup_complete_func"):
+        self.uut.comm_power.on()
+
     if self.uut.comm_power._power_and_data_share_cable:
       self.uut.comm_power._hub.switch_power.power_on.assert_called_once_with(
           1)
@@ -63,9 +65,11 @@ class CommPowerDefaultTestMixin:
       comm_power_default.CommPowerDefault, "_verify_switch_created")
   def test_cycle(self, _):
     """Test calling cycle for the capability."""
-    self.uut.comm_power._wait_for_bootup_complete_func = mock.Mock()
-    self.uut.comm_power._wait_for_connection_func = mock.Mock()
-    self.uut.comm_power.cycle()
+    with mock.patch.object(self.uut.comm_power, "_wait_until_connected_func"):
+      with mock.patch.object(
+          self.uut.comm_power, "_wait_for_bootup_complete_func"):
+        self.uut.comm_power.cycle()
+
     if self.uut.comm_power._power_and_data_share_cable:
       calls = [mock.call(1, data_sync=False), mock.call(1)]
       self.uut.comm_power._hub.switch_power.power_on.assert_has_calls(calls)

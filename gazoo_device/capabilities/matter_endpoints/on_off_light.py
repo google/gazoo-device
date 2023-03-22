@@ -53,7 +53,7 @@ class OnOffLightEndpoint(on_off_light_base.OnOffLightBase):
       level_control_chip_tool.LevelControlClusterChipTool,
       level_control_pw_rpc.LevelControlClusterPwRpc
   ])
-  def level(
+  def level_control(
       self
   ) -> Union[level_control_chip_tool.LevelControlClusterChipTool,
              level_control_pw_rpc.LevelControlClusterPwRpc]:

@@ -81,6 +81,7 @@ class PwRPCWifiDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.assertEqual(self.uut.ipv4_address, wifi_ipv4_address)
     self.switchboard_call_mock.assert_called_once()
 
+  @mock.patch.object(pwrpc_wifi_default.PwRPCWifiDefault, "state", True)
   def test_connect_success(self):
     """Verifies wifi connection is successful."""
     ssid = "TEST"
@@ -89,7 +90,7 @@ class PwRPCWifiDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     connection_result_bytes = wifi_service_pb2.ConnectionResult(
         error=connection_result).SerializeToString()
     self.switchboard_call_mock.return_value = connection_result_bytes
-    self.uut.connect(ssid=ssid, security_type=security_type)
+    self.uut.connect(ssid=ssid, security_type=security_type, secret="secret")
     self.switchboard_call_mock.assert_called_once()
 
   def test_connect_failure(self):
@@ -108,10 +109,61 @@ class PwRPCWifiDefaultTest(fake_device_test_case.FakeDeviceTestCase):
       self.uut.connect(ssid=ssid, security_type=security_type)
     self.switchboard_call_mock.assert_called_once()
 
+  @mock.patch.object(pwrpc_wifi_default.PwRPCWifiDefault, "state", False)
   def test_disconnect_success(self):
     """Verifies wifi disconnect is successful."""
     self.uut.disconnect()
     self.switchboard_call_mock.assert_called_once()
+
+  @mock.patch.object(pwrpc_wifi_default.PwRPCWifiDefault, "state", True)
+  def test_disconnect_failure(self):
+    """Verifies wifi disconnecting fails."""
+    with self.assertRaisesRegex(
+        errors.DeviceError, "failed to disconnect from wifi"):
+      self.uut.disconnect()
+
+  def test_connection_state_return_true(self):
+    """Verifies wifi connection state returns true."""
+    state_bytes = wifi_service_pb2.State(connected=True).SerializeToString()
+    self.switchboard_call_mock.return_value = state_bytes
+
+    self.assertTrue(self.uut.state)
+
+  def test_connection_state_retun_false(self):
+    """Verifies wifi connection state retuns false."""
+    self.switchboard_call_mock.side_effect = errors.DeviceError("Error code: 9")
+
+    self.assertFalse(self.uut.state)
+
+  def test_connection_state_raise_error(self):
+    """Verifies wifi connection state raises error."""
+    self.switchboard_call_mock.side_effect = errors.DeviceError("Other error")
+
+    with self.assertRaisesRegex(errors.DeviceError, "Other error"):
+      self.uut.state  # pylint: disable=pointless-statement
+
+  def test_ipv6_address_return_normal(self):
+    """Verifies wifi ipv6_address returns normal address."""
+    fake_address = "fe80:0000:0000:0000:266f:28ff:fe8f:faf8"
+    ipv6_addr_bytes = wifi_service_pb2.IP6Address(
+        address=fake_address).SerializeToString()
+    self.switchboard_call_mock.return_value = ipv6_addr_bytes
+
+    self.assertEqual(fake_address, self.uut.ipv6_address)
+
+  def test_ipv6_address_return_empty(self):
+    """Verifies wifi ipv6_address returns empty."""
+    self.switchboard_call_mock.side_effect = (
+        errors.DeviceError("Error code: 13"))
+
+    self.assertEqual("", self.uut.ipv6_address)
+
+  def test_ipv6_address_raise_error(self):
+    """Verifies wifi ipv6_address raises error."""
+    self.switchboard_call_mock.side_effect = errors.DeviceError("Other error")
+
+    with self.assertRaisesRegex(errors.DeviceError, "Other error"):
+      self.uut.ipv6_address  # pylint: disable=pointless-statement
 
 
 if __name__ == "__main__":

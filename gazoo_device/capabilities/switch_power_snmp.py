@@ -14,12 +14,12 @@
 """SNMP implementation of switch_power."""
 import re
 import subprocess
-from typing import List
+from typing import List, Literal
+
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import switch_power_base
-from typing_extensions import Literal
 
 logger = gdm_logger.get_logger()
 
@@ -78,7 +78,7 @@ class SwitchPowerSnmp(switch_power_base.SwitchPowerBase):
     """Number of device ports."""
     return int(self._total_ports)
 
-  def get_mode(self, port: int) -> str:
+  def get_mode(self, port: int) -> str:  # pytype: disable=signature-mismatch  # overriding-return-type-checks
     """Gets the mode for the specified port.
 
     Args:

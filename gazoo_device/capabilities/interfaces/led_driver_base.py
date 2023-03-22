@@ -1,8 +1,8 @@
 """LED driver capability interface."""
 import abc
+from typing import Literal
 
 from gazoo_device.capabilities.interfaces import capability_base
-from typing_extensions import Literal
 
 ModFunc = Literal["sinusoid", "square", "triangle"]
 

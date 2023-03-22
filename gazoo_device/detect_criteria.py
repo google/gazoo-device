@@ -16,6 +16,7 @@ import copy
 import enum
 import functools
 import logging
+import os
 import re
 import subprocess
 import typing
@@ -36,7 +37,7 @@ import requests
 
 _DeviceClassType = Union[auxiliary_device_base.AuxiliaryDeviceBase,
                          primary_device_base.PrimaryDeviceBase]
-_LOG_FORMAT = "<%(asctime)s> GDM-M: %(message)s"
+_LOG_FORMAT = "<%(asctime)s> %(filename)-20s:%(lineno)d: %(message)s"
 
 _ADB_COMMANDS = immutabledict.immutabledict({})
 
@@ -45,20 +46,31 @@ _DOCKER_COMMANDS = immutabledict.immutabledict({
 })
 
 _SSH_COMMANDS = immutabledict.immutabledict({
-    "IS_CHIP_TOOL_PRESENT": "which chip-tool",
-    "UNIFI_PRODUCT_NAME": "mca-cli-op info",
-    "DLI_PRODUCT_NAME": "http://{address}/restapi/config/=brand_name/",
-    "RPI_PRODUCT_NAME": "cat /proc/device-tree/model",
+    "IS_CHIP_TOOL_PRESENT": ("which", "chip-tool"),
+    "UNIFI_PRODUCT_NAME": ("mca-cli-op", "info"),
+    "RPI_PRODUCT_NAME": ("cat", "/proc/device-tree/model"),
     "IS_MATTER_LINUX_APP_RUNNING": (
-        f"pgrep -f {pwrpc_utils.MATTER_LINUX_APP_NAME}")
+        "pgrep", "-f", pwrpc_utils.MATTER_LINUX_APP_NAME)
 })
 
-_GET_DLINK_MODEL_SNMP_COMMAND = (
+_HTTP_ENDPOINTS = immutabledict.immutabledict({
+    "DLI_PRODUCT_NAME": "http://{address}/restapi/config/=brand_name/"
+})
+
+# https://oidref.com/1.3.6.1.2.1.1.1
+_GET_SYSTEM_DESCRIPTION_SNMP_COMMAND = (
     "snmpget -v 2c -c private {ip_address}:161 1.3.6.1.2.1.1.1.0")
-_DLINK_MODEL_RESPONSE_REG_EX = r"((WS6-|)DGS-[0-9]+-[0-9]+)"
-_SNMP_TIMEOUT_S = 10
+# https://oidref.com/1.3.6.1.2.1.1.5
+_GET_SYSTEM_NAME_SNMP_COMMAND = (
+    "snmpget -v 2c -c private {ip_address}:161 1.3.6.1.2.1.1.5.0")
+_DLINK_MODEL_RESPONSE_REG_EX = (
+    r"((?:WS6-)?DGS-[0-9]+-[0-9]+)")
+_SNMP_TIMEOUT_S = 5
 
 _UNIFI_MODEL_PREFIXES = ("USW-", "US-")
+
+_NRF_DK_COMMS_ADDRESS_LINUX = "SEGGER_J-Link"
+_NRF_DK_EFR32_COMMS_ADDRESS_MAC = "tty.usbmodem"
 
 
 @functools.total_ordering
@@ -84,6 +96,7 @@ class GenericQuery(QueryEnum):
 class PigweedQuery(QueryEnum):
   """Query names for detection for PigweedSerialComms Devices."""
   IS_MATTER = "is_matter"
+  IS_NRF_OPENTHREAD = "is_nrf_openthread"
   PRODUCT_NAME = "usb info product_name"
   MANUFACTURER_NAME = "usb info manufacturer_name"
 
@@ -94,6 +107,7 @@ class PtyProcessQuery(QueryEnum):
 
 class SerialQuery(QueryEnum):
   ADDRESS = "address"
+  IS_NRF_OPENTHREAD = "is_nrf_openthread"
   PRODUCT_NAME = "usb info product_name"
   SERIAL_NUMBER = "usb serial_numer"
   VENDOR_PRODUCT_ID = "VENDOR_ID:PRODUCT_ID"
@@ -165,7 +179,7 @@ def _is_dli_query(
   del create_switchboard_func  # Unused by _is_dli_query
   try:
     response = http_utils.send_http_get(
-        _SSH_COMMANDS["DLI_PRODUCT_NAME"].format(address=address),
+        _HTTP_ENDPOINTS["DLI_PRODUCT_NAME"].format(address=address),
         auth=requests.auth.HTTPDigestAuth("admin", "1234"),
         headers={"Accept": "application/json"},
         valid_return_codes=[200, 206, 207],
@@ -179,19 +193,46 @@ def _is_dli_query(
 
 
 def get_dlink_model_name(ip_address: str) -> str:
-  """Returns the model name of the Dlink switch at the ip_address."""
-  command = _GET_DLINK_MODEL_SNMP_COMMAND.format(ip_address=ip_address)
-  # Expected response for supported dlink switch model should look like:
-  # "DGS-1100-<total-number-of-ports>" or
-  # "WS6-DGS-1210-<total-number-of-ports>P".
-  response = subprocess.check_output(
-      command.split(), text=True, timeout=_SNMP_TIMEOUT_S)
-  match_model = re.search(_DLINK_MODEL_RESPONSE_REG_EX, response)
+  """Returns the model name of the Dlink switch at the ip_address.
+
+  Expected response for supported dlink switch model should look like:
+
+    "DGS-1100-<total-number-of-ports>" or
+    "WS6-DGS-1210-<total-number-of-ports>"
+
+  Depending on the dlink switch, this model identifier can be held in either
+  the system name or system description OID, so both are checked here.
+
+  Args:
+    ip_address: The IP address to query for dlink model name.
+
+  Raises:
+    errors.DeviceError: When the dlink model is not contained in either the
+    system name or system description OIDs.
+
+  Returns:
+    str: The model of the dlink switch.
+  """
+  system_description_cmd = _GET_SYSTEM_DESCRIPTION_SNMP_COMMAND.format(
+      ip_address=ip_address)
+  system_description_response = subprocess.check_output(
+      system_description_cmd.split(), text=True, timeout=_SNMP_TIMEOUT_S)
+  match_model = re.search(
+      _DLINK_MODEL_RESPONSE_REG_EX, system_description_response)
   if match_model:
     return match_model.group(1)
-  raise errors.DeviceError(f"Failed to retrieve model name from dlink_switch "
-                           f"with command: {command}\n"
-                           f"Unexpected output: {response}")
+
+  system_name_cmd = _GET_SYSTEM_NAME_SNMP_COMMAND.format(ip_address=ip_address)
+  system_name_response = subprocess.check_output(
+      system_name_cmd.split(), text=True, timeout=_SNMP_TIMEOUT_S)
+  match_model = re.search(_DLINK_MODEL_RESPONSE_REG_EX, system_name_response)
+  if match_model:
+    return match_model.group(1)
+
+  raise errors.DeviceError(
+      f"Failed to retrieve model name from dlink_switch {ip_address}.\n"
+      f"Sent commands {[system_description_cmd, system_name_cmd]} and"
+      f"got responses {[system_description_response, system_name_response]}")
 
 
 def _is_dlink_query(
@@ -202,11 +243,10 @@ def _is_dlink_query(
   del create_switchboard_func  # Unused by _is_dlink_query
   try:
     model = get_dlink_model_name(ip_address=address)
-    detect_logger.info(f"Got response to sysDescr SNMP query: {model}\n"
-                       f"_is_dlink_query response: True")
+    detect_logger.info("Got response to sysDescr SNMP query: %s\n"
+                       "_is_dlink_query response: True", model)
   except (subprocess.CalledProcessError, errors.DeviceError) as err:
-    detect_logger.info("_is_dlink_query failure: " + repr(err),
-                       exc_info=True)
+    detect_logger.info("_is_dlink_query failure: %r", err, exc_info=True)
     return False
   return True
 
@@ -462,6 +502,30 @@ def _is_matter_device_query(
       address, log_path, create_switchboard_func, detect_logger)
 
 
+def _is_nrf_board(address: str) -> bool:
+  """Returns if the address belongs to a NRF board."""
+  return (_NRF_DK_COMMS_ADDRESS_LINUX in address or
+          _NRF_DK_EFR32_COMMS_ADDRESS_MAC in address)
+
+
+def _is_nrf_openthread(
+    address: str, detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> bool:
+  """Returns True if the device is an NRF board with OpenThread CLI binary."""
+  if not _is_nrf_board(address):
+    return False
+  file_handler = typing.cast(logging.FileHandler, detect_logger.handlers[0])
+  log_path = file_handler.baseFilename
+  switchboard = create_switchboard_func(communication_address=address,
+                                        communication_type="SerialComms",
+                                        device_name=os.path.basename(log_path),
+                                        log_path=log_path)
+  resp = switchboard.send_and_expect(
+      command="invalid", pattern_list=[r".*InvalidCommand\n"], timeout=3)
+  return resp.match is not None and not resp.timedout
+
+
 GENERIC_QUERY_DICT = immutabledict.immutabledict({
     GenericQuery.ALWAYS_TRUE: _always_true_query,
 })
@@ -476,6 +540,7 @@ DOCKER_QUERY_DICT = immutabledict.immutabledict({
 
 PIGWEED_QUERY_DICT = immutabledict.immutabledict({
     PigweedQuery.IS_MATTER: _is_matter_device_query,
+    PigweedQuery.IS_NRF_OPENTHREAD: _is_nrf_openthread,
     PigweedQuery.PRODUCT_NAME: usb_product_name_query,
     PigweedQuery.MANUFACTURER_NAME: _manufacturer_name_query,
 })
@@ -486,6 +551,7 @@ PTY_PROCESS_QUERY_DICT = immutabledict.immutabledict({
 
 SERIAL_QUERY_DICT = immutabledict.immutabledict({
     SerialQuery.ADDRESS: _get_communication_address,
+    SerialQuery.IS_NRF_OPENTHREAD: _is_nrf_openthread,
     SerialQuery.PRODUCT_NAME: usb_product_name_query,
     SerialQuery.SERIAL_NUMBER: _usb_serial_number_from_serial_port_path,
     SerialQuery.VENDOR_PRODUCT_ID: _usb_vendor_product_id_from_serial_port_path,

@@ -146,7 +146,7 @@ class AuxiliaryDeviceBase(abc.ABC):
 
   @abc.abstractmethod
   def make_device_ready(
-      self, setting: data_types.MAKE_DEVICE_READY_SETTING = "on") -> None:
+      self, setting: data_types.MakeDeviceReadySettingStr = "on") -> None:
     """Checks device readiness and attempts recovery if allowed.
 
     If setting is 'off': does nothing.
@@ -184,4 +184,16 @@ class AuxiliaryDeviceBase(abc.ABC):
         recovery steps.
         CheckDeviceReadyError: If there are no recovery steps available for
         the error argument, it will be re-raised directly.
+    """
+
+  @abc.abstractmethod
+  def wait_until_connected(self, timeout: Optional[int] = None) -> None:
+    """Wait until the device is connected to the host.
+
+    Args:
+        timeout: Max time to wait for the device to be reachable from the host.
+
+    Raises:
+        DeviceNotConnectedError: device did not become reachable from the host
+            before the timeout was exceeded.
     """

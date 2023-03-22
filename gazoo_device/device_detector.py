@@ -23,6 +23,7 @@ import weakref
 from gazoo_device import config
 from gazoo_device import custom_types
 from gazoo_device import detect_criteria
+from gazoo_device import errors
 from gazoo_device import extensions
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import auxiliary_device_base
@@ -152,6 +153,10 @@ class DeviceDetector:
         name: name of device
         persistent_props: dict of device's persistent props
         optional_props: dict of device's optional props
+
+    Raises:
+        DetectionOvewriteConfigError: if device name already is
+            in persistent config.
     """
 
     if device_class in self.auxiliary_classes:
@@ -160,11 +165,19 @@ class DeviceDetector:
     else:
       ind = 0
       more_props = {key: None for key in config.DEVICE_OPTION_ATTRIBUTES}
+    devices_config_key = config.DEVICES_KEYS[ind]
 
     # Add generic props to options
     optional_props.update(more_props)
 
-    self.persistent_configs[config.DEVICES_KEYS[ind]][name] = persistent_props
+    if name in self.persistent_configs[devices_config_key]:
+      raise errors.DetectionOvewriteConfigError(
+          name,
+          persistent_props["console_port_name"],
+          self.persistent_configs[devices_config_key][name]["console_port_name"]
+          )
+
+    self.persistent_configs[devices_config_key][name] = persistent_props
     self.options_configs[config.OPTIONS_KEYS[ind]][name] = optional_props
 
   def _create_known_connections(self) -> List[str]:
@@ -214,8 +227,8 @@ class DeviceDetector:
         "options": {},
         "make_device_ready": "on"
     }
-    logger.info("Getting info from communication port {} for {}".format(
-        connection, device_type))
+    logger.info("Getting info from communication port %s for %s",
+                connection, device_type)
 
     if device_class.COMMUNICATION_TYPE == "PtyProcessComms":
       device_config["persistent"]["console_port_name"] = (
@@ -253,14 +266,21 @@ class DeviceDetector:
     """
     new_con_dict = {}
     for key, con_list in con_dict.items():
-      new_con_dict[key] = [
-          con for con in con_list
-          if con.replace(u":5555", u"") not in known_cons
-      ]
+      new_con_dict[key] = []
+      discarded_connections = []
+      for con in con_list:
+        if con.replace(":5555", "") not in known_cons:
+          new_con_dict[key].append(con)
+        else:
+          discarded_connections.append(con)
+      if discarded_connections:
+        logger.info("Discarded %d known %s connections:",
+                    len(discarded_connections), key)
+        logger.info("\t" + "\n\t".join(sorted(discarded_connections)))
       if new_con_dict[key]:
-        logger.info("Found {} new possible {} connections:".format(
-            len(new_con_dict[key]), key))
-        logger.info(u"\t" + u"\n\t".join(new_con_dict[key]))
+        logger.info("Found %d new possible %s connections:",
+                    len(new_con_dict[key]), key)
+        logger.info("\t" + "\n\t".join(sorted(new_con_dict[key])))
     return new_con_dict
 
   def _generate_name(
@@ -330,8 +350,8 @@ class DeviceDetector:
       if not connections_dict[communication_type]:
         # No connections of that type.
         continue
-      logger.info("Identifying {} devices..".format(communication_type))
-      for connection in connections_dict[communication_type]:
+      logger.info("Identifying %s devices..", communication_type)
+      for connection in sorted(connections_dict[communication_type]):
         detect_log = os.path.join(
             self.log_directory,
             self._get_detect_log_file_name(connection, communication_type))
@@ -348,23 +368,22 @@ class DeviceDetector:
               device_class.DEVICE_TYPE for device_class in matching_classes
           ]
           logger.warning(
-              "Warning: Multiple device classes matched connection {}. "
-              "This is a bug in the registered extension packages ({}). "
-              "Returning {}.".format(device_types,
-                                     extensions.get_registered_package_info(),
-                                     device_types[0]))
+              "Warning: Multiple device classes matched connection %s. "
+              "This is a bug in the registered extension packages (%s). "
+              "Returning %s.",
+              device_types,
+              extensions.get_registered_package_info(),
+              device_types[0])
         if matching_classes:
-          logger.info("\t{} is a {}. See {} for details.".format(
-              connection, matching_classes[0].DEVICE_TYPE, detect_log))
+          logger.info("\t%s is a %s. See %s for details.",
+                      connection, matching_classes[0].DEVICE_TYPE, detect_log)
           possible_device_tuples.append((matching_classes[0], connection))
         else:
-          logger.info("\t{} responses did not match a known {} device type. "
-                      "See {} for details.".format(connection,
-                                                   communication_type,
-                                                   detect_log))
+          logger.info("\t%s responses did not match a known %s device type. "
+                      "See %s for details.",
+                      connection, communication_type, detect_log)
           no_id_cons.append(connection)
-      logger.info(
-          "\t{} device_type detection complete.".format(communication_type))
+      logger.info("\t%s device_type detection complete.", communication_type)
     return possible_device_tuples, errs, no_id_cons
 
   def _print_summary(
@@ -378,13 +397,13 @@ class DeviceDetector:
     """
     logger.info("\n##### Detection Summary #####\n")
     logger.info("\t%d new devices detected:%s", len(names),
-                "\n\t\t" + "\n\t\t".join(names))
+                "\n\t\t" + "\n\t\t".join(sorted(names)))
     if errs:
       logger.info("\n\t%d errors/warnings:%s", len(errs),
                   "\n\t\t" + "\n\t\t".join(errs))
     if no_id_cons:
       logger.info("\n\t%d connections found but not detected:%s",
-                  len(no_id_cons), "\n\t\t" + "\n\t\t".join(no_id_cons))
+                  len(no_id_cons), "\n\t\t" + "\n\t\t".join(sorted(no_id_cons)))
     if errs or no_id_cons:
       logger.info("\nIf a connection failed detection, check %s for tips\n",
                   WIKI_URL)

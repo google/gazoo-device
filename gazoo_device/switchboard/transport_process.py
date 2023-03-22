@@ -97,6 +97,7 @@ class TransportProcess(switchboard_process.SwitchboardProcess):
                exception_queue,
                command_queue,
                log_queue,
+               log_path,
                transport,
                call_result_queue,
                raw_data_queue=None,
@@ -114,6 +115,7 @@ class TransportProcess(switchboard_process.SwitchboardProcess):
         message from subprocess
       command_queue (Queue): to receive commands into
       log_queue (Queue): to write each log line with host stamp added
+      log_path (str): path and filename to write log messages to
       transport (Transport): to use to receive and send raw data
       call_result_queue (Queue): to write transport call responses to.
       raw_data_queue (Queue): to put raw (if applicable, detokenized) data
@@ -136,6 +138,7 @@ class TransportProcess(switchboard_process.SwitchboardProcess):
         process_name,
         exception_queue,
         command_queue,
+        log_path,
         valid_commands=_ALL_VALID_COMMANDS)
     self._buffered_unicode = u""
     self._framer = framer or data_framer.NewlineFramer()

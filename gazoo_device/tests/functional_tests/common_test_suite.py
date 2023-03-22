@@ -28,7 +28,7 @@ from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
 
 # Allows the log process to catch up after device creation using time.sleep().
-_LOG_CATCH_UP_DELAY = 3
+_LOG_CATCH_UP_DELAY_S = 3
 
 
 class CommonTestSuite(gdm_test_base.GDMTestBase):
@@ -105,7 +105,7 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
     retrieve the firmware version, passes health checks, and that the device
     actually rebooted. Also waits for the known log line after rebooting.
     """
-    time.sleep(_LOG_CATCH_UP_DELAY)
+    time.sleep(_LOG_CATCH_UP_DELAY_S)
     start_time = datetime.datetime.now()
 
     self.device.reboot()
@@ -119,7 +119,7 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
     self._verify_expect_log()
 
     # Wait to ensure last bootup event has been logged by the logger process.
-    time.sleep(_LOG_CATCH_UP_DELAY)
+    time.sleep(_LOG_CATCH_UP_DELAY_S)
     self._verify_boot_up_log(start_time)
 
     try:

@@ -28,19 +28,20 @@ class ColorControlClusterTestSuite:
 
   def test_move_to_hue_command_and_current_hue_attribute(self):
     """Tests the MoveToHue command and CurrentHue attribute."""
-    self.endpoint.color.move_to_hue(hue=_TARGET_HUE)
-    asserts.assert_equal(_TARGET_HUE, self.endpoint.color.current_hue)
+    self.endpoint.color_control.move_to_hue(hue=_TARGET_HUE)
+    asserts.assert_equal(_TARGET_HUE, self.endpoint.color_control.current_hue)
 
   def test_move_to_saturation_command_and_current_saturation_attribute(self):
     """Tests the MoveToSaturation command and CurrentSaturation attribute."""
-    self.endpoint.color.move_to_saturation(saturation=_TARGET_SATURATION)
+    self.endpoint.color_control.move_to_saturation(
+        saturation=_TARGET_SATURATION)
     asserts.assert_equal(_TARGET_SATURATION,
-                         self.endpoint.color.current_saturation)
+                         self.endpoint.color_control.current_saturation)
 
   def test_move_to_color_temperature_and_color_temperature_mireds_attribute(
       self):
     """Tests the MoveToColorTemperature and the ColorTemperatureMireds."""
-    self.endpoint.color.move_to_color_temperature(
+    self.endpoint.color_control.move_to_color_temperature(
         color_temperature_mireds=_TARGET_COLOR_TEMPERATURE)
     asserts.assert_equal(_TARGET_COLOR_TEMPERATURE,
-                         self.endpoint.color.color_temperature_mireds)
+                         self.endpoint.color_control.color_temperature_mireds)

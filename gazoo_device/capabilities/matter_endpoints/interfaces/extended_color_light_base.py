@@ -33,12 +33,12 @@ class ExtendedColorLightBase(
 
   @property
   @abc.abstractmethod
-  def level(self) -> level_control_base.LevelControlClusterBase:
+  def level_control(self) -> level_control_base.LevelControlClusterBase:
     """Required cluster: ZCL level cluster."""
 
   @property
   @abc.abstractmethod
-  def color(self) -> color_control_base.ColorControlClusterBase:
+  def color_control(self) -> color_control_base.ColorControlClusterBase:
     """Required cluster: ZCL color control cluster."""
 
   # TODO(b/209362086) Add the below clusters

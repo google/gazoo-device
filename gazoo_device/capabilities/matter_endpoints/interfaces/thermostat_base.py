@@ -14,6 +14,7 @@
 
 """Interface for a Matter Thermostat endpoint."""
 import abc
+from gazoo_device.capabilities.matter_clusters.interfaces import fan_control_base
 from gazoo_device.capabilities.matter_clusters.interfaces import measurement_base
 from gazoo_device.capabilities.matter_clusters.interfaces import occupancy_sensing_base
 from gazoo_device.capabilities.matter_clusters.interfaces import thermostat_base
@@ -47,6 +48,11 @@ class ThermostatBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
       self) -> occupancy_sensing_base.OccupancySensingClusterBase:
     """Optional cluster: ZCL Occupancy Sensing cluster."""
 
+  @property
+  @abc.abstractmethod
+  def fan_control(self) -> fan_control_base.FanControlClusterBase:
+    """Optional cluster: ZCL Fan Control cluster."""
+
   # TODO(b/239741839): add optional clusters below
   # @abc.abstractproperty
   # def scenes(self):
@@ -71,7 +77,3 @@ class ThermostatBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   # @abc.abstractproperty
   # def time_sync(self):
   #   """Optional cluster: ZCL TimeSync cluster."""
-
-  # @abc.abstractproperty
-  # def fan_control(self):
-  #   """Optional cluster: ZCL Fan Control cluster."""

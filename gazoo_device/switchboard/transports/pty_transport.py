@@ -33,12 +33,11 @@ This class will act as an adapter
 import os
 import pty
 import subprocess
-import time
+from typing import Sequence
 
 from gazoo_device import gdm_logger
 from gazoo_device.switchboard import transport_properties
 from gazoo_device.switchboard.transports import process_transport
-import six
 
 logger = gdm_logger.get_logger()
 
@@ -48,15 +47,14 @@ class PtyTransport(process_transport.ProcessTransport):
 
   def __init__(self,
                comms_address,
-               args="",
+               args: Sequence[str] = (),
                auto_reopen=False,
                open_on_start=True):
     """Initialize the pty transport object with the given process properties.
 
     Args:
         comms_address (str): the process command and args to communicate
-        args (str): additional args to pass to the main process to open
-          communication.
+        args: additional args to pass to the main process to open communication.
         auto_reopen (bool): flag indicating transport should be reopened if
           unexpectedly closed.
         open_on_start (bool): flag indicating transport should be open on
@@ -86,11 +84,7 @@ class PtyTransport(process_transport.ProcessTransport):
       os.close(self.secondary)
       self.secondary = None
     if hasattr(self, "_process") and self._process:
-      if self._process.poll() is None:
-        self._process.terminate()
-        while self._process.poll() is None:
-          time.sleep(0.001)
-      self._process = None
+      super()._close_process()
 
   def _open(self):
     """Opens or reopens the process using the current property values.
@@ -129,7 +123,7 @@ class PtyTransport(process_transport.ProcessTransport):
       return b""
 
   def _write_data(self, data):
-    if isinstance(data, six.integer_types):
-      data = six.int2byte(data)
+    if isinstance(data, int):
+      data = bytes((data,))
     os.write(self._process.stdin, data)
     return len(data)

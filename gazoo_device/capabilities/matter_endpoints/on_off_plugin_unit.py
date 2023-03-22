@@ -50,7 +50,7 @@ class OnOffPluginUnitEndpoint(on_off_plugin_unit_base.OnOffPluginUnitBase):
       level_control_chip_tool.LevelControlClusterChipTool,
       level_control_pw_rpc.LevelControlClusterPwRpc,
   ])
-  def level(
+  def level_control(
       self
   ) -> Union[level_control_chip_tool.LevelControlClusterChipTool,
              level_control_pw_rpc.LevelControlClusterPwRpc]:

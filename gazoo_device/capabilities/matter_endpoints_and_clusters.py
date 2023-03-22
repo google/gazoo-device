@@ -19,6 +19,7 @@ from gazoo_device.capabilities.matter_clusters import boolean_state_pw_rpc
 from gazoo_device.capabilities.matter_clusters import color_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import door_lock_chip_tool
 from gazoo_device.capabilities.matter_clusters import door_lock_pw_rpc
+from gazoo_device.capabilities.matter_clusters import fan_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import flow_measurement_chip_tool
 from gazoo_device.capabilities.matter_clusters import flow_measurement_pw_rpc
 from gazoo_device.capabilities.matter_clusters import illuminance_measurement_chip_tool
@@ -43,7 +44,9 @@ from gazoo_device.capabilities.matter_endpoints import contact_sensor
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
 from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.capabilities.matter_endpoints import extended_color_light
+from gazoo_device.capabilities.matter_endpoints import fan
 from gazoo_device.capabilities.matter_endpoints import flow_sensor
+from gazoo_device.capabilities.matter_endpoints import heating_cooling_unit
 from gazoo_device.capabilities.matter_endpoints import humidity_sensor
 from gazoo_device.capabilities.matter_endpoints import light_sensor
 from gazoo_device.capabilities.matter_endpoints import occupancy_sensor
@@ -66,7 +69,9 @@ SUPPORTED_ENDPOINTS = (
     dimmable_light.DimmableLightEndpoint,
     door_lock.DoorLockEndpoint,
     extended_color_light.ExtendedColorLightEndpoint,
+    fan.FanEndpoint,
     flow_sensor.FlowSensorEndpoint,
+    heating_cooling_unit.HeatingCoolingUnitEndpoint,
     humidity_sensor.HumiditySensorEndpoint,
     light_sensor.LightSensorEndpoint,
     occupancy_sensor.OccupancySensorEndpoint,
@@ -84,6 +89,7 @@ SUPPORTED_CLUSTERS_PW_RPC = (
     color_control_pw_rpc.ColorControlClusterPwRpc,
     boolean_state_pw_rpc.BooleanStateClusterPwRpc,
     door_lock_pw_rpc.DoorLockClusterPwRpc,
+    fan_control_pw_rpc.FanControlClusterPwRpc,
     flow_measurement_pw_rpc.FlowMeasurementClusterPwRpc,
     illuminance_measurement_pw_rpc.IlluminanceMeasurementClusterPwRpc,
     level_control_pw_rpc.LevelControlClusterPwRpc,
