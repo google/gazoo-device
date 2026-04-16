@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Unit tests for m5stick module."""
-
+from gazoo_device import package_registrar
 from gazoo_device.auxiliary_devices import m5stick
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.tests.unit_tests.utils import fake_responder
@@ -32,6 +32,11 @@ _M5STICK_PERSISTENT_PROPERTIES = immutabledict.immutabledict({
 
 class M5StickDeviceTests(fake_device_test_case.FakeDeviceTestCase):
   """Unit tests for M5stick dev board."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(m5stick)
 
   def setUp(self):
     super().setUp()

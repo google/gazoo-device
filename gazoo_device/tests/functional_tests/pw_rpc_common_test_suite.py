@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 
 """Test suite for devices using the pw_rpc_common capability."""
 import logging
-from typing import Type
 from gazoo_device import errors
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
@@ -34,7 +33,7 @@ class PwRPCCommonTestSuite(gdm_test_base.GDMTestBase):
 
   @classmethod
   def is_applicable_to(cls, device_type: str,
-                       device_class: Type[gdm_test_base.DeviceType],
+                       device_class: type[gdm_test_base.DeviceType],
                        device_name: str) -> bool:
     """Determines if this test suite can run on the given device."""
     return device_class.has_capabilities(["pw_rpc_common"])
@@ -55,6 +54,11 @@ class PwRPCCommonTestSuite(gdm_test_base.GDMTestBase):
   def test_qr_code_url(self):
     """Tests qr_code_url property."""
     asserts.assert_is_instance(self.device.qr_code_url, str)
+
+  def test_time_since_boot_millis(self):
+    """Tests time_since_boot_millis property."""
+    asserts.assert_is_instance(
+        self.device.pw_rpc_common.time_since_boot_millis, int)
 
   def test_set_pairing_code(self):
     """Tests set_pairing_info method for setting pairing code."""

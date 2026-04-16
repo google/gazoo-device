@@ -26,16 +26,39 @@ _MATTER_NODE_ID = 1234
 _ENDPOINT_ID = 1
 
 _WRITE_ATTRIBUTE_TESTS = (
-    ("occupied_heating_setpoint", "occupied-heating-setpoint", 2700, 2700),
-    ("occupied_cooling_setpoint", "occupied-cooling-setpoint", 2500, 2500),
-    ("control_sequence_of_operation", "control-sequence-of-operation",
+    ("occupied_heating_setpoint",
+     "occupied_heating_setpoint",
+     "occupied-heating-setpoint", 2700, 2700),
+    ("occupied_cooling_setpoint",
+     "occupied_cooling_setpoint",
+     "occupied-cooling-setpoint", 2500, 2500),
+    ("control_sequence_of_operation",
+     "control_sequence_of_operation",
+     "control-sequence-of-operation",
      matter_enums.ThermostatControlSequence.COOLING_ONLY.value,
      matter_enums.ThermostatControlSequence.COOLING_ONLY),
-    ("system_mode", "system-mode", matter_enums.ThermostatSystemMode.HEAT.value,
+    ("system_mode",
+     "system_mode",
+     "system-mode", matter_enums.ThermostatSystemMode.HEAT.value,
      matter_enums.ThermostatSystemMode.HEAT),
 )
 _READ_ATTRIBUTE_TESTS = _WRITE_ATTRIBUTE_TESTS + (
-    ("local_temperature", "local-temperature", 2300, 2300),)
+    ("local_temperature",
+     "local_temperature",
+     "local-temperature", 2300, 2300),
+    ("absolute_minimum_heat_setpoint_limit",
+     "absolute_minimum_heat_setpoint_limit",
+     "abs-min-heat-setpoint-limit", 900, 900),
+    ("absolute_maximum_heat_setpoint_limit",
+     "absolute_maximum_heat_setpoint_limit",
+     "abs-max-heat-setpoint-limit", 3200, 3200),
+    ("absolute_minimum_cool_setpoint_limit",
+     "absolute_minimum_cool_setpoint_limit",
+     "abs-min-cool-setpoint-limit", 900, 900),
+    ("absolute_maximum_cool_setpoint_limit",
+     "absolute_maximum_cool_setpoint_limit",
+     "abs-max-cool-setpoint-limit", 3200, 3200),
+)
 
 
 class ThermostatClusterChipToolTest(fake_device_test_case.FakeDeviceTestCase):
@@ -66,15 +89,15 @@ class ThermostatClusterChipToolTest(fake_device_test_case.FakeDeviceTestCase):
         send=self.fake_send)
 
   @parameterized.named_parameters(*_READ_ATTRIBUTE_TESTS)
-  def test_read_attribute(self, attribute_name, raw_value, value):
+  def test_read_attribute(self, method_name, attribute_name, raw_value, value):
     self.fake_read.return_value = raw_value
-    self.assertEqual(getattr(self.uut, attribute_name.replace("-", "_")), value)
+    self.assertEqual(getattr(self.uut, method_name), value)
     self.fake_read.assert_called_once_with(self._endpoint_id, "thermostat",
                                            attribute_name)
 
   @parameterized.named_parameters(*_WRITE_ATTRIBUTE_TESTS)
-  def test_write_attribute(self, attribute_name, raw_value, value):
-    setattr(self.uut, attribute_name.replace("-", "_"), value)
+  def test_write_attribute(self, method_name, attribute_name, raw_value, value):
+    setattr(self.uut, method_name, value)
     self.fake_write.assert_called_once_with(self._endpoint_id, "thermostat",
                                             attribute_name, raw_value)
 

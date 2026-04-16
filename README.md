@@ -349,8 +349,6 @@ $ gdm detect
 ##### Step 1/3: Detecting potential new communication addresses. #####
 
         detecting potential AdbComms communication addresses
-        detecting potential DockerComms communication addresses
-'docker' is not installed. Cannot get Docker devices.
         detecting potential JlinkSerialComms communication addresses
         detecting potential PtyProcessComms communication addresses
         detecting potential SshComms communication addresses
@@ -513,7 +511,7 @@ Here are a few commonly used CLI commands:
     or
 
     ```
-    gdm detect --static_ips=10.20.30.40,50.60.70.80
+    gdm detect --static_ips=11.22.33.44,50.60.70.80
     ```
 
     Note: detection does not remove devices which are already known to GDM.

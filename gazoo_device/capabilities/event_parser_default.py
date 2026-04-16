@@ -70,7 +70,7 @@ needed (e.g. exception handling).
 For each regular expression that matches the raw log line provided to the
 process_line method the shared dynamic event dictionary is updated. When all
 regular expressions have been processed an event JSON object containing the
-results of all matches by "event_lable" is written (and flushed) to the event
+results of all matches by "event_label" is written (and flushed) to the event
 file. The event JSON object format is shown as follows:
 
 JSON event file format (version 1.0):
@@ -99,13 +99,15 @@ history is obtained by using the "tac" and "grep" unix tools to filter matching
 events in the event file and from Python extract and decode each event JSON
 object as described above.
 """
+from collections.abc import Collection
+from collections.abc import MutableSet
 import datetime
 import json
 import os
 import re
 import subprocess
 import time
-from typing import Collection
+from typing import Any
 
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -259,6 +261,7 @@ def _get_last_event(device_event_file_path, event_label, timeout=1.0):
     tac_proc = subprocess.Popen(tac_cmd, stdout=subprocess.PIPE)
     grep_proc = subprocess.Popen(
         grep_cmd, stdin=tac_proc.stdout, stdout=subprocess.PIPE)
+    assert tac_proc.stdout is not None
     tac_proc.stdout.close()
     out, _ = grep_proc.communicate()
     if grep_proc.returncode == 124:
@@ -274,13 +277,18 @@ def _get_last_event(device_event_file_path, event_label, timeout=1.0):
   return result, timedout
 
 
-def _get_events_from_json_output(json_events, event_labels=None):
+def _get_events_from_json_output(
+    json_events: list[str | bytes],
+    event_labels: list[str] | None = None,
+    start_time: datetime.datetime | None = None,
+):
   """Returns list of event data history matching event_labels provided.
 
   Args:
       json_events (list): of JSON object strings to return history for.
       event_labels (list): list of event labels to lookup (e.g. ['x.state',
         'x.restored'])
+      start_time (datetime): start time to filter events from.
 
   Raises:
       ValueError: when parsing JSON objects from json_events fails
@@ -300,6 +308,8 @@ def _get_events_from_json_output(json_events, event_labels=None):
   """
   result = []
   for json_object in json_events:
+    if isinstance(json_object, bytes):
+      json_object = json_object.decode("utf-8", "replace")
     if json_object:
       try:
         event_dict = json.loads(json_object)
@@ -307,23 +317,31 @@ def _get_events_from_json_output(json_events, event_labels=None):
         logger.info(
             "Failed to parse event log line; skipping. Err: {!r}".format(err))
         continue
-      if event_labels is not None:
-        filtered_dict = {
-            "system_timestamp": _get_datetime(event_dict["system_timestamp"]),
-            "raw_log_line": event_dict["raw_log_line"]
-        }
-        for event_label in event_labels:
-          if event_label in event_dict:
-            filtered_dict[event_label] = event_dict[event_label]
-        result.append(filtered_dict)
-      else:
-        event_dict["system_timestamp"] = _get_datetime(
-            event_dict["system_timestamp"])
-        result.append(event_dict)
+      event_timestamp = _get_datetime(event_dict["system_timestamp"])
+      # If start_time is None, all events are returned.
+      # If start_time is not None, only events after start_time are returned.
+      if start_time is None or event_timestamp >= start_time:
+        if event_labels is not None:
+          filtered_dict = {
+              "system_timestamp": event_timestamp,
+              "raw_log_line": event_dict["raw_log_line"]
+          }
+          for event_label in event_labels:
+            if event_label in event_dict:
+              filtered_dict[event_label] = event_dict[event_label]
+          result.append(filtered_dict)
+        else:
+          event_dict["system_timestamp"] = event_timestamp
+          result.append(event_dict)
   return result
 
 
-def _get_all_event_history(device_event_file_path, event_labels, timeout=10.0):
+def _get_all_event_history(
+    device_event_file_path: str,
+    event_labels: list[str] | None,
+    start_time: datetime.datetime | None = None,
+    timeout: float = 10.0,
+):
   """Returns list of event history matching event labels specified.
 
   Args:
@@ -331,6 +349,7 @@ def _get_all_event_history(device_event_file_path, event_labels, timeout=10.0):
         information
       event_labels (list): list of event labels to lookup (e.g. ['x.state',
         'x.restored']). If None, return all events.
+      start_time (datetime): start time to filter events from.
       timeout (float): Timeout value in seconds. Example: 10.0.
 
   Raises:
@@ -379,7 +398,10 @@ def _get_all_event_history(device_event_file_path, event_labels, timeout=10.0):
     json_events = out.splitlines()
     json_events.reverse()
 
-  return _get_events_from_json_output(json_events, event_labels), timedout
+  return (
+      _get_events_from_json_output(json_events, event_labels, start_time),
+      timedout,
+  )
 
 
 def _get_event_history_count(device_event_file_path, event_label, timeout=10.0):
@@ -470,6 +492,7 @@ def _get_limited_event_history(device_event_file_path,
     tac_proc = subprocess.Popen(tac_cmd, stdout=subprocess.PIPE)
     head_proc = subprocess.Popen(
         head_cmd, stdin=tac_proc.stdout, stdout=subprocess.PIPE)
+    assert tac_proc.stdout is not None
     tac_proc.stdout.close()
     out, _ = head_proc.communicate()
     if head_proc.returncode == 124:
@@ -486,6 +509,7 @@ def _get_limited_event_history(device_event_file_path,
     tac_proc = subprocess.Popen(tac_cmd, stdout=subprocess.PIPE)
     grep_proc = subprocess.Popen(
         grep_cmd, stdin=tac_proc.stdout, stdout=subprocess.PIPE)
+    assert tac_proc.stdout is not None
     tac_proc.stdout.close()
     out, _ = grep_proc.communicate()
     if grep_proc.returncode == 124:
@@ -525,7 +549,7 @@ def _wait_for_event_file(event_file_path, timeout):
       time.sleep(0.1)
 
 
-class _EventMatch(object):
+class _EventMatch:
   """Encapsulates matching events with event time delta."""
 
   def __init__(self, event_delta, event_list):
@@ -574,7 +598,9 @@ class EventParserDefault(event_parser_base.EventParserBase):
     self.event_file_path = event_file_path
     self.load_filters(filters)
 
-  def get_event_history(self, event_labels=None, count=None, timeout=10.0):
+  def get_event_history(
+      self, event_labels=None, count=None, start_time=None, timeout=10.0
+  ):
     r"""Returns up to count elements of event data matching given list of event labels.
 
     Args:
@@ -583,6 +609,8 @@ class EventParserDefault(event_parser_base.EventParserBase):
           events.
         count (int): of event data elements to return (Default: None for all
           events).
+        start_time (datetime): The start time of the event history. If None,
+          the event history will start from the beginning of the log.
         timeout (float): Timeout value in seconds. Example: 10.0.
 
     Raises:
@@ -713,15 +741,38 @@ class EventParserDefault(event_parser_base.EventParserBase):
                   on',
                   'power.restored': []}]
             result.count = 4
+
+        Example output with event_labels ["power.lost", "power.restored"] and
+        start_time=datetime.datetime(2018, 2, 2, 12, 0, 57, 154328):
+
+        .. code-block:: none
+            result.timedout = False
+            result.results_list =
+                [{'system_timestamp': datetime.datetime(2018, 2, 2, 12, 0,
+                 57, 154328),
+                  'raw_log_line': '[APPL] Spoke: power lost, powering down',
+                  'power.lost': []}
+                 {'system_timestamp': datetime.datetime(2018, 2, 2, 10, 32,
+                 7, 167234),
+                  'raw_log_line': '[APPL] Spoke: power restored, powering
+                  on',
+                  'power.restored': []}]
+            result.count = 2
     """
     if event_labels:
       self.verify_event_labels(
           event_labels,
           error_message="{} get_event_history failed.".format(
               self._device_name))
-    timedout = False
     try:
-      if count:
+      if start_time is not None:
+        history_results, timedout = _get_all_event_history(
+            self.event_file_path,
+            event_labels,
+            start_time=start_time,
+            timeout=timeout,
+        )
+      elif count is not None:
         history_results, timedout = _get_limited_event_history(
             self.event_file_path, event_labels, count, timeout=timeout)
       else:
@@ -1245,8 +1296,8 @@ class EventParserDefault(event_parser_base.EventParserBase):
       raise errors.ParserError(
           "Loading filter-file {} failed. "
           "Expecting value of 'version' entry to be a dictionary "
-          "but instead its a {}.".format(filter_path,
-                                         type(json_filter_data["version"])))
+          "but instead it's a {}.".format(filter_path,
+                                          type(json_filter_data["version"])))
 
     version_info = json_filter_data["version"]
 
@@ -1280,12 +1331,51 @@ class EventParserDefault(event_parser_base.EventParserBase):
 
     self._add_filters(json_filter_data["filters"], filter_path)
 
+  def _generate_event_data_from_raw_log_line(
+      self,
+      raw_log_line,
+      header_length,
+      log_filename="",
+      system_timestamp_start_index=1,
+      system_timestamp_end_index=27,
+  ) -> dict[Any, Any]:
+    """Helper function for generating event data from raw log line.
+
+    Args:
+        raw_log_line: The raw log line to parse.
+        header_length: The length of the header in the raw log line.
+        log_filename: The name of the log file.
+        system_timestamp_start_index: The start index of the system timestamp in
+          the raw log line.
+        system_timestamp_end_index: The end index of the system timestamp in the
+          raw log line.
+
+    Returns:
+        A dictionary of event data.
+    """
+    event_data = {}
+    for filter_name, regex in self._filters_dict.items():
+      match = regex.search(raw_log_line)
+      if match:
+        match_data = match.groups()
+        event_data[filter_name] = match_data
+
+    if event_data:
+      if log_filename:
+        event_data["log_filename"] = log_filename
+      event_data["raw_log_line"] = raw_log_line.rstrip()[header_length:]
+      event_data["system_timestamp"] = raw_log_line[
+          system_timestamp_start_index:system_timestamp_end_index
+      ]
+      event_data["matched_timestamp"] = datetime.datetime.now().strftime(
+          TIMESTAMP_FORMAT
+      )
+    return event_data
+
   @decorators.CapabilityLogDecorator(logger, level=None)
-  def process_line(self,
-                   event_file,
-                   raw_log_line,
-                   header_length=29,
-                   log_filename=""):
+  def process_line(
+      self, event_file, raw_log_line, header_length=29, log_filename=""
+  ):
     """Parser line against filters and write JSON result to event_file provided.
 
     Args:
@@ -1313,21 +1403,12 @@ class EventParserDefault(event_parser_base.EventParserBase):
               to allow for easier access to the data for the last matching
               <event_label> in the main process
     """
-
-    event_data = {}
-    for filter_name, regex in self._filters_dict.items():
-      match = regex.search(raw_log_line)
-      if match:
-        match_data = match.groups()
-        event_data[filter_name] = match_data
-
+    # LINT.IfChange
+    event_data = self._generate_event_data_from_raw_log_line(
+        raw_log_line, header_length, log_filename
+    )
+    
     if event_data:
-      if log_filename:
-        event_data["log_filename"] = log_filename
-      event_data["raw_log_line"] = raw_log_line.rstrip()[header_length:]
-      event_data["system_timestamp"] = raw_log_line[1:27]
-      event_data["matched_timestamp"] = (
-          datetime.datetime.now().strftime(TIMESTAMP_FORMAT))
       event_file.write(json.dumps(event_data) + "\n")
       event_file.flush()
 
@@ -1362,7 +1443,8 @@ class EventParserDefault(event_parser_base.EventParserBase):
                             event_labels,
                             raise_error=False,
                             timeout=20.0,
-                            start_datetime=None):
+                            start_datetime=None,
+                            in_order=False):
     """Waits up to timeout seconds for event labels to appear in device logs.
 
     Args:
@@ -1372,6 +1454,8 @@ class EventParserDefault(event_parser_base.EventParserBase):
           time.
         timeout (float): seconds to wait for labels to appear in logs.
         start_datetime (datetime): events before this time will be ignored.
+        in_order (bool): if True, the event labels will be waited for in the
+          order they are provided.
 
     Raises:
         ParserError: if input format is bad
@@ -1384,16 +1468,122 @@ class EventParserDefault(event_parser_base.EventParserBase):
         event_labels,
         error_message="{} wait_for_event_labels failed.".format(
             self._device_name))
-    logger.info("{} waiting up to {}s for the following labels: {}.".format(
-        self._device_name, timeout, event_labels))
+    logger.info(
+        "{} waiting up to {}s for the following labels{}: {}.".format(
+            self._device_name,
+            timeout,
+            " in order" if in_order else "",
+            event_labels,
+        )
+    )
 
     if start_datetime is None:
       start_datetime = datetime.datetime.now()
+
+    if in_order:
+      results = self._find_event_labels_in_order(
+          event_labels=event_labels,
+          start_datetime=start_datetime,
+          timeout=timeout,
+      )
+    else:
+      results = self._find_all_event_labels(
+          event_labels=event_labels,
+          start_datetime=start_datetime,
+          timeout=timeout,
+      )
+
+    all_found, found_labels, missed_labels, max_found_time = results
+    if not all_found:
+      msg = (
+          "{}: not all events corresponding to labels were found in {}s. "
+          "Looked for labels: {}. Found labels: {}. Missed labels: {}.".format(
+              self._device_name,
+              timeout,
+              event_labels,
+              list(found_labels),
+              list(missed_labels),
+          )
+      )
+      if raise_error:
+        raise errors.ParserError(msg)
+      logger.warning(msg)
+    else:
+      found_within = (max_found_time - start_datetime).total_seconds()
+      logger.info(
+          "%s found all labels within %r seconds from '%s': %r",
+          self._device_name,
+          found_within,
+          start_datetime,
+          list(found_labels),
+      )
+
+    return all_found
+
+  def _find_event_labels_in_order(
+      self, event_labels, start_datetime=None, timeout=None
+  ) -> tuple[bool, MutableSet[str], MutableSet[str], datetime.datetime]:
+    """Finds event labels in the device logs in the order they are provided.
+
+    Args:
+      event_labels: Labels to wait for. Will wait for all of them.
+      start_datetime: Events before this time will be ignored.
+      timeout: Seconds to wait for labels to appear in logs.
+
+    Returns:
+      A tuple containing:
+        - Whether all event labels were found.
+        - A list of found event labels.
+        - A list of missed event labels.
+        - The latest datetime at which all events were found.
+    """
+    last_label_found_time = start_datetime or datetime.datetime.now()
+    start_time = time.time()
+    found_labels = set()
+
+    for index, event_label in enumerate(event_labels):
+      event_found, _, _, found_time = self._find_all_event_labels(
+          event_labels=[event_label],
+          start_datetime=last_label_found_time,
+          timeout=timeout - (time.time() - start_time),
+      )
+      if event_found:
+        found_labels.add(event_label)
+        last_label_found_time = found_time
+      else:
+        return (
+            False,
+            found_labels,
+            set(event_labels[index:]),
+            last_label_found_time,
+        )
+
+    return True, found_labels, set(), last_label_found_time
+
+  def _find_all_event_labels(
+      self, event_labels, start_datetime=None, timeout=None
+  ) -> tuple[bool, MutableSet[str], MutableSet[str], datetime.datetime]:
+    """Finds all event labels in the device logs.
+
+    Args:
+        event_labels (list): labels(strings) to wait for. Will wait for at
+          least one of each.
+        start_datetime (datetime): events before this time will be ignored.
+        timeout (float): seconds to wait for labels to appear in logs.
+
+    Returns:
+        A tuple containing:
+          - Whether all event labels were found.
+          - A list of found event labels.
+          - A list of missed event labels.
+          - The latest datetime at which all events were found.
+    """
+    max_found_time = start_datetime or datetime.datetime.now()
     start_time = time.time()
     end_time = start_time + timeout
-
     all_found = False
-    max_found_time = start_datetime
+    found_labels = set()
+    missed_labels = set()
 
     while not all_found and time.time() < end_time:
       remaining_time = timeout - (time.time() - start_time)
@@ -1401,8 +1591,8 @@ class EventParserDefault(event_parser_base.EventParserBase):
       time_per_label = remaining_time / max(len(event_labels), 1)
 
       any_timed_out = False
-      found_labels = []
-      missed_labels = []
+      found_labels = set()
+      missed_labels = set()
 
       for event_label in event_labels:
         result = self.get_last_event([event_label], timeout=time_per_label)
@@ -1411,27 +1601,13 @@ class EventParserDefault(event_parser_base.EventParserBase):
             result.results_list[0]["system_timestamp"] >= start_datetime):
           max_found_time = max(max_found_time,
                                result.results_list[0]["system_timestamp"])
-          found_labels.append(event_label)
+          found_labels.add(event_label)
         else:
-          missed_labels.append(event_label)
+          missed_labels.add(event_label)
 
       all_found = not any_timed_out and len(found_labels) == len(event_labels)
 
-    if not all_found:
-      msg = (
-          "{}: not all events corresponding to labels were found in {}s. "
-          "Looked for labels: {}. Found labels: {}. Missed labels: {}.".format(
-              self._device_name, timeout, event_labels, found_labels,
-              missed_labels))
-      if raise_error:
-        raise errors.ParserError(msg)
-      logger.warning(msg)
-    else:
-      found_within = (max_found_time - start_datetime).total_seconds()
-      logger.info("%s found all labels within %r seconds from '%s': %r",
-                  self._device_name, found_within, start_datetime, found_labels)
-
-    return all_found
+    return all_found, found_labels, missed_labels, max_found_time
 
   def _add_filter(self, filter_list, filter_path):
     """Adds filter dictionary expression from filter_path specified.
@@ -1489,7 +1665,7 @@ class EventParserDefault(event_parser_base.EventParserBase):
       raise errors.ParserError(
           "Loading filter-file {} failed. "
           "Expecting value of 'filter_list' entry to be a list "
-          "but instead its a {}.".format(filter_path, type(filter_list)))
+          "but instead it's a {}.".format(filter_path, type(filter_list)))
 
     for cur_filter in filter_list:
       self._add_filter(cur_filter, filter_path)

@@ -24,6 +24,7 @@ class HeatingCoolingUnitBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Heating Cooling Unit endpoint interface."""
 
   DEVICE_TYPE_ID = 0x0300
+  DEVICE_TYPE_NAME = "HeatingCoolingUnit"
 
   @property
   @abc.abstractmethod
@@ -40,7 +41,7 @@ class HeatingCoolingUnitBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   def fan_control(self) -> fan_control_base.FanControlClusterBase:
     """Optional cluster: fan control cluster instance."""
 
-  # TODO(b/254205233): Add the following clusters
+  # TODO(gdm-authors): Add the following clusters
   # def scenes(self):
   #   """Matter scenes cluster instance."""
 

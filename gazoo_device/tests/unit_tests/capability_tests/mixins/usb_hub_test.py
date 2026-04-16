@@ -15,12 +15,16 @@
 """Mixin for test_usb_hub."""
 from unittest import mock
 
+from absl.testing import parameterized
 from gazoo_device.auxiliary_devices import cambrionix
 from gazoo_device.capabilities import switch_power_usb_with_charge
 from gazoo_device.capabilities import usb_hub_default
+from gazoo_device.tests.unit_tests.utils import unit_test_loader
+
+load_tests = unit_test_loader.load_no_tests
 
 
-class UsbHubTestMixin:
+class UsbHubTestMixin(parameterized.TestCase):
   """Mixin for common device unit tests of usb_hub capability.
 
   Assume self.uut, self.uut.device_usb_hub_name, and self.uut.device_usb_port

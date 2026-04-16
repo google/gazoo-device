@@ -14,7 +14,6 @@
 
 """This test suite verifies the switch_power capability."""
 import logging
-from typing import Type
 
 from gazoo_device.capabilities import switch_power_dli_powerswitch
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
@@ -26,11 +25,10 @@ class SwitchPowerTestSuite(gdm_test_base.GDMTestBase):
 
   @classmethod
   def is_applicable_to(cls, device_type: str,
-                       device_class: Type[gdm_test_base.DeviceType],
+                       device_class: type[gdm_test_base.DeviceType],
                        device_name: str) -> bool:
     """Determine if this test suite can run on the given device."""
-    return (device_class.has_capabilities(["switch_power"])
-            and not device_class.has_capabilities(["switch_power_ethernet"]))
+    return device_class.has_capabilities(["switch_power"])
 
   @classmethod
   def requires_pairing(cls) -> bool:

@@ -16,7 +16,7 @@
 import asyncio
 import collections
 import re
-from typing import Optional, Sequence, Tuple
+from typing import Optional, Sequence
 
 from gazoo_device import console_config
 from gazoo_device import gdm_logger
@@ -66,7 +66,7 @@ Command response and log window keys:
     vi-style key bindings can also be used to move the cursor. For example:
       gg: go to the beginning of text.
       G: go to the end of text.
-    TODO(b/194440944): add an option for Emacs key bindings.
+    TODO(gdm-authors): add an option for Emacs key bindings.
 
   Search controls:
     /: open forward search prompt.
@@ -174,7 +174,7 @@ def _make_button_menu_item(
 def _make_ui_window(
     window: console_config.WindowType,
     switchboard_inst: switchboard_base.SwitchboardBase
-) -> Tuple[widgets.TextArea, widgets.Frame]:
+) -> tuple[widgets.TextArea, widgets.Frame]:
   """Creates a text area and an enclosing frame.
 
   Args:
@@ -394,6 +394,8 @@ class ConsoleApp:
     # overhead?). This implementation has to run quickly so that the GUI event
     # loop is not blocked for long. Note that this input hook is only called
     # from the GUI event loop whenever the event loop is idle.
+    if self._log_file is None:
+      raise ValueError("log_file is not initialized")
     new_logs = self._log_file.readlines()
     self._process_device_logs(new_logs)
 

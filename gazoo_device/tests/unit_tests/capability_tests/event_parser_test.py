@@ -30,8 +30,12 @@ MockOutSubprocess = unit_test_case.MockOutSubprocess
 TIMESTAMP_INFO = "<2018-02-02 12:00:01.123456>"
 _TIMESTAMP_0 = "<2018-02-02 12:00:00.123456>"
 _TIMESTAMP_5 = "<2018-02-02 12:00:05.123456>"
+_TIMESTAMP_10 = "<2018-02-02 12:00:10.123456>"
 _DATETIME_0 = datetime.datetime.strptime(_TIMESTAMP_0, "<%Y-%m-%d %H:%M:%S.%f>")
 _DATETIME_5 = datetime.datetime.strptime(_TIMESTAMP_5, "<%Y-%m-%d %H:%M:%S.%f>")
+_DATETIME_10 = datetime.datetime.strptime(
+    _TIMESTAMP_10, "<%Y-%m-%d %H:%M:%S.%f>"
+)
 _DATETIME_1 = datetime.datetime.strptime(TIMESTAMP_INFO,
                                          "<%Y-%m-%d %H:%M:%S.%f>")
 
@@ -693,6 +697,176 @@ class EventParserTests(unit_test_case.SwitchboardParserTestCase):
       self.assertTrue(result)
       mock_get_last_event.assert_not_called()
 
+  def test_634_wait_for_event_labels_in_order(self):
+    """Verifies wait_for_event_labels waits for events in order."""
+    event_results = [{
+        "system_timestamp": _DATETIME_0,
+        "raw_log_line": "alskdjflakdsflasdkjfalsdkjf",
+        "sample.message": ["a", "b", "c"]
+    }, {
+        "system_timestamp": _DATETIME_5,
+        "raw_log_line": "whoa",
+        "sample.message2": ["q", "r"]
+    }]
+    last_event = [
+        event_parser_default.ParserResult(False, [event], 0)
+        for event in event_results
+    ]
+    with mock.patch.object(self.uut, "get_last_event", side_effect=last_event):
+      self.uut.wait_for_event_labels(
+          ["sample.message", "sample.message2"],
+          raise_error=True,
+          in_order=True,
+          start_datetime=_DATETIME_0,
+          timeout=1.0,
+      )
+      self.uut.get_last_event.assert_has_calls([
+          mock.call(["sample.message"], timeout=mock.ANY),
+          mock.call(["sample.message2"], timeout=mock.ANY),
+      ])
+
+  def test_635_wait_for_event_labels_in_order_not_found(self):
+    """Verifies wait_for_event_labels waits raises an error if events are not found in order."""
+    event_results = {
+        "system_timestamp": _DATETIME_0,
+        "raw_log_line": "whoa",
+        "sample.message": ["q", "r"]
+    }
+    last_event = event_parser_default.ParserResult(False, [event_results], 0)
+    with mock.patch.object(self.uut, "get_last_event", return_value=last_event):
+      with self.assertRaisesRegex(
+          errors.DeviceError,
+          "not all events corresponding to labels were found"):
+        self.uut.wait_for_event_labels(
+            ["sample.message", "sample.message2"],
+            raise_error=True,
+            in_order=True,
+            start_datetime=_DATETIME_5,
+            timeout=1.0,
+        )
+      self.uut.get_last_event.assert_any_call(
+          ["sample.message"], timeout=mock.ANY
+      )
+
+  def test_636_wait_for_event_labels_out_of_order(self):
+    """Verifies wait_for_event_labels raises an error if events are not found in order."""
+    last_event = event_parser_default.ParserResult(True, [], 0)
+    with mock.patch.object(self.uut, "get_last_event", return_value=last_event):
+      with self.assertRaisesRegex(
+          errors.DeviceError,
+          "not all events corresponding to labels were found"):
+        self.uut.wait_for_event_labels(
+            ["sample.message", "sample.message2"],
+            raise_error=True,
+            in_order=True,
+            start_datetime=_DATETIME_5,
+            timeout=1.0,
+        )
+      self.uut.get_last_event.assert_any_call(
+          ["sample.message"], timeout=mock.ANY
+      )
+
+  def test_637_wait_for_event_labels_in_order_complex(self):
+    """Verifies wait_for_event_labels handles complex cases correctly."""
+    event_results = [{
+        "system_timestamp": _DATETIME_5,
+        "raw_log_line": "alskdjflakdsflasdkjfalsdkjf",
+        "sample.message": ["a", "b", "c"]
+    }, {
+        "system_timestamp": _DATETIME_0,
+        "raw_log_line": "whoa",
+        "sample.message2": ["q", "r"]
+    }, {
+        "system_timestamp": _DATETIME_10,
+        "raw_log_line": "whoa",
+        "sample.message2": ["q", "r"]
+    }]
+    last_event = [
+        event_parser_default.ParserResult(False, [event], 0)
+        for event in event_results
+    ]
+    with mock.patch.object(self.uut, "get_last_event", side_effect=last_event):
+      self.uut.wait_for_event_labels(
+          ["sample.message", "sample.message2"],
+          raise_error=False,
+          in_order=True,
+          start_datetime=_DATETIME_0,
+          timeout=1.0,
+      )
+      self.uut.get_last_event.assert_any_call(
+          ["sample.message"], timeout=mock.ANY
+      )
+      self.uut.get_last_event.assert_any_call(
+          ["sample.message2"], timeout=mock.ANY
+      )
+
+  def test_638_wait_for_event_labels_find_all_raise_error(self):
+    """Verifies wait_for_event_labels handles missed labels cases correctly."""
+
+    def event_result_generator(event_labels, *unused_args, **unused_kwargs):
+      if event_labels == ["sample.message"]:
+        return event_parser_default.ParserResult(
+            False,
+            [{
+                "system_timestamp": _DATETIME_5,
+                "raw_log_line": "alskdjflakdsflasdkjfalsdkjf",
+                "sample.message": ["a", "b", "c"],
+            }],
+            1,
+        )
+      return event_parser_default.ParserResult(True, [], 0)
+
+    with mock.patch.object(
+        self.uut, "get_last_event", side_effect=event_result_generator
+    ):
+      with self.assertRaisesRegex(
+          errors.DeviceError,
+          r"not all events corresponding to labels were found in 1\.0s\. Looked"
+          r" for labels: \['sample\.message', 'sample\.message2'\]\."
+          r" Found labels: \['sample\.message'\]\. Missed labels:"
+          r" \['sample\.message2'\]\.",
+      ):
+        self.uut.wait_for_event_labels(
+            ["sample.message", "sample.message2"],
+            raise_error=True,
+            start_datetime=_DATETIME_0,
+            timeout=1.0,
+        )
+
+  def test_639_wait_for_event_labels_in_order_raise_error(self):
+    """Verifies wait_for_event_labels handles missed labels cases correctly."""
+
+    def event_result_generator(event_labels, *unused_args, **unused_kwargs):
+      if event_labels == ["sample.message"]:
+        return event_parser_default.ParserResult(
+            False,
+            [{
+                "system_timestamp": _DATETIME_5,
+                "raw_log_line": "alskdjflakdsflasdkjfalsdkjf",
+                "sample.message": ["a", "b", "c"],
+            }],
+            1,
+        )
+      return event_parser_default.ParserResult(True, [], 0)
+
+    with mock.patch.object(
+        self.uut, "get_last_event", side_effect=event_result_generator
+    ):
+      with self.assertRaisesRegex(
+          errors.DeviceError,
+          r"not all events corresponding to labels were found in 1\.0s\. Looked"
+          r" for labels: \['sample\.message', 'sample\.message2'\]\."
+          r" Found labels: \['sample\.message'\]\. Missed labels:"
+          r" \['sample\.message2'\]\.",
+      ):
+        self.uut.wait_for_event_labels(
+            ["sample.message", "sample.message2"],
+            raise_error=True,
+            in_order=True,
+            start_datetime=_DATETIME_0,
+            timeout=1.0,
+        )
+
   def test_650_get_last_event_state(self):
     """Verifies get_last_event_state() when event was seen."""
     self.uut.event_file_path = os.path.join(self.TEST_EVENTFILES_DIR,
@@ -840,6 +1014,19 @@ class EventParserTests(unit_test_case.SwitchboardParserTestCase):
       unexpected_reboots = self.uut.get_unexpected_reboots()
     self.assertEqual(len(unexpected_reboots), 3)
     subprocess_mocks.mock_popen.assert_called()
+
+  def test_901_parser_get_event_history_with_start_time(self):
+    """Verifies get_event_history returns events after start time."""
+    self.uut.event_file_path = os.path.join(
+        self.TEST_EVENTFILES_DIR,
+        "three-bootups-remaining-events.txt")
+    self.uut.load_filter_file(os.path.join(self.TEST_FILTER_DIR, "basic.json"))
+    filtered_events = self.uut.get_event_history(
+        start_time=event_parser_default._get_datetime(
+            "2018-06-25 14:57:32.685324"
+        )
+    )
+    self.assertLen(filtered_events.results_list, 4)
 
   def _get_event_dictionary(self):
     """Retrieves the event dictionary from the JSON object in the FakeEvent output value."""

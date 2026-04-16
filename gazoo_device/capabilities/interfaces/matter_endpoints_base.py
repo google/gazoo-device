@@ -14,7 +14,7 @@
 
 """Interface for Matter endpoint capability wrapper."""
 import abc
-from typing import Any, Collection, List, Mapping, Optional, Set, Tuple, Type
+from typing import Any, Collection, Mapping, List, Optional
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -58,12 +58,12 @@ class MatterEndpointsBase(capability_base.CapabilityBase):
     self._endpoint_id_to_device_type_id = {}
 
   @abc.abstractmethod
-  def get_supported_endpoint_ids(self) -> List[int]:
+  def get_supported_endpoint_ids(self) -> list[int]:
     """Gets the list of supported endpoint ids on the device."""
 
   @abc.abstractmethod
   def get_endpoint_class_and_device_type_id(
-      self, endpoint_id: int) -> Tuple[Type[endpoint_base.EndpointBase], int]:
+      self, endpoint_id: int) -> tuple[type[endpoint_base.EndpointBase], int]:
     """Gets the endpoint class and device type ID by the given endpoint id.
 
     Args:
@@ -76,7 +76,7 @@ class MatterEndpointsBase(capability_base.CapabilityBase):
 
   @abc.abstractmethod
   def get_supported_clusters(
-      self, endpoint_id: int) -> Set[Type[cluster_base.ClusterBase]]:
+      self, endpoint_id: int) -> set[type[cluster_base.ClusterBase]]:
     """Retrieves the supported clusters from the given endpoint ID.
 
     Args:
@@ -88,21 +88,21 @@ class MatterEndpointsBase(capability_base.CapabilityBase):
 
   @decorators.DynamicProperty
   def endpoint_id_to_class(
-      self) -> Mapping[int, Optional[Type[endpoint_base.EndpointBase]]]:
+      self) -> Mapping[int, Optional[type[endpoint_base.EndpointBase]]]:
     """Returns the endpoint_id_to_class mapping."""
     self._fetch_endpoints_and_clusters()
     return immutabledict.immutabledict(self._endpoint_id_to_class)
 
   @decorators.DynamicProperty
   def endpoint_class_to_id(
-      self) -> Mapping[Type[endpoint_base.EndpointBase], int]:
+      self) -> Mapping[type[endpoint_base.EndpointBase], int]:
     """Returns the endpoint_class_to_id mapping."""
     self._fetch_endpoints_and_clusters()
     return immutabledict.immutabledict(self._endpoint_class_to_id)
 
   @decorators.DynamicProperty
   def endpoint_id_to_clusters(
-      self) -> Mapping[int, Set[Type[cluster_base.ClusterBase]]]:
+      self) -> Mapping[int, set[type[cluster_base.ClusterBase]]]:
     """Returns the endpoint ID to cluster classes mapping."""
     self._fetch_endpoints_and_clusters()
     return immutabledict.immutabledict(self._endpoint_id_to_clusters)
@@ -172,13 +172,13 @@ class MatterEndpointsBase(capability_base.CapabilityBase):
     return self._endpoints[endpoint_id]
 
   @decorators.CapabilityLogDecorator(logger)
-  def list(self) -> Mapping[int, Type[endpoint_base.EndpointBase]]:
+  def list(self) -> Mapping[int, type[endpoint_base.EndpointBase]]:
     """Returns a mapping of endpoint ID to the supported endpoint class."""
     return self.endpoint_id_to_class
 
   @decorators.CapabilityLogDecorator(logger)
   def get_endpoint_instance_by_class(
-      self, endpoint_class: Type[endpoint_base.EndpointBase]
+      self, endpoint_class: type[endpoint_base.EndpointBase]
   ) -> endpoint_base.EndpointBase:
     """Gets the endpoint instance by the given endpoint class.
 
@@ -234,6 +234,8 @@ class MatterEndpointsBase(capability_base.CapabilityBase):
         return False
     return True
 
+  # Have to use typing.List for annotation here because MatterEndpointsBase.list
+  # redefines the built-in 'list'.
   @decorators.CapabilityLogDecorator(logger)
   def get_supported_endpoints(self) -> List[str]:
     """Returns names of endpoints supported by the device."""
@@ -242,14 +244,14 @@ class MatterEndpointsBase(capability_base.CapabilityBase):
 
   @decorators.CapabilityLogDecorator(logger)
   def get_supported_endpoint_flavors(
-      self) -> List[Type[endpoint_base.EndpointBase]]:
+      self) -> List[type[endpoint_base.EndpointBase]]:
     """Returns flavors of endpoints supported by the device."""
     return [
         endpoint for endpoint in self.list().values() if endpoint is not None
     ]
 
   @decorators.CapabilityLogDecorator(logger)
-  def get_supported_endpoints_and_clusters(self) -> Mapping[int, Set[str]]:
+  def get_supported_endpoints_and_clusters(self) -> Mapping[int, set[str]]:
     """Returns the supported endpoint IDs and set of cluster names mapping."""
     return {
         endpoint_id: self.get(endpoint_id).get_supported_clusters()
@@ -259,8 +261,8 @@ class MatterEndpointsBase(capability_base.CapabilityBase):
   @decorators.CapabilityLogDecorator(logger)
   def get_supported_endpoint_instances_and_cluster_flavors(
       self
-  ) -> Mapping[Type[endpoint_base.EndpointBase],
-               Set[Type[cluster_base.ClusterBase]]]:
+  ) -> Mapping[type[endpoint_base.EndpointBase],
+               set[type[cluster_base.ClusterBase]]]:
     """Returns the supported endpoint instance and cluster flavors mapping."""
     mapping = {}
     for endpoint_id in self.list():

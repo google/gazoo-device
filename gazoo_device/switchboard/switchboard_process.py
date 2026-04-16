@@ -23,16 +23,13 @@ import time
 import traceback
 import typing
 
+from gazoo_device import config
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.utility import faulthandler_utils
 from gazoo_device.utility import multiprocessing_utils
 from gazoo_device.utility import retry
 import psutil
-
-_PROCESS_START_TIMEOUT_S = 30
-_CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S = 3
-_CHILD_PROCESS_POLLING_INTERVAL_S = 0.01
 
 
 def get_message(message_queue, timeout=None):
@@ -201,7 +198,7 @@ class SwitchboardProcess:
           message from subprocess.
         command_queue (Queue): to receive commands into.
         log_path (str): path and filename to write log messages to.
-        valid_commands (Optional[Tuple[str, ...]]): Valid command strings.
+        valid_commands (Optional[tuple[str, ...]]): Valid command strings.
     """
     log_directory = os.path.dirname(log_path)
     self.device_name = device_name
@@ -235,11 +232,12 @@ class SwitchboardProcess:
       self._start_event.clear()
       self._stop_event.clear()
       parent_pid = os.getpid()
-      process = multiprocessing_utils.get_context().Process(  # pytype: disable=attribute-error  # re-none
-          name=self.process_name,
-          target=_process_loop,
-          args=(self, parent_pid))
-      process.start()
+      with multiprocessing_utils.configure_switchboard_multiprocessing():
+        process = multiprocessing_utils.get_context().Process(  # pytype: disable=attribute-error  # re-none
+            name=self.process_name,
+            target=_process_loop,
+            args=(self, parent_pid))
+        process.start()
       if wait_for_start:
         self.wait_for_start()
       self._process = process
@@ -254,34 +252,42 @@ class SwitchboardProcess:
     Raises:
       RuntimeError: process failed to start before a timeout was reached.
     """
-    start_event_value = self._start_event.wait(timeout=_PROCESS_START_TIMEOUT_S)
+    start_event_value = self._start_event.wait(
+        timeout=config.SWITCHBOARD_PROCESS_START_TIMEOUT_S
+    )
     if not start_event_value:
       per_core_cpu_utilization = psutil.cpu_percent(interval=0.1, percpu=True)
       per_core_cpu_utilization_formatted = [
-          f"{value:.1f}%" for value in per_core_cpu_utilization]
+          f"{value:.1f}%" for value in per_core_cpu_utilization
+      ]
       num_cores = len(per_core_cpu_utilization)
       avg_cpu_utilization = sum(per_core_cpu_utilization) / num_cores
       # Average load for the last 1 minute, 5 minutes, 15 minutes.
       # The "load" is defined as the average number of processes in a runnable
       # state per CPU core. Load over 100% indicates throttling.
-      avg_historic_load = [f"{load / num_cores * 100:.1f}%"
-                           for load in psutil.getloadavg()]
+      avg_historic_load = [
+          f"{load / num_cores * 100:.1f}%" for load in psutil.getloadavg()
+      ]
       raise RuntimeError(
-          f"{self.device_name} failed to start child process "
-          f"{self.process_name}. "
-          f"Start event was not set in {_PROCESS_START_TIMEOUT_S}s. "
-          "This typically means that the test binary has not been allocated a "
-          "sufficient share of the host's CPU. Common causes: too many "
-          "simultaneous task executions or process leaks from previous tests.\n"
-          "Check the host CPU utilization and active processes by running "
-          "'top' on the host. Also check the CPU model and frequency via "
-          "'lscpu'.\n"
-          "Diagnostic information: "
-          f"host CPU cores: {num_cores}, "
-          f"current combined CPU load: {avg_cpu_utilization:.1f}, "
-          f"current per-core CPU load: {per_core_cpu_utilization_formatted}, "
-          "average combined CPU load in the last 1 minute, 5 minutes, 15 "
-          f"minutes: {avg_historic_load}. Load over 100% indicates throttling.")
+          f"{self.device_name} failed to start child process"
+          f" {self.process_name}. Start event was not set in"
+          f" {config.SWITCHBOARD_PROCESS_START_TIMEOUT_S}s.\nIf the issue is"
+          " persistent: there's an issue with spawning processes in this"
+          " environment, typically unrelated to host's CPU.\nA known issue is"
+          " recorded in b/457622779, monolithic GDM dependency might cost more"
+          " time to load GDM. See https://github.com/google/gazoo-device for more details.\nIf"
+          " the issue is intermittent, this typically means that the test"
+          " binary has not been allocated a sufficient share of the host's"
+          " CPU. Common causes: too many simultaneous task executions or"
+          " process leaks from previous tests.\nCheck the host CPU utilization"
+          " and active processes by running 'top' on the host. Also check the"
+          " CPU model and frequency via 'lscpu'.\nDiagnostic information: host"
+          f" CPU cores: {num_cores}, current combined CPU load:"
+          f" {avg_cpu_utilization:.1f}, current per-core CPU load:"
+          f" {per_core_cpu_utilization_formatted}, average combined CPU load in"
+          f" the last 1 minute, 5 minutes, 15 minutes: {avg_historic_load}."
+          " Load over 100% indicates throttling."
+      )
 
   def is_started(self):
     """Returns True if process was started, False otherwise.
@@ -328,8 +334,8 @@ class SwitchboardProcess:
         retry.retry(
             func=self.is_command_consumed,
             is_successful=retry.is_true,
-            timeout=_CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S,
-            interval=_CHILD_PROCESS_POLLING_INTERVAL_S)
+            timeout=config.SWITCHBOARD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S,
+            interval=config.SWITCHBOARD_PROCESS_POLLING_INTERVAL_S)
       except errors.CommunicationTimeoutError as err:
         self.stop()
         raise errors.ProcessCommunicationError(
@@ -349,7 +355,7 @@ class SwitchboardProcess:
         When calling this method you should use is_started() to check if
         process was previously started to prevent raising an error.
     """
-    if self.is_started():
+    if self._process is not None:
       if self._process.is_alive():
         try:
           self._terminate_event.set()
@@ -378,9 +384,10 @@ class SwitchboardProcess:
 
   def terminate(self):
     """Terminates the process."""
-    self._process.terminate()
-    self._process.join(timeout=1)
-    self._process = None
+    if self._process is not None:
+      self._process.terminate()
+      self._process.join(timeout=1)
+      self._process = None
 
   def is_command_consumed(self):
     """Returns True if command queue is empty, false otherwise.

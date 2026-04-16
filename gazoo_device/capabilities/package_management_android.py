@@ -20,7 +20,7 @@ Android APKs installed. The Android package systems rely on adb command to
 manage packages.
 """
 import re
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
@@ -120,7 +120,7 @@ class PackageManagementAndroid(package_management_base.PackageManagementBase):
         package_name, adb_serial=self._adb_serial)
 
   @decorators.CapabilityLogDecorator(logger)
-  def list_packages(self, system_package_only: bool = False) -> List[str]:
+  def list_packages(self, system_package_only: bool = False) -> list[str]:
     """Lists all the installed packages on the device.
 
     Here we use `pm list package` command to show all the packages on the
@@ -236,7 +236,7 @@ class PackageManagementAndroid(package_management_base.PackageManagementBase):
     return package_sys_info
 
   @decorators.CapabilityLogDecorator(logger)
-  def get_package_versions(self) -> Dict[str, str]:
+  def get_package_versions(self) -> dict[str, str]:
     """Gets all installed package versions.
 
     The package version info is fetched by 'dumpsys package' command.
@@ -328,6 +328,6 @@ class PackageManagementAndroid(package_management_base.PackageManagementBase):
         key=_PACKAGE_SYSINFO_RESOURCE_PATH_KEY)
 
   @decorators.DynamicProperty
-  def package_versions(self) -> Dict[str, str]:
+  def package_versions(self) -> dict[str, str]:
     """All installed package versions."""
     return self.get_package_versions()

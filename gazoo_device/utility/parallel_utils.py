@@ -91,7 +91,7 @@ import os
 import time
 import traceback
 import typing
-from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Mapping, Optional, Sequence
 
 from gazoo_device import errors
 from gazoo_device import extensions
@@ -150,7 +150,7 @@ class CallSpec:
     kwargs: Keyword arguments to the function. Must be serializable.
   """
   function: Callable[..., _AnySerializable]
-  args: Tuple[_AnySerializable, ...]
+  args: tuple[_AnySerializable, ...]
   kwargs: immutabledict.immutabledict[str, _AnySerializable]
 
   def __init__(self,
@@ -203,7 +203,7 @@ def _process_wrapper(call_spec: CallSpec) -> Any:
 
 
 def format_process_errors(
-    proc_errors: Sequence[Optional[Tuple[str, str, str]]]) -> str:
+    proc_errors: Sequence[Optional[tuple[str, str, str]]]) -> str:
   """Returns a formatted string with all process errors."""
   formatted_errors = []
   for proc_error in proc_errors:
@@ -306,7 +306,7 @@ def execute_concurrently(
     timeout: float = TIMEOUT_PROCESS,
     raise_on_process_error: bool = True,
     max_processes: Optional[int] = None,
-) -> Tuple[List[Any], List[Optional[Tuple[str, str, str]]]]:
+) -> tuple[list[Any], list[Optional[tuple[str, str, str]]]]:
   """Concurrently executes function calls in parallel processes.
 
   Args:
@@ -338,8 +338,7 @@ def execute_concurrently(
   logging_queue = gdm_logger.get_logging_queue()
   extension_package_import_paths = [
       package_info["import_path"]
-      for package_name, package_info in extensions.package_info.items()
-      if package_name != "gazoo_device_controllers"  # Built-in controllers.
+      for package_info in extensions.package_info.values()
   ]
 
   proc_results = []
@@ -384,6 +383,9 @@ def factory_reset(manager_inst: manager.Manager, device_name: str) -> None:
   device = manager_inst.create_device(device_name,
                                       log_name_prefix="factory_reset")
   try:
+    if not hasattr(device, "factory_reset"):
+      raise NotImplementedError(f"{device.name} does not support "
+                                "factory_reset.")
     device.factory_reset()
   finally:
     device.close()
@@ -394,6 +396,9 @@ def reboot(manager_inst: manager.Manager, device_name: str, *reboot_args: Any,
   """Convenience function for rebooting devices in parallel."""
   device = manager_inst.create_device(device_name, log_name_prefix="reboot")
   try:
+    if not hasattr(device, "reboot"):
+      raise NotImplementedError(f"{device.name} does not support "
+                                "reboot.")
     device.reboot(*reboot_args, **reboot_kwargs)
   finally:
     device.close()
@@ -404,6 +409,9 @@ def upgrade(manager_inst: manager.Manager, device_name: str, *upgrade_args: Any,
   """Convenience function for upgrading devices in parallel."""
   device = manager_inst.create_device(device_name, log_name_prefix="upgrade")
   try:
+    if not hasattr(device, "flash_build"):
+      raise NotImplementedError(f"{device.name} does not support "
+                                "flash_build.")
     device.flash_build.upgrade(*upgrade_args, **upgrade_kwargs)
   finally:
     device.close()

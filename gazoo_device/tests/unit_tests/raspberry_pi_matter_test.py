@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,10 +14,11 @@
 
 """Unit tests for the raspberry_pi_matter module."""
 from unittest import mock
+
 from gazoo_device import errors
+from gazoo_device import package_registrar
 from gazoo_device.base_classes import ssh_device
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
-from gazoo_device.capabilities import pwrpc_common_default
 from gazoo_device.primary_devices import raspberry_pi_matter
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.tests.unit_tests.utils import raspberry_pi_matter_device_logs
@@ -25,13 +26,12 @@ from gazoo_device.utility import retry
 import immutabledict
 
 _FAKE_DEVICE_IP = "123.45.67.89"
-_FAKE_SERIAL_NUMBER = "fake-serial-number"
 _CONNECT_PERSISTENT_PROPERTIES = immutabledict.immutabledict({
     "console_port_name": _FAKE_DEVICE_IP,
-    "serial_number": _FAKE_SERIAL_NUMBER,
+    "serial_number": "000000001234abcd",
     "name": "rpimatter-1234",
     "device_type": "rpimatter",
-    "model": "PROTO"
+    "model": "4 Model B Rev 1.2"
 })
 _MOCK_MATTER_ENDPOINT = mock.Mock(
     spec=matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc)
@@ -39,6 +39,11 @@ _MOCK_MATTER_ENDPOINT = mock.Mock(
 
 class RaspberryPiMatterTests(fake_device_test_case.FakeDeviceTestCase):
   """Test for RaspberryPiMatter device controller."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(raspberry_pi_matter)
 
   def setUp(self):
     super().setUp()
@@ -60,11 +65,7 @@ class RaspberryPiMatterTests(fake_device_test_case.FakeDeviceTestCase):
     """Verfies the platform attribute."""
     self.assertEqual("Raspberry Pi 4", self.uut.platform)
 
-  @mock.patch.object(
-      raspberry_pi_matter.RaspberryPiMatter,
-      "shell_with_regex",
-      return_value=_FAKE_SERIAL_NUMBER)
-  def test_get_detection_info_on_success(self, mock_shell):
+  def test_get_detection_info_on_success(self):
     """Verifies persistent properties are set correctly."""
     persistent_dict, _ = self.uut.get_detection_info()
     self.assertEqual(_CONNECT_PERSISTENT_PROPERTIES, persistent_dict)
@@ -194,14 +195,14 @@ class RaspberryPiMatterTests(fake_device_test_case.FakeDeviceTestCase):
 
     mock_verify_reboot.assert_called_once()
 
-  @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "factory_reset")
+  @mock.patch.object(raspberry_pi_matter.RaspberryPiMatter, "reboot")
   @mock.patch.object(raspberry_pi_matter.RaspberryPiMatter, "matter_sample_app")
-  def test_factory_reset(self, mock_matter_sample_app, mock_factory_reset):
+  def test_factory_reset(self, mock_matter_sample_app, mock_reboot):
     """Verifies factory reset method."""
     self.uut.factory_reset()
 
     mock_matter_sample_app.factory_reset.assert_called_once()
-    mock_factory_reset.assert_called_once()
+    mock_reboot.assert_called_once()
 
   @mock.patch.object(retry, "retry")
   @mock.patch.object(ssh_device.SshDevice, "wait_for_bootup_complete")

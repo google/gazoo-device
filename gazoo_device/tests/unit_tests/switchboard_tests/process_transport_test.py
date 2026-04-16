@@ -25,7 +25,13 @@ from gazoo_device.tests.unit_tests.utils import unit_test_case
 
 class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
   """Tests the process_transport.py module."""
-  _TRANSPORT_CLASS = process_transport.ProcessTransport
+
+  def _create_transport(self, command, args=()):
+    """Creates a transport instance."""
+    return process_transport.ProcessTransport(
+        comms_address="some_address",
+        command=command,
+        args=args)
 
   def tearDown(self):
     if hasattr(self, "uut"):
@@ -34,14 +40,12 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
 
   def test_001_transport_starts_closed_and_close_works(self):
     """Newly created transports start closed."""
-    process_command = "/some/fake/executable"
-    self.uut = self._TRANSPORT_CLASS(process_command)
+    self.uut = self._create_transport("/some/fake/executable")
     self.assertFalse(self.uut.is_open())
 
   def test_002_transport_returns_property_dict(self):
     """Transport returns read-only property dict."""
-    process_command = "/some/fake/executable"
-    self.uut = self._TRANSPORT_CLASS(process_command)
+    self.uut = self._create_transport("/some/fake/executable")
     property_dict = self.uut.get_all_properties()
     self.assertTrue(property_dict,
                     "Expected at least one property key, found 0.")
@@ -61,8 +65,7 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
 
   def test_003_transport_returns_default_value_on_get_property(self):
     """Transport returns default value on get_property call."""
-    process_command = "/some/fake/executable"
-    self.uut = self._TRANSPORT_CLASS(process_command)
+    self.uut = self._create_transport("/some/fake/executable")
     default_value = "bogus value"
     value = self.uut.get_property("bogus_key", value=default_value)
 
@@ -73,8 +76,7 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
 
   def test_004_transport_returns_value_on_get_property(self):
     """Transport returns default value on get_property call."""
-    process_command = "/some/fake/executable"
-    self.uut = self._TRANSPORT_CLASS(process_command)
+    self.uut = self._create_transport("/some/fake/executable")
     property_dict = self.uut.get_all_properties()
     self.assertTrue(property_dict,
                     "Expected at least one property key, found 0.")
@@ -86,8 +88,7 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
 
   def test_005_transport_returns_property_list(self):
     """Transports return non-empty property list."""
-    process_command = "/some/fake/executable"
-    self.uut = self._TRANSPORT_CLASS(process_command)
+    self.uut = self._create_transport("/some/fake/executable")
     property_list = self.uut.get_property_list()
     self.assertTrue(
         property_list,
@@ -95,8 +96,7 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
 
   def test_006_transport_can_set_all_properties(self):
     """Transports can set all properties to new values."""
-    process_command = "/some/fake/executable"
-    self.uut = self._TRANSPORT_CLASS(process_command)
+    self.uut = self._create_transport("/some/fake/executable")
     property_list = self.uut.get_property_list()
     for key in property_list:
       # Set all properties values to their key
@@ -108,60 +108,60 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
 
   def test_007_transport_cant_set_bogus_property(self):
     """Transports can't set a bogus property key."""
-    process_command = "/some/fake/executable"
-    self.uut = self._TRANSPORT_CLASS(process_command)
+    self.uut = self._create_transport("/some/fake/executable")
     with self.assertRaisesRegex(KeyError,
                                 "Property bogus key doesn't exist for"):
       self.uut.set_property("bogus key", "bogus value")
 
   def test_008_transport_read_returns_none(self):
     """Process Transport read returns None for unopened transport."""
-    process_command = "/some/fake/executable"
-    self.uut = self._TRANSPORT_CLASS(process_command)
+    self.uut = self._create_transport("/some/fake/executable")
     out = self.uut.read()
     self.assertIsNone(out,
                       "Expected None for read result found {}.".format(out))
 
   def test_009_transport_write_returns_none(self):
     """Process transport write returns None for unopened transport."""
-    process_command = "/some/fake/executable"
-    self.uut = self._TRANSPORT_CLASS(process_command)
+    self.uut = self._create_transport("/some/fake/executable")
     data = "SOME DATA TO WRITE TO TRANSPORT"
     out = self.uut.write(data)
     self.assertIsNone(out,
                       "Expected None for write result found {}.".format(out))
 
+  def test_010_comms_address(self):
+    """Tests comms_address retrieval."""
+    self.uut = self._create_transport("/some/fake/executable")
+    self.assertEqual(self.uut.comms_address, "some_address")
+
   def test_100_transport_cant_open_bogus_path(self):
     """Process transport can't open bogus serial path."""
-    process_command = "/some/fake/executable"
-    self.uut = self._TRANSPORT_CLASS(process_command)
+    self.uut = self._create_transport("/some/fake/executable")
     with self.assertRaisesRegex(OSError, "No such file or directory"):
       self.uut.open()
     time.sleep(1)
 
   def test_102_transport_can_open_close(self):
     """Process transport can open and close pty (fake serial port) path."""
-    self.uut = self._TRANSPORT_CLASS("cat", ["dev/kmsg"])
+    self.uut = self._create_transport("cat", ["dev/kmsg"])
     self.uut.open()
     self.uut.close()
 
   def test_103_transport_can_call_open_twice(self):
     """Process transport can call open method twice."""
-    process_command = "true"
-    self.uut = self._TRANSPORT_CLASS(process_command)
+    self.uut = self._create_transport("true")
     self.uut.open()
     self.uut.open()
 
   def test_104_transport_can_call_close_twice(self):
     """Process transport can call close method twice."""
-    self.uut = self._TRANSPORT_CLASS("cat", ["dev/kmsg"])
+    self.uut = self._create_transport("cat", ["dev/kmsg"])
     self.uut.open()
     self.uut.close()
     self.uut.close()
 
   def test_104a_transport_close_raise_timeout(self):
     """Process transport call close method and timeout."""
-    self.uut = self._TRANSPORT_CLASS("cat", "dev/kmsg")
+    self.uut = self._create_transport("cat", ["dev/kmsg"])
     self.uut.open()
     with mock.patch.object(
         self.uut._process, "kill",
@@ -183,7 +183,7 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
     with open(test_file, "w") as out_file:
       out_file.write(message)
 
-    self.uut = self._TRANSPORT_CLASS("tail", ["-f", test_file])
+    self.uut = self._create_transport("tail", ["-f", test_file])
     self.uut.open()
     out = self.uut.read(size=len(message))
     self.assertEqual(message, out.decode(),
@@ -191,7 +191,7 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
 
   def test_106_transport_can_write(self):
     """Process transport can write to pty (fake serial port) path."""
-    self.uut = self._TRANSPORT_CLASS("cat", ["-"])
+    self.uut = self._create_transport("cat", ["-"])
     self.uut.open()
     data = b"SOME DATA BYTES TO WRITE TO TRANSPORT\n"
     out = self.uut.write(data)
@@ -204,7 +204,7 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
 
   def test_107_transport_can_write_unicode(self):
     """Process transport can write unicode to pty (fake serial port) path."""
-    self.uut = self._TRANSPORT_CLASS("cat", ["-"])
+    self.uut = self._create_transport("cat", ["-"])
     self.uut.open()
     data = "SOME UNICODE DATA TO WRITE TO TRANSPORT \ufffd\n"
     data_encoded = data.encode("utf-8", errors="replace")
@@ -225,7 +225,7 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
     with open(test_file, "w") as out_file:
       out_file.write("")
 
-    self.uut = self._TRANSPORT_CLASS("tail", ["-f", test_file])
+    self.uut = self._create_transport("tail", ["-f", test_file])
     self.uut.open()
     out = self.uut.read(size=1, timeout=0.1)
     self.assertEqual(
@@ -235,11 +235,19 @@ class ProcessTransportTests(unit_test_case.MultiprocessingTestCase):
 
 class PtyProcessTransportTests(ProcessTransportTests):
   """Tests the pty_transport.py module."""
-  _TRANSPORT_CLASS = pty_transport.PtyTransport
+
+  def _create_transport(self, command, args=()):
+    """Creates a transport instance."""
+    return pty_transport.PtyTransport(comms_address=command, args=args)
+
+  def test_010_comms_address(self):
+    """Tests comms_address retrieval."""
+    self.uut = self._create_transport("/some/fake/executable")
+    self.assertEqual(self.uut.comms_address, ".//executable")
 
   def test_106_transport_can_write(self):
     """Process transport can write to pty (fake serial port) path."""
-    self.uut = self._TRANSPORT_CLASS(comms_address="cat", args=["-"])
+    self.uut = self._create_transport("cat", ["-"])
     self.uut.open()
     data = b"SOME DATA BYTES TO WRITE TO TRANSPORT"
     out = self.uut.write(data)
@@ -252,7 +260,7 @@ class PtyProcessTransportTests(ProcessTransportTests):
 
   def test_107_transport_can_write_unicode(self):
     """Process transport can write unicode to pty (fake serial port) path."""
-    self.uut = self._TRANSPORT_CLASS(comms_address="cat", args=["-"])
+    self.uut = self._create_transport("cat", ["-"])
     self.uut.open()
     data = "SOME UNICODE DATA TO WRITE TO TRANSPORT \ufffd"
     data_encoded = data.encode("utf-8", errors="replace")
@@ -265,7 +273,7 @@ class PtyProcessTransportTests(ProcessTransportTests):
                      "Expected {!r} found {!r}.".format(data_encoded, data_in))
 
   def test_109_launch_bash(self):
-    self.uut = self._TRANSPORT_CLASS(comms_address="/bin/bash", args=["-i"])
+    self.uut = self._create_transport("/bin/bash", ["-i"])
     self.uut.open()
 
     # Clear out the input
@@ -283,7 +291,7 @@ class PtyProcessTransportTests(ProcessTransportTests):
   @mock.patch.object(
       os, "read", side_effect=[b""] + 200 * [OSError("Input/Output error")])
   def test_110_read_error(self, mock_read):
-    self.uut = self._TRANSPORT_CLASS(comms_address="/bin/bash", args=["-i"])
+    self.uut = self._create_transport("/bin/bash", ["-i"])
     self.uut.open()
     # verify error caught and empty string returned
     data_in = self.uut.read(1024, timeout=.001)
@@ -293,7 +301,7 @@ class PtyProcessTransportTests(ProcessTransportTests):
     mock_read.assert_called()
 
   def test_111_write_number(self):
-    self.uut = self._TRANSPORT_CLASS(comms_address="/bin/bash", args=["-i"])
+    self.uut = self._create_transport("/bin/bash", ["-i"])
     self.uut.open()
     self.uut.write(134)  # assure no errors
 

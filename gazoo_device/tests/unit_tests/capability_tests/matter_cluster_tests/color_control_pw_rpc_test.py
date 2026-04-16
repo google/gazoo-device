@@ -15,15 +15,12 @@
 """Matter cluster capability unit test for color_control_pw_rpc module."""
 from unittest import mock
 
-import gazoo_device
 from gazoo_device import errors
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
+from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters import color_control_pw_rpc
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
-_COLOR_CONTROL_RPC_MODULE = (
-    gazoo_device.capabilities.matter_clusters.color_control_pw_rpc.
-    ColorControlClusterPwRpc)
 _FAKE_DEVICE_NAME = "fake-device-name"
 _FAKE_VAULE = 108
 _FAKE_ENDPOINT_ID = 1
@@ -45,7 +42,7 @@ class ColorControlClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
         write=self.fake_write)
 
   @mock.patch.object(
-      _COLOR_CONTROL_RPC_MODULE, "current_hue",
+      color_control_pw_rpc.ColorControlClusterPwRpc, "current_hue",
       new_callable=mock.PropertyMock(return_value=_FAKE_VAULE))
   def test_move_to_hue_on_success(self, mock_hue):
     """Verifies move_to_hue method on success."""
@@ -54,7 +51,7 @@ class ColorControlClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
     self.fake_write.assert_called_once()
 
   @mock.patch.object(
-      _COLOR_CONTROL_RPC_MODULE, "current_hue",
+      color_control_pw_rpc.ColorControlClusterPwRpc, "current_hue",
       new_callable=mock.PropertyMock(return_value=0))
   def test_move_to_hue_on_failure_incorrect_hue(self, mock_hue):
     """Verifies move_to_hue method on failure with incorrect hue."""
@@ -63,7 +60,7 @@ class ColorControlClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
       self.uut.move_to_hue(hue=_FAKE_VAULE)
 
   @mock.patch.object(
-      _COLOR_CONTROL_RPC_MODULE, "current_saturation",
+      color_control_pw_rpc.ColorControlClusterPwRpc, "current_saturation",
       new_callable=mock.PropertyMock(return_value=_FAKE_VAULE))
   def test_move_to_saturation_on_success(self, mock_saturation):
     """Verifies move_to_hue method on success."""
@@ -72,7 +69,7 @@ class ColorControlClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
     self.fake_write.assert_called_once()
 
   @mock.patch.object(
-      _COLOR_CONTROL_RPC_MODULE, "current_saturation",
+      color_control_pw_rpc.ColorControlClusterPwRpc, "current_saturation",
       new_callable=mock.PropertyMock(return_value=0))
   def test_move_to_saturation_on_failure_incorrect_hue(self, mock_saturation):
     """Verifies move_to_saturation on failure with incorrect saturation."""
@@ -99,20 +96,40 @@ class ColorControlClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
     self.assertEqual(_FAKE_VAULE, self.uut.color_temperature_mireds)
 
   @mock.patch.object(
-      _COLOR_CONTROL_RPC_MODULE, "color_temperature_mireds",
+      color_control_pw_rpc.ColorControlClusterPwRpc, "color_temperature_mireds",
       new_callable=mock.PropertyMock(return_value=_FAKE_VAULE))
-  def test_move_to_color_temperature_on_success(self, mock_color_temp):
+  @mock.patch.object(
+      color_control_pw_rpc.ColorControlClusterPwRpc, "color_mode",
+      new_callable=mock.PropertyMock(
+          return_value=matter_enums.ColorMode.TEMPERATURE
+      ))
+  def test_move_to_color_temperature_on_success(self, mock_color_temp,
+                                                mock_color_mode):
     """Verifies move_to_color_temperature method on success."""
     self.uut.move_to_color_temperature(color_temperature_mireds=_FAKE_VAULE)
 
-    self.fake_write.assert_called_once()
+    self.assertEqual(2, self.fake_write.call_count)
 
   @mock.patch.object(
-      _COLOR_CONTROL_RPC_MODULE, "color_temperature_mireds",
+      color_control_pw_rpc.ColorControlClusterPwRpc, "color_temperature_mireds",
       new_callable=mock.PropertyMock(return_value=0))
   def test_move_to_color_temperature_on_failure(self, mock_color_temp):
     """Verifies move_to_color_temperature method on failure."""
     error_msg = "current color temperature didn't change"
+    with self.assertRaisesRegex(errors.DeviceError, error_msg):
+      self.uut.move_to_color_temperature(color_temperature_mireds=_FAKE_VAULE)
+
+  @mock.patch.object(
+      color_control_pw_rpc.ColorControlClusterPwRpc, "color_temperature_mireds",
+      new_callable=mock.PropertyMock(return_value=_FAKE_VAULE))
+  @mock.patch.object(
+      color_control_pw_rpc.ColorControlClusterPwRpc, "color_mode",
+      new_callable=mock.PropertyMock(return_value=matter_enums.ColorMode.XY))
+  def test_move_to_color_temperature_on_color_mode_failure(self,
+                                                           mock_color_temp,
+                                                           mock_color_mode):
+    """Verifies move_to_color_temperature method on failure from color mode."""
+    error_msg = "current color mode didn't change"
     with self.assertRaisesRegex(errors.DeviceError, error_msg):
       self.uut.move_to_color_temperature(color_temperature_mireds=_FAKE_VAULE)
 

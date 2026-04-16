@@ -113,8 +113,8 @@ will need to take.
     device. You can provide a snippet of a CLI or a Python interpreter
     interaction as proof.
 
-7.  Open a Github pull request and add [artorl](https://github.com/artorl) as a
-    reviewer.
+7.  Open a Github pull request and add [cpagravel](https://github.com/cpagravel)
+    as a reviewer.
 
 ## Overview of GDM architecture
 
@@ -215,7 +215,7 @@ more `TransportProcess`es, a `LogFilterProcess`, and a `LogWriterProcess`.
 *   Each `TransportProcess` manages a single device transport, which is a
     bidirectional communication channel with the device (such as an `ssh`
     subprocess).
-    *   [Communication types](gazoo_device/switchboard/communication_types.py)
+    *   [Communication types](gazoo_device/switchboard/communication_types/*.py)
         define which transports should be used.
 *   `LogWriterProcess` records all device communications to a device log file.
 *   `LogFilterProcess` looks for specific event markers in the logs and records
@@ -308,11 +308,10 @@ def download_key(key_info: data_types.KeyInfo, local_key_path: str) -> None:
   # Downloading from GCS could look like this:
   from gazoo_device.utility import host_utils
 
-  host_utils.gsutil_command(
+  host_utils.gcs_command(
       cmd="cp",
-      gsutil_path="gs://your-gcs-url",
-      extra_args=[local_key_path],
-      boto_path="/some/path/to/GCS/credentials/on/the/host")
+      gcs_path="gs://your-gcs-url",
+      extra_args=[local_key_path])
 
   # Providing instructions for generating the key manually could look like this:
   raise RuntimeError(
@@ -401,10 +400,11 @@ A device class typically has the following:
 
 *   Communication type information:
 
-    *   A `COMMUNICATION_TYPE` class constant, which is a string specifying
-        which communication type should be used (`COMMUNICATION_TYPE =
-        "SshComms"`). All built-in communication types can be found in
-        [gazoo_device/switchboard/communication_types.py](gazoo_device/switchboard/communication_types.py).
+    *   A `COMMUNICATION_TYPE` class constant, which is the class of the
+        communication type to use (for example: `COMMUNICATION_TYPE =
+        ssh_comms.SshComms`). All built-in communication types can be
+        found in
+        [gazoo_device/switchboard/communication_types/](gazoo_device/switchboard/communication_types/).
 
     *   A `_COMMUNICATION_KWARGS` class dictionary, which contains all
         communication arguments other than the communication address
@@ -703,7 +703,7 @@ defines transports, line identifiers, and transport initialization arguments
 that should be used for the given communication address. Some (included)
 communication type examples are `SerialComms` and `SshComms`.Communication types
 are defined in
-[gazoo_device/switchboard/communication_types.py](gazoo_device/switchboard/communication_types.py)
+[gazoo_device/switchboard/communication_types/serial_comms.py](gazoo_device/switchboard/communication_types/serial_comms.py)
 and derive from the `CommunicationType` abstract base class (ABC).
 
 Communication types must implement the following methods:
@@ -721,11 +721,12 @@ Communication types must implement the following methods:
     [gazoo_device/switchboard/line_identifier.py](gazoo_device/switchboard/line_identifier.py).
 
 Each device class defines what communication type it uses in the
-`COMMUNICATION_TYPE` class constant (such as `COMMUNICATION_TYPE = "SshComms"`).
-Any additional keyword arguments pertinent to the communication setup besides
-the main communication address are placed in the `_COMMUNICATION_KWARGS`
-dictionary of the device class. The main device communication address gets
-populated by GDM automatically after detection.
+`COMMUNICATION_TYPE` class constant (such as `COMMUNICATION_TYPE =
+communication_types.serial_comms.SshComms`).
+Any additional keyword arguments pertinent to
+the communication setup besides the main communication address are placed in the
+`_COMMUNICATION_KWARGS` dictionary of the device class. The main device
+communication address gets populated by GDM automatically after detection.
 
 Each communication type defines new or reuses existing detection queries in
 [gazoo_device/detect_criteria.py](gazoo_device/detect_criteria.py). For example,
@@ -752,10 +753,10 @@ dictionary returned by your package's `export_extensions` function and include
 the list of communication type classes as the corresponding value:
 
 ```python
-from gazoo_device.switchboard import communication_types
+from gazoo_device.switchboard.communication_types import base_comms
 
 
-class MyCommunicationType(communication_types.CommunicationType):
+class MyCommunicationType(base_comms.CommunicationType):
   """A communication type (implementation omitted)."""
 
 
@@ -824,6 +825,9 @@ connection, the connection is recognized as belonging to this device class.
 Here's an example of detection criteria for Raspberry Pi:
 
 ```python
+from gazoo_device import detect_criteria
+
+
 class RaspberryPi(raspbian_device.RaspbianDevice):
   DETECT_MATCH_CRITERIA = {
       detect_criteria.SshQuery.IS_RASPBIAN_RPI: True,
@@ -834,8 +838,11 @@ Since detection queries are tied to the communication type, the set of available
 queries is defined by `COMMUNICATION_TYPE` of the device class:
 
 ```python
+from gazoo_device.switchboard.communication_types import ssh_comms
+
+
 class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
-  COMMUNICATION_TYPE = "SshComms"
+  COMMUNICATION_TYPE = ssh_comms.SshComms
 ```
 
 To export detection queries, add a `"detect_criteria"` key to the dictionary

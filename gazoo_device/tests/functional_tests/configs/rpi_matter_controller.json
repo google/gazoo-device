@@ -1,0 +1,14 @@
+{
+  "shell_cmd": "which chip-tool\n",
+  "expect": ["/usr/local/bin/chip-tool"],
+  "do_not_run_tests": [
+    "AuxiliaryDeviceCommonTestSuite.test_close_device",
+    "AuxiliaryDeviceCommonTestSuite.test_factory_reset",
+    "AuxiliaryDeviceCommonTestSuite.test_firmware_version",
+    "AuxiliaryDeviceCommonTestSuite.test_shell",
+    "AuxiliaryDeviceCommonTestSuite.test_reboot",
+    "ShellSshTestSuite.test_shell_with_return_code"
+  ],
+  "slow_tests": [],
+  "volatile_tests": []
+}

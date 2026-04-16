@@ -22,6 +22,7 @@ class LightSensorBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Light Sensor endpoint interface."""
 
   DEVICE_TYPE_ID = 0x0106
+  DEVICE_TYPE_NAME = "LightSensor"
 
   @property
   @abc.abstractmethod

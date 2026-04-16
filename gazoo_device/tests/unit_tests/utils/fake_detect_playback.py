@@ -99,7 +99,20 @@ SERIAL_DEVICE_BEHAVIORS = immutabledict.immutabledict({
     "m5stick": {
         "product_name": "M5stack",
     },
+    "rdp": {
+        "product_name": "ttl232r-3v3",
+    },
 })
+
+THIRD_PARTY_SERIAL_DEVICE_BEHAVIORS = immutabledict.immutabledict({
+    "cambrionix": {
+        "product_name": "FT230X Basic UART",
+    },
+    "m5stick": {
+        "product_name": "M5stack",
+    },
+})
+
 
 SINGLETON_DEVICES = immutabledict.immutabledict({
     "yepkit": "YepkitComms",
@@ -121,14 +134,13 @@ SSH_DEVICE_BEHAVIORS = immutabledict.immutabledict({
     },
     "raspberrypi": {
         ("cat", "/proc/device-tree/model"): "Raspberry Pi 3 Model B Rev 1.1",
+        ("whoami",): "pi",
     },
     "rpi_matter_controller": {
         ("cat", "/proc/device-tree/model"): "Raspberry Pi 4 Model B Rev 1.4",
         ("which", "chip-tool"): "/usr/bin/chip-tool",
     },
-    "unifi_switch": {
-        ("mca-cli-op", "info"):
-            """
+    "unifi_switch": {("mca-cli-op", "info"): """
         Model:       USW-8P-150
         Version:     4.3.13.11253
         MAC Address: 12:34:56:78:90:ab
@@ -137,8 +149,7 @@ SSH_DEVICE_BEHAVIORS = immutabledict.immutabledict({
         Uptime:      44625 seconds
 
         Status:      Unknown[11] (http://192.168.2.63:8080/inform)
-        """
-    },
+        """},
 })
 
 USB_DEVICE_BEHAVIORS = immutabledict.immutabledict({

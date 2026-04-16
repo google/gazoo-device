@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Implementation of the switch_power_usb_with_charge capability."""
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Literal
 
 from gazoo_device import decorators
 from gazoo_device import gdm_logger
@@ -34,8 +34,8 @@ class SwitchPowerUsbWithCharge(switch_power_usb_default.SwitchPowerUsbDefault):
   def __init__(self,
                shell_fn: Callable[..., Any],
                regex_shell_fn: Callable[..., Any],
-               command_dict: Dict[str, str],
-               regex_dict: Dict[str, str],
+               command_dict: dict[str, str],
+               regex_dict: dict[str, str],
                device_name: str,
                serial_number: str,
                total_ports: int):
@@ -120,12 +120,12 @@ class SwitchPowerUsbWithCharge(switch_power_usb_default.SwitchPowerUsbDefault):
       self.set_mode(CHARGE, port)
 
   @decorators.CapabilityLogDecorator(logger)
-  def set_mode(self, mode, port):
+  def set_mode(self, mode: Literal["off", "sync", "charge"], port: int):
     """Sets the given USB port to the mode specified.
 
     Args:
-      mode (str): USB mode to set. Options: 'off', 'sync', 'charge'
-      port (int): The port to set.
+      mode: USB mode to set. Options: 'off', 'sync', 'charge'
+      port: The port to set.
 
     Raises:
       DeviceError: invalid port, or mode.
@@ -136,3 +136,17 @@ class SwitchPowerUsbWithCharge(switch_power_usb_default.SwitchPowerUsbDefault):
     logger.debug("{} setting power mode to {} for usb port {}".format(
         self._device_name, mode, port))
     self._shell_fn(self._command_dict["SET_MODE"].format(mode, port))
+
+  @decorators.CapabilityLogDecorator(logger)
+  def set_all_ports_mode(self, mode: Literal["off", "sync", "charge"]):
+    """Sets all USB hub ports to the mode specified.
+
+    Args:
+      mode: USB hub mode to set. The mode must be in one of the
+        supported_modes Example, 'off', 'sync'
+
+    Raises:
+      DeviceError: invalid mode.
+    """
+    for port in range(1, self._total_ports + 1):
+      self.set_mode(mode=mode, port=port)

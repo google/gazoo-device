@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """Class for SSH devices."""
 import time
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 from gazoo_device import config
 from gazoo_device import console_config
@@ -24,8 +24,11 @@ from gazoo_device import gdm_logger
 from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.capabilities import file_transfer_scp
 from gazoo_device.capabilities import shell_ssh
+from gazoo_device.switchboard.communication_types import ssh_comms
 from gazoo_device.utility import deprecation_utils
 from gazoo_device.utility import host_utils
+from gazoo_device.utility import retry
+import immutabledict
 
 logger = gdm_logger.get_logger()
 
@@ -62,13 +65,13 @@ TIMEOUTS = {
 
 class SshDevice(gazoo_device_base.GazooDeviceBase):
   """Base class for SSH devices."""
-  COMMUNICATION_TYPE = "SshComms"
-  _COMMUNICATION_KWARGS = {
+  COMMUNICATION_TYPE = ssh_comms.SshComms
+  _COMMUNICATION_KWARGS = immutabledict.immutabledict({
       "args": host_utils.DEFAULT_SSH_OPTIONS,
       "log_cmd": COMMANDS["LOGGING"],
       "key_info": None,
       "username": "root",
-  }
+  })
 
   def __init__(self,
                manager,
@@ -85,6 +88,19 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
     self._timeouts.update(TIMEOUTS)
 
   @decorators.health_check
+  def check_device_power(self):
+    """Ensures the device is powered on."""
+    if not hasattr(self, "device_power"):
+      logger.info("%s does not have device_power capability.", self.name)
+      return
+    try:
+      self.device_power.on()
+    except errors.CapabilityNotReadyError as e:
+      logger.info(
+          "%s does not have device_power capability configured.\n%r",
+          self.name, e)
+
+  @decorators.health_check
   def check_device_responsiveness(self):
     """Checks if the device is responsive on console.
 
@@ -98,7 +114,7 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
     except errors.DeviceError as err:
       raise errors.DeviceNotResponsiveError(
           self.name,
-          "unable to execute command {!r} on device's shell".format(cmd),
+          "Unable to execute command {!r} on device's shell".format(cmd),
           timeout=timeout,
           details=str(err))
 
@@ -150,10 +166,13 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
     return self.props["persistent_identifiers"], self.props["options"]
 
   @decorators.PersistentProperty
-  def health_checks(self) -> List[Callable[[], None]]:
+  def health_checks(self) -> list[Callable[[], None]]:
     """Returns list of methods to execute as health checks."""
     return [
-        self.check_device_connected, self.check_create_switchboard,
+        self.check_power_cycling_ready,
+        self.check_device_power,
+        self.check_device_connected,
+        self.check_create_switchboard,
         self.check_device_responsiveness
     ]
 
@@ -260,8 +279,6 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
         before the timeout.
     """
     timeout = timeout or self.timeouts["BOOT_UP"]
-    shell_resp = ""
-    is_shell_responsive = False
     err_msg = ("wait_for_bootup_complete failed. "
                "Device hasn't finished booting in {}s.".format(timeout))
 
@@ -280,22 +297,22 @@ class SshDevice(gazoo_device_base.GazooDeviceBase):
     self.switchboard.open_all_transports()
 
     try:
-      shell_resp, return_code = self.shell(
-          self.commands["BOOT_UP_COMPLETE"],
-          include_return_code=True,
-          timeout=timeout)
-      is_shell_responsive = return_code == 0
-
-    except errors.DeviceError as err:
-      reason = "shell error: {!r}".format(err)
+      retry.retry(
+          func=self.shell,
+          func_args=[self.commands["BOOT_UP_COMPLETE"]],
+          func_kwargs={
+              "include_return_code": True,
+              "timeout": self.timeouts["SHELL_DEVICE_RESPONSIVENESS"],
+          },
+          timeout=timeout,
+          is_successful=lambda r: r[1] == 0,
+          reraise=False,
+      )
+    except errors.CommunicationTimeoutError as error:
+      reason = "Unable to execute command BOOT_UP_COMPLETE on device's shell"
       raise errors.DeviceNotBootupCompleteError(
-          self.name, err_msg, reason=reason)
-
-    if not is_shell_responsive:
-      reason = ("Shell responded with a non-zero return code. "
-                "Response: {}, code: {}.".format(shell_resp, return_code))
-      raise errors.DeviceNotBootupCompleteError(
-          self.name, err_msg, reason=reason)
+          self.name, err_msg, reason=reason
+      ) from error
 
   def _format_persistent_properties(self):
     """Cleans up the format of certain persistent properties."""

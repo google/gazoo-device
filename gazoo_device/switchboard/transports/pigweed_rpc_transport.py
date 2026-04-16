@@ -47,7 +47,6 @@ _SELECT_TIMEOUT_SEC = 0.1  # seconds
 _SERIAL_TIMEOUT_SEC = 0.01  # seconds
 _RPC_CALLBACK_TIMEOUT_SEC = 1  # seconds
 _NUM_OF_READ_BYTES = 4096
-RPC_METHOD_NAME = "rpc"  # Pigweed RPC method name for switchboard call
 logger = gdm_logger.get_logger()
 
 
@@ -171,6 +170,8 @@ class PwHdlcRpcClient:
 
   def read_and_process_data(self) -> None:
     """Continuously reads and handles HDLC frames."""
+    if self._stop_event is None:
+      raise ValueError("stop_event is not initialized")
     decoder = decode.FrameDecoder()
     while not self._stop_event.is_set():
       readfds, _, _ = select.select(
@@ -178,6 +179,12 @@ class PwHdlcRpcClient:
       if readfds:
         try:
           data = self._read_method(_NUM_OF_READ_BYTES)
+        except serial.SerialException:
+          logger.exception(
+              "Unable to read from the serial port. Probably the device"
+              " disconnected or multiple access on port."
+          )
+          raise
         except Exception:  # pylint: disable=broad-except
           logger.exception(
               "Exception occurred when reading in PwHdlcRpcClient thread.")
@@ -192,6 +199,8 @@ class PwHdlcRpcClient:
     Args:
       frame: HDLC frame packet.
     """
+    if self._client is None:
+      raise ValueError("client is not initialized")
     if not self._client.process_packet(frame.data):
       logger.error(f"Packet not handled by RPC client: {frame.data}")
 
@@ -201,6 +210,8 @@ class PwHdlcRpcClient:
     Args:
       frame: HDLC frame packet.
     """
+    if self.log_queue is None:
+      raise ValueError("log_queue is not initialized")
     self.log_queue.put(frame.data + b"\n")
 
   def _handle_frame(self, frame: Any) -> None:
@@ -283,9 +294,9 @@ class PigweedRpcSerialTransport(transport_base.TransportBase):
         start.
     """
     super().__init__(
+        comms_address=comms_address,
         auto_reopen=auto_reopen,
         open_on_start=open_on_start)
-    self.comms_address = comms_address
     self._serial = serial.Serial()
     self._serial.port = comms_address
     self._serial.baudrate = baudrate
@@ -327,6 +338,8 @@ class PigweedRpcSerialTransport(transport_base.TransportBase):
     """
     # Retrieving logs from queue doesn't support size configuration.
     del size  # not used
+    if self._hdlc_client.log_queue is None:
+      raise ValueError("log_queue is not initialized")
     try:
       return self._hdlc_client.log_queue.get(timeout=timeout)
     except queue.Empty:
@@ -358,7 +371,7 @@ class PigweedRpcSocketTransport(transport_base.TransportBase):
     """Initializes a PigweedRpcSocketTransport instance.
 
     Args:
-      comms_address: Serial port path on the host.
+      comms_address: Socket IPv4 address or host name.
       protobuf_import_paths: Module import paths of the compiled device
         communication protobufs.
       port: Socket connection port.
@@ -369,9 +382,9 @@ class PigweedRpcSocketTransport(transport_base.TransportBase):
         sample app is already running properly on the device.
     """
     super().__init__(
+        comms_address=comms_address,
         auto_reopen=auto_reopen,
         open_on_start=open_on_start)
-    self.comms_address = comms_address
     self._protobuf_import_paths = protobuf_import_paths
     self._address = (comms_address, port)
     self._socket = None
@@ -387,8 +400,10 @@ class PigweedRpcSocketTransport(transport_base.TransportBase):
 
   def _close(self) -> None:
     """Closes the PwRPC transport."""
-    self._hdlc_client.close()
-    self._socket.close()
+    # pytype is unable to infer that these conditions hold if is_open is called.
+    if self._hdlc_client is not None and self._hdlc_client.is_alive():
+      self._hdlc_client.close()
+      self._socket.close()
 
   def _open(self) -> None:
     """Opens the PwRPC transport."""
@@ -414,6 +429,8 @@ class PigweedRpcSocketTransport(transport_base.TransportBase):
     """
     # Retrieving logs from queue doesn't support size configuration.
     del size  # not used
+    if self._hdlc_client is None:
+      raise ValueError("hdlc_client is not initialized")
     try:
       return self._hdlc_client.log_queue.get(timeout=timeout)
     except queue.Empty:

@@ -1,6 +1,6 @@
 # GDM device setup: Raspberry Pi passwordless SSH key setup
 
-Supported models: Raspberry Pi 3 and 4.
+Supported models: Raspberry Pi 3, 4 and 5.
 
 Supported kernel images: `Raspbian` and `Ubuntu`
 

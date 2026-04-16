@@ -15,13 +15,17 @@
 """Mixin for comm_power_default capability."""
 from unittest import mock
 
+from absl.testing import parameterized
 from gazoo_device.capabilities import comm_power_default
+from gazoo_device.tests.unit_tests.utils import unit_test_loader
+
+load_tests = unit_test_loader.load_no_tests
 
 ETHERNET_SWITCH_NAME = "dlink_switch-4390"
 ETHERNET_SWITCH_PORT = "2"
 
 
-class CommPowerDefaultTestMixin:
+class CommPowerDefaultTestMixin(parameterized.TestCase):
   """Mixin for common device unit tests of communication power.
 
   Assumes self.uut is set.

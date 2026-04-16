@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Matter endpoint capability wrapper via Pigweed RPC."""
-from typing import Any, Callable, List, Set, Tuple, Type
+from typing import Any, Callable, Union
 
 from gazoo_device import decorators
 from gazoo_device import gdm_logger
@@ -24,7 +24,6 @@ from gazoo_device.capabilities.matter_endpoints import unsupported_endpoint
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 from gazoo_device.protos import attributes_service_pb2
 from gazoo_device.protos import descriptor_service_pb2
-from gazoo_device.switchboard.transports import pigweed_rpc_transport
 from gazoo_device.utility import pwrpc_utils
 
 _DESCRIPTOR_SERVICE_NAME = "Descriptor"
@@ -54,28 +53,46 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
       switchboard_call: The switchboard.call method.
       rpc_timeout_s: Timeout (s) for RPC calls.
     """
-    super().__init__(device_name=device_name, read=self.read, write=self.write)
+    super().__init__(
+        device_name=device_name,
+        read=self.read,
+        write=self.write,
+        send=self.send,
+    )
     self._switchboard_call = switchboard_call
     self._rpc_timeout_s = rpc_timeout_s
 
-  def get_supported_endpoint_ids(self) -> List[int]:
+  @classmethod
+  def get_sub_capability_flavors(
+      cls
+  ) -> set[type[Union[endpoint_base.EndpointBase, cluster_base.ClusterBase]]]:
+    """Returns the flavors of sub-capabilities used by this capability.
+
+    Capabilities normally don't have sub-capabilities, but this is required for
+    the matter_endpoints capability.
+    """
+    return set(
+        matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS +
+        matter_endpoints_and_clusters.SUPPORTED_CLUSTERS_PW_RPC +
+        (unsupported_endpoint.UnsupportedEndpoint,))
+
+  def get_supported_endpoint_ids(self) -> list[int]:
     """Gets the list of supported endpoint ids on the device."""
     list_of_supported_endpoints = self._switchboard_call(
-        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
+        method_name=pwrpc_utils.RPC_METHOD_NAME,
         method_args=(_DESCRIPTOR_SERVICE_NAME,
                      _DESCRIPTOR_GET_ENDPOINTS_RPC_NAME),
         method_kwargs={
             "endpoint": matter_endpoints_base.ROOT_NODE_ENDPOINT_ID,
             "pw_rpc_timeout_s": self._rpc_timeout_s})
-    # TODO(b/241313435): support RootNode device type in PwRPC.
-    supported_endpoint_ids = []
+    supported_endpoint_ids = [matter_endpoints_base.ROOT_NODE_ENDPOINT_ID]
     for endpoint_in_bytes in list_of_supported_endpoints:
       endpoint = descriptor_service_pb2.Endpoint.FromString(endpoint_in_bytes)
       supported_endpoint_ids.append(endpoint.endpoint)
     return supported_endpoint_ids
 
   def get_endpoint_class_and_device_type_id(
-      self, endpoint_id: int) -> Tuple[Type[endpoint_base.EndpointBase], int]:
+      self, endpoint_id: int) -> tuple[type[endpoint_base.EndpointBase], int]:
     """Gets the endpoint class and device type ID by the given endpoint id.
 
     Args:
@@ -86,7 +103,7 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
       yet supported in GDM) and the device type ID.
     """
     device_types = self._switchboard_call(
-        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
+        method_name=pwrpc_utils.RPC_METHOD_NAME,
         method_args=(_DESCRIPTOR_SERVICE_NAME,
                      _DESCRIPTOR_DEVICE_TYPE_RPC_NAME),
         method_kwargs={
@@ -101,10 +118,10 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
     return endpoint_class, device_type_id
 
   def get_supported_clusters(
-      self, endpoint_id: int) -> Set[Type[cluster_base.ClusterBase]]:
+      self, endpoint_id: int) -> set[type[cluster_base.ClusterBase]]:
     """Retrieves the supported clusters from the given endpoint ID."""
     clusters = self._switchboard_call(
-        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
+        method_name=pwrpc_utils.RPC_METHOD_NAME,
         method_args=(_DESCRIPTOR_SERVICE_NAME,
                      _DESCRIPTOR_GET_CLUSTERS_RPC_NAME),
         method_kwargs={
@@ -112,8 +129,11 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
     cluster_classes = set()
     for cluster_in_bytes in clusters:
       cluster = descriptor_service_pb2.Cluster.FromString(cluster_in_bytes)
-      cluster_class = matter_endpoints_and_clusters.CLUSTER_ID_TO_CLASS_PW_RPC.get(
-          cluster.cluster_id)
+      cluster_class = (
+          matter_endpoints_and_clusters.CLUSTER_ID_TO_CLASS_PW_RPC.get(
+              cluster.cluster_id
+          )
+      )
       if cluster_class is None:
         logger.warning(
             f"Cluster class for cluster ID {hex(cluster.cluster_id)} has not "
@@ -156,7 +176,7 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
         "pw_rpc_timeout_s": self._rpc_timeout_s}
 
     data_in_bytes = self._switchboard_call(
-        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
+        method_name=pwrpc_utils.RPC_METHOD_NAME,
         method_args=(_ATTRIBUTE_SERVICE_NAME, _ATTRIBUTE_READ_RPC_NAME),
         method_kwargs=read_kwargs)
 
@@ -201,9 +221,28 @@ class MatterEndpointsAccessorPwRpc(matter_endpoints_base.MatterEndpointsBase):
         data, _ATTRIBUTE_DATA_MODULE_PATH)
     serialized_metadata = pwrpc_utils.PigweedProtoState(
         metadata, _ATTRIBUTE_METADATA_MODULE_PATH)
-    write_kwargs = {"data": serialized_data, "metadata": serialized_metadata}
+    write_kwargs = {
+        "data": serialized_data,
+        "metadata": serialized_metadata,
+        "pw_rpc_timeout_s": self._rpc_timeout_s,
+    }
 
     self._switchboard_call(
-        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
+        method_name=pwrpc_utils.RPC_METHOD_NAME,
         method_args=(_ATTRIBUTE_SERVICE_NAME, _ATTRIBUTE_WRITE_RPC_NAME),
         method_kwargs=write_kwargs)
+
+  @decorators.CapabilityLogDecorator(logger)
+  def send(
+      self,
+      service_name: str,
+      rpc_name: str,
+      **rpc_kwargs: Any,
+  ) -> None:
+    if "pw_rpc_timeout_s" not in rpc_kwargs:
+      rpc_kwargs["pw_rpc_timeout_s"] = self._rpc_timeout_s
+    self._switchboard_call(
+        method_name=pwrpc_utils.RPC_METHOD_NAME,
+        method_args=(service_name, rpc_name),
+        method_kwargs=rpc_kwargs,
+    )

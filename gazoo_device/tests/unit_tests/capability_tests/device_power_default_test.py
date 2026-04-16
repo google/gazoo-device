@@ -47,13 +47,16 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     self.mock_manager.create_device.return_value = self.mock_cambrionix
     gazoo_device_base_instance_spec = mock.create_autospec(
         spec=gazoo_device_base.GazooDeviceBase, instance=True)
-    self.wait_until_connected = mock.MagicMock(
-        spec=gazoo_device_base_instance_spec.wait_until_connected)
-    self.get_switchboard_if_initialized = mock.MagicMock(
-        spec=gazoo_device_base_instance_spec._get_switchboard_if_initialized,
-        return_value=self.mock_switchboard)
-    self.wait_for_bootup_complete = mock.MagicMock(
-        spec=gazoo_device_base_instance_spec.wait_for_bootup_complete)
+    self.wait_until_connected = (
+        gazoo_device_base_instance_spec.wait_until_connected
+    )
+    self.get_switchboard_if_initialized = (
+        gazoo_device_base_instance_spec._get_switchboard_if_initialized
+    )
+    self.get_switchboard_if_initialized.return_value = self.mock_switchboard
+    self.wait_for_bootup_complete = (
+        gazoo_device_base_instance_spec.wait_for_bootup_complete
+    )
     # To verify the call sequence of unrelated mocks, attach them to a common
     # mock and assert on the call sequence of the common mock.
     self.mock_call_sequence_tracker = mock.MagicMock()
@@ -70,9 +73,10 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     self.mock_call_sequence_tracker.attach_mock(
         self.wait_for_bootup_complete, "wait_for_bootup_complete")
 
+    self.mock_get_manager = lambda: self.mock_manager
     self.uut = device_power_default.DevicePowerDefault(
         device_name=self.name,
-        create_device_func=self.mock_manager.create_device,
+        get_manager=self.mock_get_manager,
         default_hub_type="cambrionix",
         props=self.props,
         usb_ports_discovered=False,
@@ -179,7 +183,7 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
 
     self.uut = device_power_default.DevicePowerDefault(
         device_name=self.name,
-        create_device_func=self.mock_manager.create_device,
+        get_manager=self.mock_get_manager,
         default_hub_type="cambrionix",
         props=self.props,
         usb_ports_discovered=False,
@@ -190,6 +194,33 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     with self.assertRaisesRegex(errors.DeviceError, err_msg):
       self.uut.health_check()
 
+  def test_missing_hub_name_and_hub_type_property(self):
+    """Verifies error message when both hub name and hub type are missing."""
+    hub_type = "cambrionix"
+    hub_type_property = "device_power_hub_type"
+    err_msg = (
+        rf"Note that {hub_type_property} is not set and currently fallbacking"
+        rf" to {hub_type}. If you're actually connected device to a different"
+        r" power hub, please set"
+    )
+    self.props["optional"]["device_usb_hub_name"] = None
+    if hub_type_property in self.props["optional"]:
+      del self.props["optional"][hub_type_property]
+
+    self.uut = device_power_default.DevicePowerDefault(
+        device_name=self.name,
+        get_manager=self.mock_get_manager,
+        default_hub_type=hub_type,
+        props=self.props,
+        usb_ports_discovered=False,
+        wait_until_connected_fn=self.wait_until_connected,
+        wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
+        get_switchboard_if_initialized=self.get_switchboard_if_initialized,
+        change_triggers_reboot=False,
+    )
+    with self.assertRaisesRegex(errors.DeviceError, err_msg):
+      self.uut.health_check()
+
   def test_missing_manager(self):
     """Verifies capability raises a error if manager is not set."""
     err_msg = f"{self.name} failed to create cambrionix."
@@ -197,7 +228,7 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
         "failed to create cambrionix")
     self.uut = device_power_default.DevicePowerDefault(
         device_name=self.name,
-        create_device_func=self.mock_manager.create_device,
+        get_manager=self.mock_get_manager,
         default_hub_type="cambrionix",
         props=self.props,
         usb_ports_discovered=False,
@@ -226,7 +257,7 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     with self.assertRaisesRegex(ValueError, "Hub type foo is not supported"):
       self.uut = device_power_default.DevicePowerDefault(
           device_name=self.name,
-          create_device_func=self.mock_manager.create_device,
+          get_manager=self.mock_get_manager,
           default_hub_type="cambrionix",
           props=self.props,
           usb_ports_discovered=True,
@@ -238,7 +269,7 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     """Tests that the error message indicates to use gdm redetect."""
     self.uut = device_power_default.DevicePowerDefault(
         device_name=self.name,
-        create_device_func=self.mock_manager.create_device,
+        get_manager=self.mock_get_manager,
         default_hub_type="cambrionix",
         props=self.props,
         usb_ports_discovered=True,
@@ -250,6 +281,42 @@ class DevicePowerDefaultTests(unit_test_case.UnitTestCase):
     error_msg = f"set them via 'gdm redetect {self.name}'"
     with self.assertRaisesRegex(errors.DeviceError, error_msg):
       self.uut.health_check()
+
+  def test_hub_name_and_port_optional_priority(self):
+    self.props["persistent_identifiers"]["device_usb_hub_name"] = (
+        "persistent-hub")
+    self.props["persistent_identifiers"]["device_usb_port"] = 1
+    self.props["optional"]["device_usb_hub_name"] = "optional-hub"
+    self.props["optional"]["device_usb_port"] = 2
+
+    self.assertEqual(self.uut.hub_name, "optional-hub")
+    self.assertEqual(self.uut.port_number, 2)
+
+  def test_hub_name_and_port_persistent_fallback(self):
+    self.props["persistent_identifiers"]["device_usb_hub_name"] = (
+        "persistent-hub")
+    self.props["persistent_identifiers"]["device_usb_port"] = 1
+    self.props["optional"]["device_usb_hub_name"] = None
+    self.props["optional"]["device_usb_port"] = None
+
+    self.assertEqual(self.uut.hub_name, "persistent-hub")
+    self.assertEqual(self.uut.port_number, 1)
+
+  def test_hub_name_and_port_empty_string_fallback(self):
+    self.props["persistent_identifiers"]["device_usb_hub_name"] = (
+        "persistent-hub")
+    self.props["persistent_identifiers"]["device_usb_port"] = 1
+    self.props["optional"]["device_usb_hub_name"] = ""
+    self.props["optional"]["device_usb_port"] = ""
+
+    self.assertEqual(self.uut.hub_name, "persistent-hub")
+    self.assertEqual(self.uut.port_number, 1)
+
+  def test_port_number_zero_does_not_fallback(self):
+    """Verifies that port number 0 does not trigger property fallback."""
+    self.props["persistent_identifiers"]["device_usb_port"] = 1
+    self.props["optional"]["device_usb_port"] = 0
+    self.assertEqual(self.uut.port_number, 0)
 
 
 if __name__ == "__main__":

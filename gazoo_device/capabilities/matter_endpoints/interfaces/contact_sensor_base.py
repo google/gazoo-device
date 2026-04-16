@@ -22,6 +22,7 @@ class ContactSensorBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Contact Sensor endpoint interface."""
 
   DEVICE_TYPE_ID = 0x0015
+  DEVICE_TYPE_NAME = "ContactSensor"
 
   @property
   @abc.abstractmethod

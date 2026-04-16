@@ -56,11 +56,13 @@ class CommPowerDefaultTests(unit_test_case.UnitTestCase):
     self.mock_manager.create_device.return_value = self.mock_cambrionix
     gazoo_device_base_instance_spec = mock.create_autospec(
         spec=gazoo_device_base.GazooDeviceBase, instance=True)
-    self.get_switchboard_if_initialized = mock.MagicMock(
-        spec=gazoo_device_base_instance_spec._get_switchboard_if_initialized,
-        return_value=self.mock_switchboard)
-    self.wait_until_connected_func = mock.MagicMock(
-        spec=gazoo_device_base_instance_spec.wait_until_connected)
+    self.get_switchboard_if_initialized = (
+        gazoo_device_base_instance_spec._get_switchboard_if_initialized
+    )
+    self.get_switchboard_if_initialized.return_value = self.mock_switchboard
+    self.wait_until_connected_func = (
+        gazoo_device_base_instance_spec.wait_until_connected
+    )
     # To verify the call sequence of unrelated mocks, attach them to a common
     # mock and assert on the call sequence of the common mock.
     self.mock_call_sequence_tracker = mock.MagicMock()
@@ -75,9 +77,10 @@ class CommPowerDefaultTests(unit_test_case.UnitTestCase):
     self.mock_call_sequence_tracker.attach_mock(
         self.wait_until_connected_func, "wait_until_connected_func")
 
+    self.mock_get_manager = lambda: self.mock_manager
     self.uut = comm_power_default.CommPowerDefault(
         device_name=self.name,
-        create_device_func=self.mock_manager.create_device,
+        get_manager=self.mock_get_manager,
         hub_type="cambrionix",
         props=self.props,
         settable=True,
@@ -122,7 +125,7 @@ class CommPowerDefaultTests(unit_test_case.UnitTestCase):
         mock_get_switchboard_return_value)
     self.uut = comm_power_default.CommPowerDefault(
         device_name=self.name,
-        create_device_func=self.mock_manager.create_device,
+        get_manager=self.mock_get_manager,
         hub_type="cambrionix",
         props=self.props,
         settable=True,
@@ -136,11 +139,27 @@ class CommPowerDefaultTests(unit_test_case.UnitTestCase):
     self.mock_switchboard.close_all_transports.assert_not_called()
     self.mock_switchboard.open_all_transports.assert_not_called()
 
+  def test_no_wait_for_connection(self):
+    """Verifies that on(no_wait=True) does not wait to be connected."""
+    self.uut = comm_power_default.CommPowerDefault(
+        device_name=self.name,
+        get_manager=self.mock_get_manager,
+        hub_type="cambrionix",
+        props=self.props,
+        settable=True,
+        hub_name_prop="device_usb_hub_name",
+        port_prop="device_usb_port",
+        get_switchboard_if_initialized=self.get_switchboard_if_initialized,
+        wait_until_connected_func=self.wait_until_connected_func,
+        power_and_data_share_cable=False)
+    self.uut.on(no_wait=True)
+    self.wait_until_connected_func.assert_not_called()
+
   def test_on_waits_for_connection(self):
     """Verifies on() waits for the device to be connected."""
     self.uut = comm_power_default.CommPowerDefault(
         device_name=self.name,
-        create_device_func=self.mock_manager.create_device,
+        get_manager=self.mock_get_manager,
         hub_type="cambrionix",
         props=self.props,
         settable=True,
@@ -161,7 +180,7 @@ class CommPowerDefaultTests(unit_test_case.UnitTestCase):
     self.get_switchboard_if_initialized.return_value = None
     self.uut = comm_power_default.CommPowerDefault(
         device_name=self.name,
-        create_device_func=self.mock_manager.create_device,
+        get_manager=self.mock_get_manager,
         hub_type="cambrionix",
         props=self.props,
         settable=True,

@@ -66,6 +66,12 @@ class BasicInformationClusterChipToolTest(
       ("software_version", "software-version", 7),
       ("software_version_string", "software-version-string", "TEST_VERSION"),
       ("capability_minima", "capability-minima", 0),
+      ("manufacturing_date", "manufacturing-date", "2023-01-01"),
+      ("part_number", "part-number", "A1234"),
+      ("product_label", "product-label", "FOO"),
+      ("product_url", "product-url", "http://example.com"),
+      ("serial_number", "serial-number", "SERIAL123"),
+      ("unique_id", "unique-id", "MYUNIQUEID"),
   ])
   def test_read_attribute(self, attribute_name, value):
     """Tests reading attribute."""
@@ -74,7 +80,7 @@ class BasicInformationClusterChipToolTest(
         getattr(self.uut, attribute_name.replace("-", "_")),
         self.fake_read.return_value)
     self.fake_read.assert_called_once_with(
-        self._endpoint_id, "basic", attribute_name)
+        self._endpoint_id, "basicinformation", attribute_name)
 
 
 if __name__ == "__main__":

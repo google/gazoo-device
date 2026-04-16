@@ -15,14 +15,11 @@
 """Matter cluster capability unit test for on_off_pw_rpc module."""
 from unittest import mock
 
-import gazoo_device
 from gazoo_device import errors
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities.matter_clusters import on_off_pw_rpc
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
-_ON_OFF_RPC_MODULE = (
-    gazoo_device.capabilities.matter_clusters.on_off_pw_rpc.OnOffClusterPwRpc)
 _FAKE_DEVICE_NAME = "fake-device-name"
 _FAKE_ENDPOINT_ID = 1
 
@@ -56,7 +53,7 @@ class OnOffClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
 
   @mock.patch.object(on_off_pw_rpc.OnOffClusterPwRpc, "_onoff_command")
   @mock.patch.object(
-      _ON_OFF_RPC_MODULE,
+      on_off_pw_rpc.OnOffClusterPwRpc,
       "onoff",
       new_callable=mock.PropertyMock(return_value=True))
   def test_toggle_command(self, mock_state, mock_on_off):
@@ -72,7 +69,7 @@ class OnOffClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
     self.assertTrue(self.uut.onoff)
 
   @mock.patch.object(
-      _ON_OFF_RPC_MODULE,
+      on_off_pw_rpc.OnOffClusterPwRpc,
       "onoff",
       new_callable=mock.PropertyMock(return_value=True))
   def test_on_off_method_success(self, mock_state):
@@ -82,7 +79,7 @@ class OnOffClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
     self.fake_write.assert_called_once()
 
   @mock.patch.object(
-      _ON_OFF_RPC_MODULE,
+      on_off_pw_rpc.OnOffClusterPwRpc,
       "onoff",
       new_callable=mock.PropertyMock(return_value=True))
   def test_on_off_method_failure_incorrect_state(self, mock_state):

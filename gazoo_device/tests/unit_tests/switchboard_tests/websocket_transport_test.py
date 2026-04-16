@@ -46,7 +46,7 @@ class WebSocketTransportTests(unit_test_case.UnitTestCase):
 
   def test_003_transport_cannot_connect(self):
     """Test open() raises an exception when nobody is listening on that port."""
-    with self.assertRaisesRegexp(Exception, "Connection refused"):
+    with self.assertRaisesRegex(Exception, "Connection refused"):
       transport = websocket_transport.WebSocketTransport("ws://localhost:8888")
       transport.open()
 
@@ -79,7 +79,7 @@ class WebSocketTransportTests(unit_test_case.UnitTestCase):
   def test_014_cant_set_invalid_props(self):
     """Test setting a property not defined in transport properties."""
     bogus_prop = "bogus_prop"
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         KeyError, "Property {} doesn't exist".format(bogus_prop)):
       self.uut.set_property(bogus_prop, "bogus_val")
 

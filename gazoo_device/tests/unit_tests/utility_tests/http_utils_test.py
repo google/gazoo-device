@@ -72,7 +72,7 @@ class SecureUnixStreamHttpServer(UnixStreamHttpServer):
       keyfile.write(keybytes)
       self.key = keyfile.name
 
-    context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(certfile=self.cert, keyfile=self.key)
     context.verify_mode = ssl.CERT_NONE
 
@@ -276,7 +276,7 @@ class HTTPUtilsTests(unit_test_case.UnitTestCase):
         data=json.dumps(test_data),
         headers=None,
         timeout=10,
-        verify=False)
+        verify=True)
 
   @mock.patch.object(requests.Session, "get")
   def test_030_send_http_get_params_string_data(self, mock_requests_get):
@@ -295,7 +295,7 @@ class HTTPUtilsTests(unit_test_case.UnitTestCase):
         data=test_data,
         headers=None,
         timeout=10,
-        verify=False)
+        verify=True)
 
   def test_30_send_http_get_retries_on_error(self):
     """Verify send_http_get retries on HTTP errors if # of attempts has not been exceeded."""

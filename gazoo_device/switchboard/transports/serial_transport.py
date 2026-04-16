@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Defines a serial port transport by wrapping the Pyserial interface."""
+import dataclasses
 import fcntl
 import os
 import time
@@ -28,35 +29,48 @@ DEFAULT_BAUDRATE = 115200
 REOPEN_TIMEOUT = 20
 
 
+@dataclasses.dataclass
+class SerialTransportConfig:
+  """Configuration for a serial transport.
+
+  Attributes:
+    communication_address: The path to the serial device to use.
+    baudrate: The baudrate serial property to use.
+  """
+
+  communication_address: str
+  baudrate: int = DEFAULT_BAUDRATE
+
+
 class SerialTransport(transport_base.TransportBase):
   """Communication transport for serial port."""
 
   def __init__(self,
-               comms_address,
-               baudrate=DEFAULT_BAUDRATE,
-               bytesize=serial.EIGHTBITS,
-               parity=serial.PARITY_NONE,
-               stopbits=serial.STOPBITS_ONE,
-               use_high_baudrate_flow_control=False,
-               auto_reopen=False,
-               open_on_start=True):
-    """Initialize the SerialTransport object with the given serial properties.
+               comms_address: str,
+               baudrate: int = DEFAULT_BAUDRATE,
+               bytesize: int = serial.EIGHTBITS,
+               parity: str = serial.PARITY_NONE,
+               stopbits: float = serial.STOPBITS_ONE,
+               use_high_baudrate_flow_control: bool = False,
+               auto_reopen: bool = False,
+               open_on_start: bool = True):
+    """Initializes the SerialTransport object with the given serial properties.
 
     Args:
-        comms_address (str): the path to the serial device to use
-        baudrate (int): the initial baudrate serial property to use
-        bytesize (int): the initial byte size serial property to use
-        parity (str): the initial parity serial property to use
-        stopbits (int): the initial stop bits serial property to use
-        use_high_baudrate_flow_control (bool): whether to send control
-          characters (XOFF, XON) before & after writing to prevent buffer
-          issues at high baud rate (> 115200).
-        auto_reopen (bool): flag indicating transport should be reopened if
-          unexpectedly closed.
-        open_on_start (bool): flag indicating transport should be open on
-          TransportProcess start.
+        comms_address: The path to the serial device to use.
+        baudrate: The initial baudrate serial property to use.
+        bytesize: The initial byte size serial property to use.
+        parity: The initial parity serial property to use.
+        stopbits: The initial stop bits serial property to use.
+        use_high_baudrate_flow_control: Whether to send control characters
+            (XOFF, XON) before & after writing to prevent buffer issues at high
+            baud rate (> 115200).
+        auto_reopen: Flag indicating transport should be reopened if
+            unexpectedly closed.
+        open_on_start: Flag indicating transport should be open on
+            TransportProcess start.
     """
-    super(SerialTransport, self).__init__(auto_reopen, open_on_start)
+    super().__init__(comms_address, auto_reopen, open_on_start)
     self._max_read_errors = 3
     self._properties.update({
         props.BAUDRATE: baudrate,
@@ -70,7 +84,6 @@ class SerialTransport(transport_base.TransportBase):
         props.READ_REOPEN: True,
         props.USE_HIGH_BAUDRATE_FLOW_CONTROL: use_high_baudrate_flow_control
     })
-    self.comms_address = comms_address
     self._read_errors = 0
     # Windows is not supported due to use of fcntl.
     # Cast to Posix serial so pytype understands this.

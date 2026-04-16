@@ -35,27 +35,26 @@ class WebSocketTransport(transport_base.TransportBase):
   """WebSocket-based transport."""
 
   def __init__(self,
-               comms_address,
-               connect_timeout=tcp_transport.CONNECT_TIMEOUT,
-               auto_reopen=False,
-               open_on_start=True):
-    """Initialize the WebSocketTransport.
+               comms_address: str,
+               connect_timeout: float = tcp_transport.CONNECT_TIMEOUT,
+               auto_reopen: bool = False,
+               open_on_start: bool = True):
+    """Initializes the WebSocketTransport.
 
     Args:
-        comms_address (str): websocket URL to connect to (ws://...)
-        connect_timeout (float): timeout on the socket instance before
-          attempting connect.
-        auto_reopen (bool): flag indicating transport should be reopened if
-          unexpectedly closed.
-        open_on_start (bool): flag indicating transport should be open on
-          TransportProcess start.
+        comms_address: Websocket URL to connect to (ws://...).
+        connect_timeout: Timeout on the socket instance before attempting
+            connect.
+        auto_reopen: Flag indicating transport should be reopened if
+            unexpectedly closed.
+        open_on_start: Flag indicating transport should be open on
+            TransportProcess start.
     """
-    super(WebSocketTransport, self).__init__(auto_reopen, open_on_start)
+    super().__init__(comms_address, auto_reopen, open_on_start)
     self._properties.update({
         transport_properties.CONNECT_TIMEOUT: connect_timeout,
         transport_properties.WEBSOCKET_URL: comms_address
     })
-    self.comms_address = comms_address
     self._websocket = None
 
   def is_open(self):
@@ -78,7 +77,9 @@ class WebSocketTransport(transport_base.TransportBase):
 
   def _close(self):
     """Closes the websocket connection."""
-    self._websocket.close()
+    # disable pytype's checks for this line, as we aren't worried about
+    # something attempting to close a closed socket
+    self._websocket.close()  # pytype: disable=attribute-error
     self._websocket = None
 
   def _read(self, size=None, timeout=None):
@@ -94,6 +95,8 @@ class WebSocketTransport(transport_base.TransportBase):
              or "" if no bytes were read
              or "" if an Exception occurred (including timeout)
     """
+    if self._websocket is None:
+      raise ValueError("attempting to read from non-open websocket")
     self._websocket.settimeout(timeout)
     try:
       read_bytes = self._websocket.recv()
@@ -121,6 +124,8 @@ class WebSocketTransport(transport_base.TransportBase):
         int: number of bytes written (0 if any Exception occurs, including
         timeout)
     """
+    if self._websocket is None:
+      raise ValueError("attempting to write to non-open websocket")
     self._websocket.settimeout(timeout)
     try:
       bytes_sent = self._websocket.send(data)

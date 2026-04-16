@@ -18,6 +18,11 @@ All examples below require that you have:
 
 1. [installed GDM](https://github.com/google/gazoo-device/blob/master/README.md#install);
 2. [connected a device to your host and detected the device with GDM](https://github.com/google/gazoo-device/tree/master/docs/device_setup);
+
+   * The example tests use a Raspberry Pi. If you don't have one, but have
+     another device supported by GDM, you can modify the test code locally to
+     use a different device module rather than `raspberry_pi`.
+
 3. checked that your device is shown as "connected" or "available" in output of
    `gdm devices`;
 4. checked out the source code for the example tests:
@@ -55,26 +60,31 @@ pip install -r unittest_test_requirements.txt
 
 ### How to run
 
-This simple test setup directly accepts the name of the device (`device-1234` in
+This simple test setup directly accepts the name of the device (`raspberrypi-1234` in
 the example below) as a command-line argument:
 
 ```
-python3 unittest_example_test.py -d device-1234
+python3 unittest_example_test.py -d raspberrypi-1234
 ```
 
 Test output should look like this:
 
 ```
-$ python3 unittest_example_test.py -d cambrionix-jl0y
+$ python3 unittest_example_test.py -d raspberrypi-1234
 test_reboot (__main__.UnittestExampleRebootTest)
-Reboots the device. ... 06-01 18:08:58.933 INFO Creating cambrionix-jl0y
-06-01 18:08:58.934 INFO cambrionix-jl0y starting AuxiliaryDevice.check_device_ready
-06-01 18:08:58.934 INFO cambrionix-jl0y health check 1/2 succeeded: Check device connected.
-06-01 18:08:59.139 INFO cambrionix-jl0y health check 2/2 succeeded: Check clear flags.
-06-01 18:08:59.139 INFO cambrionix-jl0y AuxiliaryDevice.check_device_ready successful. It took 0s.
-06-01 18:08:59.139 INFO Created device for test: cambrionix-jl0y
-06-01 18:08:59.140 INFO cambrionix-jl0y starting Cambrionix.reboot
-06-01 18:09:02.272 INFO cambrionix-jl0y Cambrionix.reboot successful. It took 3s.
+Reboots the device. ... 06-01 18:08:58.933 INFO Creating raspberrypi-1234
+06-01 18:08:58.934 INFO raspberrypi-1234 checking device readiness: attempt 1 of 1
+06-01 18:08:58.934 INFO raspberrypi-1234 starting AuxiliaryDevice.check_device_ready()
+06-01 18:08:58.934 INFO raspberrypi-1234 starting AuxiliaryDevice.wait_until_connected(timeout=3)
+06-01 18:08:58.934 INFO raspberrypi-1234 waiting up to 3s for device to be connected.
+06-01 18:08:58.934 INFO raspberrypi-1234 AuxiliaryDevice.wait_until_connected returned None. It took 0s.
+06-01 18:08:58.934 INFO raspberrypi-1234 health check 1/3 succeeded: Check device connected.
+06-01 18:08:58.934 INFO raspberrypi-1234 logging to file ~/gazoo/gdm/logs/raspberrypi-1234-20231228-080330.txt
+06-01 18:08:59.950 INFO raspberrypi-1234 health check 2/3 succeeded: Check create switchboard.
+06-01 18:08:59.950 INFO raspberrypi-1234 health check 3/3 succeeded: Check device responsiveness.
+06-01 18:08:59.950 INFO raspberrypi-1234 AuxiliaryDevice.check_device_ready returned None. It took 2s.
+06-01 18:08:59.961 INFO raspberrypi-1234 starting RaspbianDevice.reboot
+06-01 18:09:02.820 INFO raspberrypi-1234 RaspbianDevice.reboot successful. It took 3s.
 ok
 
 ----------------------------------------------------------------------
@@ -115,7 +125,7 @@ Here's an example of what your testbed file could look like for a Raspberry Pi
 TestBeds:
   - Name: Testbed-One-Raspberrypi-01
     Controllers:
-      GazooDevice:
+      gdm_raspberrypi:
         - id: 'raspberrypi-k23o'
 ```
 
@@ -136,19 +146,24 @@ python3 mobly_example_test.py --config ~/gazoo/testbeds/<your_device_name>.yml
 Your test output should look like this:
 
 ```
-$ python3 mobly_example_test.py --config ~/gazoo/testbeds/cambrionix-jl0y.yml
-[Testbed-One-Cambrionix-01] 06-01 18:15:20.732 INFO Test output folder: "/tmp/logs/mobly/Testbed-One-Cambrionix-01/06-01-2021_18-15-20-732"
-[Testbed-One-Cambrionix-01] 06-01 18:15:20.733 INFO ==========> MoblyExampleRebootTest <==========
-[Testbed-One-Cambrionix-01] 06-01 18:15:20.755 INFO [Test] test_reboot
-[Testbed-One-Cambrionix-01] 06-01 18:15:20.756 INFO Creating cambrionix-jl0y
-[Testbed-One-Cambrionix-01] 06-01 18:15:20.756 INFO cambrionix-jl0y starting AuxiliaryDevice.check_device_ready
-[Testbed-One-Cambrionix-01] 06-01 18:15:20.757 INFO cambrionix-jl0y health check 1/2 succeeded: Check device connected.
-[Testbed-One-Cambrionix-01] 06-01 18:15:20.996 INFO cambrionix-jl0y health check 2/2 succeeded: Check clear flags.
-[Testbed-One-Cambrionix-01] 06-01 18:15:20.997 INFO cambrionix-jl0y AuxiliaryDevice.check_device_ready successful. It took 0s.
-[Testbed-One-Cambrionix-01] 06-01 18:15:20.998 INFO Created devices for test: ['cambrionix-jl0y']
-[Testbed-One-Cambrionix-01] 06-01 18:15:20.999 INFO cambrionix-jl0y starting Cambrionix.reboot
-[Testbed-One-Cambrionix-01] 06-01 18:15:24.136 INFO cambrionix-jl0y Cambrionix.reboot successful. It took 3s.
-[Testbed-One-Cambrionix-01] 06-01 18:15:24.140 INFO [Test] test_reboot PASS
-[Testbed-One-Cambrionix-01] 06-01 18:15:24.149 INFO Summary for test class MoblyExampleRebootTest: Error 0, Executed 1, Failed 0, Passed 1, Requested 1, Skipped 0
-[Testbed-One-Cambrionix-01] 06-01 18:15:24.151 INFO Summary for test run Testbed-One-Cambrionix-01@06-01-2021_18-15-20-732: Error 0, Executed 1, Failed 0, Passed 1, Requested 1, Skipped 0
+$ python3 mobly_example_test.py --config ~/gazoo/testbeds/raspberrypi-1234.yml
+[Testbed-One-RaspberryPi-01] 06-01 18:15:20.732 INFO Test output folder: "/tmp/logs/mobly/Testbed-One-RaspberryPi-01/06-01-2021_18-15-20-732"
+[Testbed-One-RaspberryPi-01] 06-01 18:15:20.733 INFO ==========> MoblyExampleRebootTest <==========
+[Testbed-One-RaspberryPi-01] 06-01 18:15:20.755 INFO [Test] test_reboot
+[Testbed-One-RaspberryPi-01] 06-01 18:15:20.756 INFO Creating raspberrypi-1234
+[Testbed-One-RaspberryPi-01] 06-01 18:15:20.756 INFO raspberrypi-1234 checking device readiness: attempt 1 of 1
+[Testbed-One-RaspberryPi-01] 06-01 18:15:20.757 INFO raspberrypi-1234 starting AuxiliaryDevice.check_device_ready()
+[Testbed-One-RaspberryPi-01] 06-01 18:15:20.996 INFO raspberrypi-1234 starting AuxiliaryDevice.wait_until_connected(timeout=3)
+[Testbed-One-RaspberryPi-01] 06-01 18:15:20.997 INFO raspberrypi-1234 waiting up to 3s for device to be connected.
+[Testbed-One-RaspberryPi-01] 06-01 18:15:20.999 INFO raspberrypi-1234 AuxiliaryDevice.wait_until_connected returned None. It took 0s.
+[Testbed-One-RaspberryPi-01] 06-01 18:15:24.136 INFO raspberrypi-1234 health check 1/3 succeeded: Check device connected.
+[Testbed-One-RaspberryPi-01] 06-01 18:15:24.175 INFO raspberrypi-1234 logging to file ~/gazoo/gdm/logs/raspberrypi-1234-20231228-080330.txt
+[Testbed-One-RaspberryPi-01] 06-01 18:15:26.175 INFO raspberrypi-1234 health check 2/3 succeeded: Check create switchboard.
+[Testbed-One-RaspberryPi-01] 06-01 18:15:26.200 INFO raspberrypi-1234 health check 3/3 succeeded: Check device responsiveness.
+[Testbed-One-RaspberryPi-01] 06-01 18:15:26.225 INFO raspberrypi-1234 AuxiliaryDevice.check_device_ready returned None. It took 2s.
+[Testbed-One-RaspberryPi-01] 06-01 18:15:26.225 INFO raspberrypi-1234 starting RaspbianDevice.reboot
+[Testbed-One-RaspberryPi-01] 06-01 18:15:29.132 INFO raspberrypi-1234 RaspbianDevice.reboot successful. It took 3s.
+[Testbed-One-RaspberryPi-01] 06-01 18:15:29.132 INFO [Test] test_reboot PASS
+[Testbed-One-RaspberryPi-01] 06-01 18:15:29.150 INFO Summary for test class MoblyExampleRebootTest: Error 0, Executed 1, Failed 0, Passed 1, Requested 1, Skipped 0
+[Testbed-One-RaspberryPi-01] 06-01 18:15:29.151 INFO Summary for test run Testbed-One-RaspberryPi-01@06-01-2021_18-15-20-732: Error 0, Executed 1, Failed 0, Passed 1, Requested 1, Skipped 0
 ```

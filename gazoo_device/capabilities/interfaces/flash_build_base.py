@@ -16,7 +16,7 @@
 
 import abc
 import dataclasses
-from typing import Any, Optional, Sequence, Tuple
+from typing import Any, Optional, Sequence
 
 from gazoo_device import decorators
 from gazoo_device import gdm_logger
@@ -31,7 +31,7 @@ class BuildInfo:
   build_version: str
   build_type: str
   build_branch: str
-  build_files: Tuple[str, ...]
+  build_files: tuple[str, ...]
   is_local: bool
 
 
@@ -61,7 +61,8 @@ class FlashBuildBase(capability_base.CapabilityBase):
         installed on the device.
       method: Used by some flavors to pick between flashing methods.
       file_regexes: Regexes for finding the build files in a folder. If not
-        provided, uses the default in nest_device/build_defaults/info.json
+        provided, uses the default in
+        gazoo_device/build_defaults.py.
       num_files: The number of build files expected after regex matching.
       **unexpected_kwargs: Captures unexpected keyword arguments.
 
@@ -93,7 +94,8 @@ class FlashBuildBase(capability_base.CapabilityBase):
         so that the method signature is identical to upgrade().
       method: Used by some flavors to pick between flashing methods.
       file_regexes: Regexes for finding the build files in a folder. If not
-        provided, uses the default in nest_device/build_defaults/info.json
+        provided, uses the default in
+        gazoo_device/build_defaults.py.
       num_files: The number of build files expected after regex matching.
       **unexpected_kwargs: Captures unexpected keyword arguments.
 

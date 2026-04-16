@@ -40,12 +40,14 @@ class MeasurementClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
     Returns:
       The MeasuredValue attribute.
     """
+    assert self.MATTER_CLUSTER is not None
     return self._read_value(
         attribute_id=self.MATTER_CLUSTER.ATTRIBUTE_MEASURED_VALUE)
 
   @measured_value.setter
   def measured_value(self, value: int) -> None:
     """Updates the MeasuredValue attribute with new value."""
+    assert self.MATTER_CLUSTER is not None
     self._write_value(
         attribute_id=self.MATTER_CLUSTER.ATTRIBUTE_MEASURED_VALUE, value=value)
 
@@ -59,12 +61,14 @@ class MeasurementClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
     Returns:
       The MinMeasuredValue attribute.
     """
+    assert self.MATTER_CLUSTER is not None
     return self._read_value(
         attribute_id=self.MATTER_CLUSTER.ATTRIBUTE_MIN_MEASURED_VALUE)
 
   @min_measured_value.setter
   def min_measured_value(self, value: int) -> None:
     """Updates the MinMeasuredValue attribute with new value."""
+    assert self.MATTER_CLUSTER is not None
     self._write_value(
         attribute_id=self.MATTER_CLUSTER.ATTRIBUTE_MIN_MEASURED_VALUE,
         value=value)
@@ -79,12 +83,14 @@ class MeasurementClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
     Returns:
       The MaxMeasuredValue attribute.
     """
+    assert self.MATTER_CLUSTER is not None
     return self._read_value(
         attribute_id=self.MATTER_CLUSTER.ATTRIBUTE_MAX_MEASURED_VALUE)
 
   @max_measured_value.setter
   def max_measured_value(self, value: int) -> None:
     """Updates the MaxMeasuredValue attribute with new value."""
+    assert self.MATTER_CLUSTER is not None
     self._write_value(
         attribute_id=self.MATTER_CLUSTER.ATTRIBUTE_MAX_MEASURED_VALUE,
         value=value)
@@ -98,6 +104,7 @@ class MeasurementClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
     Returns:
       The value read from the attribute.
     """
+    assert self.MATTER_CLUSTER is not None
     value_data = self._read(
         endpoint_id=self._endpoint_id,
         cluster_id=self.MATTER_CLUSTER.ID,
@@ -118,6 +125,7 @@ class MeasurementClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
     Raises:
       DeviceError when the attribute value doesn't change.
     """
+    assert self.MATTER_CLUSTER is not None
     if self.ATTRIBUTE_TYPE == _INT16SIGNED:
       self._write(
           endpoint_id=self._endpoint_id,

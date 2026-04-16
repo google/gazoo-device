@@ -69,9 +69,7 @@ The device needs to be detected first (depending on the present image, as a
 plain `nrf52840` or as `nrfmatter`):
 
 ```
->>> from gazoo_device import Manager
->>> m = Manager()
->>> m.detect()
+gdm detect
 ```
 
 Create the device class and flash the build:
@@ -88,23 +86,19 @@ After flashing it'll need to be redetected (if going from `nrf52840` to
 `nrfmatter`).
 
 ```
->>> m.redetect('nrf52840-3453')
+gdm delete nrf52840-3453
+gdm detect
 ```
 
 **4. (Optional) Try Descriptor RPC**
 
 Try if the Matter Descriptor endpoints work in the CHIP console.
 
-Build the CHIP console by following the instructions on the above `Build`
-section. Activate GDM virtual env and enable the CHIP console:
-`${device-address}` should be something like `/dev/tty/ACM0`
+Follow
+https://github.com/project-chip/connectedhomeip/blob/master/examples/common/pigweed/rpc_console/README.md
+to build and run the Pigweed RPC CHIP console.
 
-```
-source ~/gazoo/gdm/virtual_env/bin/activate
-python -m chip_rpc.console --device ${device-address} -b 115200 -o /tmp/pw.log
-```
-
-Inside interactive console:
+Then, inside the interactive console:
 
 ```
 # Get supported endpoints on the device
@@ -123,7 +117,7 @@ Detect the NRF Matter sample app: `gdm detect`
 ```
     Device                     Alias           Type                 Model                Connected
     -------------------------- --------------- -------------------- -------------------- ----------
-    nrfmatter-6125             <undefined>     nrfmatter            PROTO                connected
+    nrfmatter-3453             <undefined>     nrfmatter            PROTO                connected
 
     Other Devices              Alias           Type                 Model                Available
     -------------------------- --------------- -------------------- -------------------- ----------
@@ -131,10 +125,9 @@ Detect the NRF Matter sample app: `gdm detect`
 
 **6. (Recommended) Remove on-board CR2032 coin cell battery**
 
-The coin cell [battery](images/nrf52840_battery.jpg)
-on the back of the board is an alternate power source for the board. When used
-in a testbed setup, the battery is not needed. Removing the battery enables the
-board to be power cycled programmatically using
+The coin cell [battery](images/nrf52840_battery.png) on the back of the board is an alternate power source for the board. When used
+in a testbed setup, the battery is not needed. If the board is connected to a Cambrionix, removing the battery.
+Removing the battery enables the board to be power cycled programmatically using
 
 ```
 device.device_power.off()
@@ -182,7 +175,7 @@ Activate GDM virtual env and open the console:
 
 ```
 source ~/gazoo/gdm/virtual_env/bin/activate
-python
+python3
 ```
 
 Inside python console:

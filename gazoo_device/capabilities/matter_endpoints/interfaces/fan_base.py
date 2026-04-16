@@ -22,6 +22,7 @@ class FanBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Fan endpoint interface."""
 
   DEVICE_TYPE_ID = 0x002B
+  DEVICE_TYPE_NAME = "Fan"
 
   @property
   @abc.abstractmethod

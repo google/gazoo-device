@@ -32,12 +32,12 @@ import shutil
 import signal
 import time
 import typing
-from typing import Any, Collection, Dict, Generator, List, Mapping, Optional, Tuple, Type, Union
+from typing import Any, Collection, Generator, Mapping, Optional, Union
 
 from gazoo_device import config
 from gazoo_device import custom_types
-from gazoo_device import data_types
 from gazoo_device import device_detector
+from gazoo_device import device_types
 from gazoo_device import errors
 from gazoo_device import extensions
 from gazoo_device import gdm_logger
@@ -48,7 +48,6 @@ from gazoo_device.capabilities.interfaces import capability_base
 from gazoo_device.capabilities.interfaces import event_parser_base
 from gazoo_device.log_parser import LogParser
 from gazoo_device.switchboard import switchboard
-from gazoo_device.usb_port_map import UsbPortMap
 from gazoo_device.utility import common_utils
 from gazoo_device.utility import faulthandler_utils
 from gazoo_device.utility import host_utils
@@ -60,6 +59,11 @@ _EXPECTED_FOLDER_PERMISSIONS = "755"
 
 class Manager:
   """Manages the setup and communication of smart devices."""
+
+  device_file_name: str
+  device_options_file_name: str
+  testbeds_file_name: str
+  log_directory: str
 
   def __init__(self,
                device_file_name=None,
@@ -103,11 +107,6 @@ class Manager:
       self.gdm_log_handler.setLevel(debug_level)
       self.gdm_log_handler.setFormatter(gdm_log_formatter)
       gdm_logger.add_handler(self.gdm_log_handler)
-
-    self.device_file_name = None
-    self.device_options_file_name = None
-    self.testbeds_file_name = None
-    self.log_directory = None
     self._load_configuration(device_file_name, device_options_file_name,
                              testbeds_file_name, gdm_config_file_name,
                              log_directory, adb_path)
@@ -115,8 +114,7 @@ class Manager:
     log_file_name_prefix = "parallel_utils" if from_parallel_utils else "main"
     log_file_name_prefix = "manager_" + log_file_name_prefix
     faulthandler_utils.set_up_faulthandler(
-        typing.cast(str, self.log_directory),
-        log_file_name_prefix=log_file_name_prefix)
+        self.log_directory, log_file_name_prefix=log_file_name_prefix)
 
     # Register USR1 signal to get exception messages from exception_queue
     signal.signal(signal.SIGUSR1,
@@ -197,16 +195,16 @@ class Manager:
 
   def create_device(
       self,
-      identifier,
+      identifier: str,
       new_alias=None,
       log_file_name=None,
       log_directory=None,
       log_to_stdout=None,
       skip_recover_device=False,
-      make_device_ready: data_types.MakeDeviceReadySettingStr = "on",
+      make_device_ready: custom_types.MakeDeviceReadySettingStr = "on",
       filters=None,
       log_name_prefix="",
-      raise_if_already_open=True) -> custom_types.Device:
+      raise_if_already_open=True) -> device_types.Device:
     """Returns created device object by identifier specified.
 
     Args:
@@ -301,7 +299,7 @@ class Manager:
   @contextlib.contextmanager
   def create_and_close_device(
       self, identifier: str, **kwargs: Any
-  ) -> Generator[custom_types.Device, None, None]:
+  ) -> Generator[device_types.Device, None, None]:
     """Context manager for opening and closing a device instance.
 
     Args:
@@ -333,7 +331,7 @@ class Manager:
       log_file_name=None,
       log_directory=None,
       skip_recover_device=False,
-      make_device_ready: data_types.MakeDeviceReadySettingStr = "off",
+      make_device_ready: custom_types.MakeDeviceReadySettingStr = "off",
       filters=None,
       log_name_prefix="",
       build_info_kwargs=None):
@@ -376,7 +374,7 @@ class Manager:
       device_type=None,
       log_to_stdout=None,
       category="gazoo",
-      make_device_ready: data_types.MakeDeviceReadySettingStr = "on",
+      make_device_ready: custom_types.MakeDeviceReadySettingStr = "on",
       log_name_prefix=""):
     """Returns list of created device objects from device_list or connected devices.
 
@@ -573,11 +571,11 @@ class Manager:
       static_ips: Optional[Collection[str]] = None,
       log_directory: Optional[str] = None,
       save_changes: bool = True,
-      device_configs: Optional[Tuple[custom_types.PersistentConfigsDict,
+      device_configs: Optional[tuple[custom_types.PersistentConfigsDict,
                                      custom_types.OptionalConfigsDict]] = None,
       communication_types: Optional[Collection[str]] = None,
       addresses: Optional[Collection[str]] = None
-  ) -> Optional[Tuple[custom_types.PersistentConfigsDict,
+  ) -> Optional[tuple[custom_types.PersistentConfigsDict,
                       custom_types.OptionalConfigsDict]]:
     """Detect new devices not present in config files.
 
@@ -660,29 +658,31 @@ class Manager:
 
   def download_keys(self):
     """Downloads all required GDM keys if they don't exist locally."""
-    for key_info in extensions.keys:
+    for key_info in extensions.key_to_download_function:
       host_utils.verify_key(key_info)
 
   @classmethod
-  def get_all_supported_capabilities(cls) -> Mapping[str, str]:
+  def get_all_supported_capabilities(
+      cls) -> collections.OrderedDict[str, set[str]]:
     """Returns all supported capabilities in alphabetic order.
 
     Returns:
-      Mapping from capability name to capability interface name.
-      Example: {"file_transfer": "filetransferbase"}.
+      Mapping from capability name to capability interface names.
+      Example: {"file_transfer": {"file_transfer_base"}}.
     """
     return collections.OrderedDict(
-        sorted(extensions.capabilities.items(),
-               key=lambda capability_and_if_names: capability_and_if_names[0]))
+        # Deep copy to ensure values (sets) can't be mutated by the caller.
+        sorted(copy.deepcopy(list(extensions.capabilities.items())),
+               key=lambda cap_name_and_if_names: cap_name_and_if_names[0]))
 
   @classmethod
   def get_all_supported_capability_interfaces(
-      cls) -> Mapping[str, Type[capability_base.CapabilityBase]]:
+      cls) -> Mapping[str, type[capability_base.CapabilityBase]]:
     """Returns all supported capability interfaces in alphabetic order.
 
     Returns:
       Mapping from interface name to capability interface class.
-      Example: {"filetransferbase": <class FileTransferBase>}.
+      Example: {"file_transfer_base": <class FileTransferBase>}.
     """
     return collections.OrderedDict(
         sorted(extensions.capability_interfaces.items(),
@@ -690,19 +690,19 @@ class Manager:
 
   @classmethod
   def get_all_supported_capability_flavors(
-      cls) -> Mapping[str, Type[capability_base.CapabilityBase]]:
+      cls) -> Mapping[str, type[capability_base.CapabilityBase]]:
     """Returns all supported capability flavors in alphabetic order.
 
     Returns:
       Mapping from flavor name to capability flavor class.
-      Example: {"filetransferscp": <class FileTransferScp>}.
+      Example: {"file_transfer_scp": <class FileTransferScp>}.
     """
     return collections.OrderedDict(
         sorted(extensions.capability_flavors.items(),
                key=lambda flavor_name_and_cls: flavor_name_and_cls[0]))
 
   @classmethod
-  def get_all_supported_device_classes(cls) -> List[Type[custom_types.Device]]:
+  def get_all_supported_device_classes(cls) -> list[type[device_types.Device]]:
     """Returns all supported device classes sorted by the class path.
 
     Returns:
@@ -785,7 +785,7 @@ class Manager:
     return list(self._open_devices.values())
 
   def get_device_prop(self, device_name, prop=None):
-    """Gets an prop's value for device or GDM configuration depends on identifier.
+    """Gets a prop's value for device or GDM configuration depends on identifier.
 
     Args:
         device_name (str): "manager", name, serial_number, alias, or adb_serial
@@ -805,7 +805,7 @@ class Manager:
 
   @classmethod
   def get_supported_auxiliary_device_classes(
-      cls) -> List[Type[auxiliary_device.AuxiliaryDevice]]:
+      cls) -> list[type[auxiliary_device.AuxiliaryDevice]]:
     """Returns all supported auxiliary device classes sorted by class path."""
     return sorted(extensions.auxiliary_devices,
                   key=lambda a_cls: a_cls.__module__ + "." + a_cls.__name__)
@@ -817,7 +817,7 @@ class Manager:
                   for a_cls in cls.get_supported_auxiliary_device_classes())
 
   @classmethod
-  def get_supported_device_capabilities(cls, device_type: str) -> List[str]:
+  def get_supported_device_capabilities(cls, device_type: str) -> list[str]:
     """Returns a list of names of capabilities supported by the device type.
 
     This is a wrapper around <device_class>.get_supported_capabilities() to
@@ -835,7 +835,7 @@ class Manager:
 
   @classmethod
   def get_supported_device_capability_flavors(
-      cls, device_type: str) -> List[Type[capability_base.CapabilityBase]]:
+      cls, device_type: str) -> list[type[capability_base.CapabilityBase]]:
     """Returns capability flavor classes supported by the device type.
 
     This is a wrapper around <device_class>.get_supported_capability_flavors()
@@ -857,7 +857,7 @@ class Manager:
 
   @classmethod
   def get_supported_device_class(
-      cls, device_type: str) -> Type[custom_types.Device]:
+      cls, device_type: str) -> type[device_types.Device]:
     """Returns the device class corresponding to the device type.
 
     Args:
@@ -880,14 +880,14 @@ class Manager:
               device_type, ", ".join(close_matches)))
 
   @classmethod
-  def get_supported_device_types(cls) -> List[str]:
+  def get_supported_device_types(cls) -> list[str]:
     """Returns all supported device types in alphabetic order."""
     return sorted(a_cls.DEVICE_TYPE
                   for a_cls in cls.get_all_supported_device_classes())
 
   @classmethod
   def get_supported_primary_device_classes(
-      cls) -> List[Type[gazoo_device_base.GazooDeviceBase]]:
+      cls) -> list[type[gazoo_device_base.GazooDeviceBase]]:
     """Returns all supported primary device classes sorted by the class path."""
     return sorted(extensions.primary_devices,
                   key=lambda a_cls: a_cls.__module__ + "." + a_cls.__name__)
@@ -977,11 +977,6 @@ class Manager:
     props_dict = self.get_device_configuration(device_identifier)["persistent"]
     return {key: value for key, value in props_dict.items() if "usb" in key}
 
-  def port_map(self):
-    """Prints the USB Port Map."""
-    usb_port_map = UsbPortMap(self)
-    usb_port_map.print_port_map()
-
   def redetect(self, device_name, log_directory=None):
     """Delete a device from the device configuration and then do a detect to find it again.
 
@@ -1006,15 +1001,26 @@ class Manager:
     usb_hub = None
     original_power_mode = None
     if hub_name and hub_port:
-      usb_hub = self.create_device(hub_name)
-      original_power_mode = usb_hub.switch_power.get_mode(hub_port)
-      if original_power_mode != "sync":
-        usb_hub.switch_power.set_mode("sync", hub_port)
+      try:
+        usb_hub = typing.cast(
+            device_types.AuxiliaryPowerHubDevice, self.create_device(hub_name))
+        original_power_mode = usb_hub.switch_power.get_mode(hub_port)
+        if original_power_mode != "sync":
+          usb_hub.switch_power.set_mode("sync", hub_port)
+      except errors.DeviceError as err:
+        # b/492392173: The physical USB hub might have been replaced, making the
+        # old serial path invalid. We proceed with redetection to allow GDM to
+        # discover the new physical path automatically.
+        logger.warning(
+            "Unable to connect to power hub '%s' to ensure %s is powered on: "
+            "%r. Proceeding with redetection anyway.",
+            hub_name, device_name, err
+        )
 
     device_configs_after_delete = self.delete(device_name, save_changes=False)
     device_type = device_config["persistent"]["device_type"]
     device_class = self.get_supported_device_class(device_type)
-    comm_type = device_class.COMMUNICATION_TYPE
+    comm_type = device_class.COMMUNICATION_TYPE.__name__
     new_device_config, new_options_config = self.detect(  # pytype: disable=attribute-error  # dynamic-method-lookup
         static_ips=static_ips,
         addresses=[comms_port],
@@ -1244,13 +1250,13 @@ class Manager:
         capability_names (list): list of capability names.
             Capability names are strings. They can be:
                 - capability names ("file_transfer"),
-                - capability interface names ("filetransferbase"),
-                - capability flavor names ("filetransferscp").
+                - capability interface names ("file_transfer_base"),
+                - capability flavor names ("file_transfer_scp").
             If an interface name or capability name is specified, the behavior
             is identical: any capability flavor which implements the given
               interface will match. If a flavor name is specified, only that
               capability flavor will match. Different kinds of capability names
-              can be used together (["usb_hub", "filetransferscp"]).
+              can be used together (["usb_hub", "file_transfer_scp"]).
 
     Returns:
         bool: True if all capabilities are supported by the device type,
@@ -1277,7 +1283,7 @@ class Manager:
   def _get_config_prop(
       self, prop: Optional[str] = None
   ) -> Union[custom_types.PropertyValue,
-             Dict[str, Dict[str, custom_types.PropertyValue]]]:
+             dict[str, dict[str, custom_types.PropertyValue]]]:
     """Returns the value of an GDM config property.
 
     Args:
@@ -1365,19 +1371,21 @@ class Manager:
 
     Returns:
         tuple: usb_hub_name, usb_port These will be set to None if the
-        device or the
-                                      property are not defined.
+        device or the property are not defined.
     """
     hub_name = None
     hub_port = None
+
     if device_name in self.options_dict:
-      hub_name = self.options_dict[device_name].get("usb_hub", None)
-      hub_port = self.options_dict[device_name].get("usb_port", None)
-    if device_name in self.persistent_dict:
-      hub_name = self.persistent_dict[device_name].get("device_usb_hub_name",
-                                                       hub_name)
-      hub_port = self.persistent_dict[device_name].get("device_usb_port",
-                                                       hub_port)
+      options = self.options_dict[device_name]
+      hub_name = options.get("usb_hub") or options.get("comm_power_hub_name")
+      hub_port = options.get("usb_port") or options.get("comm_power_port")
+
+    if not hub_name and device_name in self.persistent_dict:
+      persistent = self.persistent_dict[device_name]
+      hub_name = persistent.get("device_usb_hub_name")
+      hub_port = persistent.get("device_usb_port")
+
     if hub_port:
       hub_port = int(hub_port)
     return hub_name, hub_port
@@ -1477,7 +1485,7 @@ class Manager:
   def _get_device_class(self, device_class, device_config, log_file_name,
                         log_directory):
     """Returns the device class after adding it to the list of shared resources."""
-    device = device_class(
+    device = device_class(  # pytype: disable=not-instantiable
         self,
         device_config,
         log_file_name=log_file_name,
@@ -1488,12 +1496,12 @@ class Manager:
   def _get_device_sim_class(self, device_class, device_config, log_file_name,
                             log_directory, build_info_kwargs):
     """Returns the device class after adding it to the list of shared resources."""
-    device = device_class(
+    device = device_class(  # pytype: disable=not-instantiable
         self,
         device_config,
         log_file_name=log_file_name,
         log_directory=log_directory,
-        build_info_kwargs=build_info_kwargs)
+        build_info_kwargs=build_info_kwargs)  # pytype: disable=wrong-keyword-args
     self._open_devices[device.name] = device
     return device
 
@@ -1610,7 +1618,9 @@ class Manager:
       with open(file_path, "w+") as open_file:
         json.dump(a_dict, open_file)
 
-  def _load_config(self, file_name, key=None):
+  def _load_config(
+      self, file_name: str, key: Optional[str] = None
+  ) -> dict[str, Any]:
     """Loads a json config from a file into a dict and returns the dict.
 
     Args:
@@ -1662,14 +1672,17 @@ class Manager:
     }
     return (device_config, device_options_config)
 
-  def set_prop(self, device_name, prop, value):
-    """Sets a property's value for device or GDM configuration depends on identifier.
+  def set_prop(self, device_name: str, prop: str,
+               value: custom_types.PropertyValue) -> None:
+    """Sets a property's value for device or the overall GDM configuration.
 
     Args:
-      device_name (str): "manager", name, serial_number, alias, or adb_serial of
-        the device.
-      prop (str): Public prop available in device_options.json or gdm.json.
-      value (str): Input value for specific property.
+      device_name: "manager" to modify GDM configuration. Name, serial_number,
+        alias, or communication address (ADB serial, IP address,
+        serial port path, etc.) of a device known to GDM to modify the device
+        configuration.
+      prop: Public prop available in device_options.json or gdm.json.
+      value: Input value for specific property.
     """
     if self._is_manager_config(device_name):
       self._set_config_prop(prop, value)
@@ -1763,26 +1776,29 @@ class Manager:
 
     raise errors.DeviceError(exception_message)
 
-  def _set_device_prop(self, identifier, prop, value):
+  def _set_device_prop(self, identifier: str, prop: str,
+                       value: custom_types.PropertyValue) -> None:
     """Sets a property's value for device.
 
     Args:
-      identifier (str): name, serial_number, alias, or adb_serial of the device.
-      prop (str): Public prop available in device_options.json.
-      value (str): Input value for specific property.
+      identifier: Name, serial_number, alias, or communication address
+        (ADB serial, IP address, serial port path, etc.) of the device.
+      prop: Public prop available in device_options.json.
+      value: Input value for specific property.
 
     Raises:
       DeviceError: Device not found.
     """
     self._type_check("Property name", prop)
-    self._type_check(prop, value, allowed_types=(str, type(None), int, float))
+    self._type_check(
+        prop, value, allowed_types=(str, type(None), int, float, dict))
 
     with self.create_and_close_device(
         identifier,
         raise_if_already_open=False,
         make_device_ready="off") as device:
       if prop == "alias":
-        self._realign_alias(value, device.alias, device.name)
+        self._realign_alias(typing.cast(str, value), device.alias, device.name)
       device.set_property(prop, value)
 
   def save_property_to_config(self, device_name: str, prop: str, value: str):
@@ -1864,7 +1880,9 @@ class Manager:
     temp_file_path = os.path.join(config_directory,
                                   "temp_config_{}.json".format(os.getpid()))
     with open(temp_file_path, "w") as open_file:
-      json.dump(a_dict, open_file, sort_keys=True, indent=4)
+      json.dump(
+          a_dict, open_file,
+          cls=common_utils.BytesJSONEncoder, indent=4, sort_keys=True)
     shutil.move(temp_file_path, file_path)
 
   def _type_check(self, name, value, allowed_types=(str,)):

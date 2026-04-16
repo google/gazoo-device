@@ -91,3 +91,24 @@ def discover_tests(
            int(os.environ.get("TEST_TOTAL_SHARDS", 1)) > 1):
       raise RuntimeError("Did not find any tests to run.")
   return unit_tests
+
+
+def load_no_tests(loader, standard_tests, pattern):
+  """Prevents test discovery in mixin modules.
+
+  Mixin test cases can't be run directly. They have to be used in conjunction
+  with a test class which performs the setup required by the mixin test cases.
+  This does not prevent mixin test case discovery in test classes that inherit
+  from mixins.
+
+  Args:
+    loader: A unit test loader instance. Unused.
+    standard_tests: Tests loaded by the standard unittest load_tests logic.
+      Unused.
+    pattern: Test method name pattern. Unused.
+
+  Returns:
+    Already loaded standard_tests.
+  """
+  del loader, standard_tests, pattern  # Unused.
+  return unittest.TestSuite(tests=[])

@@ -15,7 +15,6 @@
 """Build the gazoo_device Python package."""
 import os
 import re
-from typing import List
 
 import setuptools
 
@@ -23,7 +22,7 @@ _CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
 _README_FILE = 'README.md'
 _REQUIREMENTS_FILE = 'requirements.txt'
 _SOURCE_CODE_DIR_NAME = 'gazoo_device'
-_VERSION_FILE = '_version.py'
+_VERSION_FILE = 'version.py'
 
 
 def _get_readme() -> str:
@@ -33,7 +32,7 @@ def _get_readme() -> str:
     return open_file.read()
 
 
-def _get_requirements() -> List[str]:
+def _get_requirements() -> list[str]:
   """Returns package requirements from requirements.txt."""
   requirements_file = os.path.join(_CURRENT_DIR, _REQUIREMENTS_FILE)
   with open(requirements_file) as open_file:
@@ -50,10 +49,11 @@ def _get_version() -> str:
       _CURRENT_DIR, _SOURCE_CODE_DIR_NAME, _VERSION_FILE)
   with open(version_file) as open_file:
     contents = open_file.read()
-    version_match = re.search(r'^version = "(.*)"', contents, re.M)
+    version_match = re.search(r'^_SEMANTIC_VERSION = "(.*)"$', contents, re.M)
     if version_match:
       return version_match.group(1)
-  raise RuntimeError(f'Unable to find "version = <version>" in {version_file}')
+  raise RuntimeError(
+      f'Unable to find \'_SEMANTIC_VERSION = "<version>"\' in {version_file}')
 
 
 setuptools.setup(

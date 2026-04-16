@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Helper methods for validating architecture conformance."""
+import functools
 import inspect
+import itertools
 import re
-from typing import Any, Callable, Collection, List, NoReturn, Optional, Tuple
-from typing import Type, Union
+from typing import Any, Callable, Collection, NoReturn, Optional
+from typing import Union
 from gazoo_device import decorators
 from gazoo_device import manager
 from gazoo_device.base_classes import auxiliary_device
@@ -43,8 +45,7 @@ _PUBLIC_METHOD_BASE_CLASSES = (primary_device_base.PrimaryDeviceBase,
                                auxiliary_device_base.AuxiliaryDeviceBase)
 _REQUIRED_DEVICE_CLASS_CONSTANTS = ("DEVICE_TYPE",
                                     "COMMUNICATION_TYPE",
-                                    "DETECT_MATCH_CRITERIA",
-                                    "_OWNER_EMAIL")
+                                    "DETECT_MATCH_CRITERIA")
 _RETURN_SECTION_MULTILINE = r"\n\s*Returns:\s*\n"
 _RETURN_SECTION_ONELINE = r"\b(R|r)eturn(s)?\b"
 _MISMATCHING_SIGNATURE_TEMPLATE = """\tMethod: {}
@@ -53,13 +54,13 @@ _MISMATCHING_SIGNATURE_TEMPLATE = """\tMethod: {}
 \t\tConflicting signature(s) inherited from:
 \t\t{}."""
 
-_LogDecoratorType = Union[Type[auxiliary_device.AuxiliaryDevice],
-                          Type[gazoo_device_base.GazooDeviceBase],
-                          Type[capability_base.CapabilityBase]]
+_LogDecoratorType = Union[type[auxiliary_device.AuxiliaryDevice],
+                          type[gazoo_device_base.GazooDeviceBase],
+                          type[capability_base.CapabilityBase]]
 
 
 def get_invalid_capability_definitions(
-    device_class: Type[Any]) -> List[Tuple[str, str]]:
+    device_class: type[Any]) -> list[tuple[str, str]]:
   """Returns all invalid capability definitions in the device class."""
   invalid_definitions = []
   for attr_name, attr in inspect.getmembers(device_class):
@@ -71,7 +72,7 @@ def get_invalid_capability_definitions(
   return invalid_definitions
 
 
-def get_invalid_health_check_names(device_class: Type[Any]) -> List[str]:
+def get_invalid_health_check_names(device_class: type[Any]) -> list[str]:
   """Returns names of health checks which do not start with "check_<...>"."""
   incompliant_attrs = []
   for attr_name, attr in inspect.getmembers(device_class):
@@ -83,8 +84,8 @@ def get_invalid_health_check_names(device_class: Type[Any]) -> List[str]:
 
 
 def get_invalid_public_methods(
-    device_class: Type[Any],
-    excluded_methods: Optional[Collection[str]] = None) -> List[str]:
+    device_class: type[Any],
+    excluded_methods: Optional[Collection[str]] = None) -> list[str]:
   """Returns names of public methods which are not allowed.
 
   The only allowed public methods are:
@@ -120,7 +121,7 @@ def get_invalid_public_methods(
 
 
 def get_log_decorator_violators(cls: _LogDecoratorType,
-                                check_inherited: bool = True) -> List[str]:
+                                check_inherited: bool = True) -> list[str]:
   """Returns method names which do not comply with the log decorator.
 
   Every public method without a return value must be decorated with
@@ -150,16 +151,23 @@ def get_log_decorator_violators(cls: _LogDecoratorType,
     attribute_names = vars(cls).keys()
 
   for attribute_name in attribute_names:
-    attribute = getattr(cls, attribute_name)
+    # Skip internal Zope attributes (__provides__, __providedBy__) for Python
+    # 3.14 compatibility.
+    if attribute_name in ("__provides__", "__providedBy__"):
+      continue
+    try:
+      attribute = getattr(cls, attribute_name)
+    except AttributeError:
+      continue
     if _is_decoration_required(attribute):
       incompliant_methods.append(attribute_name)
   return incompliant_methods
 
 
 def get_mismatching_signatures(
-    cls: Type[Any],
+    cls: type[Any],
     excluded_methods: Optional[Collection[str]] = None
-) -> List[Tuple[str, str, List[str]]]:
+) -> list[tuple[str, str, list[str]]]:
   """Returns methods that do not include same args as the parent method.
 
   In other words, if a parent defines a method 'some_method' and the given
@@ -186,7 +194,7 @@ def get_mismatching_signatures(
       if attr_name in ["__init__", "__new__"]:
         continue
       child_method = decorators.unwrap(attr)
-      child_signature = inspect.getfullargspec(child_method).args
+      child_signature = _get_fullargspec_safe(child_method).args
 
       parents_with_method = [
           parent for parent in parents if attr_name in parent.__dict__
@@ -198,8 +206,13 @@ def get_mismatching_signatures(
 
       parents_with_conflicting_signature = []
       for parent in parents_with_method:
-        parent_method = decorators.unwrap(getattr(parent, attr_name))
-        parent_signature = inspect.getfullargspec(parent_method).args
+        parent_method_raw = getattr(parent, attr_name)
+        if parent_method_raw is None:
+          continue
+        parent_method = decorators.unwrap(parent_method_raw)
+        if parent_method is None:
+          continue
+        parent_signature = _get_fullargspec_safe(parent_method).args
 
         len_parent = len(parent_signature)
         if child_signature[:len_parent] != parent_signature:
@@ -220,8 +233,8 @@ def get_mismatching_signatures(
 
 
 def get_mismatching_signature_err_strs(
-    classes: Collection[Type[Any]],
-    excluded_methods: Optional[Collection[str]] = None) -> List[str]:
+    classes: Collection[type[Any]],
+    excluded_methods: Optional[Collection[str]] = None) -> list[str]:
   """Returns a list of the errors for the mismatched signatures on the classes.
 
   Looks for class signatures that don't match their parent's signatures.
@@ -250,8 +263,8 @@ def get_mismatching_signature_err_strs(
 
 
 def get_uncategorized_properties(
-    cls: Type[Any],
-    excluded_properties: Optional[Collection[str]] = None) -> List[str]:
+    cls: type[Any],
+    excluded_properties: Optional[Collection[str]] = None) -> list[str]:
   """Returns names of public properties which do not fall into a known category.
 
   Allowed categories: persistent, dynamic, optional properties.
@@ -282,10 +295,58 @@ def get_uncategorized_properties(
   return incompliant_properties
 
 
-def get_unset_constants(device_class: Type[Any]) -> List[str]:
+def get_unset_constants(device_class: type[Any]) -> list[str]:
   """Returns names of unset required class constants."""
   return [attr for attr in _REQUIRED_DEVICE_CLASS_CONSTANTS
           if not getattr(device_class, attr, None)]
+
+
+def get_shared_capability_interface(
+    capability_flavors_or_interfaces: Collection[
+        type[capability_base.CapabilityBase]]
+) -> type[capability_base.CapabilityBase]:
+  """Returns a shared interface class between all capability_flavors_or_interfaces.
+
+  If capability_flavors_or_interfaces share several interfaces, returns the
+  lowest one in the hierarchy. CapabilityBase is excluded. For example, for
+  hierarchy
+    CapabilityBase -> BaseInterface -> DerivedInterface1 -> Flavor1
+                                                         -> Flavor2
+  get_shared_capability_interface([Flavor1, Flavor2]) returns DerivedInterface1.
+
+  Args:
+    capability_flavors_or_interfaces: Capability flavors or interfaces to search
+      for a common interface in. capability_flavors_or_interfaces must inherit
+      from CapabilityBase.
+
+  Raises:
+    ValueError: if capability_flavors_or_interfaces do not share a common
+      interface.
+  """
+  # All classes are guaranteed to share a common ancestor 'object' class, and
+  # all capabilities should inherit from CapabilityBase. We're only interested
+  # in the more specific ancestors (capability interfaces).
+  ancestors = [
+      list(
+          itertools.takewhile(
+              lambda a: a is not capability_base.CapabilityBase,
+              flavor_class.__mro__)
+      )
+      for flavor_class in capability_flavors_or_interfaces
+  ]
+  common_ancestors = functools.reduce(
+      lambda ancestors1, ancestors2: set(ancestors1) & set(ancestors2),
+      ancestors)
+  if not common_ancestors:
+    raise ValueError(
+        f"Capability flavors or interfaces {capability_flavors_or_interfaces} "
+        "do not inherit from a common interface class. Capability flavor "
+        "inheritance hierarchies:"
+        + "".join(f"\n\t{mro}" for mro in ancestors))
+  any_flavor_or_interface = next(iter(capability_flavors_or_interfaces))
+  return next(
+      ancestor for ancestor in any_flavor_or_interface.__mro__
+      if ancestor in common_ancestors)
 
 
 def _validate_capability_definition(
@@ -304,22 +365,14 @@ def _validate_capability_definition(
           "Capability class {} is not supported. "
           "Supported capability classes: {}.".format(flavor_class, all_flavors))
 
-  expected_capability_interface = flavor_classes[0].get_capability_interface()
-  for flavor_class in flavor_classes[1:]:
-    capability_interface = flavor_class.get_capability_interface()
-    if capability_interface != expected_capability_interface:
-      raise RuntimeError(
-          "Not all capability flavors share the same capability interface. "
-          "Differing interfaces: {}, {}."
-          .format(expected_capability_interface, capability_interface))
-
-  expected_name = expected_capability_interface.get_capability_name()
+  shared_interface = get_shared_capability_interface(flavor_classes)
+  expected_name = shared_interface.get_capability_name()
   if capability_property.fget.__name__ != expected_name:
     raise RuntimeError(
         "Attempting to define capability flavor(s) {} under invalid name {}. "
         "Capability interface: {}, expected name: {}.".format(
             flavor_classes, capability_property.fget.__name__,
-            expected_capability_interface, expected_name))
+            shared_interface, expected_name))
 
 
 def _is_instance_method(obj: Any) -> bool:
@@ -329,7 +382,7 @@ def _is_instance_method(obj: Any) -> bool:
 
   if is_method_or_func:
     unwrapped_func = decorators.unwrap(obj)
-    args = inspect.getfullargspec(unwrapped_func).args
+    args = _get_fullargspec_safe(unwrapped_func).args
     return bool(args) and args[0] == "self"
 
   return False
@@ -401,7 +454,22 @@ def _has_return_value_from_type_annotation(
     bool: True if the method has a return value, False otherwise.
     None: If it's not possible to tell (no return value type annotation).
   """
-  type_annotations = inspect.getfullargspec(method).annotations
+  type_annotations = inspect.get_annotations(method)
   if "return" not in type_annotations:
     return None
   return type_annotations["return"] not in [None, NoReturn]
+
+
+def _get_fullargspec_safe(method):
+  """Gets fullargspec safely, avoiding Python 3.14 lazy annotation crashes."""
+  func = method.__func__ if hasattr(method, "__func__") else method
+  ann = getattr(func, "__annotate__", None)
+  if ann is None:
+    return inspect.getfullargspec(method)
+  if ann:
+    setattr(func, "__annotate__", None)
+  try:
+    return inspect.getfullargspec(method)
+  finally:
+    if ann:
+      setattr(func, "__annotate__", ann)

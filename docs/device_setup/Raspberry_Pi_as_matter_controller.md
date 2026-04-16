@@ -54,12 +54,12 @@ Supported kernel images: Ubuntu 21.04 or later.
     echo $COMMIT_SHA > ~/.matter_sdk_version
     ```
 
-4.  Ensure that user `pi` can write to `/usr/local/bin` directory. This is
+4.  Ensure that user `ubuntu` can write to `/usr/local/bin` directory. This is
     required for `matter_controller.upgrade` functionality to work properly. Run
     the command below on the raspberry pi:
 
     ```shell
-    sudo chown -R `whoami`:pi /usr/local/bin
+    sudo chown -R `whoami`:ubuntu /usr/local/bin
     ```
 
 5.  Follow the Raspbian instructions from
@@ -95,7 +95,7 @@ Supported kernel images: Ubuntu 21.04 or later.
     [credentials/development/paa-root-certs](https://github.com/project-chip/connectedhomeip/tree/master/credentials/development/paa-root-certs)
     directory of project-chip/connectedhomeip repository.
 
-    The default certificate path is `/home/pi/certs`.
+    The default certificate path is `/home/ubuntu/certs`.
 
 ### Optional: Thread Border Router Setup
 
@@ -151,7 +151,7 @@ Requirement:
 
 ```shell
 # Commission a device on network with 20202021 setup code and assign it node id 100.
-gdm issue rpi_matter_controller-1234 - matter_controller commission 100 20202021 --paa_trust_store_path /home/pi/certs
+gdm issue rpi_matter_controller-1234 - matter_controller commission 100 20202021 --paa_trust_store_path /home/ubuntu/certs
 
 # Commission a device over thread using dataset generated from `Optional: Thread Border Router Setup` step
 gdm issue rpi_matter_controller-1234 - matter_controller commission 100 20202021 --operational_dataset 0e080000000000010000000300001835060004001fffe00208161de905837b6ba10708fdd61eb482e203ad0510fe8c68576cef838b184b41df13c9e694030f4f70656e5468726561642d323832610102282a0410615a57bd3d170a24ac2a461d37c8e97c0c0402a0fff8

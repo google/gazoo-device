@@ -12,32 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Common types used across the gazoo_device module and externally."""
-from typing import Dict, Literal, Mapping, Tuple, Union
+"""Common types used for type annotations in gazoo_device and externally.
 
-from gazoo_device.base_classes import auxiliary_device
-from gazoo_device.base_classes import gazoo_device_base
+This module must not contain any imports from other gazoo_device modules to
+avoid circular imports. For device types, see device_types.py.
+"""
+from typing import Literal, Union
 
-# A device object, as returned by Manager.create_device().
-Device = Union[auxiliary_device.AuxiliaryDevice,
-               gazoo_device_base.GazooDeviceBase]
-
+MakeDeviceReadySettingStr = Literal["on", "off", "check_only", "flash_build"]
 PropertyName = str
 PropertyValue = Union[bool, float, int, str, None]
-DeviceConfig = Dict[PropertyName, PropertyValue]
-DetectionInfo = Tuple[DeviceConfig, DeviceConfig]
-
+DeviceConfig = dict[PropertyName, PropertyValue]
+DetectionInfo = tuple[DeviceConfig, DeviceConfig]
 DeviceName = str
-PersistentConfigsDict = Dict[
+PersistentConfigsDict = dict[
     Literal["devices", "other_devices"],
-    Dict[DeviceName, DeviceConfig]]
-OptionalConfigsDict = Dict[
+    dict[DeviceName, DeviceConfig]]
+OptionalConfigsDict = dict[
     Literal["device_options", "other_device_options"],
-    Dict[DeviceName, DeviceConfig]]
+    dict[DeviceName, DeviceConfig]]
 # Such entries are present in Manager._devices and Manager.other_devices.
-ManagerDeviceConfigDict = Dict[Literal["persistent", "options"],
+ManagerDeviceConfigDict = dict[Literal["persistent", "options"],
                                DeviceConfig]
-MatchCriteria = Mapping[str, Mapping[str, str]]
 # Returned by <device_instance>.props.
-DeviceClassConfigDict = Dict[Literal["persistent_identifiers", "optional"],
+DeviceClassConfigDict = dict[Literal["persistent_identifiers", "optional"],
                              DeviceConfig]

@@ -87,9 +87,7 @@ The device needs to be detected first (depending on the present image, as a
 plain `esp32` or as `esp32matter`),
 
 ```
->>> from gazoo_device import Manager
->>> m = Manager()
->>> m.detect()
+gdm detect
 ```
 
 Create the device class and flash the build:
@@ -121,23 +119,24 @@ After flashing it'll need to be redetected (if going from `esp32` to
 `esp32matter`).
 
 ```
->>> m.redetect('esp32-b69b')
+gdm delete esp32-b69b
+gdm detect
 ```
 
 **4. (Optional) Try Descriptor RPC**
 
 Try if the Matter Descriptor endpoints work in the CHIP console.
 
-Build the CHIP console by following the instructions on the above `Build`
-section. Activate GDM virtual env and enable the CHIP console:
-`${device-address}` should be something like `/dev/tty/ACM0`
+Follow
+https://github.com/project-chip/connectedhomeip/blob/master/examples/common/pigweed/rpc_console/README.md
+to build and run the Pigweed RPC CHIP console.
 
 ```
 source ~/gazoo/gdm/virtual_env/bin/activate
 python -m chip_rpc.console --device ${device-address} -b 115200 -o /tmp/pw.log
 ```
 
-Inside interactive console:
+Then, inside the interactive console:
 
 ```
 # Get supported endpoints on the device
@@ -149,6 +148,9 @@ In [2]:  rpcs.chip.rpc.Descriptor.DeviceTypeList(endpoint=1)
 >>> (Status.OK, [chip.rpc.DeviceType(device_type=10)])
 ```
 
+See also:
+[ESP32 RPC console setup](https://github.com/project-chip/connectedhomeip/blob/master/docs/guides/esp32/rpc_console.md).
+
 **5. Device detection**
 
 Detect the ESP32 Matter sample app: `gdm detect`
@@ -156,7 +158,7 @@ Detect the ESP32 Matter sample app: `gdm detect`
 ```
     Device                     Alias           Type                 Model                Connected
     -------------------------- --------------- -------------------- -------------------- ----------
-    esp32matter-6125           <undefined>     esp32matter          PROTO                connected
+    esp32matter-b69b           <undefined>     esp32matter          PROTO                connected
 
     Other Devices              Alias           Type                 Model                Available
     -------------------------- --------------- -------------------- -------------------- ----------
@@ -164,10 +166,10 @@ Detect the ESP32 Matter sample app: `gdm detect`
 
 **6. (Recommended) Remove on-board coin cell battery**
 
-The [battery](images/esp32_battery.jpg) on the
+The [battery](images/esp32_battery.png) on the
 bottom of the board is an alternate power source for the board. When used in a
-testbed setup, the battery is not needed. Removing the battery enables the board
-to be power cycled programmatically using
+testbed setup, the battery is not needed. If the board is connected to a Cambrionix, removing the battery.
+Removing the battery enables the board to be power cycled programmatically using
 
 ```
 device.device_power.off()

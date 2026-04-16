@@ -19,7 +19,7 @@ TransportProcess instances.
 """
 import abc
 import copy
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from gazoo_device.switchboard import transport_properties
 
@@ -31,16 +31,20 @@ class TransportBase(abc.ABC):
   """
 
   def __init__(self,
+               comms_address: str,
                auto_reopen: bool = False,
                open_on_start: bool = True) -> None:
     """Initializes the transport interface.
 
     Args:
-      auto_reopen: Flag indicating transport should be reopened if
-        unexpectedly closed.
+      comms_address: Transport's communication address (e. g. IP address,
+        ADB identifier, serial port path).
+      auto_reopen: Flag indicating transport should be reopened if unexpectedly
+        closed.
       open_on_start: Flag indicating transport should be open on
         TransportProcess start.
     """
+    self.comms_address = comms_address
     if not hasattr(self, "_properties"):
       self._properties = {}
     self._properties.update({
@@ -53,7 +57,7 @@ class TransportBase(abc.ABC):
     """Returns True if the transport is open.
 
     Returns:
-        bool: True if transport is open, False otherwise.
+      bool: True if transport is open, False otherwise.
     """
 
   @abc.abstractmethod
@@ -110,7 +114,7 @@ class TransportBase(abc.ABC):
     """
     return self._properties.get(key, value)
 
-  def get_all_properties(self) -> Dict[str, Any]:
+  def get_all_properties(self) -> dict[str, Any]:
     """Returns dictionary of property key-value pairs.
 
     Returns:
@@ -118,7 +122,7 @@ class TransportBase(abc.ABC):
     """
     return copy.deepcopy(self._properties)
 
-  def get_property_list(self) -> List[str]:
+  def get_property_list(self) -> list[str]:
     """Returns a list of property keys that exist and can be set/retrieved.
 
     Returns:

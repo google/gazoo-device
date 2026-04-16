@@ -15,6 +15,7 @@
 """J-Link transport class."""
 import os.path
 import sys
+from typing import Union
 
 from gazoo_device import errors
 from gazoo_device.switchboard.transports import transport_base
@@ -29,36 +30,37 @@ _JLINK_NO_DLL_ERROR = "Expected to be given a valid DLL."
 class JLinkTransport(transport_base.TransportBase):
   """J-Link transport to a device."""
 
-  def __init__(self,
-               comms_address,
-               chip_name=DEFAULT_CHIP_NAME,
-               speed="auto",
-               jlink_interface=enums.JLinkInterfaces.SWD,
-               auto_reopen=True,
-               open_on_start=True):
-    """Initialize the J-Link transport.
+  def __init__(
+      self,
+      comms_address: str,
+      chip_name: str = DEFAULT_CHIP_NAME,
+      speed: Union[int, str] = "auto",
+      jlink_interface: enums.JLinkInterfaces = enums.JLinkInterfaces.SWD,
+      auto_reopen: bool = True,
+      open_on_start: bool = True):
+    """Initializes the J-Link transport.
 
     Args:
-        comms_address (str): serial number of the J-Link adapter.
-        chip_name (str): usually the name of the target chip to connect to.
-        speed (object): connection speed, int or str.
-                        Valid values: [5-12000], "auto", "adaptive".
-        jlink_interface (int): interface to use. See
-          pylink.enums.JLinkInterfaces.
-        auto_reopen (bool): flag indicating transport should be reopened if
-          unexpectedly closed.
-        open_on_start (bool): flag indicating transport should be open on
-          TransportProcess start.
+        comms_address: Serial number of the J-Link adapter.
+        chip_name: Usually the name of the target chip to connect to.
+        speed: Connection speed, int or str.
+            Valid values: [5-12000], "auto", "adaptive".
+        jlink_interface: Interface to use. See pylink.enums.JLinkInterfaces.
+        auto_reopen: Flag indicating transport should be reopened if
+            unexpectedly closed.
+        open_on_start: Flag indicating transport should be open on
+            TransportProcess start.
 
     Raises:
-        DeviceError: if the J-Link DLL (comes with the J-Link SDK) is
-        missing.
+        DeviceError: if the J-Link DLL (comes with the J-Link SDK) is missing.
         TypeError: J-Link instantiation failed.
 
     Note: due to license restrictions, J-Link DLL cannot be packaged into GDM.
     """
-    super(JLinkTransport, self).__init__(
-        auto_reopen=auto_reopen, open_on_start=open_on_start)
+    super().__init__(
+        comms_address=comms_address,
+        auto_reopen=auto_reopen,
+        open_on_start=open_on_start)
     self.comms_address = comms_address
     self._chip_name = chip_name
     self._speed = speed

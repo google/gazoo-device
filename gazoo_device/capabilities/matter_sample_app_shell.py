@@ -14,7 +14,7 @@
 """Matter linux sample app controls and management capability over shell."""
 import os
 import time
-from typing import Callable, List
+from typing import Callable
 
 from gazoo_device import decorators
 from gazoo_device import gdm_logger
@@ -103,7 +103,7 @@ class MatterSampleAppShell(matter_sample_app_base.MatterSampleAppBase):
     return self._shell(COMMANDS["CHECK_SERVICE_ENABLED"]) == "enabled"
 
   @decorators.CapabilityLogDecorator(logger)
-  def get_process_ids(self) -> List[str]:
+  def get_process_ids(self) -> list[str]:
     """Gets all currently active linux app process IDs.
 
     Returns:

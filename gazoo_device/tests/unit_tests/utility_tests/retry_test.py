@@ -53,12 +53,36 @@ class RetryTests(unit_test_case.UnitTestCase):
     """Test retry with a timeout; error type left as default."""
     with self.assertRaisesRegex(errors.CommunicationTimeoutError,
                                 r"Timeout.*Tried calling _return_message "
-                                r"2 times with a 0.6-second interval. "
+                                r".* times with a 0.6-second interval. "
                                 r"Call results:\n"
-                                r"1: 'FUNCTION_RETURN'\n"
-                                r"2: 'FUNCTION_RETURN'."):
+                                r"  1\.\..*: 'FUNCTION_RETURN'."):
       retry.retry(
-          _return_message, is_successful=_not, timeout=1, interval=0.6)
+          _return_message, is_successful=_not, timeout=2, interval=0.6)
+
+  def test_retry_too_long_timeout_error_message(self):
+    """Test retry with a too long timeout; duplicate message is coalesced."""
+    mock_return_message = mock.Mock(
+        side_effect=[
+            "FUNCTION_RETURN first",
+            "FUNCTION_RETURN double",
+            "FUNCTION_RETURN double",
+            "FUNCTION_RETURN triple",
+            "FUNCTION_RETURN triple",
+            "FUNCTION_RETURN triple",
+            "FUNCTION_RETURN single"
+            ] + ["FUNCTION_RETURN many"]*100)
+    mock_return_message.__name__ = "_return_message"
+    with self.assertRaisesRegex(errors.CommunicationTimeoutError,
+                                r"Timeout.*Tried calling _return_message "
+                                r".* times with a 0.6-second interval. "
+                                r"Call results:\n"
+                                r"  1     : 'FUNCTION_RETURN first'\n"
+                                r"  2\.\.  3: 'FUNCTION_RETURN double'\n"
+                                r"  4\.\.  6: 'FUNCTION_RETURN triple'\n"
+                                r"  7     : 'FUNCTION_RETURN single'\n"
+                                r"  8\.\..*: 'FUNCTION_RETURN many'."):
+      retry.retry(
+          mock_return_message, is_successful=_not, timeout=10, interval=0.6)
 
   def test_retry_timeout_custom_error(self):
     """Test retry with a timeout; error type is provided."""
@@ -123,6 +147,60 @@ class RetryTests(unit_test_case.UnitTestCase):
     result = retry.retry(
         _func, is_successful=_is_success, interval=0.25, timeout=2)
     self.assertEqual(result, ret_val)
+
+  def test_retry_logging(self):
+    ret_val = "success"
+
+    def _func(arg):  # pylint: disable=unused-argument
+      _func.called_count += 1
+      if _func.called_count >= 2:
+        return ret_val
+      return "fail"
+
+    _func.called_count = 0
+    _func.__name__ = "_func"
+
+    with self.assertLogs("gazoo_device.utility.retry", level="DEBUG") as cm:
+      retry.retry(
+          _func,
+          func_args=("arg1",),
+          is_successful=lambda x: x == ret_val,
+          interval=0,
+          timeout=1,
+          log_prefix="[TEST]",
+      )
+
+    self.assertRegex(cm.output[0],
+                     r"DEBUG:gazoo_device\.utility\.retry:"
+                     r"\[TEST\] Attempt 1 .* of _func\(\('arg1',\), {}\) "
+                     r"failed with result: 'fail'")
+
+  def test_retry_logging_exception(self):
+    """Verifies that the retry utility logs exceptions."""
+    ret_val = "success"
+
+    def _func():
+      _func.called_count += 1
+      if _func.called_count >= 2:
+        return ret_val
+      raise RuntimeError("failed")
+
+    _func.called_count = 0
+    _func.__name__ = "_func"
+
+    with self.assertLogs("gazoo_device.utility.retry", level="DEBUG") as cm:
+      retry.retry(
+          _func,
+          is_successful=lambda x: x == ret_val,
+          interval=0,
+          timeout=1,
+          reraise=False,
+      )
+
+    self.assertRegex(cm.output[0],
+                     r"DEBUG:gazoo_device\.utility\.retry:"
+                     r"\[RETRY\] Attempt 1 .* of _func\(\(\), {}\) "
+                     r"failed with exception: RuntimeError\('failed'\)")
 
 
 if __name__ == "__main__":

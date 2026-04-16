@@ -51,6 +51,11 @@ class ThermostatClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
     self.fake_read.return_value = mock.Mock(data_int16=_FAKE_TEMPERATURE)
     self.assertEqual(self.uut.local_temperature, _FAKE_TEMPERATURE)
 
+  def test_write_local_temperature_attribute(self):
+    """Tests writing the LocalTemperature attribute."""
+    self.uut.local_temperature = _FAKE_TEMPERATURE
+    self.fake_write.assert_called_once()
+
   def test_read_occupied_heating_setpoint_attribute(self):
     """Tests reading the OccupiedHeatingSetpoint attribute."""
     self.fake_read.return_value = mock.Mock(data_int16=_FAKE_TEMPERATURE)

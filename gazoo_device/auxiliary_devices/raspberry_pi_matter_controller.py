@@ -13,18 +13,21 @@
 # limitations under the License.
 
 """Raspberry Pi Matter Controller device class."""
+from typing import Any, Optional
 
-from typing import Optional
-
-from gazoo_device import config
 from gazoo_device import decorators
-from gazoo_device import detect_criteria
 from gazoo_device import errors
 from gazoo_device import gdm_logger
+from gazoo_device import mobly_controller
+from gazoo_device import version
 from gazoo_device.auxiliary_devices import raspberry_pi
 from gazoo_device.base_classes import matter_endpoints_mixin
 from gazoo_device.capabilities import matter_controller_chip_tool
 from gazoo_device.capabilities import matter_endpoints_accessor_chip_tool
+from gazoo_device.detect_criteria import ssh_detect_criteria
+from gazoo_device.keys import raspberry_pi_key
+from gazoo_device.utility import key_utils
+import immutabledict
 
 logger = gdm_logger.get_logger()
 
@@ -35,17 +38,23 @@ class RaspberryPiMatterController(
     raspberry_pi.RaspberryPi,
     matter_endpoints_mixin.MatterEndpointAliasesMixin):
   """Base Class for RaspberryPiMatterController Devices."""
-  _COMMUNICATION_KWARGS = {
+  _COMMUNICATION_KWARGS = immutabledict.immutabledict({
       "log_cmd": _LOGGING_CMD,
-      "key_info": config.KEYS["raspberrypi3_ssh_key"],
-      "username": "pi"
-  }
-  DETECT_MATCH_CRITERIA = {
-      detect_criteria.SshQuery.IS_RASPBIAN_RPI: True,
-      detect_criteria.SshQuery.IS_CHIP_TOOL_PRESENT: True,
-  }
+      "key_info": raspberry_pi_key.SSH_KEY_PRIVATE,
+      "username": "ubuntu"
+  })
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
+      ssh_detect_criteria.SshQuery.IS_UBUNTU_RPI: True,
+      ssh_detect_criteria.SshQuery.IS_CHIP_TOOL_PRESENT: True,
+  })
   DEVICE_TYPE = "rpi_matter_controller"
-  _OWNER_EMAIL = "gdm-authors@google.com"
+
+  _RESPONSE_REGEX = immutabledict.immutabledict({
+      # Example matched pattern:
+      # <2024-03-13 00:15:12.753091> GDM-0: [DMG] 3 (unsigned), 4 (unsigned), 6 (unsigned), 8 (unsigned), 29 (unsigned)  # pylint:disable=line-too-long
+      "DESCRIPTOR_ATTRIBUTE_RESPONSE": r".DMG.\s*(\d+ \(unsigned\)(?:\s*,\s+\d+ \(unsigned\))*)",
+      "DEVICE_TYPE_LIST_RESPONSE": r".TOO.\s+(?:Device)?Type: (\d+)",
+  })
 
   @decorators.LogDecorator(logger)
   def factory_reset(self) -> None:
@@ -87,4 +96,35 @@ class RaspberryPiMatterController(
         node_id_getter=lambda: self.matter_node_id,
         shell_fn=self.shell,
         shell_with_regex=self.shell_with_regex,
-        matter_controller=self.matter_controller)
+        matter_controller=self.matter_controller,
+        device_type=self.DEVICE_TYPE,
+        response_regex=self._RESPONSE_REGEX,
+    )
+
+
+_DeviceClass = RaspberryPiMatterController
+_COMMUNICATION_TYPE = _DeviceClass.COMMUNICATION_TYPE.__name__
+# For Mobly controller integration.
+MOBLY_CONTROLLER_CONFIG_NAME = (
+    mobly_controller.get_mobly_controller_config_name(_DeviceClass.DEVICE_TYPE))
+create = mobly_controller.create
+destroy = mobly_controller.destroy
+get_info = mobly_controller.get_info
+get_manager = mobly_controller.get_manager
+
+
+def export_extensions() -> dict[str, Any]:
+  """Exports device class and capabilities to act as a GDM extension package."""
+  return {
+      "auxiliary_devices": [_DeviceClass],
+      "detect_criteria": immutabledict.immutabledict({
+          _COMMUNICATION_TYPE: ssh_detect_criteria.SSH_QUERY_DICT,
+      }),
+      "keys": [
+          raspberry_pi_key.SSH_KEY_PRIVATE,
+          raspberry_pi_key.SSH_KEY_PUBLIC,
+      ],
+  }
+
+__version__ = version.VERSION
+download_key = key_utils.download_key

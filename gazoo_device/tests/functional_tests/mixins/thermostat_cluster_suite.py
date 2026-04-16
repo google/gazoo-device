@@ -39,7 +39,7 @@ class ThermostatClusterTestSuite:
         _FAKE_DATA1,
         self.endpoint.thermostat.occupied_cooling_setpoint)
 
-  # TODO(b/241020267): enable the test once sample app supports writing setpoint
+  # TODO(gdm-authors): enable the test once sample app supports writing setpoint
   # def test_occupied_heating_setpoint_attribute(self):
   #   """Tests the OccupiedHeatingSetpoint attribute."""
   #   self.endpoint.thermostat.occupied_heating_setpoint = _FAKE_DATA2

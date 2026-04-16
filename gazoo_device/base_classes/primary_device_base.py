@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,39 +19,59 @@ re-implemented in derived device classes. Device classes should inherit from
 GazooDeviceBase, not from this class.
 """
 import abc
-from typing import Callable, List, Optional
+from typing import Any, Callable, Mapping, Optional, Union
 
 from gazoo_device import console_config
-from gazoo_device import data_types
+from gazoo_device import custom_types
+from gazoo_device.detect_criteria import base_detect_criteria
+from gazoo_device.switchboard.communication_types import base_comms
 
 
 class PrimaryDeviceBase(abc.ABC):
   """Interface containing required GDM APIs for primary devices."""
-  COMMUNICATION_TYPE = None  # Override
-  DETECT_MATCH_CRITERIA = None  # Overrride
-  DEVICE_TYPE = None  # Override
-  _COMMUNICATION_KWARGS = {}
-  _OWNER_EMAIL = ""  # override in child classes
+  # Placeholders for device constants which are overridden in derived classes.
+  COMMUNICATION_TYPE: Optional[type[base_comms.CommunicationType]] = None
+  # Resource paths to event filter files, typically constructed as
+  # os.path.join(config.FILTER_DIRECTORY, "device_or_platform/filter.json").
+  DEFAULT_FILTERS: tuple[str, ...] = ()
+  DETECT_MATCH_CRITERIA: Mapping[
+      base_detect_criteria.QueryEnum, Union[bool, str]
+  ] = {}
+  DEVICE_TYPE = ""
+  _COMMUNICATION_KWARGS: Mapping[str, Any] = {}
   # Maximum number of attempts for recovery from health check failures.
   _RECOVERY_ATTEMPTS = 1
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def alias(self):
     """Returns the user-defined device alias (string)."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def commands(self):
     """Dictionary of commands issued to the device via shell."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def communication_address(self):
     """Returns the name of the main communication port (for example, ip address)."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def connected(self):
     """Returns whether the device is connected or not."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
+  def dimensions(self) -> Mapping[str, str]:
+    """Returns dimensions used for allocation of this device in the lab.
+
+    Only available in lab test runs. If not available, returns an empty dict.
+    """
+
+  @property
+  @abc.abstractmethod
   def firmware_version(self) -> str:
     """The firmware version installed on the device."""
 
@@ -60,35 +80,43 @@ class PrimaryDeviceBase(abc.ABC):
       self) -> Optional[console_config.ConsoleConfiguration]:
     """Returns interactive console configuration or None if not supported."""
 
-  @abc.abstractproperty
-  def health_checks(self) -> List[Callable[[], None]]:
+  @property
+  @abc.abstractmethod
+  def health_checks(self) -> list[Callable[[], None]]:
     """Returns list of methods to execute as health checks."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def model(self):
     """Returns the device model."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def name(self):
     """Returns the unique identifier for the device (like cambrionix-a3b4)."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def os(self):
     """Operating system of the device (like Android or Linux)."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def platform(self):
     """Platform of the device."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def regexes(self):
     """Regular expressions used to retrieve properties, events, states from device output."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def serial_number(self):
     """Returns the serial number of the device."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def timeouts(self):
     """Dictionary of default timeouts to use when expecting certain actions."""
 
@@ -144,8 +172,9 @@ class PrimaryDeviceBase(abc.ABC):
         It unpairs the device as necessary.
     """
 
+  @classmethod
   @abc.abstractmethod
-  def is_connected(cls, device_config):  # pylint: disable=no-self-argument
+  def is_connected(cls, device_config):
     """Determines if the device is connected (reachable).
 
     Note:
@@ -161,7 +190,7 @@ class PrimaryDeviceBase(abc.ABC):
 
   @abc.abstractmethod
   def make_device_ready(
-      self, setting: data_types.MakeDeviceReadySettingStr = "on") -> None:
+      self, setting: custom_types.MakeDeviceReadySettingStr = "on") -> None:
     """Checks device readiness and attempts recovery if allowed.
 
     If setting is 'off': does nothing.

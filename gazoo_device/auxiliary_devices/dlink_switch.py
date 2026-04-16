@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,16 +14,20 @@
 """D-Link switch device controller."""
 import re
 import subprocess
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from gazoo_device import custom_types
 from gazoo_device import decorators
-from gazoo_device import detect_criteria
 from gazoo_device import errors
 from gazoo_device import gdm_logger
-from gazoo_device.base_classes import auxiliary_device
+from gazoo_device import mobly_controller
+from gazoo_device import version
+from gazoo_device.base_classes import auxiliary_power_hub_device
 from gazoo_device.capabilities import switch_power_snmp
+from gazoo_device.detect_criteria import snmp_detect_criteria
+from gazoo_device.switchboard.communication_types import snmp_comms
 from gazoo_device.utility import host_utils
+import immutabledict
 
 logger = gdm_logger.get_logger()
 
@@ -33,12 +37,12 @@ _DLINK_TOTAL_PORTS_RESPONSE_REG_EX = r".+INTEGER:.+?(\d+)"
 _SNMP_TIMEOUT_S = 10
 
 
-class DLinkSwitch(auxiliary_device.AuxiliaryDevice):
+class DLinkSwitch(auxiliary_power_hub_device.AuxiliaryPowerHubDevice):
   """Device class for a D-Link Switch."""
-  COMMUNICATION_TYPE = "SnmpComms"
-  DETECT_MATCH_CRITERIA = {detect_criteria.SnmpQuery.IS_DLINK: True}
+  COMMUNICATION_TYPE = snmp_comms.SnmpComms
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
+      snmp_detect_criteria.SnmpQuery.IS_DLINK: True})
   DEVICE_TYPE = "dlink_switch"
-  _OWNER_EMAIL = "gdm-authors@google.com"
 
   def _get_total_ports(self) -> int:
     """Gets the total number of network ports.
@@ -88,7 +92,7 @@ class DLinkSwitch(auxiliary_device.AuxiliaryDevice):
         total_ports=self.total_ports)
 
   @decorators.LogDecorator(logger)
-  def get_detection_info(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+  def get_detection_info(self) -> tuple[dict[str, Any], dict[str, Any]]:
     """Gets the persistent and optional attributes of a DLI Power Switch.
 
     Returns:
@@ -96,7 +100,7 @@ class DLinkSwitch(auxiliary_device.AuxiliaryDevice):
     """
     self.props["optional"] = {}
     self.props["persistent_identifiers"]["model"] = (
-        detect_criteria.get_dlink_model_name(self.ip_address))
+        snmp_detect_criteria.get_dlink_model_name(self.ip_address))
     # Cannot get serial number via snmp; no other known way for this device.
     # Using IP as a unique identifier instead.
     self.props["persistent_identifiers"]["serial_number"] = (
@@ -123,3 +127,26 @@ class DLinkSwitch(auxiliary_device.AuxiliaryDevice):
   def total_ports(self) -> int:
     """Returns the dlink switch's total number of ports."""
     return self.props["persistent_identifiers"]["total_ports"]
+
+
+_DeviceClass = DLinkSwitch
+_COMMUNICATION_TYPE = _DeviceClass.COMMUNICATION_TYPE.__name__
+# For Mobly controller integration.
+MOBLY_CONTROLLER_CONFIG_NAME = (
+    mobly_controller.get_mobly_controller_config_name(_DeviceClass.DEVICE_TYPE))
+create = mobly_controller.create
+destroy = mobly_controller.destroy
+get_info = mobly_controller.get_info
+get_manager = mobly_controller.get_manager
+
+
+def export_extensions() -> dict[str, Any]:
+  """Exports device class and capabilities to act as a GDM extension package."""
+  return {
+      "auxiliary_devices": [_DeviceClass],
+      "detect_criteria": immutabledict.immutabledict({
+          _COMMUNICATION_TYPE: snmp_detect_criteria.SNMP_QUERY_DICT,
+      }),
+  }
+
+__version__ = version.VERSION

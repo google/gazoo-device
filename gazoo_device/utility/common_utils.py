@@ -13,7 +13,9 @@
 # limitations under the License.
 
 """Common reusable utility functions."""
+import json
 import re
+from typing import Any
 import weakref
 
 # Keywords which need special handling in TitleCase to snake_case conversion.
@@ -24,7 +26,7 @@ _KEYWORDS_TO_CLEAN_UP = (
 )
 
 
-class MethodWeakRef(object):
+class MethodWeakRef:
   """Allows creating weak references to instance methods.
 
   Note:
@@ -146,6 +148,25 @@ def title_to_snake_case(s: str) -> str:
   return result
 
 
+class BytesJSONEncoder(json.JSONEncoder):
+  """Like json.JSONEncoder, but also handles serialization of bytes."""
+
+  def default(self, o: Any) -> str:
+    """Returns a serialized form of 'o'.
+
+    Args:
+      o: Any object. If it's bytes, serialize them by decoding them to a UTF-8
+        string.
+
+    Raises:
+      TypeError: raised by the parent implementation if there's no serialization
+        method implemented for 'o'.
+    """
+    if isinstance(o, bytes):
+      return o.decode(errors="replace")
+    return super().default(o)
+
+
 def _is_new_word(s: str, pos: int) -> bool:
   """Returns whether a new words starts at s[pos] in a TitleCase string.
 
@@ -159,12 +180,12 @@ def _is_new_word(s: str, pos: int) -> bool:
   return (  # First character always start new word.
       pos == 0 or
       # First capital character starts new word if
-      # (1) whose preceeding character is not capital or
+      # (1) whose preceding character is not capital or
       # (2) following character is not capital.
       (s[pos].isupper() and
        (not s[pos - 1].isupper() or
         (pos + 1 < len(s) and not s[pos + 1].isupper()))) or
-      # First digit whose preceeding character is not digit.
+      # First digit whose preceding character is not digit.
       (s[pos].isnumeric() and not s[pos - 1].isnumeric()))
 
 

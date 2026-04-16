@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 
 """Base class module for nRF Connect SDK platform device."""
 import os
-from typing import Dict, Tuple
 
 from gazoo_device import console_config
 from gazoo_device import custom_types
@@ -22,7 +21,9 @@ from gazoo_device import decorators
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import auxiliary_device
 from gazoo_device.capabilities import flash_build_nrfjprog
+from gazoo_device.switchboard.communication_types import pigweed_serial_comms
 from gazoo_device.utility import usb_utils
+import immutabledict
 
 logger = gdm_logger.get_logger()
 BAUDRATE = 115200
@@ -33,15 +34,16 @@ class NRFConnectSDKDevice(auxiliary_device.AuxiliaryDevice):
 
   nRF Connect SDK devices from Nordic which runs Zephyr RTOS.
   """
-  COMMUNICATION_TYPE = "PigweedSerialComms"
-  _COMMUNICATION_KWARGS = {"protobufs": None, "baudrate": BAUDRATE}
+  COMMUNICATION_TYPE = pigweed_serial_comms.PigweedSerialComms
+  _COMMUNICATION_KWARGS = immutabledict.immutabledict({
+      "protobufs": None, "baudrate": BAUDRATE})
 
   def get_console_configuration(self) -> console_config.ConsoleConfiguration:
     """Returns the interactive console configuration."""
     return console_config.get_log_only_configuration()
 
   @decorators.LogDecorator(logger)
-  def get_detection_info(self) -> Tuple[Dict[str, str], Dict[str, str]]:
+  def get_detection_info(self) -> tuple[dict[str, str], dict[str, str]]:
     """Gets the persistent and optional attributes of a device during setup.
 
     Returns:

@@ -16,10 +16,12 @@
 from unittest import mock
 
 from gazoo_device import errors
+from gazoo_device import package_registrar
 from gazoo_device.base_classes import ssh_device
 from gazoo_device.tests.unit_tests.capability_tests.mixins import file_transfer_test
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.tests.unit_tests.utils import ssh_device_logs
+from gazoo_device.tests.unit_tests.utils import ssh_device_stub
 from gazoo_device.utility import host_utils
 import immutabledict
 
@@ -37,35 +39,15 @@ _PERSISTENT_PROPERTIES = immutabledict.immutabledict({
 _REBOOT_PINGS = [True] * 5 + [False] * 20 + [True] * 5
 
 
-class SshDeviceStub(ssh_device.SshDevice):
-  """Add dummy implementations for abstract methods to allow instantiation of SshDevice."""
-
-  def factory_reset(self):
-    pass
-
-  @property
-  def firmware_version(self):
-    pass
-
-  @property
-  def platform(self):
-    return "dummy"
-
-  @property
-  def model(self):
-    pass
-
-  def reboot(self):
-    pass
-
-  def upgrade(self):
-    pass
-
-
 class SshDeviceTests(
     fake_device_test_case.FakeDeviceTestCase,
     file_transfer_test.TestFileTransfer):
   """Unit tests for ssh_device.py."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(ssh_device_stub)
 
   def setUp(self):
     super().setUp()
@@ -77,7 +59,7 @@ class SshDeviceTests(
     self.enter_context(
         mock.patch.object(
             host_utils, "is_pingable", autospec=True, return_value=True))
-    self.uut = SshDeviceStub(
+    self.uut = ssh_device_stub.SshDeviceStub(
         self.mock_manager,
         self.device_config,
         log_directory=self.artifacts_directory)
@@ -87,7 +69,7 @@ class SshDeviceTests(
     with mock.patch.object(self.uut, "make_device_ready"):
       self._test_get_detection_info(
           _PERSISTENT_PROPERTIES["console_port_name"],
-          device_class=SshDeviceStub,
+          device_class=ssh_device_stub.SshDeviceStub,
           persistent_properties=_PERSISTENT_PROPERTIES)
 
   def test_is_connected_false(self):
@@ -110,6 +92,19 @@ class SshDeviceTests(
 
   def test_check_device_ready_success(self):
     """Test check_device_ready() when all health checks succeed."""
+    self.uut.check_device_ready()
+
+  def test_check_device_ready_sets_power(self):
+    """Test check_device_ready() when device has device_power capability."""
+    self.uut.device_power = mock.Mock()
+    self.uut.check_device_ready()
+    self.uut.device_power.on.assert_called_once()
+
+  def test_check_device_ready_handles_power_exception(self):
+    """Test check_device_ready() when device has device_power capability."""
+    self.uut.device_power = mock.Mock()
+    self.uut.device_power.on.side_effect = (
+        errors.CapabilityNotReadyError("device", "error"))
     self.uut.check_device_ready()
 
   def test_check_device_ready_failure_shell_not_responsive(self):
@@ -137,24 +132,35 @@ class SshDeviceTests(
 
   def test_verify_reboot_failure_shell_raises_error(self):
     """Test verify_reboot() when device shell is unresponsive."""
-    cmd = ssh_device_logs.generate_command(ssh_device.COMMANDS["GDM_HELLO"])
+    cmd = ssh_device_logs.generate_command(
+        ssh_device.COMMANDS["BOOT_UP_COMPLETE"]
+    )
     del self.fake_responder.behavior_dict[cmd]  # Simulate timeout
     with mock.patch.object(
-        host_utils, "is_pingable", side_effect=_REBOOT_PINGS):
-      with self.assertRaisesRegex(errors.DeviceNotBootupCompleteError,
-                                  "shell error"):
+        host_utils, "is_pingable", side_effect=_REBOOT_PINGS
+    ):
+      with self.assertRaisesRegex(
+          errors.DeviceNotBootupCompleteError,
+          "Unable to execute command BOOT_UP_COMPLETE",
+      ):
         self.uut._verify_reboot()
 
   def test_reboot_failure_shell_returns_nonzero_return_code(self):
     """Test verify_reboot() when device shell returns a non-zero return code."""
-    cmd = ssh_device_logs.generate_command(ssh_device.COMMANDS["GDM_HELLO"])
+    cmd = ssh_device_logs.generate_command(
+        ssh_device.COMMANDS["BOOT_UP_COMPLETE"]
+    )
     resp = ssh_device_logs.generate_response(
-        ssh_device.COMMANDS["GDM_HELLO"], "something went wrong", 1)
+        ssh_device.COMMANDS["BOOT_UP_COMPLETE"], "something went wrong", 1
+    )
     self.fake_responder.behavior_dict[cmd] = resp
     with mock.patch.object(
-        host_utils, "is_pingable", side_effect=_REBOOT_PINGS):
-      with self.assertRaisesRegex(errors.DeviceNotBootupCompleteError,
-                                  "non-zero return code"):
+        host_utils, "is_pingable", side_effect=_REBOOT_PINGS
+    ):
+      with self.assertRaisesRegex(
+          errors.DeviceNotBootupCompleteError,
+          "Unable to execute command BOOT_UP_COMPLETE",
+      ):
         self.uut._verify_reboot()
 
   def test_verify_reboot_success(self):
@@ -187,9 +193,31 @@ class SshDeviceTests(
     self.mock_switchboard.open_all_transports.assert_called_once()
 
   @mock.patch.object(host_utils, "is_pingable", return_value=False)
-  def test_wait_for_bootup_complete_timeout(self, mock_is_pingable):
+  def test_wait_for_bootup_complete_timeout_not_pingable(
+      self, mock_is_pingable
+  ):
     """Tests wait_for_bootup_complete() raised an error after timeout."""
-    with self.assertRaises(errors.DeviceNotBootupCompleteError):
+    with self.assertRaisesRegex(
+        errors.DeviceNotBootupCompleteError, "Device failed to become pingable"
+    ):
+      self.uut.wait_for_bootup_complete(timeout=1)
+
+  @mock.patch.object(host_utils, "is_pingable", return_value=True)
+  def test_wait_for_bootup_complete_timeout_shell_returns_nonzero(
+      self, mock_is_pingable
+  ):
+    """Tests wait_for_bootup_complete() raises an error if shell times out."""
+    cmd = ssh_device_logs.generate_command(
+        ssh_device.COMMANDS["BOOT_UP_COMPLETE"]
+    )
+    resp = ssh_device_logs.generate_response(
+        ssh_device.COMMANDS["BOOT_UP_COMPLETE"], "something went wrong", 1
+    )
+    self.fake_responder.behavior_dict[cmd] = resp
+    with self.assertRaisesRegex(
+        errors.DeviceNotBootupCompleteError,
+        "Unable to execute command BOOT_UP_COMPLETE on device's shell",
+    ):
       self.uut.wait_for_bootup_complete(timeout=1)
 
   @mock.patch.object(ssh_device.SshDevice, "shell", return_value=("", 0))

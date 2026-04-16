@@ -26,12 +26,15 @@ logger = gdm_logger.get_logger()
 class FileTransferScp(file_transfer_base.FileTransferBase):
   """scp-based file or folder transfer capability."""
 
-  def __init__(self,
-               ip_address_or_fn,
-               device_name,
-               add_log_note_fn,
-               user="root",
-               key_info=None):
+  def __init__(
+      self,
+      ip_address_or_fn,
+      device_name,
+      add_log_note_fn,
+      user="root",
+      key_info=None,
+      options=None,
+  ):
     """Initialize scp file or folder transfer capability.
 
     Args:
@@ -41,6 +44,7 @@ class FileTransferScp(file_transfer_base.FileTransferBase):
         add_log_note_fn (func): add output to log file.
         user (str): username which scp should use.
         key_info (data_types.KeyInfo): SSH key to use.
+        options (list[str]): Options to pass to scp.
     """
     super(FileTransferScp, self).__init__(device_name=device_name)
 
@@ -48,6 +52,7 @@ class FileTransferScp(file_transfer_base.FileTransferBase):
     self._user = user
     self._key_info = key_info
     self._add_log_note_fn = add_log_note_fn
+    self._options = options or host_utils.SSH_CONFIG
 
   @decorators.CapabilityLogDecorator(logger)
   def recv_file_from_device(self, src, dest="./"):
@@ -79,7 +84,9 @@ class FileTransferScp(file_transfer_base.FileTransferBase):
           dest,
           src,
           user=self._user,
-          key_info=self._key_info)
+          key_info=self._key_info,
+          options=self._options,
+      )
       for line in output.splitlines():
         self._add_log_note_fn(line + "\n")
 
@@ -123,7 +130,9 @@ class FileTransferScp(file_transfer_base.FileTransferBase):
           src,
           dest,
           user=self._user,
-          key_info=self._key_info)
+          key_info=self._key_info,
+          options=self._options,
+      )
       for line in output.splitlines():
         self._add_log_note_fn(line + "\n")
 

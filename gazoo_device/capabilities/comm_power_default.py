@@ -14,13 +14,21 @@
 
 """Communication Power Default Capability."""
 import time
+import typing
+from typing import Any, Callable, Union
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
-
+from gazoo_device.auxiliary_devices import cambrionix
+from gazoo_device.auxiliary_devices import dlink_switch
+from gazoo_device.auxiliary_devices import unifi_poe_switch
 from gazoo_device.capabilities.interfaces import comm_power_base
 from gazoo_device.capabilities.interfaces import switch_power_base
 from gazoo_device.utility import deprecation_utils
+
+_PowerHubDevice = Union[cambrionix.Cambrionix,
+                        dlink_switch.DLinkSwitch,
+                        unifi_poe_switch.UnifiPoeSwitch]
 
 logger = gdm_logger.get_logger()
 
@@ -32,7 +40,7 @@ class CommPowerDefault(comm_power_base.CommPowerBase):
 
   def __init__(self,
                device_name,
-               create_device_func,
+               get_manager: Callable[[], Any],
                hub_type,
                props,
                settable,
@@ -48,7 +56,7 @@ class CommPowerDefault(comm_power_base.CommPowerBase):
     Args:
       device_name (str): name of the device this capability is attached
         to.
-      create_device_func (func): create_device method.
+      get_manager: The "get_manager" method of a device instance.
       hub_type (str): type of power hub for power cycling.
       props (dict): dictionary of device props from configuration file.
       settable (bool): whether or not the properties are settable.
@@ -69,7 +77,6 @@ class CommPowerDefault(comm_power_base.CommPowerBase):
     """
     super().__init__(device_name=device_name)
 
-    self._create_device_func = create_device_func
     self._settable = settable
     self._hub_name_prop = hub_name_prop
     self._port_prop = port_prop
@@ -87,6 +94,12 @@ class CommPowerDefault(comm_power_base.CommPowerBase):
     self._wait_for_bootup_complete_func = wait_for_bootup_complete_func
     self._pre_off_func = pre_off_func
     self._hub = None
+    self._get_manager = get_manager
+
+  @classmethod
+  def get_used_device_classes(cls) -> set[type[Any]]:
+    """Returns all device classes this capability can create through Manager."""
+    return set(typing.get_args(_PowerHubDevice))
 
   @decorators.OptionalProperty
   def address(self) -> str:
@@ -123,7 +136,8 @@ class CommPowerDefault(comm_power_base.CommPowerBase):
           msg=error_msg, device_name=self._device_name)
 
     try:
-      self._hub = self._create_device_func(self.hub_name)
+      self._hub = typing.cast(_PowerHubDevice,
+                              self._get_manager().create_device(self.hub_name))
     except errors.DeviceError as err:
       raise errors.CapabilityNotReadyError(
           msg=str(err), device_name=self._device_name)
@@ -191,19 +205,20 @@ class CommPowerDefault(comm_power_base.CommPowerBase):
       self._hub.switch_power.power_off(self.port_number)
 
   @decorators.CapabilityLogDecorator(logger)
-  def on(self):
+  def on(self, no_wait: bool = False):
     """Turn on power to the device communication port."""
     if not self.healthy:
       self.health_check()
     self._hub.switch_power.power_on(self.port_number)
-    self._wait_until_connected_func()
-    switchboard = self._get_switchboard_if_initialized()
-    if (switchboard is not None and
-        switchboard.health_checked and
-        switchboard.healthy):
-      switchboard.open_all_transports()
-    if self._wait_for_bootup_complete_func:
-      self._wait_for_bootup_complete_func()
+    if not no_wait:
+      self._wait_until_connected_func()
+      switchboard = self._get_switchboard_if_initialized()
+      if (switchboard is not None and
+          switchboard.health_checked and
+          switchboard.healthy):
+        switchboard.open_all_transports()
+      if self._wait_for_bootup_complete_func:
+        self._wait_for_bootup_complete_func()
 
   def _verify_switch_created(self, switch):
     """Verifies switch is created and has switch_power capability."""

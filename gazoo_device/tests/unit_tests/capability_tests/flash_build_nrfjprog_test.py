@@ -18,9 +18,9 @@ import tempfile
 import typing
 from unittest import mock
 
+from absl.testing import parameterized
 from gazoo_device import errors
 from gazoo_device.base_classes import matter_device_base
-from gazoo_device.capabilities import device_power_default
 from gazoo_device.capabilities import flash_build_nrfjprog
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.switchboard import switchboard
@@ -31,6 +31,18 @@ from gazoo_device.utility import subprocess_utils
 _MOCK_DEVICE_NAME = "MOCK_DEVICE"
 _MOCK_SERIAL_NUMBER = "123456789"
 _MOCK_IMAGE_PATH = "MOCK/IMAGE/PATH/HEX.hex"
+_MOCK_FLASH_COMMAND = [
+    "nrfjprog",
+    "-f",
+    "nrf52",
+    "--program",
+    _MOCK_IMAGE_PATH,
+    "-s",
+    _MOCK_SERIAL_NUMBER,
+    "--reset",
+    "--verify",
+]
+_FLASH_TIMEOUT_S = 180
 
 
 class FlashBuildNrfjprogTest(fake_device_test_case.FakeDeviceTestCase):
@@ -45,12 +57,9 @@ class FlashBuildNrfjprogTest(fake_device_test_case.FakeDeviceTestCase):
     mock_switchboard = mock.Mock(spec=switchboard.SwitchboardDefault)
     mock_wait_for_bootup_complete = mock.Mock(
         spec=matter_device_base.MatterDeviceBase.wait_for_bootup_complete)
-    self.mock_power_cycle = mock.Mock(
-        spec=device_power_default.DevicePowerDefault.cycle)
     self.uut = flash_build_nrfjprog.FlashBuildNrfjprog(
         device_name=_MOCK_DEVICE_NAME,
         serial_number=_MOCK_SERIAL_NUMBER,
-        power_cycle_fn=self.mock_power_cycle,
         reset_endpoints_fn=mock_matter_endpoints_reset,
         switchboard=mock_switchboard,
         wait_for_bootup_complete_fn=mock_wait_for_bootup_complete)
@@ -91,15 +100,26 @@ class FlashBuildNrfjprogTest(fake_device_test_case.FakeDeviceTestCase):
         errors.DeviceError, "flash command with binary flasher failed"):
       self.uut.flash_device([_MOCK_IMAGE_PATH])
 
+  @parameterized.named_parameters(
+      ("erase_flash_true", True, "--chiperase"),
+      ("erase_flash_flase", False, "--sectorerase")
+  )
   @mock.patch.object(
       subprocess_utils,
       "run_and_stream_output",
       return_value=(0, ""),
       autospec=True)
-  def test_nrfjprog_flash(self, mock_run_and_stream_output):
-    """Verifies _nrfjprog_flash on success."""
-    self.uut._nrfjprog_flash(_MOCK_IMAGE_PATH)
-    mock_run_and_stream_output.assert_called_once()
+  def test_nrfjprog_flash(self,
+                          erase_flash,
+                          command_option,
+                          mock_run_and_stream_output):
+    """Verifies _nrfjprog_flash."""
+    self.uut._nrfjprog_flash(_MOCK_IMAGE_PATH, erase_flash)
+    expected_flash_command = _MOCK_FLASH_COMMAND.copy()
+    expected_flash_command.append(command_option)
+    mock_run_and_stream_output.assert_called_once_with(
+        expected_flash_command, timeout=_FLASH_TIMEOUT_S
+    )
 
   @mock.patch.object(
       subprocess_utils,
@@ -161,27 +181,6 @@ class FlashBuildNrfjprogTest(fake_device_test_case.FakeDeviceTestCase):
   @mock.patch.object(tempfile, "TemporaryDirectory")
   @mock.patch.object(
       host_utils, "has_command", return_value=True, autospec=True)
-  def test_disable_msd_power_cycle_failure(
-      self,
-      mock_has_command,
-      mock_temp_directory,
-      mock_open,
-      mock_run_and_stream_output):
-    """Verifies _disable_msd on success."""
-    self.mock_power_cycle.side_effect = errors.CapabilityNotReadyError(
-        _MOCK_DEVICE_NAME, "device power cycle error")
-    with self.assertRaisesRegex(errors.DeviceError, "cannot be powered cycle"):
-      self.uut._disable_msd()
-
-  @mock.patch.object(
-      subprocess_utils,
-      "run_and_stream_output",
-      return_value=(0, ""),
-      autospec=True)
-  @mock.patch.object(flash_build_nrfjprog, "open")
-  @mock.patch.object(tempfile, "TemporaryDirectory")
-  @mock.patch.object(
-      host_utils, "has_command", return_value=True, autospec=True)
   def test_disable_msd_on_success(
       self,
       mock_has_command,
@@ -190,7 +189,6 @@ class FlashBuildNrfjprogTest(fake_device_test_case.FakeDeviceTestCase):
       mock_run_and_stream_output):
     """Verifies _disable_msd on success."""
     self.uut._disable_msd()
-    self.mock_power_cycle.assert_called_once()
 
 
 if __name__ == "__main__":

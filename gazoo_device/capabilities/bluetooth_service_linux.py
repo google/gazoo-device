@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """The bluetooth service controls capability for linux platform."""
-import enum
 from typing import Callable
 
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import bluetooth_service_base
+from gazoo_device.utility import py311
 
 logger = gdm_logger.get_logger()
 
 
-class _Commands(str, enum.Enum):
+class _Commands(py311.StrEnum):
   """System service control commands for bluetooth service."""
   STATUS = "sudo systemctl status bluetooth"
   START = "sudo systemctl start bluetooth"
@@ -31,7 +31,7 @@ class _Commands(str, enum.Enum):
   RESTART = "sudo systemctl restart bluetooth"
 
 
-class _Regexes(str, enum.Enum):
+class _Regexes(py311.StrEnum):
   """Regexes for the shell output of bluetooth service."""
   STATUS = r"Active: (\w+) \(\w+\)(.*)"
 

@@ -48,3 +48,7 @@ class FaulthandlerUtilsTest(unit_test_case.UnitTestCase):
       f.write(mock_file_contents)
       faulthandler_utils._stop_traceback_dumps(f)
       self.assertEqual(os.path.exists(f.name), expected_file_to_exist)
+
+
+if __name__ == "__main__":
+  unit_test_case.main()

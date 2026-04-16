@@ -14,15 +14,25 @@
 """Device Power Default Capability."""
 
 import time
-from typing import Any, Callable, Optional
+import typing
+from typing import Any, Callable, Optional, Union
 
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
+from gazoo_device.auxiliary_devices import cambrionix
+from gazoo_device.auxiliary_devices import dli_powerswitch
+from gazoo_device.auxiliary_devices import dlink_switch
+from gazoo_device.auxiliary_devices import unifi_poe_switch
 from gazoo_device.capabilities.interfaces import device_power_base
 from gazoo_device.capabilities.interfaces import switchboard_base
 from gazoo_device.utility import deprecation_utils
 import immutabledict
+
+_PowerHubDevice = Union[cambrionix.Cambrionix,
+                        dli_powerswitch.DliPowerSwitch,
+                        dlink_switch.DLinkSwitch,
+                        unifi_poe_switch.UnifiPoeSwitch]
 
 logger = gdm_logger.get_logger()
 
@@ -50,7 +60,7 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
   def __init__(
       self,
       device_name: str,
-      create_device_func: Callable[..., Any],
+      get_manager: Callable[[], Any],
       default_hub_type: str,
       props: dict[str, Any],
       usb_ports_discovered: bool,
@@ -80,7 +90,7 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
 
     Args:
       device_name: Name of the device this capability is attached to.
-      create_device_func: A method to create device of hub_type.
+      get_manager: The "get_manager" method of a device instance.
       default_hub_type: Type of switch for power cycling.
       props: Dictionary of device props from configuration file.
       usb_ports_discovered: True if the USB ports are discovered by gdm detect.
@@ -101,7 +111,6 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
     super().__init__(device_name=device_name)
 
     self._hub = None
-    self._create_device_func = create_device_func
     self._usb_ports_discovered = usb_ports_discovered
     self._props = props
     hub_type = self._props["optional"].get(_HUB_TYPE_PROPERTY, default_hub_type)
@@ -124,6 +133,12 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
     self._get_switchboard_if_initialized = get_switchboard_if_initialized
     self._change_triggers_reboot = change_triggers_reboot
     self._wait_until_connected_fn = wait_until_connected_fn
+    self._get_manager = get_manager
+
+  @classmethod
+  def get_used_device_classes(cls) -> set[type[Any]]:
+    """Returns all device classes this capability can create through Manager."""
+    return set(typing.get_args(_PowerHubDevice))
 
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
   def health_check(self):
@@ -145,13 +160,23 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
       else:
         msg_format = ("If device is connected to {}, "
                       "set them via 'gdm set-prop {} <property> <value>'")
+      if not self._props["optional"].get(_HUB_TYPE_PROPERTY):
+        msg_format += (
+            f"Note that {_HUB_TYPE_PROPERTY} is not set and currently"
+            f" fallbacking to {self._hub_type}. If you're actually connected"
+            " device to a different power hub, please set"
+            f" {_HUB_TYPE_PROPERTY} to the correct value. Check"
+            " https://github.com/google/gazoo-device/blob/master/gazoo_device/gazoo/tests/matter/docs/setup/testbed.md#set-device-power-hub-and-ports"
+            " for more details."
+        )
       msg = msg_format.format(self._hub_type, self._device_name)
       error_msg = "properties {} are unset. ".format(
           " and ".join(unset_props)) + msg
       raise errors.CapabilityNotReadyError(
           msg=error_msg, device_name=self._device_name)
     try:
-      self._hub = self._create_device_func(self.hub_name)
+      self._hub = typing.cast(_PowerHubDevice,
+                              self._get_manager().create_device(self.hub_name))
     except errors.DeviceError as err:
       raise errors.CapabilityNotReadyError(
           msg=str(err), device_name=self._device_name)
@@ -164,10 +189,16 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
       self._hub.close()
     super().close()
 
+  def _get_prop(self, prop_name: str) -> Any:
+    """Retrieves a property, falling back to persistent if empty."""
+    if (val := self._props["optional"].get(prop_name)) is not None and val != "":  # pylint: disable=g-explicit-bool-comparison
+      return val
+    return self._props["persistent_identifiers"].get(prop_name)
+
   @decorators.OptionalProperty
   def hub_name(self):
     """Name of the hub the device is attached to."""
-    return self._props[self._dict_name].get(self._hub_name_prop)
+    return self._get_prop(self._hub_name_prop)
 
   @decorators.OptionalProperty
   def hub_type(self):
@@ -184,19 +215,23 @@ class DevicePowerDefault(device_power_base.DevicePowerBase):
   @decorators.OptionalProperty
   def port_number(self):
     """Port number the device is attached to."""
-    return self._props[self._dict_name].get(self._port_prop)
+    port_number = self._get_prop(self._port_prop)
+    if port_number is not None:
+      return int(port_number)
+    return None
 
   @decorators.CapabilityLogDecorator(logger)
-  def cycle(self, no_wait=False):
+  def cycle(self, no_wait=False, sleep_time=2):
     """Power off then power on the device.
 
     Args:
         no_wait (bool):  Return before verifying boot up.
+        sleep_time (float): Time in secs to completely power off device.
     """
     if not self.healthy:
       self.health_check()
     self.off()
-    time.sleep(2)  # Small delay before calling power_on
+    time.sleep(sleep_time)  # Small delay before calling power_on.
     self.on(no_wait=no_wait)
 
   @decorators.CapabilityLogDecorator(logger)

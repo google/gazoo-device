@@ -23,6 +23,7 @@ class SpeakerBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Speaker endpoint interface."""
 
   DEVICE_TYPE_ID = 0x0022
+  DEVICE_TYPE_NAME = "Speaker"
 
   @property
   @abc.abstractmethod

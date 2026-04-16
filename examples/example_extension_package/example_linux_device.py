@@ -27,14 +27,14 @@ The few modifications you may need to perform to make this example controller
 work with your device are marked with # TODO(user) comments.
 """
 import os.path
-from typing import Dict, NoReturn, Tuple
+from typing import NoReturn
 
 from gazoo_device import data_types
 from gazoo_device import decorators
-from gazoo_device import detect_criteria
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import ssh_device
+from gazoo_device.detect_criteria import generic_detect_criteria
 import immutabledict
 
 logger = gdm_logger.get_logger()
@@ -58,7 +58,7 @@ _EXTENSION_PACKAGE_DIR = os.path.abspath(os.path.dirname(__file__))
 _LOG_EVENT_FILTER_DIR = os.path.join(_EXTENSION_PACKAGE_DIR,
                                      "log_event_filters")
 
-# _PACKAGE_NAME must match the name of the package.
+# Key "package" typically matches the name of the extension package.
 _PACKAGE_NAME = "example_extension_package"
 SSH_KEY_INFO = data_types.KeyInfo(
     file_name="linuxexample_ssh_key",
@@ -74,25 +74,24 @@ class ExampleLinuxDevice(ssh_device.SshDevice):
   # but we'll cheat a bit for the purpose of this example.
   # GenericQuery.ALWAYS_TRUE query below will cause all devices GDM can SSH into
   # to be identified as ExampleLinuxDevice.
-  DETECT_MATCH_CRITERIA = {
-      detect_criteria.GenericQuery.ALWAYS_TRUE: True,
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
+      generic_detect_criteria.GenericQuery.ALWAYS_TRUE: True,
       # Real detection queries look like this:
-      # detect_criteria.SshQuery.SOME_QUERY_FUNCTION: "regex"
-      # detect_criteria.SshQuery.ANOTHER_QUERY_FUNCTION: True
-  }
+      # ssh_detect_criteria.SshQuery.SOME_QUERY_FUNCTION: "regex"
+      # ssh_detect_criteria.SshQuery.ANOTHER_QUERY_FUNCTION: True
+  })
   DEVICE_TYPE = "linuxexample"
-  _COMMUNICATION_KWARGS = {
+  _COMMUNICATION_KWARGS = immutabledict.immutabledict({
       **ssh_device.SshDevice._COMMUNICATION_KWARGS,
       "username": _SSH_USERNAME,
       # TODO(user): Uncomment the key below if your device needs a password to
       # connect via SSH and you want to use a controller-specific key.
       # "key_info": SSH_KEY_INFO,
-  }
+  })
   DEFAULT_FILTERS = (
       os.path.join(_LOG_EVENT_FILTER_DIR, "basic.json"),
       os.path.join(_LOG_EVENT_FILTER_DIR, "crashes.json"),
   )
-  _OWNER_EMAIL = "gdm-authors@google.com"
 
   def __init__(self,
                manager,
@@ -127,7 +126,7 @@ class ExampleLinuxDevice(ssh_device.SshDevice):
     return self.shell(self.commands["FIRMWARE_VERSION"])
 
   @decorators.LogDecorator(logger)
-  def get_detection_info(self) -> Tuple[Dict[str, str], Dict[str, str]]:
+  def get_detection_info(self) -> tuple[dict[str, str], dict[str, str]]:
     """Returns the persistent and optional properties of a device."""
     persistent_props, optional_props = super().get_detection_info()
     # Note that setting the "serial_number" persistent property is

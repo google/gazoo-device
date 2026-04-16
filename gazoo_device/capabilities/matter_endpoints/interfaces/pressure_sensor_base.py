@@ -22,6 +22,7 @@ class PressureSensorBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Pressure Sensor endpoint interface."""
 
   DEVICE_TYPE_ID = 0x0305
+  DEVICE_TYPE_NAME = "PressureSensor"
 
   @property
   @abc.abstractmethod

@@ -299,16 +299,16 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
     wait_for_queue_writes(self.command_queue)
     self._append_to_log_file(old_log_path, log_line=_NEW_LOG_FILE_MESSAGE)
     self.uut._do_work()  # Process next line in old log file and closes it
-    self.assertTrue(
+    self.assertFalse(
         os.path.exists(old_event_path),
-        "Expected {} to exist".format(old_event_path))
+        "Expected {} to not exist because size is 0".format(old_event_path))
     self.assertFalse(
         os.path.exists(new_event_path),
         "Expected {} to not exist".format(new_event_path))
     self.uut._do_work()  # Opens new log and event files
-    self.assertTrue(
+    self.assertFalse(
         os.path.exists(old_event_path),
-        "Expected {} to exist".format(old_event_path))
+        "Expected {} to not exist because size is 0".format(old_event_path))
     self.assertTrue(
         os.path.exists(new_event_path),
         "Expected {} to exist".format(new_event_path))
@@ -349,9 +349,9 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
     self.uut._do_work()  # Process next line in old log file and closes it
     self.uut._do_work(
     )  # Opens new log and event files and processes first line
-    self.assertTrue(
+    self.assertFalse(
         os.path.exists(old_event_path),
-        "Expected {} to exist".format(old_event_path))
+        "Expected {} to not exist because size is 0".format(old_event_path))
     self.assertTrue(
         os.path.exists(new_event_path),
         "Expected {} to exist".format(new_event_path))
@@ -379,9 +379,9 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
     )  # Opens old log and event files and processes first line
     self._append_to_log_file(old_log_path, log_line=_ROTATE_LOG_MESSAGE)
     self.uut._do_work()  # Process next line in old log file and closes it
-    self.assertTrue(
+    self.assertFalse(
         os.path.exists(old_event_path),
-        "Expected {} to exist".format(old_event_path))
+        "Expected {} to not exist because size is 0.".format(old_event_path))
     self.assertFalse(
         os.path.exists(next_event_path),
         "Expected {} to not exist".format(next_event_path))
@@ -430,9 +430,9 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
     self._append_to_log_file(old_log_path, log_line=_ROTATE_LOG_MESSAGE)
     self.uut._do_work(
     )  # Process next line in old log file and rotates log file
-    self.assertTrue(
+    self.assertFalse(
         os.path.exists(old_event_path),
-        "Expected {} to exist".format(old_event_path))
+        "Expected {} to not exist because size is 0.".format(old_event_path))
     self.assertFalse(
         os.path.exists(new_event_path),
         "Expected {} to not exist".format(new_event_path))
@@ -445,9 +445,9 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
     self._append_to_log_file(next_log_path1, log_line=_NEW_LOG_FILE_MESSAGE)
     self.uut._do_work(
     )  # Process next line in next log file 1 and opens new log file
-    self.assertTrue(
+    self.assertFalse(
         os.path.exists(old_event_path),
-        "Expected {} to exist".format(old_event_path))
+        "Expected {} to not exist because size is 0".format(old_event_path))
     self.assertFalse(
         os.path.exists(new_event_path),
         "Expected {} to not exist".format(new_event_path))
@@ -458,9 +458,9 @@ class LogFilterProcessTests(unit_test_case.MultiprocessingTestCase):
         os.path.exists(next_event_path2),
         "Expected {} to not exist".format(next_event_path2))
     self.uut._do_work()  # Keeps reading from new log file
-    self.assertTrue(
+    self.assertFalse(
         os.path.exists(old_event_path),
-        "Expected {} to exist".format(old_event_path))
+        "Expected {} to not exist because size is 0".format(old_event_path))
     self.assertTrue(
         os.path.exists(new_event_path),
         "Expected {} to exist".format(new_event_path))

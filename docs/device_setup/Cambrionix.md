@@ -2,7 +2,8 @@
 
 Manufacturer: https://www.cambrionix.com/.
 
-Supported models: PP15, PP8, U16S, SuperSync15.
+Supported models: PP8S, PP15S, PS15-USB3, SuperSync15, SuperSync15b, U16S,
+ThunderSync3-16.
 
 Port numbers: ![Cambrionix PP8 Port Numbers](images/cambrionix_pp8.jpg)
 ![Cambrionix PP15 Port Numbers](images/cambrionix_pp15.jpg)

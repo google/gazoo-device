@@ -24,13 +24,13 @@ import copy
 import json
 import os
 import subprocess
-from typing import Dict, List, Any, Optional
+from typing import Any, Optional
 from gazoo_device import gdm_logger
 from gazoo_device.utility import usb_config
 from serial.tools import list_ports
 
-_DeviceDictType = Dict[str, Any]
-_UsbInfoDict = Dict[str, usb_config.UsbInfo]
+_DeviceDictType = dict[str, Any]
+_UsbInfoDict = dict[str, usb_config.UsbInfo]
 logger = gdm_logger.get_logger()
 
 PROFILER_USB_DATA_TYPE = 'SPUSBDataType'
@@ -56,10 +56,10 @@ def get_address_to_usb_info_dict():
 
 
 def _convert_system_profiler_dict(
-    device_dicts: List[_DeviceDictType],
+    device_dicts: list[_DeviceDictType],
     converted_dicts: _UsbInfoDict,
-    port_mapping: Optional[Dict[str, int]] = None,
-    parent_device_dict: Optional[Dict[str, str]] = None) -> None:
+    port_mapping: Optional[dict[str, int]] = None,
+    parent_device_dict: Optional[dict[str, str]] = None) -> None:
   """Convert system profiler dict to the system agnostic form.
 
   Recursively walks the tree of connected USB devices.
@@ -116,7 +116,7 @@ def _create_device_entries_for_cambrionix(device_dict, cambrionix_model):
       entry_device_dict = entry.get('_items')
     else:
       entry_device_dict = [entry]
-    _convert_system_profiler_dict(
+    _convert_system_profiler_dict(  # pytype: disable=wrong-arg-types
         entry_device_dict,
         children_dicts,
         port_mapping,
@@ -128,7 +128,7 @@ def _create_device_entries_for_cambrionix(device_dict, cambrionix_model):
 
 def _create_device_entry(
     device_dict: _DeviceDictType,
-    port_mapping: Optional[Dict[str, int]] = None,
+    port_mapping: Optional[dict[str, int]] = None,
     parent_device_dict: Optional[_DeviceDictType] = None) -> _UsbInfoDict:
   """Creates a standard usb_info entry for a device.
 
@@ -195,7 +195,7 @@ def _get_vendor_product_id(device_dict):
 
 def _get_port_number(
     device_dict: _DeviceDictType,
-    port_mapping: Optional[Dict[str, int]] = None,
+    port_mapping: Optional[dict[str, int]] = None,
     parent_device_dict: Optional[_DeviceDictType] = None) -> Optional[int]:
   """Last two digits correspond to the port number.
 

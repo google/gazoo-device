@@ -17,6 +17,7 @@ import itertools
 from unittest import mock
 
 from gazoo_device import errors
+from gazoo_device import package_registrar
 from gazoo_device.auxiliary_devices import unifi_poe_switch
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.tests.unit_tests.utils import unifi_poe_switch_device_logs
@@ -39,6 +40,11 @@ _DYNAMIC_PROPERTIES = immutabledict.immutabledict({
 
 class UnifiPoeSwitchTests(fake_device_test_case.FakeDeviceTestCase):
   """Tests for unifi_poe_switch auxiliary device class."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(unifi_poe_switch)
 
   def setUp(self):
     super().setUp()

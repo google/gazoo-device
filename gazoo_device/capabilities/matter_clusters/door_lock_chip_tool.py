@@ -30,6 +30,60 @@ class DoorLockClusterChipTool(door_lock_base.DoorLockClusterBase):
   """chip-tool based Matter Door Lock cluster capability."""
 
   @decorators.CapabilityLogDecorator(logger)
+  def set_require_pin_for_remote_operation_attribute(
+      self,
+      require_pin_for_remote_operation: bool,
+      verify: bool = True,
+  ) -> None:
+    """Sets the Require PIN for Remote Operation attribute."""
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster=_CLUSTER_NAME,
+        attribute="require-pin-for-remote-operation",
+        data_bool=require_pin_for_remote_operation,
+    )
+    if verify:
+      require_pin_attribute = self._read(
+          endpoint_id=self._endpoint_id,
+          cluster=_CLUSTER_NAME,
+          attribute="require-pin-for-remote-operation",
+      )
+      if (
+          bool(require_pin_attribute.data_bool)
+          != require_pin_for_remote_operation
+      ):
+        raise errors.DeviceError(
+            f"Device {self._device_name} require PIN for remote operation "
+            "attribute did not change from "
+            f"{require_pin_attribute.data_bool}."
+        )
+
+  @decorators.CapabilityLogDecorator(logger)
+  def set_auto_relock_time_attribute(
+      self,
+      auto_relock_time: int,
+      verify: bool = True,
+  ) -> None:
+    """Sets the Auto Relock Time attribute."""
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster=_CLUSTER_NAME,
+        attribute="auto-relock-time",
+        data_uint16=auto_relock_time,
+    )
+    if verify:
+      auto_relock_time_attribute = self._read(
+          endpoint_id=self._endpoint_id,
+          cluster=_CLUSTER_NAME,
+          attribute="auto-relock-time",
+      )
+      if auto_relock_time_attribute.data_uint16 != auto_relock_time:
+        raise errors.DeviceError(
+            f"Device {self._device_name} auto relock time attribute did not "
+            f"change from {auto_relock_time_attribute.data_uint16}."
+        )
+
+  @decorators.CapabilityLogDecorator(logger)
   def lock_door(self, verify: bool = True) -> None:
     """The Lock Door command to lock the Matter device.
 

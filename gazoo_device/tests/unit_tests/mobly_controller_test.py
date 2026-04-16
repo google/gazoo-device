@@ -18,10 +18,10 @@ import os
 from unittest import mock
 
 from absl.testing import parameterized
-import gazoo_device
 from gazoo_device import errors
 from gazoo_device import manager
 from gazoo_device import mobly_controller
+from gazoo_device import package_registrar
 from gazoo_device.capabilities import package_management_android
 from gazoo_device.tests.unit_tests.utils import fake_devices
 from gazoo_device.tests.unit_tests.utils import unit_test_case
@@ -31,13 +31,18 @@ from mobly import config_parser
 from mobly import records
 
 FAKE_CONTROLLER_CONFIGS = {
-    "GazooDevice": [{
-        "id": "sshdevice-0003"
+    "gdm_sshdevice": [{
+        "id": "sshdevice-0001"
     }, {
         "label": "b",
-        "id": "sshdevice-0001",
+        "id": "sshdevice-0002",
         "bypass_gdm_check": "true",
         "other": "b"
+    }, {
+        "id": "sshdevice-0003",
+        "dimensions": {
+            "bypass_gdm_check": "true",
+        }
     }]
 }
 
@@ -57,6 +62,11 @@ FAKE_CONFIGURATION = {
 
 
 class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(fake_devices)
 
   def setUp(self):
     super().setUp()
@@ -79,10 +89,11 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
       """Fake Mobly test to verify functionality."""
 
       def setup_class(self):
-        self.devices = self.register_controller(gazoo_device)
+        self.devices = self.register_controller(fake_devices)
 
       def test_1(self):
-        asserts.assert_true(len(self.devices) == 2, self.devices)
+        asserts.assert_equal(len(self.devices),
+                             len(FAKE_CONTROLLER_CONFIGS["gdm_sshdevice"]))
 
     fake_config = config_parser.TestRunConfig()
     fake_config.log_path = self.artifacts_directory
@@ -91,33 +102,64 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
     fake_config.controller_configs = FAKE_CONTROLLER_CONFIGS
     test = FakeTest(fake_config)
     test.run(["test_1"])
+
     self.assertTrue(test.results.passed,
-                    "Test results: {}".format(test.results))
+                    f"Mobly test results: {test.results.summary_str()}")
     actual_record = test.results.passed[0]
     self.assertIn(actual_record.test_name, "test_1")
 
   @mock.patch.object(mobly_controller.manager.Manager, "create_device")
   @mock.patch.object(mobly_controller.manager.Manager, "set_prop")
   def test_create(self, mock_set, mock_create):
-    mock_device_1 = mock.Mock()
-    mock_device_2 = mock.Mock()
-    mock_create.side_effect = iter([mock_device_1, mock_device_2])
-    devices = gazoo_device.create(FAKE_CONTROLLER_CONFIGS["GazooDevice"])
-    self.assertEqual(devices, [mock_device_1, mock_device_2])
-    mock_create.assert_called()
-    mock_set.assert_called_with("sshdevice-0001", "other", "b")
+    mock_devices = [mock.Mock()] * len(FAKE_CONTROLLER_CONFIGS["gdm_sshdevice"])
+    mock_create.side_effect = iter(mock_devices)
+
+    devices = mobly_controller.create(FAKE_CONTROLLER_CONFIGS["gdm_sshdevice"])
+
+    self.assertEqual(devices, mock_devices)
+    mock_create.assert_has_calls([
+        mock.call("sshdevice-0001", log_directory=self.artifacts_directory),
+        mock.call("sshdevice-0002", log_directory=self.artifacts_directory,
+                  make_device_ready="off"),
+        mock.call("sshdevice-0003", log_directory=self.artifacts_directory,
+                  make_device_ready="off")])
+    mock_set.assert_has_calls([
+        mock.call("sshdevice-0002", "other", "b"),
+        mock.call("sshdevice-0003", "dimensions", {"bypass_gdm_check": "true"})
+    ])
+
+  @mock.patch.object(mobly_controller.manager.Manager, "create_device",
+                     return_value=mock.Mock())
+  @mock.patch.object(mobly_controller.manager.Manager, "set_prop",
+                     side_effect=errors.DeviceError(""))
+  def test_create_set_prop_label_error_raise(self, mock_set, mock_create):
+    with self.assertRaises(errors.DeviceError):
+      mobly_controller.create(FAKE_CONTROLLER_CONFIGS["gdm_sshdevice"])
 
   @mock.patch.object(mobly_controller.manager.Manager, "create_device")
   @mock.patch.object(mobly_controller.manager.Manager, "set_prop")
-  def test_create_set_prop_error(self, mock_set, mock_create_device):
-    mock_device = mock.Mock()
-    mock_create_device.return_value = mock_device
-    mock_set.side_effect = iter([None, None, errors.DeviceError("")])
-    devices = gazoo_device.create(FAKE_CONTROLLER_CONFIGS["GazooDevice"])
+  def test_create_set_prop_bypass_non_label_error(self, mock_set, mock_create):
+    mock_devices = [mock.Mock()] * len(FAKE_CONTROLLER_CONFIGS["gdm_sshdevice"])
+    mock_create.side_effect = iter(mock_devices)
 
-    self.assertEqual(devices, [mock_device, mock_device])
-    mock_create_device.assert_called()
-    mock_set.assert_called_with("sshdevice-0001", "other", "b")
+    def _mock_set_prop(device_name, prop_name, _):
+      if prop_name != "alias":
+        raise errors.DeviceError(f"{device_name} failed to set {prop_name}")
+    mock_set.side_effect = _mock_set_prop
+
+    devices = mobly_controller.create(FAKE_CONTROLLER_CONFIGS["gdm_sshdevice"])
+
+    self.assertEqual(devices, mock_devices)
+    mock_create.assert_has_calls([
+        mock.call("sshdevice-0001", log_directory=self.artifacts_directory),
+        mock.call("sshdevice-0002", log_directory=self.artifacts_directory,
+                  make_device_ready="off"),
+        mock.call("sshdevice-0003", log_directory=self.artifacts_directory,
+                  make_device_ready="off")])
+    mock_set.assert_has_calls([
+        mock.call("sshdevice-0002", "other", "b"),
+        mock.call("sshdevice-0003", "dimensions", {"bypass_gdm_check": "true"})
+    ])
 
   def test_get_info(self):
     expected_info = [{
@@ -157,15 +199,22 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
         firmware_type=mock.PropertyMock(return_value="eng"),
         package_management=mock.PropertyMock(
             return_value=mock_package_management)):
-      info = gazoo_device.get_info([mock_device])
-      self.assertDictEqual(info[0], expected_info[0])
+      with mock.patch.object(
+          mock_device, "start_new_log",
+          wraps=mock_device.start_new_log) as start_new_log_wrapper:
+        info = mobly_controller.get_info([mock_device])
+        self.assertDictEqual(info[0], expected_info[0])
+
+    start_new_log_wrapper.assert_called_once_with(
+        log_directory=logging.log_path,
+        log_name_prefix="mobly_controller_get_info")
 
   def test_destroy(self):
     mock_manager = mock.Mock()
     mobly_controller._MANAGER_INSTANCE = mock_manager
     mock_device = mock.Mock()
 
-    gazoo_device.destroy([mock_device])
+    mobly_controller.destroy([mock_device])
     mock_device.close.assert_called()
     mock_manager.close.assert_called()
     self.assertIsNone(mobly_controller._MANAGER_INSTANCE)
@@ -207,6 +256,14 @@ class MoblyControllerFuncsTest(unit_test_case.UnitTestCase):
         log_directory=mock_log_directory,
         gdm_log_file=expected_log_file,
         stdout_logging=False)
+
+  def test_get_mobly_controller_config_name(self):
+    """Tests get_mobly_controller_config_name."""
+    expected_config_name = f"gdm_{fake_devices.FakeSSHDevice.DEVICE_TYPE}"
+    self.assertEqual(
+        mobly_controller.get_mobly_controller_config_name(
+            fake_devices.FakeSSHDevice.DEVICE_TYPE),
+        expected_config_name)
 
 
 if __name__ == "__main__":

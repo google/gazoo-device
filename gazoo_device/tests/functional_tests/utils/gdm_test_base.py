@@ -16,7 +16,7 @@
 import contextlib
 import logging
 import os.path  # pylint: disable=unused-import
-from typing import Type
+from typing import Any
 
 from gazoo_device import manager
 from gazoo_device.tests.functional_tests.utils import suite_filter
@@ -33,7 +33,7 @@ DeviceType = suite_filter.DeviceType
 
 
 def whether_implements_matter_endpoint(
-    device_class: Type[DeviceType],
+    device_class: type[DeviceType],
     device_name: str,
     endpoint_name: str) -> bool:
   """Returns whether the device implements the matter endpoint."""
@@ -42,12 +42,18 @@ def whether_implements_matter_endpoint(
 
   with contextlib.closing(manager.Manager()) as mgr:
     with mgr.create_and_close_device(device_name) as device:
-      return device.matter_endpoints.has_endpoints([endpoint_name])
+      # pytype doesn't understand the has_capabilities check above.
+      return device.matter_endpoints.has_endpoints(  # pytype: disable=attribute-error
+          [endpoint_name])
 
 
 class GDMTestBase(suite_filter.SuiteFilterBase):
   """Base class for GDM functional test suites."""
   _CONFIG_DIRS = _CONFIG_DIRS
+  # TODO(gdm-authors): Explicitly set the type to Any to disable pytype checking
+  # on self.device and self.devices for now.
+  device: Any
+  devices: list[Any]
 
   def __init__(self, *args, **kwargs) -> None:
     super().__init__(*args, **kwargs)
@@ -59,7 +65,7 @@ class GDMTestBase(suite_filter.SuiteFilterBase):
     super().setup_class()
     self.devices = retry.retry(
         func=self.register_controller,
-        func_args=(self._CONTROLLER_MODULE,),
+        func_args=(self._controller_module,),
         timeout=_CREATION_TIMEOUT,
         interval=_CREATION_SLEEP,
         reraise=True)
@@ -77,7 +83,8 @@ class GDMTestBase(suite_filter.SuiteFilterBase):
     """Starts a new log for the device."""
     super().setup_test()
     if hasattr(self.device, "start_new_log"):  # auxiliary devices do not log
-      self.device.start_new_log(log_name_prefix=self.get_full_test_name())
+      self.device.start_new_log(
+          log_directory=self.current_test_info.output_path)
 
   def teardown_test(self) -> None:
     """Ensures devices are connected."""

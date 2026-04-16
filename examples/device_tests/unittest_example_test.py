@@ -15,21 +15,19 @@
 """Example reboot device test with GDM + unittest.
 
 Usage:
-  python3 unittest_example_test.py -d somedevice-1234
+  python3 unittest_example_test.py -d raspberrypi-1234
 
 See README.md for more details.
 """
 import argparse
 import logging
 import sys
-from typing import List, Tuple
 import unittest
 
-import gazoo_device
-
-# If using a device controller from an extension package:
-# import my_extension_package
-# gazoo_device.register(my_extension_package)
+from gazoo_device import manager
+from gazoo_device import package_registrar
+# Use Raspberry Pi as an example. This can be any GDM device module.
+from gazoo_device.auxiliary_devices import raspberry_pi
 
 _LOG_LINE_FORMAT = "%(asctime)s.%(msecs).03d %(levelname)s %(message)s"
 _LOG_LINE_TIME_FORMAT = "%m-%d %H:%M:%S"
@@ -37,7 +35,7 @@ _LOG_LINE_TIME_FORMAT = "%m-%d %H:%M:%S"
 _device_name = None  # Global variable set in __main__.
 
 
-def _parse_cli_args() -> Tuple[str, List[str]]:
+def _parse_cli_args() -> tuple[str, list[str]]:
   """Parses CLI args to return device name and args for unittest runner."""
   parser = argparse.ArgumentParser(
       description="Runs a GDM + unittest reboot test on a device. All "
@@ -52,7 +50,7 @@ def _parse_cli_args() -> Tuple[str, List[str]]:
   return args.device, [sys.argv[0]] + remaining_argv
 
 
-def _set_up_stderr_logging() -> logging.StreamHandler:
+def _set_up_stderr_logging() -> logging.StreamHandler[str]:
   """Directs the output of the root logger to stderr.
 
   Returns:
@@ -81,7 +79,9 @@ class UnittestExampleRebootTest(unittest.TestCase):
     """Creates a Manager instance and sets up stderr logging."""
     super().setUpClass()
     cls._logger_handler = _set_up_stderr_logging()
-    cls.manager = gazoo_device.Manager(
+    # Register the device class under test.
+    package_registrar.register(raspberry_pi)
+    cls.manager = manager.Manager(
         # Avoid log duplication with the test stderr log handler.
         stdout_logging=False)
 

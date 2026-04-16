@@ -25,6 +25,7 @@ class ExtendedColorLightBase(
   """Matter Extended color light endpoint interface."""
 
   DEVICE_TYPE_ID = 0x010D
+  DEVICE_TYPE_NAME = "ExtendedColorLight"
 
   @property
   @abc.abstractmethod
@@ -41,11 +42,13 @@ class ExtendedColorLightBase(
   def color_control(self) -> color_control_base.ColorControlClusterBase:
     """Required cluster: ZCL color control cluster."""
 
-  # TODO(b/209362086) Add the below clusters
-  # @abc.abstractproperty
+  # TODO(gdm-authors) Add the below clusters
+  # @property
+  # @abc.abstractmethod
   # def scenes(self):
   #   """Required cluster: ZCL scenes cluster."""
 
-  # @abc.abstractproperty
+  # @property
+  # @abc.abstractmethod
   # def groups(self):
   #   """Required cluster: ZCL groups cluster."""

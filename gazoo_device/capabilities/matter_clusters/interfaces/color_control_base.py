@@ -60,5 +60,5 @@ class ColorControlClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
       The current saturation.
     """
 
-  # TODO(b/212193200)
+  # TODO(gdm-authors)
   # Add additional attributes / commands for color control cluster

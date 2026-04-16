@@ -27,7 +27,7 @@ def _mock_abspath(path: str) -> str:
   if path.startswith("/"):
     return path
   else:
-    return "/working_directory/" + path
+    return f"/working_directory/{path}"
 
 
 class FileTransferScpTests(unit_test_case.UnitTestCase):
@@ -65,7 +65,9 @@ class FileTransferScpTests(unit_test_case.UnitTestCase):
         "/src",
         "/dst",
         user="mocked_username",
-        key_info=self.key_info)
+        key_info=self.key_info,
+        options=host_utils.SSH_CONFIG,
+    )
 
   @mock.patch.object(host_utils, "scp_to_device")
   def test_send_file_to_device_relative(self, mock_scp_to_device):
@@ -77,7 +79,9 @@ class FileTransferScpTests(unit_test_case.UnitTestCase):
         "/working_directory/src",
         "/dst",
         user="mocked_username",
-        key_info=self.key_info)
+        key_info=self.key_info,
+        options=host_utils.SSH_CONFIG,
+    )
 
   def test_send_file_to_device_not_exist(self):
     """Tests send_file_to_device."""
@@ -96,7 +100,9 @@ class FileTransferScpTests(unit_test_case.UnitTestCase):
         "/dst",
         "/src",
         user="mocked_username",
-        key_info=self.key_info)
+        key_info=self.key_info,
+        options=host_utils.SSH_CONFIG,
+    )
 
 
 if __name__ == "__main__":

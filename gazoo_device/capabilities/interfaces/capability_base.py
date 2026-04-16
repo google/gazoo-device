@@ -27,7 +27,7 @@ Serves two purposes:
 """
 import abc
 import functools
-from typing import Any, Collection, Dict, Type
+from typing import Any, Collection
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import extensions
@@ -50,6 +50,13 @@ class CapabilityBase(abc.ABC):
     """
     self._device_name = device_name
     self._healthy = None
+
+  @classmethod
+  def get_used_device_classes(cls) -> set[type[Any]]:
+    """Returns all device classes this capability can create through Manager."""
+    # Override in derived classes if get_manager().create_device or
+    # get_manager.create_and_close_device() is used by the capability.
+    return set()
 
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
   def close(self):
@@ -112,8 +119,10 @@ class CapabilityBase(abc.ABC):
       if parent_class in extensions.capability_interfaces.values():
         return parent_class
     raise TypeError(
-        "Capability {} does not inherit from a capability interface.".format(
-            cls))
+        f"Capability {cls} does not inherit from a known capability "
+        "interface. Has the device class extension package been registered "
+        "with GDM via package_registrar.register(<device_class_module>)?"
+    )
 
   @classmethod
   @functools.lru_cache(maxsize=None)
@@ -125,13 +134,42 @@ class CapabilityBase(abc.ABC):
       FileTransferBase.get_capability_name() -> "file_transfer"
       FileTransferScp.get_capability_name() -> "file_transfer"
       ABCDEventsBase.get_capability_name() -> "abcd_events"
+
+    Capability names are typically unique, but this isn't guaranteed (unlike
+    interface names). Capabilities (interfaces & flavors) derived from the same
+    base interface are allowed to share the same capability name.
+    """
+    return cls.get_interface_name()
+
+  @classmethod
+  def get_interface_name(cls) -> str:
+    """Returns the name of the interface.
+
+    Capability interface names must be unique. This is typically the same as
+    get_capability_name, and doesn't need to be overridden. For the special case
+    of an inheritance hierarchy with multiple interfaces, get_capability_name
+    may need to be overridden to use the parent interface's capability name for
+    flavors derived from the child interface.
+
+    For example, for the following hierarchy:
+      CapabilityBase -> WpanBase -> WpanOtBase -> WpanOtFlavor1
+                                               -> WpanOtFlavor2
+                                 -> WpanFlavor1
+
+      Both WpanBase and WpanOtBase are interfaces. The default capability name
+      generation logic would require using:
+      * 'wpan' for flavors derived from WpanBase (WpanFlavor1)
+      * 'wpan_ot' for flavors derived from WpanOtBase (WpanOtFlavor1 & 2).
+      To also use 'wpan' capability name for WpanOtFlavors (to match flavors
+      derived from WpanBase), WpanOtBase should override get_capability_name()
+      to return super().get_capability_name (which is 'wpan').
     """
     return get_default_capability_name(cls.get_capability_interface())
 
   @decorators.CapabilityLogDecorator(logger, level=None)
   def validate_required_keys(self,
                              key_list: Collection[str],
-                             dictionary: Dict[str, Any],
+                             dictionary: dict[str, Any],
                              dictionary_name: str):
     """Verify that the required keys are present in the provided dictionary.
 
@@ -156,8 +194,17 @@ class CapabilityBase(abc.ABC):
                                       self.get_capability_name(),
                                       dictionary_name, missing_keys))
 
+  @classmethod
+  def get_sub_capability_flavors(cls) -> set[type["CapabilityBase"]]:
+    """Returns the flavors of sub-capabilities used by this capability.
 
-def get_default_capability_name(interface: Type[CapabilityBase]) -> str:
+    Capabilities normally don't have sub-capabilities, but this is required for
+    the matter_endpoints capability.
+    """
+    return set()
+
+
+def get_default_capability_name(interface: type[CapabilityBase]) -> str:
   """Generates the name under which a capability is accessible in device class.
 
   This is the default name generation logic.

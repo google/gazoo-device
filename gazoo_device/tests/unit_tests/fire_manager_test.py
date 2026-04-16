@@ -24,10 +24,12 @@ from gazoo_device import fire_manager
 from gazoo_device import gdm_logger
 from gazoo_device import manager
 from gazoo_device import package_registrar
-
+from gazoo_device.auxiliary_devices import dli_powerswitch
+from gazoo_device.auxiliary_devices import unifi_poe_switch
+from gazoo_device.auxiliary_devices import yepkit
 from gazoo_device.switchboard import switchboard
-from gazoo_device.tests.unit_tests import manager_test
 from gazoo_device.tests.unit_tests.utils import fake_devices
+from gazoo_device.tests.unit_tests.utils import manager_test_utils
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import multiprocessing_utils
 from gazoo_device.utility import parallel_utils
@@ -37,8 +39,15 @@ import yaml
 logger = gdm_logger.get_logger()
 
 
-class FireManagerTests(manager_test.ManagerTestsSetup):
+class FireManagerTests(manager_test_utils.ManagerTestsSetup):
   """Unit tests for the fire_manager.py module (CLI extension of manager.py)."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(dli_powerswitch)
+    package_registrar.register(unifi_poe_switch)
+    package_registrar.register(yepkit)
 
   def setUp(self):
     super().setUp()
@@ -169,7 +178,7 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
   @mock.patch.object(
       usb_utils,
       "get_address_to_usb_info_dict",
-      return_value=manager_test.USB_INFO_DICT)
+      return_value=dict(manager_test_utils.USB_INFO_DICT))
   def test_10_print_usb_info(self, mock_usb_info_dict):
     """Test usb_info keys are printed."""
     self.uut.print_usb_info()
@@ -177,13 +186,13 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
 
   def test_11_issue(self):
     """Test that FireManager.issue() runs all health checks."""
-    with manager_test.MockOutDevices():
+    with manager_test_utils.MockOutDevices():
       self.uut.issue("sshdevice-0000")
       fake_devices.FakeSSHDevice.make_device_ready.assert_called_once_with("on")
 
   def test_12_exec(self):
     """Test that FireManager.exec() does not run health checks."""
-    with manager_test.MockOutDevices():
+    with manager_test_utils.MockOutDevices():
       self.uut.exec("sshdevice-0000")
       fake_devices.FakeSSHDevice.make_device_ready.assert_called_once_with(
           "off")
@@ -191,7 +200,7 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
   @mock.patch.object(fake_devices.FakeSSHDevice, "close", autospec=True)
   def test_13_health_check_success_without_recover(self, mock_close):
     """Test FireManager.health_check(recover=False) success."""
-    with manager_test.MockOutDevices():
+    with manager_test_utils.MockOutDevices():
       self.uut.health_check("sshdevice-0000", recover=False)
       fake_devices.FakeSSHDevice.make_device_ready.assert_called_with(
           setting="check_only")
@@ -200,7 +209,7 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
   @mock.patch.object(fake_devices.FakeSSHDevice, "close", autospec=True)
   def test_14_health_check_success_with_recover(self, mock_close):
     """Test FireManager.health_check(recover=True) success."""
-    with manager_test.MockOutDevices():
+    with manager_test_utils.MockOutDevices():
       self.uut.health_check("sshdevice-0000", recover=True)
       fake_devices.FakeSSHDevice.make_device_ready.assert_called_with(
           setting="on")
@@ -217,7 +226,7 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
       raise errors.DeviceNotResponsiveError("sshdevice-0000",
                                             "Did not respond to 'foo' in 10s")
 
-    with manager_test.MockOutDevices():
+    with manager_test_utils.MockOutDevices():
       with mock.patch.object(fake_devices.FakeSSHDevice, "make_device_ready",
                              side_effect=mock_make_device_ready):
         with self.assertRaises(errors.DeviceNotResponsiveError):
@@ -228,12 +237,12 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
 
   def test_16_get_prop(self):
     """Test FireManager.get_prop() retrieves all properties successfully."""
-    with manager_test.MockOutDevices():
+    with manager_test_utils.MockOutDevices():
       self.uut.get_prop("sshdevice-0000")
 
   def test_17_get_prop_single_property(self):
     """Test FireManager.get_prop() retrieves a single property successfully."""
-    with manager_test.MockOutDevices():
+    with manager_test_utils.MockOutDevices():
       self.uut.get_prop("sshdevice-0000", "firmware_version")
 
   def test_18_get_prop_manager_no_such_property(self):
@@ -248,12 +257,12 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
         fire_manager, "MAX_TIME_TO_WAIT_FOR_INITATION", new=0.1):
       with self.assertRaisesRegex(errors.DeviceError,
                                   "Log file not created within 0.1 seconds"):
-        with manager_test.MockOutDevices():
+        with manager_test_utils.MockOutDevices():
           self.uut.log("sshdevice-0000", self.device_log_file, duration=0.1)
 
   def test_20_log_success(self):
     """Places logs in the file and invokes log and stops when requested."""
-    with manager_test.MockOutDevices():
+    with manager_test_utils.MockOutDevices():
       self._create_log_file(2)
       self.uut.log(
           "sshdevice-0000", os.path.basename(self.device_log_file), duration=.2)
@@ -261,12 +270,12 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
   def test_36_get_persistent_prop_devices_success(self):
     """Verify get_persistent_prop_devices returns persistent device props."""
     self.addCleanup(logger.setLevel, logger.getEffectiveLevel())
-    with manager_test.MockOutDevices():
+    with manager_test_utils.MockOutDevices():
       mock_devices_props = yaml.safe_load(
           self.uut.get_persistent_prop_devices(
               [self.first_name, self.second_name]))
       for device_name in mock_devices_props:
-        expected_props = manager_test.FAKE_DEVICES["devices"][device_name]
+        expected_props = manager_test_utils.FAKE_DEVICES["devices"][device_name]
         self.assertEqual(mock_devices_props[device_name], expected_props)
 
   def test_37_get_persistent_prop_devices_unhealthy_devices(self):
@@ -274,7 +283,7 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
     self.addCleanup(logger.setLevel, logger.getEffectiveLevel())
     exception = errors.DeviceNotResponsiveError(self.first_name,
                                                 "failed make_device_ready")
-    with manager_test.MockOutDevices():
+    with manager_test_utils.MockOutDevices():
       with mock.patch.object(
           self.uut, "get_device_configuration", side_effect=exception):
         mock_devices_props = yaml.safe_load(
@@ -462,7 +471,7 @@ class FireManagerTests(manager_test.ManagerTestsSetup):
 
   def test_issue_devices_match_no_matches_raises_exception(self):
     """Test issue_devices_match raising an exception if no devices match."""
-    with manager_test.MockOutDevices():
+    with manager_test_utils.MockOutDevices():
       with self.assertRaisesRegex(errors.DeviceError, "No devices match"):
         self.uut.issue_devices_match(
             "sshdevice-1", "make_device_ready", setting="off")

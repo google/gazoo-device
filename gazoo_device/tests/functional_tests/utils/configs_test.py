@@ -17,9 +17,13 @@ import json
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import gazoo_device
+from gazoo_device import gazoo_device_controllers
+from gazoo_device import manager
+from gazoo_device import package_registrar
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from gazoo_device.tests.functional_tests.utils import suite_filter
+
+package_registrar.register(gazoo_device_controllers)
 
 
 class ConfigsBaseTest(parameterized.TestCase):
@@ -29,7 +33,7 @@ class ConfigsBaseTest(parameterized.TestCase):
   def test_all_devices_have_a_functional_test_config(self):
     """Checks that there is a test config for every supported device type."""
     config_dirs = gdm_test_base._CONFIG_DIRS
-    supported_classes = gazoo_device.Manager.get_all_supported_device_classes()
+    supported_classes = manager.Manager.get_all_supported_device_classes()
     supported_device_types = [
         device_class.DEVICE_TYPE
         for device_class in supported_classes

@@ -21,6 +21,10 @@ package chip.rpc;
 
 import "third_party/pigweed/pigweed/pw_protobuf/pw_protobuf_protos/common.proto";
 
+option java_package = "com.google.protos.gazoo.device.chip.rpc";
+option java_multiple_files = true;
+option use_java_stubby_library = true;
+
 message PairingInfo {
   uint32 code = 1;
   uint32 discriminator = 2;
@@ -62,12 +66,16 @@ message MetadataForProvider {
   bytes tlv = 1;
 }
 
+message RebootRequest {
+  uint32 delay_ms = 1;
+}
+
 service Device {
   // To factory reset the device.
   rpc FactoryReset(pw.protobuf.Empty) returns (pw.protobuf.Empty) {}
 
   // To reboot the device.
-  rpc Reboot(pw.protobuf.Empty) returns (pw.protobuf.Empty) {}
+  rpc Reboot(RebootRequest) returns (pw.protobuf.Empty) {}
 
   // To trigger the device OTA.
   rpc TriggerOta(pw.protobuf.Empty) returns (pw.protobuf.Empty) {}
@@ -96,4 +104,10 @@ service Device {
   // Set OTA Metadata for OTA provider
   rpc SetOtaMetadataForProvider(MetadataForProvider)
       returns (pw.protobuf.Empty) {}
+
+  // Triggers the ICD checkin.
+  rpc TriggerIcdCheckin(pw.protobuf.Empty) returns (pw.protobuf.Empty) {}
+
+  // Shuts down all subscriptions.
+  rpc ShutdownAllSubscriptions(pw.protobuf.Empty) returns (pw.protobuf.Empty) {}
 }

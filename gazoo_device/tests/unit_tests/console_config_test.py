@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Unit tests for the interactive console configuration (console_config.py)."""
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable
 from unittest import mock
 
 from absl.testing import parameterized
@@ -43,7 +43,7 @@ class ConsoleConfigTests(unit_test_case.UnitTestCase):
        {"enable_secondary": True}))
   def test_console_configuration_valid_layout(
       self, config_maker: Callable[..., console_config.ConsoleConfiguration],
-      args: Tuple[Any, ...], kwargs: Dict[str, Any]):
+      args: tuple[Any, ...], kwargs: dict[str, Any]):
     """Tests initialization and validation of valid console configurations."""
     configuration = config_maker(*args, **kwargs)
     self.assertTrue(configuration)

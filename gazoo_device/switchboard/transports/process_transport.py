@@ -16,7 +16,9 @@
 import select
 import subprocess
 import time
-from typing import Sequence
+from typing import Optional, Sequence
+
+from gazoo_device import config
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.switchboard import transport_properties
@@ -25,32 +27,32 @@ from gazoo_device.utility import retry
 
 logger = gdm_logger.get_logger()
 
-_CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S = 3
-_CHILD_PROCESS_POLLING_INTERVAL_S = 0.01
-
 
 class ProcessTransport(transport_base.TransportBase):
   """Perform communication using a subprocess with the command and args specified."""
 
   def __init__(self,
+               comms_address: str,
                command: str,
                args: Sequence[str] = (),
-               auto_reopen=False,
-               open_on_start=True,
-               working_directory=None):
+               auto_reopen: bool = False,
+               open_on_start: bool = True,
+               working_directory: Optional[str] = None):
     """Initialize the ProcessTransport object with the given process properties.
 
     Args:
-        command: command to execute
-        args: list of additional args to pass to command
-        auto_reopen (bool): flag indicating transport should be reopened if
-          unexpectedly closed.
-        open_on_start (bool): flag indicating transport should be open on
-          TransportProcess start.
-        working_directory (string): Current working directory.
+        comms_address: Transport's communication address (e. g. IP address,
+            ADB identifier).
+        command: Command to execute.
+        args: List of additional args to pass to command.
+        auto_reopen: Flag indicating transport should be reopened if
+            unexpectedly closed.
+        open_on_start: Flag indicating transport should be open on
+            TransportProcess start.
+        working_directory: Current working directory.
     """
 
-    super(ProcessTransport, self).__init__(auto_reopen, open_on_start)
+    super().__init__(comms_address, auto_reopen, open_on_start)
     self._args = [command] + list(args)
     self._properties.update({
         transport_properties.CLOSE_FDS: True,
@@ -91,14 +93,16 @@ class ProcessTransport(transport_base.TransportBase):
 
   def _close_process(self):
     """Closes the process."""
+    if not self.is_open():
+      return
     if self._process.poll() is None:
       self._process.terminate()
       try:
         retry.retry(
             func=self._process.poll,
             is_successful=lambda poll_result: poll_result is not None,
-            timeout=_CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S,
-            interval=_CHILD_PROCESS_POLLING_INTERVAL_S)
+            timeout=config.SWITCHBOARD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S,
+            interval=config.SWITCHBOARD_PROCESS_POLLING_INTERVAL_S)
       except errors.CommunicationTimeoutError as e:
         # process did not terminate.
         self._process.kill()
@@ -106,14 +110,17 @@ class ProcessTransport(transport_base.TransportBase):
             "",
             "Process transport did not terminate after {} seconds. "
             "Killed the process.".format(
-                _CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S)) from e
+                config.SWITCHBOARD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S)
+            ) from e
     self._process = None
 
   def close(self):
     """Closes the process."""
     if hasattr(self, "_process") and self._process:
-      self._process.stdin.close()
-      self._process.stdout.close()
+      if self._process.stdin is not None:
+        self._process.stdin.close()
+      if self._process.stdout is not None:
+        self._process.stdout.close()
       self._close_process()
 
   def _read(self, size=1, timeout=None):
@@ -155,9 +162,15 @@ class ProcessTransport(transport_base.TransportBase):
     return True
 
   def _read_data(self, size):
+    if self._process is None:
+      raise ValueError("process is not initialized")
+    if self._process.stdout is None:
+      raise ValueError("stdout is not initialized")
     return self._process.stdout.read(size)
 
   def _read_non_blocking(self, size, timeout):
+    if self._process is None:
+      raise ValueError("process is not initialized")
     count = 0
     result = b""
     end_time = time.time() + timeout
@@ -172,6 +185,8 @@ class ProcessTransport(transport_base.TransportBase):
     return result
 
   def _write_non_blocking(self, data, timeout):
+    if self._process is None:
+      raise ValueError("process is not initialized")
     count = 0
     size = len(data)
     end_time = time.time() + timeout
@@ -185,6 +200,10 @@ class ProcessTransport(transport_base.TransportBase):
     return count
 
   def _write_data(self, data):
+    if self._process is None:
+      raise ValueError("process is not initialized")
+    if self._process.stdin is None:
+      raise ValueError("stdin is not initialized")
     if isinstance(data, int):
       data = bytes((data,))
     self._process.stdin.write(data)

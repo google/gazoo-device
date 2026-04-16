@@ -15,7 +15,6 @@
 """Test suite for devices using file transfer functions."""
 import hashlib
 import os
-from typing import Type
 
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 import immutabledict
@@ -50,7 +49,7 @@ class FileTransferTestSuite(gdm_test_base.GDMTestBase):
 
   @classmethod
   def is_applicable_to(cls, device_type: str,
-                       device_class: Type[gdm_test_base.DeviceType],
+                       device_class: type[gdm_test_base.DeviceType],
                        device_name: str) -> bool:
     """Determine if this test suite can run on the given device."""
     return device_class.has_capabilities(["file_transfer"])
@@ -65,19 +64,21 @@ class FileTransferTestSuite(gdm_test_base.GDMTestBase):
     super().setup_test()
 
     file_contents = "The quick brown dog jumps over the lazy fox\n"
-    self.host_source_path = os.path.join(self.log_path,
+    self.host_source_path = os.path.join(self.current_test_info.output_path,
                                          "file_transfer_source.txt")
     with open(self.host_source_path, "w") as open_file:
       open_file.write(file_contents)
 
   def test_file_transfer(self):
     """Tests sending a file to the device and receiving it."""
+
     received_file_name = "file_transfer_received.txt"
     device_dir = self._get_writable_directory()
     device_path = os.path.join(device_dir, received_file_name)
     self.device.file_transfer.send_file_to_device(self.host_source_path,
                                                   device_path)
-    host_received_path = os.path.join(self.log_path, received_file_name)
+    host_received_path = os.path.join(
+        self.current_test_info.output_path, received_file_name)
     try:
       self.device.file_transfer.recv_file_from_device(device_path,
                                                       host_received_path)

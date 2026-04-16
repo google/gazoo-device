@@ -57,13 +57,13 @@ class ColorTemperatureLightEndpoint(
     """Matter Color Control cluster instance."""
     return self.cluster_lazy_init(matter_enums.ColorControlCluster.ID)
 
-  # TODO(b/209362086) Add the below clusters
+  # TODO(gdm-authors) Add the below clusters
   # def scenes(self):
   #   """Matter Scenes cluster instance."""
-  #   # TODO(b/206741536): Implement Scenes cluster.
+  #   # TODO(gdm-authors): Implement Scenes cluster.
   #   raise NotImplementedError("Scenes cluster isn't implemented.")
 
   # def groups(self):
   #   """Matter Groups cluster instance."""
-  #   # TODO(b/206741536): Implement Groups cluster.
+  #   # TODO(gdm-authors): Implement Groups cluster.
   #   raise NotImplementedError("Groups cluster isn't implemented.")

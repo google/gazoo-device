@@ -14,10 +14,10 @@
 
 """CONFIG FILE."""
 import os.path
-from gazoo_device import data_types
+
 import immutabledict
 
-PACKAGE_PATH = os.path.dirname(os.path.abspath(__file__))
+PACKAGE_PATH = "gazoo_device/"
 
 INSTALL_DIRECTORY = os.path.join(os.path.expanduser("~"), "gazoo", "gdm")
 LAUNCHER_PATH = os.path.join(os.path.expanduser("~"), "gazoo", "bin", "gdm")
@@ -29,16 +29,13 @@ DEFAULT_LOG_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "log")
 CONFIG_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "conf")
 DATA_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "data")
 BACKUP_PARENT_DIRECTORY = os.path.join(CONFIG_DIRECTORY, "backup")
-BOTO_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "botos")
 BIN_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "bin")
 KEYS_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "keys")
-PTY_PROCESS_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "pty_proc")
-DETOK_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "detok")
 VIRTUAL_ENV_DIRECTORY = os.path.join(INSTALL_DIRECTORY, "virtual_env")
 
 REQUIRED_FOLDERS = [
     INSTALL_DIRECTORY, CONFIG_DIRECTORY, DATA_DIRECTORY, DEFAULT_LOG_DIRECTORY,
-    BACKUP_PARENT_DIRECTORY, BOTO_DIRECTORY, KEYS_DIRECTORY, DETOK_DIRECTORY
+    BACKUP_PARENT_DIRECTORY, KEYS_DIRECTORY
 ]
 
 DEFAULT_DEVICE_FILE = os.path.join(CONFIG_DIRECTORY, "devices.json")
@@ -56,24 +53,14 @@ DEVICE_OPTION_ATTRIBUTES = [
     "alias", "power_switch", "power_port", "usb_hub", "location", "usb_port"
 ]
 
-CLASS_PROPERTY_TYPES = (str, int, float, dict, type(None))
+LOGGER_NAME = "gazoo_device_manager"
+CLASS_PROPERTY_TYPES = (
+    str, int, float, dict, immutabledict.immutabledict, type(None), type)
 
-_BUILT_IN_EXTENSION_PACKAGE_NAME = "gazoo_device_controllers"
-KEYS = immutabledict.immutabledict({
-    "raspberrypi3_ssh_key": data_types.KeyInfo(
-        file_name="raspberrypi3_ssh_key",
-        type=data_types.KeyType.SSH,
-        package=_BUILT_IN_EXTENSION_PACKAGE_NAME),
-    "raspberrypi3_ssh_key_public": data_types.KeyInfo(
-        file_name="raspberrypi3_ssh_key.pub",
-        type=data_types.KeyType.SSH,
-        package=_BUILT_IN_EXTENSION_PACKAGE_NAME),
-    "unifi_switch_ssh_key": data_types.KeyInfo(
-        file_name="unifi_switch_ssh_key",
-        type=data_types.KeyType.SSH,
-        package=_BUILT_IN_EXTENSION_PACKAGE_NAME),
-    "unifi_switch_ssh_key_public": data_types.KeyInfo(
-        file_name="unifi_switch_ssh_key.pub",
-        type=data_types.KeyType.SSH,
-        package=_BUILT_IN_EXTENSION_PACKAGE_NAME),
-})
+# TODO(gdm-authors): Revert to 30s once all tests are migrated off monolithic
+# GDM dependency.
+SWITCHBOARD_PROCESS_START_TIMEOUT_S = 90
+SWITCHBOARD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S = 6
+SWITCHBOARD_PROCESS_POLLING_INTERVAL_S = 0.1
+
+KEY_PACKAGE_NAME = "gazoo_device_controllers"

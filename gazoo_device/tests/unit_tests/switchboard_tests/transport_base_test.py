@@ -80,7 +80,7 @@ class TransportBaseTests(unit_test_case.UnitTestCase):
 
   def test_001_transport_base_cannot_be_instantiated(self):
     """Test if it's possible to instantiate TransportBase."""
-    with self.assertRaisesRegexp(TypeError,
+    with self.assertRaisesRegex(TypeError,
                                  r"Can't instantiate abstract class"):
       transport_base.TransportBase(False, False)
 
@@ -95,7 +95,7 @@ class TransportBaseTests(unit_test_case.UnitTestCase):
 
   def test_011_transport_base_bad_subclass_instantiation(self):
     """Tests abstract subclass instantiation."""
-    with self.assertRaisesRegexp(TypeError,
+    with self.assertRaisesRegex(TypeError,
                                  r"Can't instantiate abstract class"):
       FakeBadTransport(False, False)
 

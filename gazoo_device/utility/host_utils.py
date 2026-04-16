@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utility module for local host commands."""
-import glob
 import ipaddress
 import os
 import re
+import shutil
 import subprocess
-from typing import List, Optional, Sequence, Tuple
+from typing import Any
+from typing import Collection, Optional, Sequence
 
 from gazoo_device import config
 from gazoo_device import data_types
@@ -25,15 +26,12 @@ from gazoo_device import errors
 from gazoo_device import extensions
 from gazoo_device import gdm_logger
 
-logger = gdm_logger.get_logger()
+_LOGGER = gdm_logger.get_logger()
 
-_BOTO_ENV_VAR = "BOTO_CONFIG"
-_DEFAULT_BOTO = os.path.expanduser("~/.boto")
 _PING_DEFAULT_PACKET_COUNT = 1
 _PING_DEFAULT_TIMEOUT_SECONDS = 2
 
 ARP_CONNECTED_IPS = r"([\-\w\.]*)\s*ether"
-DOCKER_CP_COMMAND = "cp {src} {dest}"
 IP_ADDRESS = r"\d+\.\d+\.\d+\.\d+"
 SSHABLE_COMMAND = "nc -z -w 2 {} 22"  # Connect to ssh port for up to 2 seconds.
 
@@ -53,45 +51,11 @@ _SNMPGET_SYSTEM_DESCRIPTION_COMMAND = (
     "snmpget -v 2c -c private {ip_address} 1.3.6.1.2.1.1.1.0")
 _SNMPGET_SYSTEM_DESCRIPTION_TIMEOUT = 3
 
-_gsutil_cli = None  # Set by _set_gsutil_cli().
+_GCLOUD_MACOS_PATH = "/usr/local/bin/gcloud"
+_gcloud_cli = None  # Set by _set_gcloud_cli().
 
 # Set by _get_scp_command().
-_scp_use_legacy_option: Optional[Tuple[str, ...]] = None
-
-
-def docker_cp_to_device(docker_container, local_file_path, container_file_path):
-  """Send a file to a docker container using a docker cp command.
-
-  Args:
-      docker_container (str): docker container identifier
-      local_file_path (str): path to file on host.
-      container_file_path (str): path to destination on device.
-
-  Returns:
-      str: command output.
-  """
-  source, destination = local_file_path, "{}:{}".format(docker_container,
-                                                        container_file_path)
-  cmd = DOCKER_CP_COMMAND.format(src=source, dest=destination)
-  return _execute_docker_cmd(cmd)
-
-
-def docker_cp_from_device(docker_container, local_file_path,
-                          container_file_path):
-  """Receive file from a docker container using a docker cp command.
-
-  Args:
-      docker_container (str): docker container identifier
-      local_file_path (str): path to file on host.
-      container_file_path (str): path to destination on device.
-
-  Returns:
-      str: command output.
-  """
-  destination, source = local_file_path, "{}:{}".format(docker_container,
-                                                        container_file_path)
-  cmd = DOCKER_CP_COMMAND.format(src=source, dest=destination)
-  return _execute_docker_cmd(cmd)
+_scp_use_legacy_option: Optional[tuple[str, ...]] = None
 
 
 def get_key_path(key_info: data_types.KeyInfo) -> str:
@@ -118,10 +82,9 @@ def _download_key(key_info: data_types.KeyInfo) -> None:
   package_key_folder = os.path.dirname(key_path)
   if not os.path.isdir(package_key_folder):
     os.makedirs(package_key_folder)
-  key_download_function = extensions.package_info[key_info.package][
-      "key_download_function"]
+  key_download_function = extensions.key_to_download_function[key_info]
   key_download_function(key_info, key_path)
-  logger.info(f"{key_info} key downloaded")
+  _LOGGER.info(f"{key_info} key downloaded")
   if not os.path.exists(key_path):
     raise FileNotFoundError(f"Key {key_info} was not downloaded to {key_path} "
                             f"after calling {key_download_function}.")
@@ -157,17 +120,17 @@ def get_command_path(command_name):
   Args:
       command_name (str): Name of the command to look for. Example: 'fastboot'.
 
-  Raises:
-      CalledProcessError: Retrieving the command name path failed.
-
   Returns:
       str: Output for the given command name.
   """
-  try:
-    result = subprocess.check_output(["which", command_name],
-                                     stderr=subprocess.STDOUT).rstrip()
-    return result.decode("utf-8", "replace")
-  except subprocess.CalledProcessError:
+  path = shutil.which(command_name)
+  if path:
+    _LOGGER.debug(
+        "Found command path for %s using shutil: %s", command_name, path
+    )
+    return path
+  else:
+    _LOGGER.error("Failed to get path for %s using shutil", command_name)
     return ""
 
 
@@ -187,8 +150,10 @@ def get_all_connected_arp_ips():
                            re.MULTILINE)
     return addresses
   except subprocess.CalledProcessError as err:
-    logger.warning("Retrieval of connected IPs from the ARP table failed. "
-                   f"Error: {err!r}. Output: {err.output!r}")
+    _LOGGER.warning(
+        "Retrieval of connected IPs from the ARP table failed. "
+        f"Error: {err!r}. Output: {err.output!r}"
+    )
     return []
 
 
@@ -198,32 +163,34 @@ def is_static_ip(comm_port: str) -> bool:
   )
 
 
-def get_all_ssh_ips(static_ips: Optional[List[str]] = None) -> List[str]:
+def get_all_ssh_ips(static_ips: Optional[Collection[str]] = None) -> list[str]:
   """Returns all IPs that respond to ping and accept SSH connections."""
   static_ips = static_ips or []
   ssh_ips = set(static_ips)
 
   unpingable_ips = {ip for ip in ssh_ips if not is_pingable(ip)}
   if unpingable_ips:
-    logger.info(f"ip_address(es) {unpingable_ips} do not respond to ping.")
+    _LOGGER.info(f"ip_address(es) {unpingable_ips} do not respond to ping.")
   ssh_ips -= unpingable_ips
 
   unsshable_ips = {ip for ip in ssh_ips if not is_sshable(ip)}
   if unsshable_ips:
-    logger.info(f"ip_address(es) {unsshable_ips} do not accept incoming SSH "
-                "connections.")
+    _LOGGER.info(
+        f"ip_address(es) {unsshable_ips} do not accept incoming SSH "
+        "connections."
+    )
   ssh_ips -= unsshable_ips
   return list(ssh_ips)
 
 
-def get_all_snmp_ips(static_ips: Optional[Sequence[str]] = None) -> List[str]:
+def get_all_snmp_ips(static_ips: Optional[Sequence[str]] = None) -> list[str]:
   """Returns all IPs that respond to ping and accept snmp protocol."""
   static_ips = static_ips or []
   snmp_ips = set(static_ips)
   snmp_ips = {ip for ip in snmp_ips if is_pingable(ip)}
   non_snmp_ips = {ip for ip in snmp_ips if not accepts_snmp(ip)}
   if non_snmp_ips:
-    logger.info(f"ip_address(es) {non_snmp_ips} do not accept snmp protocol.")
+    _LOGGER.info(f"ip_address(es) {non_snmp_ips} do not accept snmp protocol.")
   snmp_ips -= non_snmp_ips
   return list(snmp_ips)
 
@@ -231,19 +198,21 @@ def get_all_snmp_ips(static_ips: Optional[Sequence[str]] = None) -> List[str]:
 def get_all_yepkit_serials():
   """Returns all Yepkit serials."""
   if not has_command("ykushcmd"):
-    logger.warning("'ykushcmd' is not installed. Cannot get Yepkit serials.")
+    _LOGGER.warning("'ykushcmd' is not installed. Cannot get Yepkit serials.")
     return []
 
   try:
     results = subprocess.check_output(["ykushcmd", "-l"],
                                       stderr=subprocess.STDOUT)
   except subprocess.CalledProcessError as err:
-    logger.warning("Retrieval of Yepkit serials failed. "
-                   f"Error: {err!r}. Output: {err.output!r}")
+    _LOGGER.warning(
+        "Retrieval of Yepkit serials failed. "
+        f"Error: {err!r}. Output: {err.output!r}"
+    )
     return []
 
   results = results.decode("utf-8", "replace")
-  logger.debug("get_all_yepkit_serials returned: {!r}".format(results))
+  _LOGGER.debug("get_all_yepkit_serials returned: {!r}".format(results))
   # If no YKUSH boards are found then the YK21624 line will be this instead:
   #    No YKUSH boards found.
   if "No YKUSH boards found" in results:
@@ -256,66 +225,56 @@ def get_all_yepkit_serials():
   return results[1:]
 
 
-def get_all_vdl_docker_connections():
-  """Returns all VDL docker ids."""
-  if not has_command("docker"):
-    logger.warning("'docker' is not installed. Cannot get Docker devices.")
-    return []
+def gcs_command(cmd: str,
+                gcs_path: str,
+                extra_args: Optional[list[str]] = None,
+                cmd_args: Optional[list[str]] = None) -> str:
+  """Issues a 'gcloud storage' command and returns the output.
 
-  cmd = ["docker", "ps", "--filter", "name=VDL", "--format", "{{.ID}}"]
-  try:
-    results = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-  except subprocess.CalledProcessError as err:
-    logger.warning("Retrieval of VDL docker containers failed. "
-                   f"Error: {err!r}. Output: {err.output!r}")
-    return []
-  return results.decode().splitlines()
-
-
-def get_all_pty_process_directories():
-  """Returns a list of all PtyProcessComms connection directories."""
-  return glob.glob(os.path.join(config.PTY_PROCESS_DIRECTORY, "*", ""))
-
-
-def gsutil_command(cmd: str,
-                   gsutil_path: str,
-                   extra_args: Optional[List[str]] = None,
-                   boto_path: Optional[str] = None) -> str:
-  """Issues a 'gsutil' command using appropriate .boto file and returns output.
+  'gcloud storage' CLI has replaced the legacy 'gsutil' CLI:
+  https://cloud.google.com/blog/products/storage-data-transfer/new-gcloud-storage-cli-for-your-data-transfers.
 
   Args:
-    cmd: 'gsutil' command to issue (such as "cp").
-    gsutil_path: Google Cloud Storage path (gs://).
+    cmd: 'gcloud storage' command to issue (such as "cp").
+    gcs_path: Google Cloud Storage path (gs://).
     extra_args: Other arguments to pass to append to the command.
-    boto_path: Path to .boto credential file to use. If None, use the default
-      ~/.boto file.
+    cmd_args: Command args. Will be appended to command (before gcs_path).
+      e.g. ["-R"] can be used with `cp` command. "cp -R <path>"
 
   Returns:
     Output of the command.
 
   Raises:
-    RuntimeError: Command failed, or there's no valid 'gsutil' binary.
+    RuntimeError: Command failed, or there's no valid 'gcloud' binary.
   """
-  _set_gsutil_cli()
-  boto_path = boto_path or _get_default_boto()
-  logger.debug(f"Using {boto_path} to access {gsutil_path}")
+  _set_gcloud_cli()
 
-  cmd_list = [_gsutil_cli, cmd, gsutil_path]
-  if extra_args:
-    cmd_list += extra_args
-
-  new_env = os.environ.copy()
-  new_env.update({_BOTO_ENV_VAR: boto_path})
+  cmd_args = cmd_args or []
+  extra_args = extra_args or []
+  cmd_list = [_gcloud_cli, "storage", cmd, *cmd_args, gcs_path, *extra_args]
   try:
-    logger.debug("[GSUTIL] Calling gsutil with: %r", cmd_list)
+    _LOGGER.debug("[GCS] Calling gcloud with: %r", cmd_list)
     output = subprocess.check_output(
-        cmd_list, stderr=subprocess.STDOUT,
-        env=new_env).decode("utf-8", "replace")
-    logger.debug("[GSUTIL] Returning from gsutil call with: %r", output)
+        cmd_list,
+        stderr=subprocess.STDOUT,
+        text=True)
+    _LOGGER.debug("[GCS] Returning from gcloud call with: %r", output)
     return output
   except subprocess.CalledProcessError as err:
-    raise RuntimeError(
-        "{!r} failed. Err: {}".format(" ".join(cmd_list), err.output)) from err
+    message = f"{' '.join(cmd_list)!r} failed. Output: {err.output}"
+    if "Invalid Credentials" in err.output:
+      raise errors.GcloudUnauthenticatedError(
+          "The OAuth 2.0 token may have expired.\n"
+          f"{message}"
+      ) from err
+    if "gcloud auth login" in err.output:
+      raise errors.GcloudUnauthenticatedError(
+          f"Run '{_gcloud_cli} auth login' to authenticate as a user "
+          f"or '{_gcloud_cli} auth login --cred-file=/path/to/service-account-key.json' "  # pylint: disable=line-too-long
+          f"to authenticate using a service account.\n"
+          f"{message}"
+      ) from err
+    raise RuntimeError(message) from err
 
 
 def has_command(command_name):
@@ -455,19 +414,24 @@ def accepts_snmp(ip_address: str) -> bool:
     subprocess.check_output(
         snmpwalk_command, timeout=_SNMPGET_SYSTEM_DESCRIPTION_TIMEOUT)
     return True
-  except subprocess.CalledProcessError as err:
-    logger.debug(f"IP {ip_address} may not be snmp enabled or snmp is not "
-                 f"installed on host machine. Error: {err!r}. "
-                 f"Output: {err.output!r}")
+  except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as err:
+    _LOGGER.debug(
+        f"IP {ip_address} may not be snmp enabled or snmp is not "
+        f"installed on host machine. Error: {err!r}. "
+        f"Output: {err.output!r}"
+    )
     return False
 
 
-def ssh_command(ip_address: str,
-                command: Sequence[str],
-                user: str = "root",
-                options: Sequence[str] = DEFAULT_SSH_OPTIONS,
-                key_info: Optional[data_types.KeyInfo] = None,
-                timeout: Optional[float] = None) -> str:
+def ssh_command(
+    ip_address: str,
+    command: Sequence[str],
+    user: str = "root",
+    options: Sequence[str] = DEFAULT_SSH_OPTIONS,
+    key_info: data_types.KeyInfo | None = None,
+    timeout: float | None = None,
+    include_return_code: bool = False,
+) -> Any:
   """Sends an SSH command to the given IP address and returns the response.
 
   Args:
@@ -477,9 +441,13 @@ def ssh_command(ip_address: str,
       options: Extra command line args for the SSH command.
       key_info: SSH key to use. If None, don't use an SSH key.
       timeout: Timeout for the SSH command.
+      include_return_code: Flag indicating return code should be returned
 
   Returns:
-      SSH command output.
+      str: If include_return_code is False return the SSH response to
+        the command.
+      tuple: If include_return_code is True return the SSH response and
+        return code.
 
   Raises:
       RuntimeError: If SSH command fails.
@@ -489,15 +457,24 @@ def ssh_command(ip_address: str,
   ssh_args = generate_ssh_args(ip_address, command, user, options, key_info)
   ssh_list = ["ssh"] + ssh_args
   try:
+    if include_return_code:
+      result = subprocess.run(
+          ssh_list, capture_output=True, text=True, check=False
+      )
+      if result.returncode == 0:
+        return (result.stdout, result.returncode)
+      return (result.stderr, result.returncode)
+
     result = subprocess.check_output(
         ssh_list, stderr=subprocess.STDOUT, timeout=timeout)
     result = result.decode("utf-8", "replace")
-    logger.debug("Ssh command {} to {} returned {!r}".format(
-        command, ip_address, result))
+    _LOGGER.debug(
+        "Ssh command {} to {} returned {!r}".format(command, ip_address, result)
+    )
     return result
   except subprocess.CalledProcessError as err:
     msg = "Command {} failed. Err: {!r}".format(" ".join(ssh_list), err.output)
-    logger.debug(msg)
+    _LOGGER.debug(msg)
     raise RuntimeError(msg)
 
 
@@ -547,7 +524,7 @@ def _scp(source: str, destination: str,
 
   command = _get_scp_command(src=source, dest=destination, ssh_opt=options)
   try:
-    logger.debug("Executing {!r}".format(command))
+    _LOGGER.debug("Executing {!r}".format(command))
     result = subprocess.check_output(command, stderr=subprocess.STDOUT)
     return result.decode("utf-8", "replace")
   except subprocess.CalledProcessError as err:
@@ -629,19 +606,6 @@ def verify_key(key_info: data_types.KeyInfo) -> None:
     _set_key_permissions(local_path)
 
 
-def _get_default_boto() -> str:
-  """Returns the absolute path to the default ~/.boto file if it exists.
-
-  Raises:
-    RuntimeError: If the default ~/.boto is missing.
-  """
-  if not os.path.exists(_DEFAULT_BOTO):
-    raise RuntimeError(
-        f"Default GCS access credentials file {_DEFAULT_BOTO} does not exist. "
-        "Run 'gsutil config' to configure GCS access credentials.")
-  return _DEFAULT_BOTO
-
-
 def _set_key_permissions(key_path: str) -> None:
   """Sets key file permissions to be readable only by the current user.
 
@@ -662,45 +626,83 @@ def _set_key_permissions(key_path: str) -> None:
           f"Run 'chmod 400 {key_path}' manually.")
 
 
-def _set_gsutil_cli():
-  """Finds a valid gsutil executable and sets the _gsutil_cli variable.
+def _set_gcloud_cli():
+  """Finds a valid GCS executable and sets the _gcloud_cli variable.
 
   Raises:
-      RuntimeError: unable to find a valid "gsutil" binary.
+      DependencyUnavailableError: unable to find a 'gcloud' binary.
   """
-  global _gsutil_cli
-  if not _gsutil_cli:
+  global _gcloud_cli
+  if not _gcloud_cli:
     possible_clis = [
-        os.path.join(os.path.expanduser("~"), "gazoo", "bin", "gsutil"),
-        get_command_path("gsutil"),
-        "/usr/local/bin/gsutil",
+        get_command_path("gcloud"),
+        os.path.join(os.path.expanduser("~"), "gazoo", "bin", "gcloud"),
+        # b/290310555: /usr/local/bin/ is not in $PATH in MacOS tests.
+        _GCLOUD_MACOS_PATH,
     ]
     for cli in possible_clis:
       if os.path.exists(cli):
-        logger.debug("Setting {} to be the gsutil cli".format(cli))
-        _gsutil_cli = cli
+        _LOGGER.debug("Setting {} to be the GCS CLI".format(cli))
+        _gcloud_cli = cli
         return
-    raise RuntimeError("Unable to find valid 'gsutil' binary.")
+    raise errors.DependencyUnavailableError("Unable to find a 'gcloud' binary.")
 
 
-def _execute_docker_cmd(cmd):
-  """Send file to or from the device using "docker cp" utility.
+def curl_command(cmd_list: Sequence[str], raise_error: bool = True):
+  """Run a curl command.
 
   Args:
-      cmd (str): command
-
-  Returns:
-      str: command output.
+    cmd_list: Command list.
+    raise_error: Whether to raise an error if the command fails.
 
   Raises:
-      RuntimeError: If unable to run the command
+    RuntimeError: If curl command fails.
   """
-  full_cmd = "docker {}".format(cmd)
+  full_cmd_list = ["curl", *cmd_list]
+  if raise_error and "--fail-with-body" not in cmd_list:
+    full_cmd_list.append("--fail-with-body")
   try:
-    logger.debug("Executing {!r}".format(full_cmd))
-    result = subprocess.check_output(full_cmd.split(), stderr=subprocess.STDOUT)
-    return result.decode("utf-8", "replace")
+    subprocess.run(full_cmd_list, capture_output=True, text=True, check=True)
   except subprocess.CalledProcessError as err:
-    raise RuntimeError(
-        "Docker command: {!r} failed, with error: {!r}. Output: {}.".format(
-            full_cmd, err, err.output))
+    message = f"{err.cmd!r} failed. Output: {err.stderr}"
+    raise RuntimeError(message) from err
+
+
+def delete_path(device_name: str, path: str, check_path_exists: bool = False):
+  """Delete the folder/file at the given path.
+
+  Args:
+    device_name: The name of the device.
+    path: The path to remove.
+    check_path_exists: Whether to check if the path exists before deleting.
+  """
+  try:
+    _LOGGER.info("clean up by removing folder/file at %s", path)
+    if check_path_exists and not os.path.exists(path):
+      raise FileNotFoundError(f"Path {path} does not exist.")
+    if os.path.isdir(path):
+      shutil.rmtree(path)
+    elif os.path.isfile(path):
+      os.remove(path)
+  except (FileNotFoundError, OSError, PermissionError) as err:
+    _LOGGER.warning(
+        "%s failed to remove path %s. Err: %s",
+        device_name,
+        path,
+        str(err),
+    )
+
+
+def run_command(command: str, timeout: int | None = None) -> str:
+  """Runs the command on the host.
+
+  Args:
+    command: The command to be run.
+    timeout: The timeout for the command. If not provided, the default timeout
+      is used.
+
+  Returns:
+    The output of the command.
+  """
+  output = subprocess.check_output(command.split(), timeout=timeout)
+  return output.decode("utf-8", "replace")

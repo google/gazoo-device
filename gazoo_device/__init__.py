@@ -60,26 +60,16 @@ import multiprocessing
 import signal
 import sys
 
-from gazoo_device import _version
-from gazoo_device import gazoo_device_controllers
 from gazoo_device import gdm_logger
 from gazoo_device import manager
-from gazoo_device import mobly_controller
 from gazoo_device import package_registrar
+from gazoo_device import version
 from gazoo_device.utility import multiprocessing_utils
 from gazoo_device.utility import signal_utils
 
 Manager = manager.Manager
 register = package_registrar.register
-version = _version.version
-__version__ = _version.version
-
-# For Mobly integration
-MOBLY_CONTROLLER_CONFIG_NAME = "GazooDevice"
-create = mobly_controller.create
-destroy = mobly_controller.destroy
-get_info = mobly_controller.get_info
-get_manager = mobly_controller.get_manager
+__version__ = version.VERSION
 
 multiprocessing_utils.configure_multiprocessing()
 
@@ -89,10 +79,5 @@ logging.getLogger().addHandler(logging.NullHandler())
 # Ensure that 'finally' clauses and atexit handlers run when killed by SIGTERM.
 signal.signal(signal.SIGTERM, signal_utils.handle_sigterm)
 
-
 # Set up logger
 gdm_logger.initialize_logger()
-
-
-# Register device classes and capabilities built into GDM
-package_registrar.register(gazoo_device_controllers)

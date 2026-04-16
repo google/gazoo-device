@@ -22,6 +22,7 @@ class FlowSensorBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Flow Sensor endpoint interface."""
 
   DEVICE_TYPE_ID = 0x0306
+  DEVICE_TYPE_NAME = "FlowSensor"
 
   @property
   @abc.abstractmethod

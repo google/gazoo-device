@@ -18,7 +18,7 @@ The JsSelector class allows generating selector code easily.
 """
 
 
-class JsSelector(object):
+class JsSelector:
   """Create javascript code for selecting DOM elements.
 
   This class generates javascript code that can chain calls on a root element

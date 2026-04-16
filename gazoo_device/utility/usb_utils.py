@@ -16,18 +16,19 @@
 import re
 import sys
 
-from typing import Dict, List, Optional, Union
+from typing import Mapping, Optional, Union
 
-from gazoo_device import custom_types
 from gazoo_device.utility import usb_config
 from gazoo_device.utility import usb_info_linux
 from gazoo_device.utility import usb_info_mac
 
 import usb
 
+MatchCriteria = Mapping[str, Mapping[str, str]]
+
 
 def find_matching_connections(
-    match_criteria: custom_types.MatchCriteria) -> List[usb_config.UsbInfo]:
+    match_criteria: MatchCriteria) -> list[usb_config.UsbInfo]:
   """Returns usb_info instances for connections that match criteria.
 
   Note that connections are first excluded and then included.
@@ -68,7 +69,7 @@ def find_matching_connections(
   return instances
 
 
-def get_address_to_usb_info_dict() -> Dict[str, usb_config.UsbInfo]:
+def get_address_to_usb_info_dict() -> dict[str, usb_config.UsbInfo]:
   """Gets a dictionary of usb devices with all relevent information."""
   if sys.platform == "darwin":
     module = usb_info_mac
@@ -77,7 +78,7 @@ def get_address_to_usb_info_dict() -> Dict[str, usb_config.UsbInfo]:
   return module.get_address_to_usb_info_dict()
 
 
-def get_all_serial_connections() -> List[str]:
+def get_all_serial_connections() -> list[str]:
   """Returns a list of all serial connections."""
   usb_info = get_address_to_usb_info_dict()
   return [
@@ -191,7 +192,7 @@ def get_serial_number_from_path(address: str) -> str:
   return usb_info_inst.serial_number
 
 
-def get_usb_devices_having_a_serial_number() -> List[usb.core.Device]:
+def get_usb_devices_having_a_serial_number() -> list[usb.core.Device]:
   """Gets a list of USB devices that have a serial number.
 
   Devices are filtered by ones that have langids to provide a list of devices
@@ -224,7 +225,7 @@ def get_usb_device_from_serial_number(
   return usb.core.find(custom_match=custom_match)
 
 
-def get_usb_hub_info(device_address: str) -> Dict[str, Union[None, int, str]]:
+def get_usb_hub_info(device_address: str) -> dict[str, Union[None, int, str]]:
   """Gets the usb hub information for each communication address of the device.
 
   Args:

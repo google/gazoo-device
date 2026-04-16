@@ -4,7 +4,7 @@ This capability interacts with the DC2200 from Thorlabs.
 Currently supports a single primary LED source.
 """
 import typing
-from typing import Mapping, Optional
+from typing import Any, Mapping, Optional
 
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -13,7 +13,15 @@ from gazoo_device.capabilities.interfaces import led_driver_base
 from gazoo_device.utility import retry
 
 import immutabledict
-import pyvisa
+
+try:
+  # TODO(gdm-authors): Remove the try-catch block once the numpy import error
+  # on Mac resolved.
+  # pylint: disable=g-bad-import-order
+  import pyvisa  # pylint: disable=g-import-not-at-top, unused-import
+  # pylint: enable=g-bad-import-order
+except Exception:  # pylint: disable=broad-except
+  pyvisa = None
 
 
 logger = gdm_logger.get_logger()
@@ -37,7 +45,7 @@ _COMMANDS = immutabledict.immutabledict({
     "ENABLE_REMOTE": "SYSTEM:REMOTE",
 })
 
-_MOD_FUNC_SHORT_TO_LONG: Mapping[str, led_driver_base.ModFunc] = (
+_MOD_FUNC_SHORT_TO_LONG: Mapping[str, led_driver_base.ModFunc] = (  # pytype: disable=annotation-type-mismatch
     immutabledict.immutabledict({
         "SQU": "square",
         "SIN": "sinusoid",
@@ -60,6 +68,11 @@ class LedDriverDefault(led_driver_base.LedDriverBase):
         to identify the power supply and interface with it.
     """
     super().__init__(device_name=device_name)
+    if pyvisa is None:
+      raise errors.CapabilityNotReadyError(
+          device_name,
+          "pyvisa is not imported. Led driver capability is not ready.")
+
     self._serial_number = serial_number
 
     # Note this doesn't hold on to any resources at this stage.
@@ -71,11 +84,12 @@ class LedDriverDefault(led_driver_base.LedDriverBase):
 
   def _setup_device(self) -> None:
     """Sets up device by clearing status and enabling remote control."""
+    assert self._pyvisa_device_cache is not None
     self._pyvisa_device_cache.write(_COMMANDS["CLEAR_STATUS"])
     self._pyvisa_device_cache.write(_COMMANDS["ENABLE_REMOTE"])
 
   @decorators.DynamicProperty
-  def _pyvisa_device(self) -> Optional[pyvisa.resources.resource.Resource]:
+  def _pyvisa_device(self) -> Optional[Any]:
     self.health_check()
     return self._pyvisa_device_cache
 

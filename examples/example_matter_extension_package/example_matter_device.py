@@ -14,15 +14,16 @@
 
 """Device class for Partner Example Matter Lighting device."""
 from gazoo_device import decorators
-from gazoo_device import detect_criteria
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import matter_device_base
-from gazoo_device.capabilities import flash_build_jlink
+from gazoo_device.capabilities import flash_build_nrfjprog
+from gazoo_device.detect_criteria import pigweed_detect_criteria
+import immutabledict
 
 logger = gdm_logger.get_logger()
 
 
-# TODO(b/224858911) Update the module with generic device controllers
+# TODO(gdm-authors) Update the module with generic device controllers
 class PartnerExampleMatterLighting(matter_device_base.MatterDeviceBase):
   """Partner example primary Matter device controller for a lighting device.
 
@@ -37,24 +38,23 @@ class PartnerExampleMatterLighting(matter_device_base.MatterDeviceBase):
   """
 
   # TODO(user): You may need to change the value of
-  # detect_criteria.PigweedQuery.PRODUCT_NAME and
-  # detect_criteria.PigweedQuery.MANUFACTURER_NAME for your device.
-  DETECT_MATCH_CRITERIA = {
-      detect_criteria.PigweedQuery.PRODUCT_NAME:
+  # pigweed_detect_criteria.PigweedQuery.PRODUCT_NAME and
+  # pigweed_detect_criteria.PigweedQuery.MANUFACTURER_NAME for your device.
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
+      pigweed_detect_criteria.PigweedQuery.PRODUCT_NAME:
           "partner-device-product-name",
       # Fill in your device's product name, see README.md for instructions.
-      detect_criteria.PigweedQuery.MANUFACTURER_NAME:
+      pigweed_detect_criteria.PigweedQuery.MANUFACTURER_NAME:
           "partner-device-manufacturer-name",
       # Fill in your device's manufacturer name, see README.md for instructions.
       # Real detection queries look like this
       # (Take NRF Matter lighting sample app as an example):
-      # detect_criteria.PigweedQuery.PRODUCT_NAME: "j-link",
-      # detect_criteria.PigweedQuery.MANUFACTURER_NAME: "segger",
-      detect_criteria.PigweedQuery.IS_MATTER: True,
-  }
+      # pigweed_detect_criteria.PigweedQuery.PRODUCT_NAME: "j-link",
+      # pigweed_detect_criteria.PigweedQuery.MANUFACTURER_NAME: "segger",
+      pigweed_detect_criteria.PigweedQuery.IS_MATTER: True,
+  })
   ENDPOINT_ID_TO_CLASS = None
   DEVICE_TYPE = "examplematterlighting"
-  _OWNER_EMAIL = "gdm-authors@google.com"
 
   @decorators.PersistentProperty
   def os(self) -> str:
@@ -64,10 +64,9 @@ class PartnerExampleMatterLighting(matter_device_base.MatterDeviceBase):
   def platform(self) -> str:
     return "Partner Device platform"
 
-  @decorators.CapabilityDecorator(flash_build_jlink.FlashBuildJLink)
-  def flash_build(self) -> flash_build_jlink.FlashBuildJLink:
+  @decorators.CapabilityDecorator(flash_build_nrfjprog.FlashBuildNrfjprog)
+  def flash_build(self) -> flash_build_nrfjprog.FlashBuildNrfjprog:
     """FlashBuildJLink capability to flash hex image."""
-    return self.lazy_init(flash_build_jlink.FlashBuildJLink,
+    return self.lazy_init(flash_build_nrfjprog.FlashBuildNrfjprog,
                           device_name=self.name,
-                          serial_number=self.serial_number,
-                          platform_name="Partner Device Platform")
+                          serial_number=self.serial_number)

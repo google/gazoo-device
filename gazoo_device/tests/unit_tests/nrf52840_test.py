@@ -15,6 +15,7 @@
 """Unit tests for nrf52840 module."""
 from unittest import mock
 
+from gazoo_device import package_registrar
 from gazoo_device.auxiliary_devices import nrf52840
 from gazoo_device.base_classes import nrf_connect_sdk_device
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
@@ -34,13 +35,15 @@ _NRF_CONNECT_PERSISTENT_PROPERTIES = immutabledict.immutabledict({
 class NRF52840DeviceTests(fake_device_test_case.FakeDeviceTestCase):
   """Test for base class NRF52840."""
 
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(nrf52840)
+
   def setUp(self):
     super().setUp()
     self.setup_fake_device_requirements(_FAKE_DEVICE_ID)
     self.device_config["persistent"]["console_port_name"] = _FAKE_DEVICE_ADDRESS
-    jlink_patcher = mock.patch("pylink.JLink")
-    jlink_patcher.start()
-    self.addCleanup(jlink_patcher.stop)
     self.uut = nrf52840.NRF52840(
                 self.mock_manager,
                 self.device_config,

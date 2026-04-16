@@ -15,7 +15,7 @@
 """Configuration for the interactive console (console.py)."""
 import dataclasses
 import re
-from typing import Callable, Sequence, Tuple, Type, Union
+from typing import Callable, Sequence, Union
 
 from gazoo_device.switchboard import line_identifier
 from gazoo_device.switchboard import log_process
@@ -70,7 +70,7 @@ class ConsoleConfiguration:
   # Transformations to apply to each line. Transformations are applied in order.
   # Each transformation is defined by a regex pattern and a corresponding
   # replacement string.
-  window_line_transforms: Sequence[Tuple[str, str]] = _DEFAULT_LINE_TRANSFORMS
+  window_line_transforms: Sequence[tuple[str, str]] = _DEFAULT_LINE_TRANSFORMS
 
   def __post_init__(self) -> None:
     """Validates the provided window arrangement.
@@ -84,7 +84,7 @@ class ConsoleConfiguration:
 
 
 def calculate_window_id(
-    transport_num: int, window_class: Type[WindowType]) -> int:
+    transport_num: int, window_class: type[WindowType]) -> int:
   """Returns a unique window ID.
 
   window_id numbering scheme does not depend on the number of windows present.

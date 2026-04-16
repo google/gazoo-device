@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,10 +26,12 @@ The required clusters for this endpoint: Basic Information, Access Control,
 The optional clusters for this endpoint: Power Source Configuration, Time
   Synchronization, Diagnostic Logs, Software Diagnostics.
 """
+from typing import Union
 
 from gazoo_device import decorators
 from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters import basic_information_chip_tool
+from gazoo_device.capabilities.matter_clusters import basic_information_pw_rpc
 from gazoo_device.capabilities.matter_endpoints.interfaces import root_node_base
 
 
@@ -37,13 +39,16 @@ class RootNodeEndpoint(root_node_base.RootNodeBase):
   """Matter Root Node endpoint."""
 
   @decorators.CapabilityDecorator(
-      basic_information_chip_tool.BasicInformationClusterChipTool)
+      [basic_information_chip_tool.BasicInformationClusterChipTool,
+       basic_information_pw_rpc.BasicInformationClusterPwRpc])
   def basic_information(
-      self) -> basic_information_chip_tool.BasicInformationClusterChipTool:
+      self) -> Union[
+          basic_information_chip_tool.BasicInformationClusterChipTool,
+          basic_information_pw_rpc.BasicInformationClusterPwRpc]:
     """Matter Root Node cluster instance."""
     return self.cluster_lazy_init(matter_enums.BasicInformationCluster.ID)
 
-  # TODO(b/241164443): implement additional clusters for root node.
+  # TODO(gdm-authors): implement additional clusters for root node.
 
   # def access_control(self):
   #   """Matter access control cluster instance."""

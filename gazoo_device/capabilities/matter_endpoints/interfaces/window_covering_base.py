@@ -22,6 +22,7 @@ class WindowCoveringBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Window Covering endpoint interface."""
 
   DEVICE_TYPE_ID = 0x0202
+  DEVICE_TYPE_NAME = "WindowCovering"
 
   @property
   @abc.abstractmethod

@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 """Device logs for RPi Matter devices."""
 from gazoo_device.tests.unit_tests.utils import raspbian_device_logs
 from gazoo_device.tests.unit_tests.utils import ssh_device_logs
-from immutabledict import immutabledict
+import immutabledict
 
 make_device_responses = ssh_device_logs.make_device_responses
 
@@ -55,9 +55,13 @@ _RESPONSES = ({
     "cmd": 'sudo sh -c \'echo "--- GDM Log Marker ---" >> /var/log/syslog\'',
     "resp": "",
     "code": 0
+}, {
+    "cmd": "cat /proc/device-tree/model",
+    "resp": "Raspberry Pi 4 Model B Rev 1.2\x00",
+    "code": 0
 })
 
-DEFAULT_BEHAVIOR = immutabledict({
+DEFAULT_BEHAVIOR = immutabledict.immutabledict({
     **raspbian_device_logs.DEFAULT_BEHAVIOR,
     **make_device_responses(_RESPONSES)
 })

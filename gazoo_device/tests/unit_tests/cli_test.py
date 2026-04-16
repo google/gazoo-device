@@ -14,13 +14,13 @@
 
 """Unit tests for gdm_cli.py."""
 import inspect
-from typing import Dict
 from unittest import mock
 
 from absl.testing import parameterized
 from gazoo_device import errors
 from gazoo_device import fire_manager
 from gazoo_device import gdm_cli
+from gazoo_device import package_registrar
 from gazoo_device.auxiliary_devices import raspberry_pi
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 
@@ -94,6 +94,11 @@ def _raise_error_with_cause_loop():
 class CLITests(unit_test_case.UnitTestCase):
   """Unit tests for gdm_cli.py."""
 
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(raspberry_pi)
+
   @parameterized.named_parameters(
       *(dict(testcase_name=command, command=command)
         for command in _GOOD_COMMANDS))
@@ -142,7 +147,7 @@ class CLITests(unit_test_case.UnitTestCase):
       dict(command="--quiet - detect", expected_flags={"quiet": True}),
       dict(command="--help", expected_flags={}),
       dict(command="-- --help", expected_flags={}))
-  def test_get_flag(self, command: str, expected_flags: Dict[str, bool]):
+  def test_get_flag(self, command: str, expected_flags: dict[str, bool]):
     """Tests that _get_flags() properly parses and returns flags."""
     flags = gdm_cli._get_flags(command.split())
     self.assertEqual(flags, expected_flags)

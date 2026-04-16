@@ -27,7 +27,7 @@ logger = gdm_logger.get_logger("log_parser")
 DISPLAY_REFRESH = 3.0  # secs
 
 
-class LogParser(object):
+class LogParser:
   """Provides ability to search for specific events in log file."""
 
   def __init__(self, parser_obj, log_path, display_refresh=DISPLAY_REFRESH):

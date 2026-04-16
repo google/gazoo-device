@@ -65,5 +65,5 @@ class LevelControlClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
       The max level.
     """
 
-  # TODO(b/212193200)
+  # TODO(gdm-authors)
   # Add additional attributes / commands for level control cluster

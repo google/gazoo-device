@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -89,17 +89,21 @@ import os
 import select
 import time
 import typing
-from typing import Callable, List
+from typing import Any, Callable
 
 from gazoo_device import decorators
-from gazoo_device import detect_criteria
 from gazoo_device import errors
 from gazoo_device import gdm_logger
-from gazoo_device.base_classes import auxiliary_device
+from gazoo_device import mobly_controller
+from gazoo_device import version
+from gazoo_device.base_classes import auxiliary_power_hub_device
 from gazoo_device.capabilities import switch_power_usb_with_charge
+from gazoo_device.detect_criteria import serial_detect_criteria
+from gazoo_device.switchboard.communication_types import serial_comms
 from gazoo_device.utility import deprecation_utils
 from gazoo_device.utility import usb_config
 from gazoo_device.utility import usb_utils
+import immutabledict
 import serial
 
 logger = gdm_logger.get_logger()
@@ -132,18 +136,17 @@ TIMEOUTS = {
 _REBOOT_METHODS = ["watchdog", "shell"]
 
 
-class Cambrionix(auxiliary_device.AuxiliaryDevice):
+class Cambrionix(auxiliary_power_hub_device.AuxiliaryPowerHubDevice):
   """This class serves as a Python interface to a Cambrionix hub.
 
   Attributes: Hub Device Base Class
   """
-  COMMUNICATION_TYPE = "SerialComms"
-  DETECT_MATCH_CRITERIA = {
-      detect_criteria.SerialQuery.PRODUCT_NAME:
-          "(ft230x basic uart)|(ps15-usb3)|(supersync15)"
-  }
+  COMMUNICATION_TYPE = serial_comms.SerialComms
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
+      serial_detect_criteria.SerialQuery.PRODUCT_NAME:
+          "(ft230x basic uart)|(ps15-usb3)|(supersync15)|(thundersync3-16)"
+  })
   DEVICE_TYPE = "cambrionix"
-  _OWNER_EMAIL = "gdm-authors@google.com"
 
   def __init__(self, manager, device_config, log_file_name, log_directory):
     """Constructor of the class Cambrionix.
@@ -191,7 +194,7 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
     return None
 
   @decorators.PersistentProperty
-  def health_checks(self) -> List[Callable[[], None]]:
+  def health_checks(self) -> list[Callable[[], None]]:
     """Returns list of methods to execute as health checks."""
     return [self.check_device_connected, self.check_clear_flags]
 
@@ -458,11 +461,15 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
     """
     self._open()
     try:
-      self.__write_command(self._serial_port, command)
+      self.__write_command(
+          typing.cast(serial.serialposix.Serial, self._serial_port), command
+      )
       if command.startswith("reboot"):
         return
 
-      response = self.__get_response(self._serial_port)
+      response = self.__get_response(
+          typing.cast(serial.serialposix.Serial, self._serial_port)
+      )
       if response[0].startswith("*E"):
         raise errors.DeviceError("Device {} command failed. "
                                  "Unable to write command: {} "
@@ -472,7 +479,7 @@ class Cambrionix(auxiliary_device.AuxiliaryDevice):
     finally:
       if close_delay > 0.0:
         time.sleep(close_delay)
-      self._serial_port.close()
+      typing.cast(serial.serialposix.Serial, self._serial_port).close()
 
     # Discard the last line which is the prompt
     return response[:-1]
@@ -618,3 +625,26 @@ deprecation_utils.add_deprecated_attributes(
     Cambrionix, [("set_mode", "switch_power.set_mode", True),
                  ("power_on", "switch_power.power_on", True),
                  ("power_off", "switch_power.power_off", True)])
+
+
+_DeviceClass = Cambrionix
+_COMMUNICATION_TYPE = _DeviceClass.COMMUNICATION_TYPE.__name__
+# For Mobly controller integration.
+MOBLY_CONTROLLER_CONFIG_NAME = (
+    mobly_controller.get_mobly_controller_config_name(_DeviceClass.DEVICE_TYPE))
+create = mobly_controller.create
+destroy = mobly_controller.destroy
+get_info = mobly_controller.get_info
+get_manager = mobly_controller.get_manager
+
+
+def export_extensions() -> dict[str, Any]:
+  """Exports device class and capabilities to act as a GDM extension package."""
+  return {
+      "auxiliary_devices": [_DeviceClass],
+      "detect_criteria": immutabledict.immutabledict({
+          _COMMUNICATION_TYPE: serial_detect_criteria.SERIAL_QUERY_DICT,
+      }),
+  }
+
+__version__ = version.VERSION

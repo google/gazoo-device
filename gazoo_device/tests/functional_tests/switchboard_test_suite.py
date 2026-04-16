@@ -15,7 +15,6 @@
 """Test suite for Switchboard capability."""
 import os.path
 import time
-from typing import Tuple, Type
 
 from gazoo_device.switchboard import log_process
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
@@ -39,7 +38,7 @@ class SwitchboardTestSuite(gdm_test_base.GDMTestBase):
 
   @classmethod
   def is_applicable_to(cls, device_type: str,
-                       device_class: Type[gdm_test_base.DeviceType],
+                       device_class: type[gdm_test_base.DeviceType],
                        device_name: str) -> bool:
     """Determine if this test suite can run on the given device."""
     return device_class.has_capabilities(["switchboard"])
@@ -50,7 +49,7 @@ class SwitchboardTestSuite(gdm_test_base.GDMTestBase):
     return False
 
   @classmethod
-  def required_test_config_variables(cls) -> Tuple[str, ...]:
+  def required_test_config_variables(cls) -> tuple[str, ...]:
     """Returns keys required to be present in the functional test config."""
     return ("shell_cmd", "expect")
 

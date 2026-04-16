@@ -22,12 +22,12 @@ from gazoo_device.tests.unit_tests.utils import unit_test_case
 _DEVICE_NAME = "DLINK_SWITCH"
 _IP_ADDRESS = "0.0.0.0"
 _TOTAL_PORTS = 5
-_PORT = 1
-_GET = "snmpget -v 2c -c private 0.0.0.0:161 1.3.6.1.2.1.2.2.1.7.1"
-_SET_ON = "snmpset -v 2c -c private 0.0.0.0:161 1.3.6.1.2.1.2.2.1.7.1 i 1"
-_SET_OFF = "snmpset -v 2c -c private 0.0.0.0:161 1.3.6.1.2.1.2.2.1.7.1 i 2"
-_ON_STATUS = "iso.3.6.1.2.1.2.2.1.7.1 = INTEGER: 1"
-_OFF_STATUS = "iso.3.6.1.2.1.2.2.1.7.1 = INTEGER: 2"
+_PORT = 2
+_GET = "snmpget -v 2c -c private 0.0.0.0:161 1.3.6.1.2.1.2.2.1.7.2"
+_SET_ON = "snmpset -v 2c -c private 0.0.0.0:161 1.3.6.1.2.1.2.2.1.7.2 i 1"
+_SET_OFF = "snmpset -v 2c -c private 0.0.0.0:161 1.3.6.1.2.1.2.2.1.7.2 i 2"
+_ON_STATUS = "iso.3.6.1.2.1.2.2.1.7.2 = INTEGER: 1"
+_OFF_STATUS = "iso.3.6.1.2.1.2.2.1.7.2 = INTEGER: 2"
 _RETURNCODE = 0
 
 
@@ -108,6 +108,18 @@ class SwitchPowerSnmpTests(unit_test_case.UnitTestCase):
   def test_power_on(self, mock_set_mode):
     self.uut.power_on(_PORT)
     mock_set_mode.assert_called_once_with(switch_power_snmp._ON, _PORT)
+
+  @mock.patch.object(switch_power_snmp.SwitchPowerSnmp, "set_mode")
+  def test_set_all_ports_mode(self, mock_set_mode):
+    self.uut.set_all_ports_mode(switch_power_snmp._OFF)
+    mock_set_mode.assert_has_calls([
+        mock.call(mode=switch_power_snmp._OFF, port=port)
+        for port in range(2, _TOTAL_PORTS + 1)
+    ])
+
+  def test_set_mode_port_1(self):
+    with self.assertRaisesRegex(errors.DeviceError, "Port 1 is reserved"):
+      self.uut.set_mode(mode=switch_power_snmp._OFF, port=1)
 
 
 if __name__ == "__main__":

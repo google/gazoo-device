@@ -14,7 +14,7 @@
 """SNMP implementation of switch_power."""
 import re
 import subprocess
-from typing import List, Literal
+from typing import Literal
 
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -69,7 +69,7 @@ class SwitchPowerSnmp(switch_power_base.SwitchPowerBase):
     self._community = community
 
   @decorators.PersistentProperty
-  def supported_modes(self) -> List[str]:
+  def supported_modes(self) -> list[str]:
     """Get the power modes supported by the switch."""
     return [_ON, _OFF]
 
@@ -123,6 +123,12 @@ class SwitchPowerSnmp(switch_power_base.SwitchPowerBase):
       DeviceError: Raised if passed an invalid port or mode.
     """
     self._validate_port(port)
+    if port == 1:
+      raise errors.DeviceError(
+          "Port 1 is reserved as the connection to the host machine. "
+          "Setting this port is disallowed."
+      )
+
     if mode.upper() not in list(self.supported_modes):
       raise ValueError(f"Attempting to set invalid mode: {mode}. "
                        f"Valid modes are: {self.supported_modes()}.")
@@ -148,6 +154,22 @@ class SwitchPowerSnmp(switch_power_base.SwitchPowerBase):
           f"{self._device_name} Failed to turn {mode.lower()} "
           f"the port using command: '{set_mode_command}'. "
           f"Output: '{response}'")
+
+  @decorators.CapabilityLogDecorator(logger)
+  def set_all_ports_mode(self, mode: Literal[_ON, _OFF]):
+    """Sets all Ethernet switch ports to the mode specified.
+
+    Port 1 is skipped here because that port is assumed to be connected
+    to the host machine.
+
+    Args:
+      mode: Port mode to set. 'on' or 'off'.
+
+    Raises:
+      DeviceError: invalid mode.
+    """
+    for port in range(2, self._total_ports + 1):
+      self.set_mode(mode=mode, port=port)
 
   @decorators.CapabilityLogDecorator(logger)
   def power_off(self, port: int):
@@ -176,6 +198,6 @@ class SwitchPowerSnmp(switch_power_base.SwitchPowerBase):
     Raises:
       DeviceError: if input port is not valid.
     """
-    if port <= 0 or port > self._total_ports:
+    if not (1 <= port <= self._total_ports):
       raise errors.DeviceError(
           f"Port {port} does not exist on {self._device_name}.")

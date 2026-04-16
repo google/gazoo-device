@@ -78,8 +78,3 @@ class BasicInformationClusterBase(
   @abc.abstractmethod
   def software_version_string(self) -> str:
     """The SoftwareVersionString attribute."""
-
-  @property
-  @abc.abstractmethod
-  def capability_minima(self) -> int:
-    """The CapabilityMinima attribute."""

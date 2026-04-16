@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,9 @@
 
 """Matter endpoint and cluster modules."""
 
+from gazoo_device.capabilities.matter_clusters import air_quality_pw_rpc
 from gazoo_device.capabilities.matter_clusters import basic_information_chip_tool
+from gazoo_device.capabilities.matter_clusters import basic_information_pw_rpc
 from gazoo_device.capabilities.matter_clusters import boolean_state_pw_rpc
 from gazoo_device.capabilities.matter_clusters import color_control_pw_rpc
 from gazoo_device.capabilities.matter_clusters import door_lock_chip_tool
@@ -34,11 +36,14 @@ from gazoo_device.capabilities.matter_clusters import pressure_measurement_chip_
 from gazoo_device.capabilities.matter_clusters import pressure_measurement_pw_rpc
 from gazoo_device.capabilities.matter_clusters import relative_humidity_measurement_chip_tool
 from gazoo_device.capabilities.matter_clusters import relative_humidity_measurement_pw_rpc
+from gazoo_device.capabilities.matter_clusters import switch_chip_tool
+from gazoo_device.capabilities.matter_clusters import switch_pw_rpc
 from gazoo_device.capabilities.matter_clusters import temperature_measurement_chip_tool
 from gazoo_device.capabilities.matter_clusters import temperature_measurement_pw_rpc
 from gazoo_device.capabilities.matter_clusters import thermostat_chip_tool
 from gazoo_device.capabilities.matter_clusters import thermostat_pw_rpc
 from gazoo_device.capabilities.matter_clusters import window_covering_pw_rpc
+from gazoo_device.capabilities.matter_endpoints import air_quality_sensor
 from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import contact_sensor
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
@@ -46,6 +51,7 @@ from gazoo_device.capabilities.matter_endpoints import door_lock
 from gazoo_device.capabilities.matter_endpoints import extended_color_light
 from gazoo_device.capabilities.matter_endpoints import fan
 from gazoo_device.capabilities.matter_endpoints import flow_sensor
+from gazoo_device.capabilities.matter_endpoints import generic_switch
 from gazoo_device.capabilities.matter_endpoints import heating_cooling_unit
 from gazoo_device.capabilities.matter_endpoints import humidity_sensor
 from gazoo_device.capabilities.matter_endpoints import light_sensor
@@ -54,6 +60,8 @@ from gazoo_device.capabilities.matter_endpoints import on_off_light
 from gazoo_device.capabilities.matter_endpoints import on_off_light_switch
 from gazoo_device.capabilities.matter_endpoints import on_off_plugin_unit
 from gazoo_device.capabilities.matter_endpoints import pressure_sensor
+from gazoo_device.capabilities.matter_endpoints import pump
+from gazoo_device.capabilities.matter_endpoints import room_air_conditioner
 from gazoo_device.capabilities.matter_endpoints import root_node
 from gazoo_device.capabilities.matter_endpoints import speaker
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
@@ -64,6 +72,7 @@ import immutabledict
 
 # PwRPC and CHIP tool implementation share the same endpoint interfaces.
 SUPPORTED_ENDPOINTS = (
+    air_quality_sensor.AirQualitySensorEndpoint,
     color_temperature_light.ColorTemperatureLightEndpoint,
     contact_sensor.ContactSensorEndpoint,
     dimmable_light.DimmableLightEndpoint,
@@ -79,15 +88,21 @@ SUPPORTED_ENDPOINTS = (
     on_off_light_switch.OnOffLightSwitchEndpoint,
     on_off_plugin_unit.OnOffPluginUnitEndpoint,
     pressure_sensor.PressureSensorEndpoint,
+    pump.PumpEndpoint,
     root_node.RootNodeEndpoint,
     speaker.SpeakerEndpoint,
+    generic_switch.GenericSwitchEndpoint,
     temperature_sensor.TemperatureSensorEndpoint,
     thermostat.ThermostatEndpoint,
-    window_covering.WindowCoveringEndpoint)
+    room_air_conditioner.RoomAirConditionerEndpoint,
+    window_covering.WindowCoveringEndpoint,
+)
 
 SUPPORTED_CLUSTERS_PW_RPC = (
-    color_control_pw_rpc.ColorControlClusterPwRpc,
+    air_quality_pw_rpc.AirQualityClusterPwRpc,
+    basic_information_pw_rpc.BasicInformationClusterPwRpc,
     boolean_state_pw_rpc.BooleanStateClusterPwRpc,
+    color_control_pw_rpc.ColorControlClusterPwRpc,
     door_lock_pw_rpc.DoorLockClusterPwRpc,
     fan_control_pw_rpc.FanControlClusterPwRpc,
     flow_measurement_pw_rpc.FlowMeasurementClusterPwRpc,
@@ -98,6 +113,7 @@ SUPPORTED_CLUSTERS_PW_RPC = (
     pressure_measurement_pw_rpc.PressureMeasurementClusterPwRpc,
     (relative_humidity_measurement_pw_rpc.
      RelativeHumidityMeasurementClusterPwRpc),
+    switch_pw_rpc.SwitchClusterPwRpc,
     temperature_measurement_pw_rpc.TemperatureMeasurementClusterPwRpc,
     thermostat_pw_rpc.ThermostatClusterPwRpc,
     window_covering_pw_rpc.WindowCoveringClusterPwRpc)
@@ -123,6 +139,7 @@ SUPPORTED_CLUSTERS_CHIP_TOOL = (
     pressure_measurement_chip_tool.PressureMeasurementClusterChipTool,
     relative_humidity_measurement_chip_tool.
     RelativeHumidityMeasurementClusterChipTool,
+    switch_chip_tool.SwitchClusterChipTool,
     temperature_measurement_chip_tool.TemperatureMeasurementClusterChipTool,
     thermostat_chip_tool.ThermostatClusterChipTool,
 )

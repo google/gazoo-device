@@ -73,33 +73,30 @@ class TcpTransport(transport_base.TransportBase):
   """A TCP Transport class."""
 
   def __init__(self,
-               comms_address,
-               args,
-               connect_timeout=CONNECT_TIMEOUT,
-               auto_reopen=False,
-               open_on_start=False):
-    """Initialize the TcpTransport object with the given TCP properties.
+               comms_address: str,
+               port: int,
+               connect_timeout: float = CONNECT_TIMEOUT,
+               auto_reopen: bool = False,
+               open_on_start: bool = False):
+    """Initializes the TcpTransport object with the given TCP properties.
 
     Args:
-        comms_address (str): hostname or IP address of the device to connect
-          to.
-        args (str): The port to communicate to.
-        connect_timeout (float): timeout on the socket instance before
-          attempting connect.
-        auto_reopen (bool): flag indicating transport should be reopened if
-          unexpectedly closed.
-        open_on_start (bool): flag indicating transport should be open on
-          TransportProcess start.
+        comms_address: IP address.
+        port: The TCP port number to communicate to.
+        connect_timeout: Timeout on the socket instance before attempting
+            connect.
+        auto_reopen: Flag indicating transport should be reopened if
+            unexpectedly closed.
+        open_on_start: Flag indicating transport should be open on
+            TransportProcess start.
 
     Raises:
         ValueError: host not valid or port out of range
     """
-    self.comms_address = comms_address
-    port = int(args)
-    super(TcpTransport, self).__init__(auto_reopen, open_on_start)
+    super().__init__(comms_address, auto_reopen, open_on_start)
     self._properties.update({
         transport_properties.HOST: comms_address,
-        transport_properties.PORT: int(args),
+        transport_properties.PORT: port,
         transport_properties.CONNECT_TIMEOUT: connect_timeout,
     })
     check_host(comms_address)
@@ -112,7 +109,7 @@ class TcpTransport(transport_base.TransportBase):
     Returns:
         bool: True if _socket is not None
     """
-    return hasattr(self, "_socket") and self._socket is not None
+    return self._socket is not None
 
   def _open(self):
     """Opens or reopens the tcp connection using the current property values.
@@ -127,9 +124,10 @@ class TcpTransport(transport_base.TransportBase):
 
   def _close(self):
     """Closes the TCP connection."""
-    self._socket.shutdown(socket.SHUT_RDWR)
-    self._socket.close()
-    self._socket = None
+    if self.is_open():
+      self._socket.shutdown(socket.SHUT_RDWR)
+      self._socket.close()
+      self._socket = None
 
   def _read(self, size=1, timeout=None):
     """Returns bytes read up to max_bytes within timeout in seconds specified.
@@ -145,6 +143,9 @@ class TcpTransport(transport_base.TransportBase):
              or "" if no bytes were read
              or "" if timeout was reached
     """
+    if self._socket is None:
+      raise ValueError("attempting to read from non-open socket")
+
     try:
       self._socket.settimeout(timeout)
       read_bytes = self._socket.recv(size)
@@ -164,6 +165,9 @@ class TcpTransport(transport_base.TransportBase):
     Returns:
         int: number of bytes written or None if no bytes were written
     """
+    if self._socket is None:
+      raise ValueError("attempting to write to non-open socket")
+
     if isinstance(data, str):
       data = data.encode("utf-8", errors="replace")
 

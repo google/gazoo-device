@@ -24,6 +24,7 @@ class DimmableLightBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Dimmable light endpoint interface."""
 
   DEVICE_TYPE_ID = 0x0101
+  DEVICE_TYPE_NAME = "DimmableLight"
 
   @property
   @abc.abstractmethod
@@ -36,16 +37,18 @@ class DimmableLightBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
     """Required cluster: ZCL level cluster."""
 
   @property
-  @abc.abstractproperty
+  @abc.abstractmethod
   def occupancy_sensing(
       self) -> occupancy_sensing_base.OccupancySensingClusterBase:
     """Optional cluster: ZCL occupancy cluster."""
 
-  # TODO(b/209362086) Add the below clusters
-  # @abc.abstractproperty
+  # TODO(gdm-authors) Add the below clusters
+  # @property
+  # @abc.abstractmethod
   # def scenes(self) -> None:
   #   """Required cluster: ZCL scenes cluster."""
 
-  # @abc.abstractproperty
+  # @property
+  # @abc.abstractmethod
   # def groups(self) -> None:
   #   """Required cluster: ZCL groups cluster."""

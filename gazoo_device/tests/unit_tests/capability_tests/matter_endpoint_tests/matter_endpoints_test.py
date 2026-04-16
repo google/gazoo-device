@@ -92,3 +92,7 @@ class MatterEndpointsTest(fake_device_test_case.FakeDeviceTestCase):
         write=None)
     self.assertEqual(
         getattr(uut, cluster_name), mock_cluster_lazy_init.return_value)
+
+
+if __name__ == "__main__":
+  fake_device_test_case.main()

@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,22 +18,28 @@ This device controller populates the supported Matter endpoints on the RPi
 platform by using the descriptor RPC service.
 """
 import time
+from typing import Any, Callable, Optional
 
-from typing import Callable, Dict, List, Optional, Tuple
-from gazoo_device import config
 from gazoo_device import decorators
-from gazoo_device import detect_criteria
 from gazoo_device import errors
 from gazoo_device import gdm_logger
+from gazoo_device import mobly_controller
+from gazoo_device import version
 from gazoo_device.base_classes import matter_device_base
 from gazoo_device.base_classes import ssh_device
 from gazoo_device.capabilities import bluetooth_service_linux
 from gazoo_device.capabilities import matter_sample_app_shell
 from gazoo_device.capabilities.interfaces import matter_controller_base
+from gazoo_device.capabilities.matter_clusters.interfaces import measurement_base
+from gazoo_device.capabilities.matter_clusters.interfaces import switch_base
+from gazoo_device.detect_criteria import ssh_detect_criteria
+from gazoo_device.keys import raspberry_pi_key
 from gazoo_device.protos import attributes_service_pb2
 from gazoo_device.protos import descriptor_service_pb2
 from gazoo_device.protos import device_service_pb2
+from gazoo_device.switchboard.communication_types import pigweed_socket_comms
 from gazoo_device.utility import host_utils
+from gazoo_device.utility import key_utils
 from gazoo_device.utility import pwrpc_utils
 from gazoo_device.utility import retry
 import immutabledict
@@ -48,29 +54,37 @@ _POLL_RPC_INTERVAL_SEC = 1  # seconds
 COMMANDS = immutabledict.immutabledict({
     "REBOOT": "sudo reboot",
     "SERIAL_NUMBER_INFO": "cat /proc/cpuinfo",
+    "MODEL_INFO": "cat /proc/device-tree/model",
 })
 
 REGEXES = immutabledict.immutabledict({
-    "SERIAL_NUMBER_INFO_REGEX": r"Serial\s+: ([^\n]+)"
+    "SERIAL_NUMBER_INFO_REGEX": r"Serial\s+: ([^\n]+)",
+    "MODEL_INFO_REGEX": r"Raspberry Pi ([^\n\x00]+)",
 })
 
 
 class RaspberryPiMatter(
-    ssh_device.SshDevice, matter_device_base.MatterDeviceBase):
+    ssh_device.SshDevice, matter_device_base.MatterDeviceBase
+):
   """RPi Matter device controller."""
-  COMMUNICATION_TYPE = "PigweedSocketComms"
-  DETECT_MATCH_CRITERIA = {
-      detect_criteria.SshQuery.IS_UBUNTU_RPI: True,
-      detect_criteria.SshQuery.IS_MATTER_LINUX_APP_RUNNING: True,
-  }
-  _COMMUNICATION_KWARGS = {"protobufs": (attributes_service_pb2,
-                                         descriptor_service_pb2,
-                                         device_service_pb2),
-                           "port": pwrpc_utils.MATTER_LINUX_APP_DEFAULT_PORT,
-                           "args": host_utils.DEFAULT_SSH_OPTIONS,
-                           "log_cmd": ssh_device.COMMANDS["LOGGING"],
-                           "key_info": config.KEYS["raspberrypi3_ssh_key"],
-                           "username": "ubuntu"}
+
+  COMMUNICATION_TYPE = pigweed_socket_comms.PigweedSocketComms
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
+      ssh_detect_criteria.SshQuery.IS_UBUNTU_RPI: True,
+      ssh_detect_criteria.SshQuery.IS_MATTER_LINUX_APP_RUNNING: True,
+  })
+  _COMMUNICATION_KWARGS = immutabledict.immutabledict({
+      "protobufs": (
+          attributes_service_pb2,
+          descriptor_service_pb2,
+          device_service_pb2,
+      ),
+      "port": pwrpc_utils.MATTER_LINUX_APP_DEFAULT_PORT,
+      "args": host_utils.DEFAULT_SSH_OPTIONS,
+      "log_cmd": ssh_device.COMMANDS["LOGGING"],
+      "key_info": raspberry_pi_key.SSH_KEY_PRIVATE,
+      "username": "ubuntu",
+  })
   DEVICE_TYPE = "rpimatter"
   # Overrides to recover from the successive recoverable health check failures
   _RECOVERY_ATTEMPTS = 3
@@ -80,16 +94,15 @@ class RaspberryPiMatter(
 
   MATTER_COMMISSION_METHOD = matter_controller_base.CommissionMethod.ON_NETWORK
 
-  def __init__(self,
-               manager,
-               device_config,
-               log_file_name=None,
-               log_directory=None):
+  def __init__(
+      self, manager, device_config, log_file_name=None, log_directory=None
+  ):
     super().__init__(
         manager,
         device_config,
         log_file_name=log_file_name,
-        log_directory=log_directory)
+        log_directory=log_directory,
+    )
     self._commands.update(COMMANDS)
     self._regexes.update(REGEXES)
 
@@ -104,22 +117,24 @@ class RaspberryPiMatter(
     return "Raspberry Pi 4"
 
   @decorators.LogDecorator(logger)
-  def get_detection_info(self) -> Tuple[Dict[str, str], Dict[str, str]]:
+  def get_detection_info(self) -> tuple[dict[str, str], dict[str, str]]:
     """Gets the persistent and optional attributes of a device during setup.
 
     Returns:
       Dictionary of persistent attributes and dictionary of optional attributes.
     """
     persistent_dict, options_dict = super().get_detection_info()
-    serial_number = self.shell_with_regex(
+    persistent_dict["serial_number"] = self.shell_with_regex(
         self.commands["SERIAL_NUMBER_INFO"],
-        self.regexes["SERIAL_NUMBER_INFO_REGEX"])
-    persistent_dict["serial_number"] = serial_number
-    persistent_dict["model"] = "PROTO"
+        self.regexes["SERIAL_NUMBER_INFO_REGEX"],
+    )
+    persistent_dict["model"] = self.shell_with_regex(
+        self.commands["MODEL_INFO"], self.regexes["MODEL_INFO_REGEX"]
+    )
     return persistent_dict, options_dict
 
   @decorators.PersistentProperty
-  def health_checks(self) -> List[Callable[[], None]]:
+  def health_checks(self) -> list[Callable[[], None]]:
     """Returns the list of methods to execute as health checks."""
     return super().health_checks + [
         self.check_app_present,
@@ -127,7 +142,8 @@ class RaspberryPiMatter(
         self.check_is_service_enabled,
         self.check_app_running,
         self.check_open_pwrpc_socket_transport,
-        self.check_rpc_working]
+        self.check_rpc_working,
+    ]
 
   @decorators.health_check
   def check_app_present(self) -> None:
@@ -135,7 +151,8 @@ class RaspberryPiMatter(
     if not self.matter_sample_app.is_present:
       raise errors.DeviceBinaryMissingError(
           device_name=self.name,
-          msg="The Matter sample app binary does not exist.")
+          msg="The Matter sample app binary does not exist.",
+      )
 
   @decorators.health_check
   def check_has_service(self) -> None:
@@ -145,8 +162,12 @@ class RaspberryPiMatter(
           device_name=self.name,
           msg="The Matter sample app service file does not exist.",
           package_list=(
-              f"/etc/systemd/system/{pwrpc_utils.MATTER_LINUX_APP_NAME}"
-              ".service",))
+              (
+                  f"/etc/systemd/system/{pwrpc_utils.MATTER_LINUX_APP_NAME}"
+                  ".service"
+              ),
+          ),
+      )
 
   @decorators.health_check
   def check_is_service_enabled(self) -> None:
@@ -154,7 +175,8 @@ class RaspberryPiMatter(
     if not self.matter_sample_app.is_service_enabled:
       raise errors.ServiceNotEnabledError(
           device_name=self.name,
-          msg="The Matter sample app service is not enabled.")
+          msg="The Matter sample app service is not enabled.",
+      )
 
   @decorators.health_check
   def check_app_running(self) -> None:
@@ -162,7 +184,8 @@ class RaspberryPiMatter(
     if not self.matter_sample_app.is_running:
       raise errors.ProcessNotRunningError(
           device_name=self.name,
-          msg="The Matter sample app process is not running.")
+          msg="The Matter sample app process is not running.",
+      )
 
   @decorators.health_check
   def check_open_pwrpc_socket_transport(self) -> None:
@@ -185,7 +208,8 @@ class RaspberryPiMatter(
         pigweed_port=self._PIGWEED_PORT,
         send_file_to_device_fn=self.file_transfer.send_file_to_device,
         wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
-        reset_endpoints_fn=self.matter_endpoints.reset)
+        reset_endpoints_fn=self.matter_endpoints.reset,
+    )
 
   @decorators.LogDecorator(logger)
   def recover(self, error: errors.DeviceError) -> None:
@@ -225,7 +249,7 @@ class RaspberryPiMatter(
   def factory_reset(self, no_wait: bool = False) -> None:
     """Factory resets the device."""
     self.matter_sample_app.factory_reset()
-    super().factory_reset(no_wait)
+    self.reboot(no_wait=no_wait)
 
   @decorators.LogDecorator(logger)
   def wait_for_bootup_complete(self, timeout: Optional[int] = None) -> None:
@@ -238,14 +262,16 @@ class RaspberryPiMatter(
         func=self.check_app_running,
         timeout=_APP_START_SEC,
         interval=_POLL_APP_INTERVAL_SEC,
-        reraise=False)
+        reraise=False,
+    )
 
     # Wait for the sample app to become RPC responsive
     retry.retry(
         func=self.check_rpc_working,
         timeout=_RPC_START_SEC,
         interval=_POLL_RPC_INTERVAL_SEC,
-        reraise=False)
+        reraise=False,
+    )
 
   @decorators.CapabilityDecorator(bluetooth_service_linux.BluetoothServiceLinux)
   def bluetooth_service(self):
@@ -254,4 +280,44 @@ class RaspberryPiMatter(
         bluetooth_service_linux.BluetoothServiceLinux,
         device_name=self.name,
         shell_fn=self.shell,
-        shell_with_regex_fn=self.shell_with_regex)
+        shell_with_regex_fn=self.shell_with_regex,
+    )
+
+
+_DeviceClass = RaspberryPiMatter
+_COMMUNICATION_TYPE = _DeviceClass.COMMUNICATION_TYPE.__name__
+# For Mobly controller integration.
+MOBLY_CONTROLLER_CONFIG_NAME = (
+    mobly_controller.get_mobly_controller_config_name(_DeviceClass.DEVICE_TYPE)
+)
+create = mobly_controller.create
+destroy = mobly_controller.destroy
+get_info = mobly_controller.get_info
+get_manager = mobly_controller.get_manager
+
+
+def export_extensions() -> dict[str, Any]:
+  """Exports device class and capabilities to act as a GDM extension package."""
+  return {
+      "primary_devices": [_DeviceClass],
+      "detect_criteria": immutabledict.immutabledict({
+          _COMMUNICATION_TYPE: ssh_detect_criteria.SSH_QUERY_DICT,
+      }),
+      "capability_interfaces": [
+          # Overrides for the implicit export logic.
+          # MeasurementClusterBase is an interface. It is not abstract and
+          # defines public attributes, so the implicit export logic considers
+          # it a flavor by default.
+          # This is to resolve b/322915885.
+          measurement_base.MeasurementClusterBase,
+          switch_base.SwitchClusterBase,
+      ],
+      "keys": [
+          raspberry_pi_key.SSH_KEY_PRIVATE,
+          raspberry_pi_key.SSH_KEY_PUBLIC,
+      ],
+  }
+
+
+__version__ = version.VERSION
+download_key = key_utils.download_key

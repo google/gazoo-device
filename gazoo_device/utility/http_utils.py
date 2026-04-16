@@ -16,7 +16,7 @@ import contextlib
 import json
 import socket
 import ssl
-from typing import Any, Callable, ContextManager, Dict, List, Optional, Union
+from typing import Any, Callable, ContextManager, Mapping, Optional, Union
 import urllib
 
 from gazoo_device import gdm_logger
@@ -54,15 +54,16 @@ class SSLAdapter(adapters.HTTPAdapter):
 
 def send_http_get(url: str,
                   auth: Optional[AuthBase] = None,
-                  params: Optional[Dict[Any, Any]] = None,
+                  params: Optional[dict[Any, Any]] = None,
                   data: Optional[Any] = None,
-                  headers: Optional[Dict[Any, Any]] = None,
+                  headers: Mapping[str, str] | None = None,
                   ssl_version: Optional[int] = None,
-                  valid_return_codes: Optional[List[int]] = None,
+                  valid_return_codes: Optional[list[int]] = None,
                   session_factory: Optional[Callable[
                       [], ContextManager[requests.Session]]] = requests.Session,
                   timeout: int = 10,
-                  tries: int = 1) -> requests.Response:
+                  tries: int = 1,
+                  verify: bool = True) -> requests.Response:
   """Issues a HTTP GET and returns the response if the request is successful.
 
   Args:
@@ -70,18 +71,21 @@ def send_http_get(url: str,
       auth: HTTP authentication object (i.e. HTTPDigestAuth)
       params: Parameters to send as a query string.
       data: Data for this HTTP GET Request
-      headers: Headers for this HTTP GET Request
+      headers: Headers for this HTTP GET Request.
       ssl_version: SSL version to be used for secure http (https) requests. For
         example, ssl.PROTOCOL_TLSv1_2.
       valid_return_codes: List of valid HTTP return codes.
       session_factory: A context manager to yield a session to be used.
       timeout: request timeout in seconds
       tries: how many times to try sending the request.
+      verify: Enables SSL certificate verification. Only set this to `False`
+        for internal testing endpoints which do not have valid
+        HTTPS certificates.
 
   Raises:
       RuntimeError: if response.status_code returned by requests.get() is not in
           valid_return_codes
-      TypeError: if headers is not a dictionary
+      TypeError: If headers is not a Mapping.
       RequestException, HTTPError: raised if request fails and are converted
           into a RuntimeError.
 
@@ -90,10 +94,10 @@ def send_http_get(url: str,
   """
   valid_return_codes = valid_return_codes or [200]
 
-  if headers and not isinstance(headers, dict):
+  if headers is not None and not isinstance(headers, Mapping):
     raise TypeError(
-        "Expecting a dict value in headers param but received: {}".format(
-            type(headers)))
+        f"Expecting headers to be a Mapping type but received: {type(headers)}"
+    )
   try:
     with session_factory() as session:
       session: requests.Session
@@ -111,7 +115,7 @@ def send_http_get(url: str,
               data=data,
               headers=headers,
               timeout=timeout,
-              verify=False)
+              verify=verify)
           break
         except (requests.exceptions.RequestException,
                 urllib3.exceptions.HTTPError) as err:
@@ -138,16 +142,17 @@ def send_http_get(url: str,
 def send_http_post(url: str,
                    auth: Optional[AuthBase] = None,
                    data: Optional[Any] = None,
-                   params: Optional[Dict[Any, Any]] = None,
-                   headers: Optional[Dict[Any, Any]] = None,
-                   json_data: Optional[Union[Dict[Any, Any], List[Any]]] = None,
+                   params: Optional[dict[Any, Any]] = None,
+                   headers: Mapping[str, str] | None = None,
+                   json_data: Optional[Union[dict[Any, Any], list[Any]]] = None,
                    ssl_version: Optional[int] = None,
-                   valid_return_codes: Optional[List[int]] = None,
+                   valid_return_codes: Optional[list[int]] = None,
                    session_factory: Optional[Callable[
                        [],
                        ContextManager[requests.Session]]] = requests.Session,
                    timeout: int = 10,
-                   tries: int = 1) -> requests.Response:
+                   tries: int = 1,
+                   verify: bool = True) -> requests.Response:
   """Issues a HTTP POST and returns the response if the request is successful.
 
   Args:
@@ -155,7 +160,7 @@ def send_http_post(url: str,
       auth: HTTP authentication object (i.e. HTTPDigestAuth)
       data: Data for this HTTP POST Request
       params: Parameters for this HTTP POST Request
-      headers: Headers for this HTTP POST Request
+      headers: Headers for this HTTP POST Request.
       json_data: JSON data for this HTTP POST Request
       ssl_version: SSL version to be used for secure http (https) requests. For
         example, ssl.PROTOCOL_TLSv1_2
@@ -163,11 +168,15 @@ def send_http_post(url: str,
       session_factory: A context manager to yield a session to be used.
       timeout: request timeout in seconds
       tries: how many times to try sending the request.
+      verify: Enables SSL certificate verification. Only set this to `False`
+        for internal testing endpoints which do not have valid
+        HTTPS certificates.
 
   Raises:
       RuntimeError: if response.status_code returned by requests.post() is not
           in valid_return_codes
-      TypeError: if headers / json_data is not a dictionary or None.
+      TypeError: If headers is not a Mapping.
+      TypeError: If json_data is not dict or list.
       RequestException, HTTPError: raised if request fails and are converted
           into a RuntimeError.
 
@@ -181,9 +190,10 @@ def send_http_post(url: str,
         "Expecting a dict or list value in json_data params but received: "
         "{}.".format(type(json_data)))
 
-  if headers is not None and not isinstance(headers, dict):
-    raise TypeError("Expecting a dict value in headers params but received: "
-                    "{}.".format(type(headers)))
+  if headers is not None and not isinstance(headers, Mapping):
+    raise TypeError(
+        f"Expecting headers to be a Mapping type but received: {type(headers)}"
+    )
 
   try:
     with session_factory() as session:
@@ -201,7 +211,7 @@ def send_http_post(url: str,
               headers=headers,
               timeout=timeout,
               params=params,
-              verify=False)
+              verify=verify)
           break
         except (requests.exceptions.RequestException,
                 urllib3.exceptions.HTTPError) as err:
@@ -270,11 +280,11 @@ class UnixSocketHTTPSConnection(connection.HTTPSConnection):
   """A HTTPS connection via a unix socket."""
 
   def __init__(self, path: str):
+    self.path = path
+    super().__init__("localhost")
     # Device servers are using self-signed certificates.
     # Do not verify their certificates.
     self.cert_reqs = ssl.CERT_NONE
-    self.path = path
-    super().__init__("localhost")
 
   def _new_conn(self):
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -298,7 +308,9 @@ class UnixSocketHTTPSAdapter(adapters.HTTPAdapter):
     self.path = path
     super().__init__()
 
-  def get_connection(self, url, proxies=None):
+  def get_connection_with_tls_context(
+      self, request, verify, proxies=None, cert=None
+  ):
     return UnixSocketHTTPSConnectionPool(self.path)
 
 
@@ -331,7 +343,9 @@ class UnixSocketHTTPAdapter(adapters.HTTPAdapter):
     self.path = path
     super().__init__()
 
-  def get_connection(self, url, proxies=None):
+  def get_connection_with_tls_context(
+      self, request, verify, proxies=None, cert=None
+  ):
     return UnixSocketHTTPConnectionPool(self.path)
 
 

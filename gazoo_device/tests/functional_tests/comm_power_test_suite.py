@@ -14,7 +14,6 @@
 
 """This test suite verifies comm_power capability."""
 import logging
-from typing import Type
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
 
@@ -22,7 +21,7 @@ _ON = "on"
 _OFF = "off"
 
 
-class FakeManagerEthernetSwitch():
+class FakeManagerEthernetSwitch:
   """Mock of ManagedEthernetSwitch."""
 
   def __init__(self):
@@ -46,7 +45,7 @@ class CommPowerTestSuite(gdm_test_base.GDMTestBase):
 
   @classmethod
   def is_applicable_to(cls, device_type: str,
-                       device_class: Type[gdm_test_base.DeviceType],
+                       device_class: type[gdm_test_base.DeviceType],
                        device_name: str) -> bool:
     """Determine if this test suite can run on the given device."""
     if not device_class.has_capabilities(["comm_power"]):

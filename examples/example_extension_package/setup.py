@@ -14,7 +14,6 @@
 
 """Builds the example extension package."""
 import os
-from typing import List
 
 import setuptools
 
@@ -23,7 +22,7 @@ _PACKAGE_NAME = "example_extension_package"
 _README_FILE = "README.md"
 
 
-def _get_packages() -> List[str]:
+def _get_packages() -> list[str]:
   """Returns packages to include in example_extension_package package."""
   sub_packages = [_PACKAGE_NAME + "." + package
                   for package in setuptools.find_packages()]

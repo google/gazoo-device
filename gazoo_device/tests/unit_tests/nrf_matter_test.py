@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Unit tests for device class NrfMatter."""
+from gazoo_device import package_registrar
 from gazoo_device.primary_devices import nrf_matter
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
@@ -22,6 +23,11 @@ _FAKE_DEVICE_ADDRESS = "fake-device-address"
 
 class NrfMatterTests(fake_device_test_case.FakeDeviceTestCase):
   """Unit tests for device class NrfMatter."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(nrf_matter)
 
   def setUp(self):
     super().setUp()

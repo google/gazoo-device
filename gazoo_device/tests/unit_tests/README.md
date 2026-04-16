@@ -33,4 +33,3 @@ pip install -e ../../ ./
     ```
     python3 unit_tests/some_module_test.py
     ```
-

@@ -15,7 +15,7 @@
 """Common shell() capability for devices communicating over SSH."""
 import re
 import time
-from typing import Callable, Collection, Optional, Tuple, Union
+from typing import Callable, Collection, Optional, Union
 
 from gazoo_device import config
 from gazoo_device import errors
@@ -63,7 +63,7 @@ class ShellSSH(shell_base.ShellBase):
       port: int = 0,
       include_return_code: bool = False,
       searchwindowsize: int = config.SEARCHWINDOWSIZE
-  ) -> Union[str, Tuple[str, int]]:
+  ) -> Union[str, tuple[str, int]]:
     """Sends command and returns response and optionally return code.
 
     If the SSH connection fails, the command is retried (up to a total of
@@ -140,6 +140,10 @@ class ShellSSH(shell_base.ShellBase):
       result = "\n".join(result_list[1:-1]).strip()
 
     if include_return_code:
+      if response.match is None:
+        raise errors.DeviceError(
+            f"{self._device_name} did not find shell return code using regex "
+            f"{command_end_regex} in device response {response}")
       return_code = int(response.match.group(1))
       return result, return_code
     else:

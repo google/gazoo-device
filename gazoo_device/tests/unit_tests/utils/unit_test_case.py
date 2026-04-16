@@ -54,13 +54,13 @@ from gazoo_device.switchboard.transports import pty_transport
 from gazoo_device.switchboard.transports import serial_transport
 from gazoo_device.switchboard.transports import ssh_transport
 from gazoo_device.switchboard.transports import tcp_transport
-from gazoo_device.tests.unit_tests import utils
 from gazoo_device.utility import adb_utils
 from gazoo_device.utility import host_utils
 from gazoo_device.utility import multiprocessing_utils
 from gazoo_device.utility import usb_utils
 import pyudev
 import usb
+
 
 main = absltest.main
 
@@ -71,6 +71,7 @@ EXCLUDE_FD_FILTERS = (
     "/dev/ptmx",
     "docker/runtime",
 )
+_UTILS_DIRECTORY = os.path.dirname(__file__)
 
 
 def mock_get_product_linux(serial_port_path):
@@ -151,7 +152,7 @@ class MockSubprocess(mock.Mock):
     self.communicate = mock.Mock(side_effect=zip(self.responses, return_codes))
 
 
-class MockOutSubprocess():
+class MockOutSubprocess:
   """Context manager for mocking subprocess calls."""
 
   def __init__(self, proc_output=None):
@@ -173,9 +174,9 @@ class MockOutSubprocess():
 
 class UnitTestCase(parameterized.TestCase):
   """Base class for unit tests."""
-  TEST_EVENTFILES_DIR = os.path.join(
-      os.path.dirname(utils.__file__), "eventfiles")
-  TEST_FILTER_DIR = os.path.join(os.path.dirname(utils.__file__), "filters")
+  artifacts_directory: str
+  TEST_EVENTFILES_DIR = os.path.join(_UTILS_DIRECTORY, "eventfiles")
+  TEST_FILTER_DIR = os.path.join(_UTILS_DIRECTORY, "filters")
 
   @classmethod
   def setUpClass(cls):
@@ -292,7 +293,7 @@ class UnitTestCase(parameterized.TestCase):
     Returns:
       str: absolute path to resource file.
     """
-    return os.path.join(os.path.dirname(utils.__file__), path)
+    return os.path.join(_UTILS_DIRECTORY, path)
 
   def tearDown(self):
     gdm_logger.flush_queue_messages()
@@ -477,7 +478,7 @@ class _FakeFileWriter:
     pass
 
 
-class _MockTime():
+class _MockTime:
   """Mock time.sleep() and time.time() implementation."""
   _default_start_sec = 0
   _default_time_step = 0.01

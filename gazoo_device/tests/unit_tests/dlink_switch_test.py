@@ -15,10 +15,11 @@
 import subprocess
 from unittest import mock
 
-from gazoo_device import detect_criteria
 from gazoo_device import errors
+from gazoo_device import package_registrar
 from gazoo_device.auxiliary_devices import dlink_switch
 from gazoo_device.capabilities import switch_power_snmp
+from gazoo_device.detect_criteria import snmp_detect_criteria
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.utility import host_utils
 import immutabledict
@@ -44,6 +45,11 @@ _PERSISTENT_PROPERTIES = immutabledict.immutabledict({
 class DLinkSwitchTests(fake_device_test_case.FakeDeviceTestCase):
   """Tests for D-Link switch auxiliary device class."""
 
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(dlink_switch)
+
   def setUp(self):
     super().setUp()
     self.setup_fake_device_requirements("dlink-switch-1234")
@@ -51,7 +57,8 @@ class DLinkSwitchTests(fake_device_test_case.FakeDeviceTestCase):
     self.device_config["persistent"]["model"] = _MODEL
     self.device_config["persistent"]["total_ports"] = _TOTAL_PORTS
     mock.patch.object(
-        detect_criteria, "get_dlink_model_name", return_value=_MODEL).start()
+        snmp_detect_criteria, "get_dlink_model_name",
+        return_value=_MODEL).start()
     self.mock_check_output = mock.patch.object(
         subprocess, "check_output", return_value=_TOTAL_PORTS_RESPONSE).start()
     self.uut = dlink_switch.DLinkSwitch(

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """USB port map utility."""
+from typing import Any
 import weakref
 
 from gazoo_device import errors
@@ -53,7 +54,7 @@ NOT_DISCOVERED_CONFLICT = 'not discovered'
 NOT_DETECTED_CONFLICT = 'not detected'
 
 
-def _initialize_default_device(device):
+def _initialize_default_device(device: dict[str, Any]) -> None:
   """Set values to the default for a device dictionary.
 
   Args:
@@ -89,7 +90,7 @@ def _identify_device(usb_info_inst):
     """
   product = '{}/{}'.format(usb_info_inst.vendor_id, usb_info_inst.product_id)
   device_map_entry = PRODUCT_DEVICE_MAP.get(product)
-  device_data = {}
+  device_data: dict[str, Any] = {}
   _initialize_default_device(device_data)
   if device_map_entry:
     device_data['known_device'] = True
@@ -197,7 +198,7 @@ def _discover_cambrionix_devices(manager, cambrionix_info_list,
       cambrionix_inst.close()
 
 
-class UsbPortMap(object):
+class UsbPortMap:
   """Class for discovering USB information for connected devices, and printing a port-map."""
 
   def __init__(self, manager):
@@ -298,7 +299,8 @@ class UsbPortMap(object):
         logger.info('    {:13} Sync    {}'.format(hub_or_device['Issue'],
                                                   hub_or_device['Discovered']))
 
-  def _get_hub_and_device_information(self, hub):
+  def _get_hub_and_device_information(self,
+                                      hub: dict[str, Any]) -> dict[str, Any]:
     """Get information for all devices connected to a known USB hub.
 
     Args:
@@ -356,7 +358,7 @@ class UsbPortMap(object):
 
     return hub_dict
 
-  def _get_other_device_information(self, device):
+  def _get_other_device_information(self, device: dict[str, Any]):
     """Get the device information for a single device that is not associated with a USB hub.
 
     Args:
@@ -389,7 +391,12 @@ class UsbPortMap(object):
     device_dict['Configured'] = ''
     return device_dict
 
-  def _check_known_devices(self, device, serial_numbers, addresses):
+  def _check_known_devices(
+      self,
+      device: dict[str, Any],
+      serial_numbers: dict[str, Any],
+      addresses: dict[str, Any],
+  ) -> None:
     """Checks if usb connection matches a known device.
 
     Args:
@@ -466,7 +473,7 @@ class UsbPortMap(object):
 
     self.missing_devices = missing_device_info_list
 
-  def _check_for_conflicts(self, gdm_config):
+  def _check_for_conflicts(self, gdm_config: dict[str, Any]) -> None:
     """Use the GDM config for detected devices to add information or look for conflicts.
 
     Args:
@@ -573,8 +580,8 @@ class UsbPortMap(object):
 
     Note:
         This method should be called after _discover_cambrionix_devices.
-        This method uses the the port state in the cambrionix device that is set
-        by _discover_cambrionix_devices.
+        This method uses the port state in the cambrionix device that is set by
+        _discover_cambrionix_devices.
     """
     for cambrionix_info in self.cambrionix_info_list:
       if not cambrionix_info['is_supported_hub']:

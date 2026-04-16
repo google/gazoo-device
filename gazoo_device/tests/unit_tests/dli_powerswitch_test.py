@@ -14,6 +14,7 @@
 """dli_powerswitch.py unit tests."""
 from unittest import mock
 
+from gazoo_device import package_registrar
 from gazoo_device.auxiliary_devices import dli_powerswitch
 from gazoo_device.tests.unit_tests.utils import dli_powerswitch_logs
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
@@ -46,6 +47,11 @@ class _ResponseObject:
 
 class PowerswitchTest(fake_device_test_case.FakeDeviceTestCase):
   """Powerswitch unit test class."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(dli_powerswitch)
 
   def setUp(self):
     super().setUp()
@@ -82,7 +88,7 @@ class PowerswitchTest(fake_device_test_case.FakeDeviceTestCase):
       side_effect=RuntimeError("Failure calling HTTP post"))
   def test_006_write_command_failed_response(self, mock_http_post):
     """Verify exception raised when HTTP POST command returns an error."""
-    with self.assertRaisesRegexp(RuntimeError, "Failure calling HTTP post"):
+    with self.assertRaisesRegex(RuntimeError, "Failure calling HTTP post"):
       self.uut._write_command("POST", "RAISE_EXCEPTION", headers={})
 
   @mock.patch.object(http_utils, "send_http_get", side_effect=_mock_command)

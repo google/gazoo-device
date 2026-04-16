@@ -27,6 +27,26 @@ class ThermostatClusterChipTool(thermostat_base.ThermostatClusterBase):
   """Matter Thermostat cluster capability."""
 
   @decorators.DynamicProperty
+  def absolute_minimum_heat_setpoint_limit(self) -> int:
+    cmd = "abs-min-heat-setpoint-limit"
+    return self._read(self._endpoint_id, _CLUSTER_NAME, cmd)
+
+  @decorators.DynamicProperty
+  def absolute_maximum_heat_setpoint_limit(self) -> int:
+    cmd = "abs-max-heat-setpoint-limit"
+    return self._read(self._endpoint_id, _CLUSTER_NAME, cmd)
+
+  @decorators.DynamicProperty
+  def absolute_minimum_cool_setpoint_limit(self) -> int:
+    cmd = "abs-min-cool-setpoint-limit"
+    return self._read(self._endpoint_id, _CLUSTER_NAME, cmd)
+
+  @decorators.DynamicProperty
+  def absolute_maximum_cool_setpoint_limit(self) -> int:
+    cmd = "abs-max-cool-setpoint-limit"
+    return self._read(self._endpoint_id, _CLUSTER_NAME, cmd)
+
+  @decorators.DynamicProperty
   def local_temperature(self) -> int:
     """The LocalTemperature attribute.
 
@@ -117,3 +137,12 @@ class ThermostatClusterChipTool(thermostat_base.ThermostatClusterBase):
     """
     self._send(self._endpoint_id, _CLUSTER_NAME, "setpoint-raise-lower",
                [mode.value, amount])
+
+  @decorators.CapabilityLogDecorator(logger)
+  def ac_louver_position(
+      self, value: matter_enums.ACLouverPositionEnum
+  ) -> None:
+    """The SetACLouverPosition command to set the AC louver position."""
+    self._send(
+        self._endpoint_id, _CLUSTER_NAME, "ac-louver-position", [value.value]
+    )

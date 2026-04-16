@@ -55,6 +55,14 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
         device_name=_FAKE_DEVICE_NAME,
         switchboard_call=self.switchboard_call_mock,
         rpc_timeout_s=_FAKE_TIMEOUT)
+    self.enter_context(
+        mock.patch.object(
+            pwrpc_common_default,
+            "_AVAILABLE_DISCRIMINATORS",
+            new=[
+                value for value in range(
+                    pwrpc_common_default._MIN_DISCRIMINATOR,
+                    pwrpc_common_default._MAX_DISCRIMINATOR+1)]))
 
   @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "get_device_info")
   def test_get_software_version_on_success(self, mock_get_device_info):
@@ -89,26 +97,27 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.assertEqual(self.uut.fabric_info, list(_FAKE_FABRIC_INFO))
 
   @mock.patch.object(
-      pwrpc_common_default.PwRPCCommonDefault, "wait_for_bootup_complete")
+      pwrpc_common_default.PwRPCCommonDefault, "get_device_state")
+  def test_get_time_since_boot_millis_on_success(self, mock_get_device_state):
+    """Verifies getting time_since_boot_millis on success."""
+    mock_get_device_state.return_value.time_since_boot_millis = 0
+    self.assertEqual(self.uut.time_since_boot_millis, 0)
+
   @mock.patch.object(
-      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
-  def test_reboot_on_success(self, mock_trigger, mock_wait):
+      pwrpc_common_default.PwRPCCommonDefault,
+      "_action_with_bootup_verification")
+  def test_reboot_on_success(self, mock_action_with_bootup_verification):
     """Verifies reboot on success with verify=True."""
     self.uut.reboot()
-
-    mock_trigger.assert_called_once_with(action="Reboot")
-    mock_wait.assert_called_once()
+    mock_action_with_bootup_verification.assert_called_once()
 
   @mock.patch.object(
-      pwrpc_common_default.PwRPCCommonDefault, "wait_for_bootup_complete")
-  @mock.patch.object(
-      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
-  def test_factory_reset_on_success(self, mock_trigger, mock_wait):
+      pwrpc_common_default.PwRPCCommonDefault,
+      "_action_with_bootup_verification")
+  def test_factory_reset_on_success(self, mock_action_with_bootup_verification):
     """Verifies factory-reset on success with verify=True."""
     self.uut.factory_reset()
-
-    mock_trigger.assert_called_once_with(action="FactoryReset")
-    mock_wait.assert_called_once()
+    mock_action_with_bootup_verification.assert_called_once()
 
   @mock.patch.object(
       pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
@@ -229,7 +238,7 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
       pwrpc_common_default.PwRPCCommonDefault,
       "pairing_state", new_callable=mock.PropertyMock(return_value=True))
   def test_start_advertising_noop(
-      self, mock_pairing_state, mock_trigger_device_action):
+      self, unused_mock_pairing_state, mock_trigger_device_action):
     """Verifies start_advertising noop."""
     self.uut.start_advertising()
 
@@ -245,8 +254,8 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
       "is_advertising", new_callable=mock.PropertyMock(return_value=False))
   def test_start_advertising_on_success(
       self,
-      mock_is_advertising,
-      mock_pairing_state,
+      unused_mock_is_advertising,
+      unused_mock_pairing_state,
       mock_trigger_device_action):
     """Verifies start_advertising on success."""
     self.uut.start_advertising()
@@ -260,7 +269,7 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
       pwrpc_common_default.PwRPCCommonDefault,
       "is_advertising", new_callable=mock.PropertyMock(return_value=False))
   def test_stop_advertising_noop(
-      self, mock_is_advertising, mock_trigger_device_action):
+      self, unused_mock_is_advertising, mock_trigger_device_action):
     """Verifies stop_advertising noop."""
     self.uut.stop_advertising()
 
@@ -272,7 +281,7 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
       pwrpc_common_default.PwRPCCommonDefault,
       "is_advertising", new_callable=mock.PropertyMock(return_value=True))
   def test_stop_advertising_on_success(
-      self, mock_is_advertising, mock_trigger_device_action):
+      self, unused_mock_is_advertising, mock_trigger_device_action):
     """Verifies stop_advertising on success."""
     self.uut.stop_advertising()
 
@@ -288,6 +297,55 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     mock_trigger_device_action.assert_called_once_with(
         action="SetOtaMetadataForProvider", tlv=b"tlv_metadata")
 
+  @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "pairing_info")
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault,
+      "_trigger_device_action",
+      return_value=b"",
+  )
+  def test_set_pairing_info_and_start_advertising(
+      self, mock_trigger_device_action, mock_pairing_info):
+    """Verifies set_pairing_info_and_start_advertising on success."""
+    mock_pairing_info.code = 0
+    mock_pairing_info.discriminator = 0
+    mock_pairing_info.qr_code = "fake-QR-code"
+    new_discriminator = self.uut.set_pairing_info_and_start_advertising()
+    self.assertEqual(pwrpc_common_default._MAX_DISCRIMINATOR, new_discriminator)
+    mock_trigger_device_action.assert_has_calls([
+        mock.call(action="GetPairingState"),
+        mock.call(action="SetPairingInfo", code=0,
+                  discriminator=pwrpc_common_default._MAX_DISCRIMINATOR),
+        mock.call(action="GetDeviceState"),
+        mock.call(action="GetPairingState"),
+        mock.call(action="SetPairingState", pairing_enabled=True)])
+
+  @mock.patch.object(pwrpc_common_default.PwRPCCommonDefault, "pairing_info")
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault,
+      "_trigger_device_action",
+      return_value=b"",
+  )
+  def test_set_pairing_info_and_start_advertising_qr_code_empty(
+      self, unused_mock_trigger_device_action, mock_pairing_info):
+    """Verifies set_pairing_info_and_start_advertising qr code empty failure."""
+    mock_pairing_info.code = 0
+    mock_pairing_info.discriminator = 0
+    mock_pairing_info.qr_code = ""
+    with self.assertRaisesRegex(errors.DeviceError, "is empty"):
+      self.uut.set_pairing_info_and_start_advertising()
+
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault,
+      "_trigger_device_action",
+      return_value=b"",
+  )
+  def test_set_pairing_info_and_start_advertising_discriminator_empty(
+      self, unused_mock_trigger_device_action):
+    """Verifies set_pairing_info_and_start_advertising discriminator empty."""
+    pwrpc_common_default._AVAILABLE_DISCRIMINATORS = []
+    with self.assertRaisesRegex(ValueError, "have been used"):
+      self.uut.set_pairing_info_and_start_advertising()
+
   def test_trigger_device_action(self):
     """Verifies _trigger_device_action on success."""
     self.switchboard_call_mock.return_value = _FAKE_PAYLOAD_BYTES
@@ -297,6 +355,66 @@ class PwRPCCommonDefaultTest(fake_device_test_case.FakeDeviceTestCase):
         self.uut._trigger_device_action(action=_FAKE_ACTION))
 
     self.switchboard_call_mock.assert_called_once()
+
+  @parameterized.parameters(("Reboot",), ("FactoryReset",))
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "_trigger_device_action")
+  @mock.patch.object(retry, "retry")
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "time_since_boot_millis")
+  def test_action_with_bootup_verification_success(
+      self,
+      mock_action,
+      unused_mock_time_since_boot_millis,
+      mock_retry,
+      mock_trigger_device_action):
+    """Verifies _action_with_bootup_verification on success."""
+    self.uut._action_with_bootup_verification(mock_action, True, 10)
+    if mock_action == "Reboot":
+      mock_trigger_device_action.assert_called_once_with(
+          action=mock_action, delay_ms=pwrpc_common_default._REBOOT_DELAY_MS)
+    else:
+      mock_trigger_device_action.assert_called_once_with(action=mock_action)
+    mock_retry.assert_called_once()
+
+  @mock.patch.object(
+      retry,
+      "retry",
+      side_effect=errors.CommunicationTimeoutError(_FAKE_ERROR_MESSAGE))
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "wait_for_bootup_complete")
+  @mock.patch.object(
+      pwrpc_common_default.PwRPCCommonDefault, "time_since_boot_millis")
+  def test_action_with_bootup_verification_timeout(
+      self,
+      unused_mock_time_since_boot_millis,
+      unused_mock_wait_for_bootup_complete,
+      unused_mock_retry):
+    """Verifies _action_with_bootup_verification on success."""
+    with self.assertRaisesRegex(
+        errors.DeviceError, "failed reboot verification"):
+      self.uut._action_with_bootup_verification(_FAKE_ACTION, True, 10)
+
+  def test_trigger_icd_checkin_invokes_rpc_call_with_correct_arguments(self):
+    mock_switchboard = mock.create_autospec(
+        switchboard.SwitchboardDefault, instance=True
+    )
+    mock_switchboard_call = mock_switchboard.call
+    uut = pwrpc_common_default.PwRPCCommonDefault(
+        device_name=_FAKE_DEVICE_NAME,
+        switchboard_call=mock_switchboard_call,
+        rpc_timeout_s=12.345,
+        pigweed_port=321,
+    )
+
+    uut.trigger_icd_checkin()
+
+    mock_switchboard_call.assert_called_once_with(
+        method_name="rpc",
+        method_args=("Device", "TriggerIcdCheckin"),
+        method_kwargs={"pw_rpc_timeout_s": 12.345},
+        port=321,
+    )
 
 
 if __name__ == "__main__":

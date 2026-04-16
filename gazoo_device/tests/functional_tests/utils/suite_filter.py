@@ -28,19 +28,17 @@ import inspect
 import json
 import logging
 import os.path
-from typing import Any, Callable, Collection, Dict, List, Mapping, Optional, Sequence, Tuple, Type
+import types
+from typing import Any, Callable, Collection, Mapping, Optional, Sequence
 
 from absl import flags
-from gazoo_device import custom_types
+from gazoo_device import device_types
 from gazoo_device import manager
 from mobly import asserts
 from mobly import config_parser
 from mobly import records
 
 from mobly import base_test
-import gazoo_device
-
-_CONTROLLER_MODULE = gazoo_device
 
 
 class TestLabel(enum.Enum):
@@ -72,15 +70,15 @@ _FLAG_FILES = flags.DEFINE_list(
 
 _FLAG_TESTS = flags.DEFINE_list(
     name="tests", default=None, help="Names of individual tests to run.")
-_TEST_CONFIG_TEMPLATE = "{device_type}_test_config.json"
+_TEST_CONFIG_TEMPLATE = "{device_type}.json"
 _TEST_RETRY_INTERVAL = 30
-DeviceType = custom_types.Device
+DeviceType = device_types.Device
 
 
 class SuiteFilterBase(base_test.BaseTestClass, metaclass=abc.ABCMeta):
   """Base TestCase to use with suite filter functionality."""
   _CONFIG_DIRS = []
-  _CONTROLLER_MODULE = _CONTROLLER_MODULE
+  _controller_module: types.ModuleType = None  # Set by set_controller_module().
 
   def __init__(self, configs: config_parser.TestRunConfig) -> None:
     super().__init__(configs)
@@ -90,8 +88,13 @@ class SuiteFilterBase(base_test.BaseTestClass, metaclass=abc.ABCMeta):
     self.test_config = {}
 
   @classmethod
+  def set_controller_module(cls, controller_module: types.ModuleType) -> None:
+    """Sets the Mobly controller module used by regression test suites."""
+    cls._controller_module = controller_module
+
+  @classmethod
   @abc.abstractmethod
-  def is_applicable_to(cls, device_type: str, device_class: Type[DeviceType],
+  def is_applicable_to(cls, device_type: str, device_class: type[DeviceType],
                        device_name: str) -> bool:
     """Determines if this test suite is applicable to the given device type.
 
@@ -117,18 +120,32 @@ class SuiteFilterBase(base_test.BaseTestClass, metaclass=abc.ABCMeta):
     """Returns True if the device must be paired to run this test suite."""
 
   @classmethod
-  def check_properties_set(cls, device_name: str,
-                           property_list: Collection[str]) -> bool:
-    """Returns True if all of the properties are set."""
+  def check_properties_set(
+      cls, device_name: str, property_list: Sequence[str],
+      property_values: Optional[Sequence[Collection[Any]]] = None) -> bool:
+    """Returns True if all of the properties are set.
+
+    Args:
+      device_name: GDM device name to check properties of.
+      property_list: Property names (keys) to check.
+      property_values: If provided, checks that the property values match these
+        values. If not provided, just checks that the properties are set.
+        Specifying None for a particular property value skips the value check.
+    """
+    property_values = property_values or [None] * len(property_list)
     mgr = manager.Manager()
-    for property_name in property_list:
+    for property_name, property_value in zip(property_list, property_values):
       value = mgr.get_device_prop(device_name, property_name)
-      if value is None or str(value).startswith("Exception"):
-        return False
+      if property_value is None:  # Value not specified.
+        if value is None or str(value).startswith("Exception"):
+          return False
+      else:  # Value specified. Check for equality.
+        if value != property_value:
+          return False
     return True
 
   @classmethod
-  def required_test_config_variables(cls) -> Tuple[str, ...]:
+  def required_test_config_variables(cls) -> tuple[str, ...]:
     """Returns keys required to be present in the functional test config.
 
     Returns:
@@ -156,7 +173,7 @@ class SuiteFilterBase(base_test.BaseTestClass, metaclass=abc.ABCMeta):
       asserts.skip(skip_reason)
 
   def _load_variables(self) -> None:
-    controller_name = self._CONTROLLER_MODULE.MOBLY_CONTROLLER_CONFIG_NAME
+    controller_name = self._controller_module.MOBLY_CONTROLLER_CONFIG_NAME
     self.device_config = self.controller_configs[controller_name][0]
     self.device_name = self.device_config["id"]
     self.device_type = self.device_name.rsplit("-", maxsplit=1)[0]
@@ -183,7 +200,7 @@ class SuiteFilterBase(base_test.BaseTestClass, metaclass=abc.ABCMeta):
     return super().exec_one_test(test_name, test_method, record)
 
 
-SuiteType = Type[SuiteFilterBase]
+SuiteType = type[SuiteFilterBase]
 SuiteCollectionType = Sequence[SuiteType]
 
 
@@ -278,7 +295,7 @@ def _get_skip_reason(test_name: str,
 
 def _expand_test_suite_name_if_necessary(test_suite_name: str,
                                          test_names: Sequence[str],
-                                         test_config: Dict[str, Any]):
+                                         test_config: dict[str, Any]):
   """Replaces the test_suite_name in the test config with the suite's test names.
 
   Args:
@@ -296,7 +313,7 @@ def _expand_test_suite_name_if_necessary(test_suite_name: str,
       test_config[label.value] = label_list + full_test_names
 
 
-def _get_test_names(test_suite: SuiteType) -> List[str]:
+def _get_test_names(test_suite: SuiteType) -> list[str]:
   """Returns a list of all test names in a test suite."""
   return [name
           for name, _ in inspect.getmembers(test_suite, callable)
@@ -330,7 +347,7 @@ def _get_test_suites_from_files_flag(
 
 
 def _get_test_suite_dict_from_tests_flag(
-    test_suites: SuiteCollectionType) -> Dict[SuiteType, Sequence[str]]:
+    test_suites: SuiteCollectionType) -> dict[SuiteType, Sequence[str]]:
   """Creates a dict of the suites and tests specified in the flag."""
   test_cases_suite_dict = collections.OrderedDict()
   suites_by_name = {
@@ -356,7 +373,7 @@ def _get_test_suite_dict_from_tests_flag(
 
 
 def _get_test_config(device_name: str,
-                     config_dirs: Collection[str]) -> Dict[str, Any]:
+                     config_dirs: Collection[str]) -> dict[str, Any]:
   """Loads valid test config and verifies its keys before returning it."""
   device_type = device_name.rsplit("-", maxsplit=1)[0]
   config_file_name = _TEST_CONFIG_TEMPLATE.format(device_type=device_type)
@@ -364,7 +381,7 @@ def _get_test_config(device_name: str,
 
 
 def _load_test_config(config_file_name: str,
-                      config_dirs: Collection[str]) -> Dict[str, Any]:
+                      config_dirs: Collection[str]) -> dict[str, Any]:
   """Loads and returns the test config as a dictionary."""
   config_path = os.path.join(config_dirs[0], config_file_name)
   if not os.path.exists(config_path):

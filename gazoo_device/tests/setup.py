@@ -13,12 +13,10 @@
 # limitations under the License.
 
 """Setup script for GDM's test package."""
-from typing import List
-
 import setuptools
 
 
-def get_packages() -> List[str]:
+def get_packages() -> list[str]:
   """Returns subpackages to include in this package."""
   base_package = "gazoo_device.tests"
   sub_packages = [base_package + "." + sub_package

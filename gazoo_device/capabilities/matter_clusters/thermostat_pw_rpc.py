@@ -44,6 +44,17 @@ class ThermostatClusterPwRpc(thermostat_base.ThermostatClusterBase):
         attribute_type=INT16S_ATTRIBUTE_TYPE)
     return temperature_data.data_int16
 
+  @local_temperature.setter
+  def local_temperature(self, value: int) -> None:
+    """Updates the LocalTemperature attribute with new value."""
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster_id=ThermostatCluster.ID,
+        attribute_id=ThermostatCluster.ATTRIBUTE_LOCAL_TEMPERATURE,
+        attribute_type=INT16S_ATTRIBUTE_TYPE,
+        data_int16=value,
+    )
+
   @decorators.DynamicProperty
   def occupied_cooling_setpoint(self) -> int:
     """The OccupiedCoolingSetpoint attribute.
@@ -68,6 +79,29 @@ class ThermostatClusterPwRpc(thermostat_base.ThermostatClusterBase):
         attribute_id=ThermostatCluster.ATTRIBUTE_OCCUPIED_COOLING_SETPOINT,
         attribute_type=INT16S_ATTRIBUTE_TYPE,
         data_int16=value)
+
+  @decorators.DynamicProperty
+  def occupancy(self) -> str:
+    """The Occupancy attribute."""
+    occupancy_data = self._read(
+        endpoint_id=self._endpoint_id,
+        cluster_id=ThermostatCluster.ID,
+        attribute_id=ThermostatCluster.ATTRIBUTE_OCCUPANCY,
+        attribute_type=attributes_service_pb2.AttributeType.ZCL_BITMAP8_ATTRIBUTE_TYPE,
+    )
+    # The returned data only has tlv_data data field.
+    return occupancy_data.tlv_data
+
+  @occupancy.setter
+  def occupancy(self, value: int) -> None:
+    """Updates the Occupancy attribute with new value."""
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster_id=ThermostatCluster.ID,
+        attribute_id=ThermostatCluster.ATTRIBUTE_OCCUPANCY,
+        attribute_type=attributes_service_pb2.AttributeType.ZCL_BITMAP8_ATTRIBUTE_TYPE,
+        data_uint8=value,  # The bitmap is 0 (unoccupied) or 1 (occupied).
+    )
 
   @decorators.DynamicProperty
   def occupied_heating_setpoint(self) -> int:
@@ -166,3 +200,16 @@ class ThermostatClusterPwRpc(thermostat_base.ThermostatClusterBase):
     else:
       self.occupied_heating_setpoint = self.occupied_heating_setpoint + delta
       self.occupied_cooling_setpoint = self.occupied_cooling_setpoint + delta
+
+  @decorators.CapabilityLogDecorator(logger)
+  def ac_louver_position(
+      self, value: matter_enums.ACLouverPositionEnum
+  ) -> None:
+    """The SetACLouverPosition command to set the AC louver position."""
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster_id=ThermostatCluster.ID,
+        attribute_id=ThermostatCluster.ATTRIBUTE_AC_LOUVER_POSITION,
+        attribute_type=ENUM8_ATTRIBUTE_TYPE,
+        data_uint8=value.value,
+    )

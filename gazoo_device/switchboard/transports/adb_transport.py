@@ -14,7 +14,7 @@
 
 """ADB transport which communicates to the device over a process running 'adb shell'."""
 import time
-from typing import Sequence
+from typing import Optional, Sequence
 
 from gazoo_device.switchboard.transports import process_transport
 from gazoo_device.utility import adb_utils
@@ -26,34 +26,33 @@ class AdbTransport(process_transport.ProcessTransport):
   """Perform transport communication using the adb executable to some device."""
 
   def __init__(self,
-               comms_address,
+               comms_address: str,
                command: Sequence[str] = ("shell",),
-               adb_path=None,
-               fastboot_path=None,
-               auto_reopen=True,
-               open_on_start=True):
-    """Initialize the AdbTransport object with the given properties.
+               adb_path: Optional[str] = None,
+               fastboot_path: Optional[str] = None,
+               auto_reopen: bool = True,
+               open_on_start: bool = True):
+    """Initializes the AdbTransport object with the given properties.
 
     Args:
-        comms_address (str): device adb_serial to use when connecting to
-          device
-        command: additional commands to pass to device
-        adb_path (str): optional path to adb executable to use
-        fastboot_path (str): optional path to fastboot executable to use
-        auto_reopen (bool): flag indicating transport should be reopened if
-          unexpectedly closed.
-        open_on_start (bool): flag indicating transport should be open on
-          TransportProcess start.
+        comms_address: Device ADB identifier, a serial number ("abcde123") or an
+            IP address and a port number ("12.34.56.78:5555").
+        command: Command args to pass to 'adb'.
+        adb_path: Optional path to adb executable to use.
+        fastboot_path: Optional path to fastboot executable to use.
+        auto_reopen: Flag indicating transport should be reopened if
+            unexpectedly closed.
+        open_on_start: Flag indicating transport should be open on
+            TransportProcess start.
     """
-    self.comms_address = comms_address
     if adb_path is None:
       adb_path = adb_utils.get_adb_path()
     if fastboot_path is None:
       fastboot_path = adb_utils.get_fastboot_path()
-    args_list = ["-s", comms_address, *command]
-    super(AdbTransport, self).__init__(
+    super().__init__(
+        comms_address=comms_address,
         command=adb_path,
-        args=args_list,
+        args=["-s", comms_address, *command],
         auto_reopen=auto_reopen,
         open_on_start=open_on_start)
     self._adb_path = adb_path

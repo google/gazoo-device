@@ -31,7 +31,6 @@ _ECHO_MESSAGE = "My message to be echoed"
 _EXIT_TIMEOUT = 1
 _EXCEPTION_MESSAGE = "Test exception handler"
 _EXCEPTION_TIMEOUT = 3
-_MULTIPROCESSING_EVENT = multiprocessing_utils.get_context().Event()
 
 wait_for_queue_writes = switchboard_process.wait_for_queue_writes
 
@@ -59,6 +58,11 @@ class RunningProcess(switchboard_process.SwitchboardProcess):
 
 class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
   """Tests Switchboard Process."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    cls.multiprocessing_event = multiprocessing_utils.get_context().Event()
 
   def setUp(self):
     super().setUp()
@@ -137,9 +141,9 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
   @mock.patch.object(psutil, "Process", autospec=True)
   def test_020_switchboard_process_loop_pre_run_hook_returns_false(
       self, mock_psutil_proc):
-    mock_start_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
-    mock_stop_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
-    mock_terminate_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
+    mock_start_event = MagicMock(spec=self.multiprocessing_event)
+    mock_stop_event = MagicMock(spec=self.multiprocessing_event)
+    mock_terminate_event = MagicMock(spec=self.multiprocessing_event)
 
     mock_switchboard_process = MagicMock(
         spec=switchboard_process.SwitchboardProcess)
@@ -174,9 +178,9 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
   def test_021_switchboard_process_loop_parent_is_zombie(self,
                                                          mock_psutil_proc):
     """Process loop exits on parent process in zombie status."""
-    mock_start_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
-    mock_stop_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
-    mock_terminate_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
+    mock_start_event = MagicMock(spec=self.multiprocessing_event)
+    mock_stop_event = MagicMock(spec=self.multiprocessing_event)
+    mock_terminate_event = MagicMock(spec=self.multiprocessing_event)
 
     mock_switchboard_process = MagicMock(
         spec=switchboard_process.SwitchboardProcess)
@@ -214,9 +218,9 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
   def test_022_switchboard_process_loop_parent_is_killed(self,
                                                          mock_psutil_proc):
     """Process loop exits on parent process is killed."""
-    mock_start_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
-    mock_stop_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
-    mock_terminate_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
+    mock_start_event = MagicMock(spec=self.multiprocessing_event)
+    mock_stop_event = MagicMock(spec=self.multiprocessing_event)
+    mock_terminate_event = MagicMock(spec=self.multiprocessing_event)
 
     mock_switchboard_process = MagicMock(
         spec=switchboard_process.SwitchboardProcess)
@@ -254,9 +258,9 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
   def test_023_switchboard_process_loop_terminates_on_signal(self,
                                                              mock_psutil_proc):
     """Process loop exits on terminate_event signal."""
-    mock_start_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
-    mock_stop_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
-    mock_terminate_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
+    mock_start_event = MagicMock(spec=self.multiprocessing_event)
+    mock_stop_event = MagicMock(spec=self.multiprocessing_event)
+    mock_terminate_event = MagicMock(spec=self.multiprocessing_event)
 
     mock_switchboard_process = MagicMock(
         spec=switchboard_process.SwitchboardProcess)
@@ -294,9 +298,9 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
   def test_024_switchboard_process_loop_calls_do_work_once(self,
                                                            mock_psutil_proc):
     """Process loop calls _do_work at least once."""
-    mock_start_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
-    mock_stop_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
-    mock_terminate_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
+    mock_start_event = MagicMock(spec=self.multiprocessing_event)
+    mock_stop_event = MagicMock(spec=self.multiprocessing_event)
+    mock_terminate_event = MagicMock(spec=self.multiprocessing_event)
 
     mock_switchboard_process = MagicMock(
         spec=switchboard_process.SwitchboardProcess)
@@ -335,9 +339,9 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
   def test_025_switchboard_process_loop_manager_shutdown(self,
                                                          mock_psutil_proc):
     """Process loop manager in parent process shutdown."""
-    mock_start_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
-    mock_stop_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
-    mock_terminate_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
+    mock_start_event = MagicMock(spec=self.multiprocessing_event)
+    mock_stop_event = MagicMock(spec=self.multiprocessing_event)
+    mock_terminate_event = MagicMock(spec=self.multiprocessing_event)
 
     mock_switchboard_process = MagicMock(
         spec=switchboard_process.SwitchboardProcess)
@@ -376,9 +380,9 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
   def test_026_switchboard_process_loop_start_event_set_exception(
       self, mock_psutil_proc):
     """Process loop manager in parent process shutdown."""
-    mock_start_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
-    mock_stop_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
-    mock_terminate_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
+    mock_start_event = MagicMock(spec=self.multiprocessing_event)
+    mock_stop_event = MagicMock(spec=self.multiprocessing_event)
+    mock_terminate_event = MagicMock(spec=self.multiprocessing_event)
 
     mock_switchboard_process = MagicMock(
         spec=switchboard_process.SwitchboardProcess)
@@ -637,7 +641,7 @@ class SwitchboardProcessTests(unit_test_case.MultiprocessingTestCase):
     self.uut = switchboard_process.SwitchboardProcess(
         "fake_device", "some_process", self.exception_queue,
         self.command_queue, self.artifacts_directory)
-    self.uut._start_event = MagicMock(spec=_MULTIPROCESSING_EVENT)
+    self.uut._start_event = MagicMock(spec=self.multiprocessing_event)
     self.uut._start_event.wait.return_value = False
     with self.assertRaisesRegex(RuntimeError, "Start event was not set"):
       self.uut.wait_for_start()

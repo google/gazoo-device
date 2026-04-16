@@ -83,3 +83,13 @@ class ThermostatClusterBase(cluster_base.ClusterBase, metaclass=abc.ABCMeta):
       amount: The amount (possibly negative) that should be added to the
         setpoint(s), in steps of 0.1°C
     """
+
+  @abc.abstractmethod
+  def ac_louver_position(
+      self, value: matter_enums.ACLouverPositionEnum
+  ) -> None:
+    """The SetACLouverPosition command to set the AC louver position.
+
+    Args:
+      value: The value to set the AC louver position to.
+    """

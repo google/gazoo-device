@@ -17,7 +17,7 @@ from gazoo_device import decorators
 from gazoo_device.capabilities.interfaces import capability_base
 from gazoo_device.tests.unit_tests.utils import fake_devices
 from gazoo_device.utility import common_utils
-from immutabledict import immutabledict
+import immutabledict
 
 VALID_CAPABILITY_NAME = "some_valid_capability"
 OTHER_VALID_CAPABILITY_NAME = "some_other_valid_capability"
@@ -86,24 +86,24 @@ _SUPPORTED_INTERFACES = (
     NonConformingCapabilityInterfaceNameNoOverride
 )
 
-SUPPORTED_INTERFACES = immutabledict({
+SUPPORTED_INTERFACES = immutabledict.immutabledict({
     get_interface_name(interface): interface
     for interface in _SUPPORTED_INTERFACES
 })
 
 # Note: NonConformingCapabilityInterfaceNameNoOverride is intentionally
 # excluded. Generating a name for it should raise an error.
-CAPABILITIES = immutabledict({
+CAPABILITIES = immutabledict.immutabledict({
     VALID_CAPABILITY_NAME:
-        get_interface_name(ValidCapabilityBase),
+        {get_interface_name(ValidCapabilityBase)},
     OTHER_VALID_CAPABILITY_NAME:
-        get_interface_name(ValidOtherCapabilityBase),
+        {get_interface_name(ValidOtherCapabilityBase)},
     NONCONFORMING_CAPABILITY_NAME:
-        get_interface_name(NonConformingCapabilityInterfaceNameWithOverride),
+        {get_interface_name(NonConformingCapabilityInterfaceNameWithOverride)},
     PARENT_CAPABILITY_NAME:
-        get_interface_name(ValidParentCapabilityBase),
+        {get_interface_name(ValidParentCapabilityBase)},
     CHILD_CAPABILITY_NAME:
-        get_interface_name(ValidChildCapabilityBase)
+        {get_interface_name(ValidChildCapabilityBase)},
 })
 
 
@@ -152,7 +152,7 @@ _SUPPORTED_FLAVORS = (
     ValidChildCapabilityFlavor, NonConformingInterfaceNameFlavor
 )
 
-SUPPORTED_FLAVORS = immutabledict({
+SUPPORTED_FLAVORS = immutabledict.immutabledict({
     get_flavor_name(flavor): flavor for flavor in _SUPPORTED_FLAVORS
 })
 

@@ -25,7 +25,7 @@ Switchboard implementation resides in gazoo_device/switchboard/switchboard.py.
 """
 import abc
 from collections.abc import Mapping
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Protocol, Union
 
 from gazoo_device import config
 from gazoo_device.capabilities.interfaces import capability_base
@@ -37,6 +37,28 @@ MODE_TYPE_ALL = "all"
 MODE_TYPE_ANY = "any"
 MODE_TYPE_SEQUENTIAL = "sequential"
 VERIFY_METHOD_MD5SUM = "md5sum"
+
+
+class ButtonInterface(Protocol):
+  """Interface for buttons."""
+
+  def close(self):
+    """Release any held buttons on close."""
+
+  def is_valid(self, button: str) -> bool:
+    """Return True if button specified is in the list of valid buttons."""
+
+  def press(self, button: str, wait: float = 0.0) -> None:
+    """Presses button and waits for the time specified."""
+
+  def click(self, button: str, duration: float = .5) -> None:
+    """Presses the button specified and holds it for the specified duration."""
+
+  def release(self, button: str) -> None:
+    """Releases the button specified if it was previously pressed."""
+
+  def valid_buttons(self) -> list[str]:
+    """Returns a list of valid button names."""
 
 
 class SwitchboardBase(capability_base.CapabilityBase):
@@ -67,6 +89,25 @@ class SwitchboardBase(capability_base.CapabilityBase):
           event file to query for relevant events.
   """
 
+  def __init__(
+      self,
+      device_name: str,
+      log_path: str,
+      button_list: Optional[list[ButtonInterface]] = None,
+  ):
+    """Initializes Switchboard attributes.
+
+    Args:
+      device_name: Name of the device.
+      log_path: Path where device log files should be written.
+      button_list: Button type classes to use to click, press, release,
+        is_valid, valid_buttons, and close methods defined for button
+        instigation, button name verification and listing, and closing.
+    """
+    super().__init__(device_name=device_name)
+    self.log_path = log_path
+    self.button_list = button_list
+
   @abc.abstractmethod
   def add_log_note(self, note: str) -> None:
     """Adds given note to device log file.
@@ -90,8 +131,8 @@ class SwitchboardBase(capability_base.CapabilityBase):
   @abc.abstractmethod
   def call(self,
            method_name: str,
-           method_args: Tuple[Any, ...] = (),
-           method_kwargs: Optional[Dict[str, Any]] = None,
+           method_args: tuple[Any, ...] = (),
+           method_kwargs: Optional[dict[str, Any]] = None,
            port: int = 0) -> Any:
     """Calls a transport method in a transport process and returns the response.
 
@@ -116,16 +157,16 @@ class SwitchboardBase(capability_base.CapabilityBase):
   def call_and_expect(
       self,
       method_name: str,
-      pattern_list: List[str],
+      pattern_list: list[str],
       timeout: float = 30.0,
       searchwindowsize: int = config.SEARCHWINDOWSIZE,
       expect_type: str = line_identifier.LINE_TYPE_ALL,
       mode: str = MODE_TYPE_ANY,
-      method_args: Tuple[Any, ...] = (),
-      method_kwargs: Optional[Dict[str, Any]] = None,
+      method_args: tuple[Any, ...] = (),
+      method_kwargs: Optional[dict[str, Any]] = None,
       port: int = 0,
       raise_for_timeout: bool = False
-  ) -> Tuple[expect_response.ExpectResponse, Any]:
+  ) -> tuple[expect_response.ExpectResponse, Any]:
     """Calls a transport method and expects on the patterns provided.
 
     Args:
@@ -166,7 +207,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
   def click_and_expect(
       self,
       button: str,
-      pattern_list: List[str],
+      pattern_list: list[str],
       duration: float = 0.5,
       timeout: float = 30.0,
       searchwindowsize: int = config.SEARCHWINDOWSIZE,
@@ -245,15 +286,15 @@ class SwitchboardBase(capability_base.CapabilityBase):
   def do_and_expect(
       self,
       func: Callable[..., Any],
-      func_args: Union[List[Any], Tuple[Any, ...]],
+      func_args: Union[list[Any], tuple[Any, ...]],
       func_kwargs: Mapping[str, Any],
-      pattern_list: List[str],
+      pattern_list: list[str],
       timeout: float = 30.0,
       searchwindowsize: int = config.SEARCHWINDOWSIZE,
       expect_type: str = line_identifier.LINE_TYPE_ALL,
       mode: str = MODE_TYPE_ANY,
       raise_for_timeout: bool = False
-  )-> Union[Tuple[expect_response.ExpectResponse, Any],
+  )-> Union[tuple[expect_response.ExpectResponse, Any],
             expect_response.ExpectResponse]:
     """Executes function with given args, blocks until expect matches or timeout occurs.
 
@@ -295,41 +336,13 @@ class SwitchboardBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def echo_file_to_transport(self,
-                             source_file: str,
-                             destination_path: str,
-                             port: int = 0,
-                             bytes_per_echo: int = 50) -> None:
-    r"""Transfers file to transport specified using echo commands.
-
-    Args:
-        source_file (path): to the file to transfer
-        destination_path (path): to transfer file to on device
-        port (int or str): the transport port to open
-        bytes_per_echo (int): call to use during file transfer
-
-    Raises:
-        DeviceError: If source_file doesn't exist, can't be opened, or
-                     the port or bytes_per_echo values are invalid or
-                     out of range.
-
-    Note:
-        The caller is responsible for preparing the device to receive
-        multiple echo commands to receive the file and only calling this
-        method for devices that support the following commands::
-
-            echo -ne > <destination_path>
-            echo -ne "\\x{:02x}" >> <destination_path>
-    """
-
-  @abc.abstractmethod
   def ensure_serial_paths_unlocked(self,
-                                   communication_addresses: List[str]) -> None:
+                                   communication_addresses: list[str]) -> None:
     """Ensures serial paths are longer locked by switchboard process after device is closed."""
 
   @abc.abstractmethod
   def expect(self,
-             pattern_list: List[str],
+             pattern_list: list[str],
              timeout: float = 30.0,
              searchwindowsize: int = config.SEARCHWINDOWSIZE,
              expect_type: str = line_identifier.LINE_TYPE_ALL,
@@ -415,7 +428,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
   def press_and_expect(
       self,
       button: str,
-      pattern_list: List[str],
+      pattern_list: list[str],
       wait: float = 0.0,
       timeout: float = 30.0,
       searchwindowsize: int = config.SEARCHWINDOWSIZE,
@@ -473,7 +486,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
   @abc.abstractmethod
   def release_and_expect(self,
                          button: str,
-                         pattern_list: List[str],
+                         pattern_list: list[str],
                          timeout: float = 30.0,
                          searchwindowsize: int = config.SEARCHWINDOWSIZE,
                          expect_type: str = line_identifier.LINE_TYPE_ALL,
@@ -540,7 +553,7 @@ class SwitchboardBase(capability_base.CapabilityBase):
   def send_and_expect(
       self,
       command: str,
-      pattern_list: List[str],
+      pattern_list: list[str],
       timeout: float = 30.0,
       searchwindowsize: int = config.SEARCHWINDOWSIZE,
       expect_type: str = line_identifier.LINE_TYPE_ALL,

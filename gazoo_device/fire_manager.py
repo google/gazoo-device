@@ -29,7 +29,7 @@ import re
 import sys
 import textwrap
 import time
-from typing import Any, Collection, List, Mapping, Optional, Sequence, Tuple, Type
+from typing import Any, Collection, Mapping, Optional, Sequence
 
 from gazoo_device import config
 from gazoo_device import console
@@ -38,6 +38,7 @@ from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device import manager
 from gazoo_device import package_registrar
+from gazoo_device import usb_port_map
 from gazoo_device.utility import parallel_utils
 from gazoo_device.utility import usb_utils
 
@@ -70,10 +71,10 @@ _FORMAT_DIC = "\t\t\t  {:25s} {!r}"
 
 
 def _log_man_warning_for_multiple_flavors(
-    capability_classes: Collection[Type[Any]],
+    capability_classes: Collection[type[Any]],
     capability_name: str,
     device_type: str,
-    capability_class: Type[Any]) -> None:
+    capability_class: type[Any]) -> None:
   """Logs 'gdm man' warning when multiple capability flavors are available.
 
   Args:
@@ -96,7 +97,7 @@ def _log_man_warning_for_multiple_flavors(
 
 def _run_device_action(
     manager_inst: manager.Manager, device_name: str, full_attribute_name: str,
-    method_args: Tuple[Any, ...], method_kwargs: Mapping[str, Any]) -> Any:
+    method_args: tuple[Any, ...], method_kwargs: Mapping[str, Any]) -> Any:
   """Returns the result of a device method call or a property."""
   device = manager_inst.create_device(device_name)
   attribute = device
@@ -167,7 +168,7 @@ class FireManager(manager.Manager):
                                 make_device_ready=make_device_ready)
 
     try:
-      if not device.has_capabilities(["switchboard"]):
+      if not hasattr(type(device), "switchboard"):
         raise NotImplementedError(
             f"{device.name} does not have a Switchboard capability, which is "
             "required for the console.")
@@ -359,7 +360,7 @@ class FireManager(manager.Manager):
                     attribute_name: str,
                     *method_args: Any,
                     timeout: float = parallel_utils.TIMEOUT_PROCESS,
-                    **method_kwargs: Any) -> List[Any]:
+                    **method_kwargs: Any) -> list[Any]:
     """Executes a device method or property in parallel for multiple devices.
 
     For example: 'gdm issue-devices device-1234,device-3456 reboot'.
@@ -384,7 +385,7 @@ class FireManager(manager.Manager):
                         attribute_name: str,
                         *method_args: Any,
                         timeout: float = parallel_utils.TIMEOUT_PROCESS,
-                        **method_kwargs: Any) -> List[Any]:
+                        **method_kwargs: Any) -> list[Any]:
     """Executes a device method or property in parallel for connected devices.
 
     For example: 'gdm issue-devices-all reboot --no_wait=True'.
@@ -413,7 +414,7 @@ class FireManager(manager.Manager):
                           attribute_name: str,
                           *method_args: Any,
                           timeout: float = parallel_utils.TIMEOUT_PROCESS,
-                          **method_kwargs: Any) -> List[Any]:
+                          **method_kwargs: Any) -> list[Any]:
     """Executes a device method or property in parallel for matching devices.
 
     For example: 'gdm issue-devices-match raspberrypi* reboot --no_wait=True'.
@@ -567,6 +568,10 @@ class FireManager(manager.Manager):
               device_class, class_attr_name, capability_attr_name,
               capability_attr_description, capability_attribute)
 
+  def port_map(self) -> None:
+    """Prints the USB Port Map."""
+    usb_port_map.UsbPortMap(self).print_port_map()
+
   def print_usb_info(self):
     """Prints the usb_info dictionary in a human readable form."""
     values = usb_utils.get_address_to_usb_info_dict().values()
@@ -670,8 +675,8 @@ class FireManager(manager.Manager):
                      devices: Sequence[str],
                      attribute_name: str,
                      timeout: float,
-                     method_args: Tuple[Any, ...],
-                     method_kwargs: Mapping[str, Any]) -> List[Any]:
+                     method_args: tuple[Any, ...],
+                     method_kwargs: Mapping[str, Any]) -> list[Any]:
     """Executes a device method in parallel on multiple devices.
 
     Args:
@@ -694,7 +699,7 @@ class FireManager(manager.Manager):
 
   @classmethod
   def _man_capability_attribute(cls,
-                                device_class: Type[Any],
+                                device_class: type[Any],
                                 capability_name: str,
                                 capability_attr_name: str,
                                 description: str,
@@ -720,7 +725,7 @@ class FireManager(manager.Manager):
 
   @classmethod
   def _man_class_attribute(cls,
-                           device_class: Type[Any],
+                           device_class: type[Any],
                            class_attr_name: str,
                            description: str,
                            attribute: Any) -> None:
@@ -743,7 +748,7 @@ class FireManager(manager.Manager):
   @classmethod
   def _man_device(cls,
                   device_type: str,
-                  device_class: Type[Any],
+                  device_class: type[Any],
                   deprecated: bool) -> None:
     """Prints supported device features.
 
@@ -827,8 +832,6 @@ class FireManager(manager.Manager):
     else:
       template = textwrap.dedent("""
         Manual for device type '{device_type}' (class {device_class})
-
-        Owned (maintained) by {device_class._OWNER_EMAIL}
 
         Supported capabilities:
         {capabilities}

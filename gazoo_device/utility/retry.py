@@ -13,10 +13,15 @@
 # limitations under the License.
 
 """Function call retry utility."""
+import itertools
+import logging
 import time
-from typing import Any, Callable, Mapping, Optional, Sequence, Type, TypeVar
+from typing import Any, Callable, Mapping, Optional, Sequence, TypeVar
 
 from gazoo_device import errors
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _default_is_successful(_: Any) -> bool:
@@ -44,7 +49,9 @@ def retry(
     timeout: float = 10,
     interval: float = 1,
     reraise: bool = True,
-    exc_type: Type[Exception] = errors.CommunicationTimeoutError
+    exc_type: type[Exception] = errors.CommunicationTimeoutError,
+    logger: logging.Logger = _LOGGER,
+    log_prefix: str = "[RETRY]",
 ) -> _FuncReturnT:
   """Retries func() until it succeeds or timeout is reached.
 
@@ -65,14 +72,16 @@ def retry(
       func() a failure if an Exception is raised. is_successful() will NOT be
       called if an Exception occurs.
     exc_type: Type of exception to raise when timeout is reached. Note that the
-    class constructor will be called with just 1 argument.
+      class constructor will be called with just 1 argument.
+    logger: Logger to use for logging attempt failures at DEBUG level.
+    log_prefix: String to prefix to the log message (e.g., "[WIFI]").
 
   Returns:
     Return value of first successful func() call.
 
   Raises:
     Exception: if timeout is reached, or if an Exception occurs in func() with
-    reraise=True.
+      reraise=True.
   """
   if func_kwargs is None:
     func_kwargs = {}
@@ -97,12 +106,33 @@ def retry(
     if not exception_occurred and is_successful(func_result):
       return func_result
 
+    logger.debug(
+        "%s Attempt %d (%.1fs elapsed) of %s(%s, %s) failed with %s: %r",
+        log_prefix,
+        tried_times,
+        time.time() - start_time,
+        getattr(func, "__name__", repr(func)),
+        func_args,
+        func_kwargs,
+        "exception" if exception_occurred else "result",
+        func_result,
+    )
+
     time.sleep(interval)
     func_results.append(repr(func_result))
 
   time_elapsed = time.time() - start_time
-  func_summary = "\n".join([f"{seq+1}: {func_result}"
-                            for seq, func_result in enumerate(func_results)])
+  func_result_lines = []
+  seq = 1
+  for func_result, func_result_group in itertools.groupby(func_results):
+    func_result_group_size = len(list(func_result_group))
+    if func_result_group_size == 1:
+      result_seq = "{:3}     ".format(seq)
+    else:
+      result_seq = "{:3}..{:3}".format(seq, seq+func_result_group_size-1)
+    func_result_lines.append(f"{result_seq}: {func_result}")
+    seq += func_result_group_size
+  func_summary = "\n".join(func_result_lines)
   raise exc_type(f"Timeout in {time_elapsed}s. Tried calling {func.__name__} "
                  f"{tried_times} times with a {interval}-second interval. "
                  f"Call results:\n{func_summary}.")
