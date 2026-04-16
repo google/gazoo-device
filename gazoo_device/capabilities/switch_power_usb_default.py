@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Implementation of the switch_power_usb_default capability."""
-from typing import Any, Callable, Dict
+from typing import Any, Callable
 
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -34,8 +34,8 @@ class SwitchPowerUsbDefault(switch_power_base.SwitchPowerBase):
   def __init__(self,
                shell_fn: Callable[..., Any],
                regex_shell_fn: Callable[..., Any],
-               command_dict: Dict[str, str],
-               regex_dict: Dict[str, str],
+               command_dict: dict[str, str],
+               regex_dict: dict[str, str],
                device_name: str,
                serial_number: str,
                total_ports: int):

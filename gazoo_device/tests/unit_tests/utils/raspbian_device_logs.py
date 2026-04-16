@@ -21,7 +21,7 @@ make_device_responses = ssh_device_logs.make_device_responses
 
 _RESPONSES = ({
     "cmd": "cat /proc/device-tree/model",
-    "resp": "Raspberry Pi 3 Model B Rev 1.1",
+    "resp": "Raspberry Pi 3 Model B Rev 1.2\x00",
     "code": 0,
 }, {
     "cmd": "cat /etc/os-release",
@@ -110,6 +110,10 @@ _RESPONSES = ({
     "resp": "wlan0",
     "code": 0,
 }, {
+    "cmd": "whoami",
+    "resp": "pi",
+    "code": 0,
+}, {
     "cmd": "ip address show wlan0",
     "resp": """
         3: wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast
@@ -130,4 +134,11 @@ _RESPONSES = ({
     "code": 0,
 })
 
+_THREAD_RESPONSES = ({
+    "cmd": "sudo ot-ctl reset",
+    "resp": "Done",
+    "code": 0,
+},)
+
 DEFAULT_BEHAVIOR = ssh_device_logs.make_device_responses(_RESPONSES)
+THREAD_BEHAVIOR = ssh_device_logs.make_device_responses(_THREAD_RESPONSES)

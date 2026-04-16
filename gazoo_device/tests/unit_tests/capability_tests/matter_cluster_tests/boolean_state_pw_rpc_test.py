@@ -15,56 +15,60 @@
 """Matter cluster unit test for boolean_state_pw_rpc module."""
 from unittest import mock
 
-import gazoo_device
-from gazoo_device import errors
+from absl.testing import parameterized
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities.matter_clusters import boolean_state_pw_rpc
-from gazoo_device.tests.unit_tests.utils import fake_device_test_case
+from gazoo_device.tests.unit_tests.utils import unit_test_case
 
-_BOOLEAN_STATE_RPC_MODULE = (
-    gazoo_device.capabilities.matter_clusters.boolean_state_pw_rpc
-    .BooleanStateClusterPwRpc)
 _FAKE_DEVICE_NAME = "fake-device-name"
 _FAKE_ENDPOINT_ID = 1
 _FAKE_DATA = True
 
 
-class BooleanStateClusterPwRpcTest(
-    fake_device_test_case.FakeDeviceTestCase):
+class BooleanStateClusterPwRpcTest(unit_test_case.UnitTestCase):
   """Unit test for BooleanStateClusterPwRpc."""
 
   def setUp(self):
     super().setUp()
-    self.fake_read = mock.Mock(
-        spec=matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc.read)
-    self.fake_write = mock.Mock(spec=matter_endpoints_accessor_pw_rpc
-                                .MatterEndpointsAccessorPwRpc.write)
+    self.mock_endpoint_accessor = mock.create_autospec(
+        matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc,
+        instance=True,
+    )
     self.uut = boolean_state_pw_rpc.BooleanStateClusterPwRpc(
         device_name=_FAKE_DEVICE_NAME,
         endpoint_id=_FAKE_ENDPOINT_ID,
-        read=self.fake_read,
-        write=self.fake_write)
+        read=self.mock_endpoint_accessor.read,
+        write=self.mock_endpoint_accessor.write,
+        send=self.mock_endpoint_accessor.send,
+    )
 
   def test_state_value(self):
     """Verifies the state_value attribute on success."""
-    self.fake_read.return_value = mock.Mock(data_bool=_FAKE_DATA)
+    self.mock_endpoint_accessor.read.return_value = mock.Mock(
+        data_bool=_FAKE_DATA
+    )
     self.assertEqual(_FAKE_DATA, self.uut.state_value)
 
-  def test_set_state_value_success(self):
+  @parameterized.named_parameters(
+      dict(
+          testcase_name="when_set_to_true",
+          target_state_value=True,
+      ),
+      dict(
+          testcase_name="when_set_to_false",
+          target_state_value=False,
+      ),
+  )
+  def test_set_state_value_success(self, target_state_value):
     """Verifies update state_value on success."""
-    self.fake_read.return_value = mock.Mock(data_bool=_FAKE_DATA)
-    self.uut.state_value = _FAKE_DATA
-    self.fake_write.assert_called_once()
-
-  def test_set_state_value_failure_incorrect_state(self):
-    """Verifies update state_value method on failure."""
-    error_regex = (
-        f"Device {_FAKE_DEVICE_NAME} state_value didn't change to "
-        f"False from True.")
-    self.fake_read.return_value = mock.Mock(data_bool=_FAKE_DATA)
-    with self.assertRaisesRegex(errors.DeviceError, error_regex):
-      self.uut.state_value = False
+    self.uut.state_value = target_state_value
+    self.mock_endpoint_accessor.send.assert_called_once_with(
+        service_name="BooleanState",
+        rpc_name="Set",
+        endpoint_id=1,
+        state_value=target_state_value,
+    )
 
 
 if __name__ == "__main__":
-  fake_device_test_case.main()
+  unit_test_case.main()

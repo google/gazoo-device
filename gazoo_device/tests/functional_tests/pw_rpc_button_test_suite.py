@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test suite for devices using the pw_rpc_button capability."""
-from typing import Type
 from gazoo_device import errors
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
@@ -30,7 +29,7 @@ class PwRPCButtonTestSuite(gdm_test_base.GDMTestBase):
 
   @classmethod
   def is_applicable_to(cls, device_type: str,
-                       device_class: Type[gdm_test_base.DeviceType],
+                       device_class: type[gdm_test_base.DeviceType],
                        device_name: str) -> bool:
     """Determines if this test suite can run on the given device."""
     return device_class.has_capabilities(["pw_rpc_button"])

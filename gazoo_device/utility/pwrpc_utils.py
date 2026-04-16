@@ -23,7 +23,6 @@ from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import matter_endpoints_base
 from gazoo_device.capabilities.interfaces import switchboard_base
 from gazoo_device.protos import descriptor_service_pb2
-from gazoo_device.switchboard.transports import pigweed_rpc_transport
 
 _ProtobufTypeVar = TypeVar("_ProtobufTypeVar")
 _DESCRIPTOR_SERVICE_NAME = "Descriptor"
@@ -33,6 +32,7 @@ _RPC_TIMEOUT_SEC = 1
 # Matter linux app controller recognizes the device with the specific app name.
 MATTER_LINUX_APP_NAME = "matter-linux-app"
 MATTER_LINUX_APP_DEFAULT_PORT = 33000
+RPC_METHOD_NAME = "rpc"  # Pigweed RPC method name for switchboard call
 
 logger = gdm_logger.get_logger()
 
@@ -101,7 +101,7 @@ def is_matter_device(
     for _ in range(_DETECT_RETRY):
       try:
         switchboard.call(
-            method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
+            method_name=RPC_METHOD_NAME,
             method_args=method_args,
             method_kwargs=method_kwargs)
         is_matter = True

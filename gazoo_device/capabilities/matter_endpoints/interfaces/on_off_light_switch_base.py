@@ -22,17 +22,20 @@ class OnOffLightSwitchBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter On/Off light switch endpoint interface."""
 
   DEVICE_TYPE_ID = 0x0103
+  DEVICE_TYPE_NAME = "OnOffLightSwitch"
 
   @property
   @abc.abstractmethod
   def on_off(self) -> on_off_base.OnOffClusterBase:
     """Required cluster: ZCL on_off cluster."""
 
-  # TODO(b/209362086) Add the below clusters
-  # @abc.abstractproperty
+  # TODO(gdm-authors) Add the below clusters
+  # @property
+  # @abc.abstractmethod
   # def scenes(self) -> None:
   #   """Required cluster: ZCL scenes cluster."""
 
-  # @abc.abstractproperty
+  # @property
+  # @abc.abstractmethod
   # def groups(self) -> None:
   #   """Required cluster: ZCL groups cluster."""

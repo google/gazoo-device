@@ -28,7 +28,7 @@ import logging
 import logging.handlers
 import os
 import sys
-from typing import List
+from typing import Optional
 
 from gazoo_device import config
 from gazoo_device import multiprocess_logging
@@ -77,9 +77,9 @@ def flush_queue_messages():
     _logging_thread.sync()
 
 
-def get_handlers() -> List[logging.Handler]:
+def get_handlers() -> list[logging.Handler]:
   """Returns the list of active logging handlers."""
-  if is_multiprocess_logging_enabled():
+  if _logging_thread:
     return _logging_thread.handlers
   else:
     return get_logger().handlers
@@ -90,7 +90,7 @@ def get_logging_queue():
   return _logging_queue
 
 
-def get_logger(component_name=None):
+def get_logger(component_name: Optional[str] = None) -> logging.Logger:
   """Returns a Logger that inherits from (or is) the top-level GDM Logger.
 
   Differs from usual getLogger in that the name given is appended to the name
@@ -106,9 +106,9 @@ def get_logger(component_name=None):
       logging.Logger: main logger or sub logger.
   """
   if component_name is not None:
-    name = '.'.join(['gazoo_device_manager', component_name])
+    name = '.'.join([config.LOGGER_NAME, component_name])
   else:
-    name = 'gazoo_device_manager'
+    name = config.LOGGER_NAME
 
   return logging.getLogger(name)
 

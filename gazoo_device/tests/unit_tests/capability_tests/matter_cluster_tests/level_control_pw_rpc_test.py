@@ -15,15 +15,11 @@
 """Matter cluster capability unit test for level_control_pw_rpc module."""
 from unittest import mock
 
-import gazoo_device
 from gazoo_device import errors
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities.matter_clusters import level_control_pw_rpc
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
-_LEVEL_CONTROL_RPC_MODULE = (
-    gazoo_device.capabilities.matter_clusters.level_control_pw_rpc.
-    LevelControlClusterPwRpc)
 _FAKE_DEVICE_NAME = "fake-device-name"
 _FAKE_ENDPOINT_ID = 1
 _FAKE_LEVEL = 100
@@ -46,7 +42,7 @@ class LevelControlClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
         write=self.fake_write)
 
   @mock.patch.object(
-      _LEVEL_CONTROL_RPC_MODULE,
+      level_control_pw_rpc.LevelControlClusterPwRpc,
       "current_level",
       new_callable=mock.PropertyMock(return_value=_FAKE_LEVEL))
   def test_move_to_level_on_success(self, mock_current_level):
@@ -56,7 +52,7 @@ class LevelControlClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
     self.fake_write.assert_called_once()
 
   @mock.patch.object(
-      _LEVEL_CONTROL_RPC_MODULE,
+      level_control_pw_rpc.LevelControlClusterPwRpc,
       "current_level",
       new_callable=mock.PropertyMock(return_value=0))
   def test_move_to_level_on_failure_incorrect_level(self, mock_current_level):
@@ -77,3 +73,7 @@ class LevelControlClusterPwRpcTest(fake_device_test_case.FakeDeviceTestCase):
   def test_max_level_method(self):
     """Verifies max_level method on success."""
     self.assertEqual(_FAKE_LEVEL, self.uut.max_level)
+
+
+if __name__ == "__main__":
+  fake_device_test_case.main()

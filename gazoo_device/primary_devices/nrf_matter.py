@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,23 +17,30 @@
 This device controller populates the supported Matter endpoints on the NRF
 platform by using the descriptor RPC service.
 """
+from typing import Any
+
 from gazoo_device import decorators
-from gazoo_device import detect_criteria
 from gazoo_device import gdm_logger
+from gazoo_device import mobly_controller
+from gazoo_device import version
 from gazoo_device.base_classes import matter_device_base
 from gazoo_device.capabilities import flash_build_nrfjprog
 from gazoo_device.capabilities.interfaces import matter_controller_base
+from gazoo_device.capabilities.matter_clusters.interfaces import measurement_base
+from gazoo_device.capabilities.matter_clusters.interfaces import switch_base
+from gazoo_device.detect_criteria import pigweed_detect_criteria
+import immutabledict
 
 logger = gdm_logger.get_logger()
 
 
 class NrfMatter(matter_device_base.MatterDeviceBase):
   """NRF Matter device controller."""
-  DETECT_MATCH_CRITERIA = {
-      detect_criteria.PigweedQuery.IS_MATTER: True,
-      detect_criteria.PigweedQuery.MANUFACTURER_NAME: "segger",
-      detect_criteria.PigweedQuery.PRODUCT_NAME: "j-link",
-  }
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
+      pigweed_detect_criteria.PigweedQuery.IS_MATTER: True,
+      pigweed_detect_criteria.PigweedQuery.MANUFACTURER_NAME: "segger",
+      pigweed_detect_criteria.PigweedQuery.PRODUCT_NAME: "j-link",
+  })
   # Button definition on Nordic dev board:
   # https://github.com/project-chip/connectedhomeip/tree/master/examples/lighting-app/nrfconnect#device-ui
   VALID_BUTTON_IDS = (0, 1, 2, 3)
@@ -61,5 +68,36 @@ class NrfMatter(matter_device_base.MatterDeviceBase):
         serial_number=self.serial_number,
         reset_endpoints_fn=self.matter_endpoints.reset,
         switchboard=self.switchboard,
-        wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
-        power_cycle_fn=self.device_power.cycle)
+        wait_for_bootup_complete_fn=self.wait_for_bootup_complete)
+
+
+_DeviceClass = NrfMatter
+_COMMUNICATION_TYPE = _DeviceClass.COMMUNICATION_TYPE.__name__
+# For Mobly controller integration.
+MOBLY_CONTROLLER_CONFIG_NAME = (
+    mobly_controller.get_mobly_controller_config_name(_DeviceClass.DEVICE_TYPE))
+create = mobly_controller.create
+destroy = mobly_controller.destroy
+get_info = mobly_controller.get_info
+get_manager = mobly_controller.get_manager
+
+
+def export_extensions() -> dict[str, Any]:
+  """Exports device class and capabilities to act as a GDM extension package."""
+  return {
+      "primary_devices": [_DeviceClass],
+      "detect_criteria": immutabledict.immutabledict({
+          _COMMUNICATION_TYPE: pigweed_detect_criteria.PIGWEED_QUERY_DICT,
+      }),
+      "capability_interfaces": [
+          # Overrides for the implicit export logic.
+          # MeasurementClusterBase is an interface. It is not abstract and
+          # defines public attributes, so the implicit export logic considers
+          # it a flavor by default.
+          # This is to resolve b/322915885.
+          measurement_base.MeasurementClusterBase,
+          switch_base.SwitchClusterBase,
+      ],
+  }
+
+__version__ = version.VERSION

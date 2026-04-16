@@ -13,14 +13,20 @@
 # limitations under the License.
 
 """Mixin for file_transfer capability."""
-import builtins
 import glob
 import os
 from unittest import mock
 
+from absl.testing import parameterized
 from gazoo_device import errors
+from gazoo_device.base_classes import auxiliary_device
+from gazoo_device.base_classes import gazoo_device_base
+from gazoo_device.capabilities import event_parser_default
+from gazoo_device.tests.unit_tests.utils import unit_test_loader
 from gazoo_device.utility import adb_utils
 from gazoo_device.utility import host_utils
+
+load_tests = unit_test_loader.load_no_tests
 
 
 def _any_methods_called(methods):
@@ -53,7 +59,7 @@ class MockMethods:
       patcher.stop()
 
 
-class TestFileTransfer:
+class TestFileTransfer(parameterized.TestCase):
   """Mixin for common device unit tests  of send and recv files.
 
   Assumes self.uut is set.
@@ -73,7 +79,12 @@ class TestFileTransfer:
         self.assertTrue(mock_exists.called)
       self.assertFalse(_any_methods_called(self._recv_methods))
 
-  def test_receive_file_from_device_def_destination_path(self):
+  @mock.patch.object(
+      gazoo_device_base.GazooDeviceBase, "log_file_name", autospec=True)
+  @mock.patch.object(
+      auxiliary_device.AuxiliaryDevice, "log_file_name", autospec=True)
+  def test_receive_file_from_device_def_destination_path(
+      self, unused_log_file_name_mock, unused_log_file_name_aux_mock):
     """Verify receive_from_device skips path check for default destination path."""
     self._setup_mocks()
     sources = "/path/to/some/file"
@@ -82,7 +93,9 @@ class TestFileTransfer:
         self.uut.file_transfer.recv_file_from_device(sources)
       self.assertTrue(_any_methods_called(self._recv_methods))
 
-  def test_receive_file_from_device_bad_pull(self):
+  @mock.patch.object(
+      event_parser_default.EventParserDefault, "load_filters", autospec=True)
+  def test_receive_file_from_device_bad_pull(self, unused_load_filters_mock):
     """Verify receive_from_device raises error when file doesn't exist."""
     self._setup_mocks()
     source = "/path/to/some/file"
@@ -109,7 +122,12 @@ class TestFileTransfer:
 
       self.assertFalse(_any_methods_called(self._send_methods))
 
-  def test_send_file_to_device_def_destination_path(self):
+  @mock.patch.object(
+      gazoo_device_base.GazooDeviceBase, "log_file_name", autospec=True)
+  @mock.patch.object(
+      auxiliary_device.AuxiliaryDevice, "log_file_name", autospec=True)
+  def test_send_file_to_device_def_destination_path(
+      self, unused_log_file_name_mock, unused_log_file_name_aux_mock):
     """Verify send_to_device skips path check for default destination path."""
     self._setup_mocks()
     sources = "/path/to/some/file"
@@ -120,7 +138,12 @@ class TestFileTransfer:
           self.uut.file_transfer.send_file_to_device(sources, destination)
       self.assertTrue(_any_methods_called(self._send_methods))
 
-  def test_send_file_to_device_error_path(self):
+  @mock.patch.object(
+      gazoo_device_base.GazooDeviceBase, "log_file_name", autospec=True)
+  @mock.patch.object(
+      auxiliary_device.AuxiliaryDevice, "log_file_name", autospec=True)
+  def test_send_file_to_device_error_path(
+      self, unused_log_file_name_mock, unused_log_file_name_aux_mock):
     """Verify send_to_device raises DeviceError if send fails."""
     self._setup_mocks()
     sources = "/path/to/some/file"
@@ -133,7 +156,12 @@ class TestFileTransfer:
             self.uut.file_transfer.send_file_to_device(sources, destination)
       self.assertTrue(_any_methods_called(self._send_methods))
 
-  def test_send_file_to_device_fails(self):
+  @mock.patch.object(
+      gazoo_device_base.GazooDeviceBase, "log_file_name", autospec=True)
+  @mock.patch.object(
+      auxiliary_device.AuxiliaryDevice, "log_file_name", autospec=True)
+  def test_send_file_to_device_fails(
+      self, unused_log_file_name_mock, unused_log_file_name_aux_mock):
     """Verify receive_from_device skips path check for default destination path."""
     self._setup_mocks()
     sources = "/path/to/some/file"
@@ -146,17 +174,11 @@ class TestFileTransfer:
   def _setup_mocks(self):
     self._recv_methods = [
         (host_utils, "scp_from_device", "incoming_file", None),
-        (host_utils, "docker_cp_from_device", "incoming_file", None),
         (adb_utils, "is_adb_mode", True, RuntimeError("x", "y")),
-        (adb_utils, "pull_from_device", "incoming_file", None),
-        (builtins, "open", None, None)
+        (adb_utils, "pull_from_device", "incoming_file", None)
     ]
     self._send_methods = [
         (host_utils, "scp_to_device", "outgoing_file", RuntimeError("x", "y")),
-        (host_utils, "docker_cp_to_device", "outgoing_file",
-         RuntimeError("x", "y")),
         (adb_utils, "is_adb_mode", True, RuntimeError("x", "y")),
-        (adb_utils, "push_to_device", "outgoing_file", RuntimeError("x", "y")),
-        (self.uut.switchboard, "echo_file_to_transport", None,
-         RuntimeError("x", "y"))
+        (adb_utils, "push_to_device", "outgoing_file", RuntimeError("x", "y"))
     ]

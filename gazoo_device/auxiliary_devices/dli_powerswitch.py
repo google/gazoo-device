@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,19 +13,24 @@
 # limitations under the License.
 
 """Digital Loggers Web Power Switch."""
-from typing import Callable, List
+from typing import Any, Callable
+
 from gazoo_device import console_config
 from gazoo_device import decorators
-from gazoo_device import detect_criteria
 from gazoo_device import gdm_logger
-from gazoo_device.base_classes import auxiliary_device
+from gazoo_device import mobly_controller
+from gazoo_device import version
+from gazoo_device.base_classes import auxiliary_power_hub_device
 from gazoo_device.capabilities import embedded_script_dli_powerswitch
 from gazoo_device.capabilities import switch_power_dli_powerswitch
+from gazoo_device.detect_criteria import ssh_detect_criteria
 from gazoo_device.switchboard import log_process
 from gazoo_device.switchboard import switchboard
+from gazoo_device.switchboard.communication_types import ssh_comms
 from gazoo_device.utility import deprecation_utils
 from gazoo_device.utility import host_utils
 from gazoo_device.utility import http_utils
+import immutabledict
 import requests
 
 logger = gdm_logger.get_logger()
@@ -62,15 +67,15 @@ COMMANDS = {
 REGEXES = {"COMMAND_RESPONSE": ["[", '"', "]"]}
 
 
-class DliPowerSwitch(auxiliary_device.AuxiliaryDevice):
+class DliPowerSwitch(auxiliary_power_hub_device.AuxiliaryPowerHubDevice):
   """Device class for a DLI Power Switch."""
-  COMMUNICATION_TYPE = "SshComms"
-  DETECT_MATCH_CRITERIA = {detect_criteria.SshQuery.IS_DLI: True}
+  COMMUNICATION_TYPE = ssh_comms.SshComms
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
+      ssh_detect_criteria.SshQuery.IS_DLI: True})
   DEVICE_TYPE = "powerswitch"
   _MODEL = "LPC9"
   _NUMBER_OF_PORTS = 8
   _VALID_RETURN_CODES = [200, 206, 207]
-  _OWNER_EMAIL = "gdm-authors@google.com"
 
   def __init__(self,
                manager,
@@ -139,7 +144,7 @@ class DliPowerSwitch(auxiliary_device.AuxiliaryDevice):
         device_name=self.name)
 
   @decorators.PersistentProperty
-  def health_checks(self) -> List[Callable[[], None]]:
+  def health_checks(self) -> list[Callable[[], None]]:
     """Returns list of methods to execute as health checks."""
     return [self.check_device_connected]
 
@@ -181,13 +186,13 @@ class DliPowerSwitch(auxiliary_device.AuxiliaryDevice):
     switchboard_name = self._get_private_capability_name(
         switchboard.SwitchboardDefault)
     if not hasattr(self, switchboard_name):
-      switchboard_kwargs = self._COMMUNICATION_KWARGS.copy()
-      switchboard_kwargs.update({
+      switchboard_kwargs = {
+          **self._COMMUNICATION_KWARGS,
           "communication_address": self.communication_address,
-          "communication_type": self.COMMUNICATION_TYPE,
+          "communication_type": self.COMMUNICATION_TYPE.__name__,
           "log_path": self.log_file_name,
           "device_name": self.name,
-          "event_parser": None})
+          "event_parser": None}
       setattr(self, switchboard_name,
               self.get_manager().create_switchboard(**switchboard_kwargs))
 
@@ -198,7 +203,7 @@ class DliPowerSwitch(auxiliary_device.AuxiliaryDevice):
 
     Args:
         method (str): Method of HTTP request. Choices: "GET", "POST".
-        url (str): HTTP formated command to send to the device.
+        url (str): HTTP formatted command to send to the device.
         headers (dict): Headers required for the HTTP request.
         data (dict): Data that is needed for the HTTP POST Request
         json_data (object): JSON data that is needed for the HTTP POST Request
@@ -280,3 +285,26 @@ deprecation_utils.add_deprecated_attributes(
      ("expect", "switchboard.expect", True),
      ("send", "switchboard.send", True),
      ("send_and_expect", "switchboard.send_and_expect", True)])
+
+
+_DeviceClass = DliPowerSwitch
+_COMMUNICATION_TYPE = _DeviceClass.COMMUNICATION_TYPE.__name__
+# For Mobly controller integration.
+MOBLY_CONTROLLER_CONFIG_NAME = (
+    mobly_controller.get_mobly_controller_config_name(_DeviceClass.DEVICE_TYPE))
+create = mobly_controller.create
+destroy = mobly_controller.destroy
+get_info = mobly_controller.get_info
+get_manager = mobly_controller.get_manager
+
+
+def export_extensions() -> dict[str, Any]:
+  """Exports device class and capabilities to act as a GDM extension package."""
+  return {
+      "auxiliary_devices": [_DeviceClass],
+      "detect_criteria": immutabledict.immutabledict({
+          _COMMUNICATION_TYPE: ssh_detect_criteria.SSH_QUERY_DICT,
+      }),
+  }
+
+__version__ = version.VERSION

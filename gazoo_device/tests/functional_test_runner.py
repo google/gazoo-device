@@ -21,8 +21,7 @@ from typing import Optional, Sequence
 
 from absl import app
 from absl import flags
-import gazoo_device
-from gazoo_device.tests.functional_tests import functional_test_runner_lib
+from gazoo_device.tests import functional_test_runner_lib
 from gazoo_device.tests.functional_tests.utils import suite_filter
 from mobly import config_parser
 from mobly import suite_runner
@@ -46,8 +45,10 @@ def _reorder_test_suites(
 def _get_device_name(config_path: str) -> str:
   """Extracts the device name from the Mobly config."""
   config = config_parser.load_test_config_file(config_path)[0]
-  controller_name = gazoo_device.MOBLY_CONTROLLER_CONFIG_NAME
-  return config.controller_configs[controller_name][0]["id"]
+  # mobly_controller.py names GDM Mobly controllers "gdm_<device_type>".
+  gdm_controller_names = [
+      key for key in config.controller_configs.keys() if key.startswith("gdm_")]
+  return config.controller_configs[gdm_controller_names[0]][0]["id"]
 
 
 def _run_tests(argv: Optional[Sequence[str]] = None) -> None:

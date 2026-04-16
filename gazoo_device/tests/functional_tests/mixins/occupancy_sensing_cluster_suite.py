@@ -14,6 +14,7 @@
 
 """Mixin for Matter Occupancy Sensing cluster test suite."""
 from gazoo_device.capabilities import matter_enums
+from gazoo_device.capabilities.matter_clusters import occupancy_sensing_chip_tool
 from mobly import asserts
 
 _CLUSTER_NAME = "occupancy_sensing"
@@ -39,7 +40,12 @@ class OccupancySensingClusterTestSuite:
 
   def test_occupancy_attribute_setter(self):
     """Tests updating Occupancy attribute."""
-    if self.endpoint.has_clusters([_CLUSTER_NAME]):
+    # Skip testing as chip-tool does not support writing to a read-only
+    # attribute.
+    if self.endpoint.has_clusters([_CLUSTER_NAME]) and not isinstance(
+        self.endpoint.occupancy_sensing,
+        occupancy_sensing_chip_tool.OccupancySensingClusterChipTool,
+    ):
       self.endpoint.occupancy_sensing.occupancy = _OCCUPIED
       self.endpoint.occupancy_sensing.occupancy = _UNOCCUPIED
     else:

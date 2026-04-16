@@ -14,7 +14,7 @@
 
 """Shell capability interface."""
 import abc
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 from gazoo_device import config
 from gazoo_device.capabilities.interfaces import capability_base
@@ -62,7 +62,7 @@ class ShellBase(capability_base.CapabilityBase):
       port: int = 0,
       include_return_code: bool = False,
       searchwindowsize: int = config.SEARCHWINDOWSIZE
-  ) -> Union[str, Tuple[str, int]]:
+  ) -> Union[str, tuple[str, int]]:
     """Sends command and returns response and optionally return code.
 
     If the SSH connection fails, the command is retried (up to a total of

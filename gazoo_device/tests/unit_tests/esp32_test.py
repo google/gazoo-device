@@ -16,6 +16,7 @@
 import unittest
 from unittest import mock
 
+from gazoo_device import package_registrar
 from gazoo_device.auxiliary_devices import esp32
 from gazoo_device.base_classes import espressif_esp32_device
 from gazoo_device.capabilities import flash_build_esptool
@@ -35,6 +36,11 @@ _ESP32_PERSISTENT_PROPERTIES = immutabledict.immutabledict({
 
 class ESP32DeviceTests(fake_device_test_case.FakeDeviceTestCase):
   """Unit tests for base class ESP32."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(esp32)
 
   def setUp(self):
     super().setUp()

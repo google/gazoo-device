@@ -15,8 +15,13 @@
 """Mixin for device_power capability."""
 from unittest import mock
 
+from absl.testing import parameterized
+from gazoo_device.tests.unit_tests.utils import unit_test_loader
 
-class DevicePowerTestMixin:
+load_tests = unit_test_loader.load_no_tests
+
+
+class DevicePowerTestMixin(parameterized.TestCase):
   """Mixin for common device unit tests of device power.
 
   Assumes self.uut is set.

@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 """Matter device base class for all vendor platforms."""
 import os
-from typing import Callable, Dict, List, NoReturn, Optional, Tuple
+from typing import Callable, NoReturn, Optional
 
 from gazoo_device import console_config
 from gazoo_device import custom_types
@@ -27,17 +27,20 @@ from gazoo_device.capabilities import device_power_default
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities import pwrpc_button_default
 from gazoo_device.capabilities import pwrpc_common_default
-
+from gazoo_device.capabilities import pwrpc_event_subscription_default
 from gazoo_device.protos import attributes_service_pb2
+from gazoo_device.protos import boolean_state_service_pb2
 from gazoo_device.protos import button_service_pb2
 from gazoo_device.protos import descriptor_service_pb2
 from gazoo_device.protos import device_service_pb2
 from gazoo_device.protos import wifi_service_pb2
+from gazoo_device.switchboard.communication_types import pigweed_serial_comms
 from gazoo_device.utility import usb_utils
+import immutabledict
 
 logger = gdm_logger.get_logger()
 BAUDRATE = 115200
-_RPC_TIMEOUT = 5  # seconds
+_RPC_TIMEOUT = 7  # seconds
 _DEFAULT_BOOTUP_TIMEOUT_SECONDS = 30
 _CONNECTION_TIMEOUT_SECONDS = 10
 _REBOOT_METHODS = ("pw_rpc", "soft", "hard")
@@ -47,21 +50,22 @@ class MatterDeviceBase(
     gazoo_device_base.GazooDeviceBase,
     matter_endpoints_mixin.MatterEndpointAliasesMixin):
   """Matter device base class."""
-  COMMUNICATION_TYPE = "PigweedSerialComms"
-  _OWNER_EMAIL = "gdm-authors@google.com"
-  _COMMUNICATION_KWARGS = {"protobufs": (attributes_service_pb2,
-                                         button_service_pb2,
-                                         descriptor_service_pb2,
-                                         device_service_pb2,
-                                         wifi_service_pb2),
-                           "baudrate": BAUDRATE}
+  COMMUNICATION_TYPE = pigweed_serial_comms.PigweedSerialComms
+  _COMMUNICATION_KWARGS = immutabledict.immutabledict({
+      "protobufs": (attributes_service_pb2,
+                    boolean_state_service_pb2,
+                    button_service_pb2,
+                    descriptor_service_pb2,
+                    device_service_pb2,
+                    wifi_service_pb2),
+      "baudrate": BAUDRATE})
   # Should be overridden in the derived platform classes which support button
   # RPCs.
   VALID_BUTTON_IDS = ()
 
   # Default pigweed transport port number. For Matter dev board controllers,
   # the port number should be 0. RPi Matter controller should be 2 which is
-  # overriden in the device class.
+  # overridden in the device class.
   _PIGWEED_PORT = 0
 
   def __init__(self,
@@ -81,7 +85,7 @@ class MatterDeviceBase(
     return console_config.get_log_only_configuration()
 
   @decorators.LogDecorator(logger)
-  def get_detection_info(self) -> Tuple[Dict[str, str], Dict[str, str]]:
+  def get_detection_info(self) -> tuple[dict[str, str], dict[str, str]]:
     """Gets the persistent and optional attributes of a device during setup.
 
     Returns:
@@ -97,7 +101,7 @@ class MatterDeviceBase(
     return persistent_dict, {}
 
   @decorators.PersistentProperty
-  def health_checks(self) -> List[Callable[[], None]]:
+  def health_checks(self) -> list[Callable[[], None]]:
     """Returns list of methods to execute as health checks."""
     return [
         self.check_power_cycling_ready,
@@ -110,14 +114,29 @@ class MatterDeviceBase(
   @decorators.health_check
   def check_rpc_working(self) -> None:
     """Checks if the RPC is working."""
-    try:
-      self.matter_endpoints.reset()
-      self.matter_endpoints.list()
-    except errors.DeviceError as e:
-      # b/242914961: For Matter devices, errors cannot be raised otherwise the
-      # device cannot be created and will get quarantined if a bad build is
-      # flashed.
-      logger.warning("%s is not responding to RPC: %r", self.name, e)
+    for attempt in range(2):
+      try:
+        self.matter_endpoints.reset()
+        self.matter_endpoints.list()
+        return
+      except errors.DeviceError as e:
+        # b/242914961: For Matter devices, errors cannot be raised otherwise the
+        # device cannot be created and will get quarantined if a bad build is
+        # flashed.
+        logger.warning("%s is not responding to RPC: %r", self.name, e)
+        # Try power cycling the device if it's connected to Cambrionix.
+        # b/262795401#comment21, power cycling boards recovers them from PwRPC
+        # unresponsiveness.
+        if attempt == 0 and self.device_power.healthy:
+          logger.info(
+              "%s power cycling to recover from RPC unresponsiveness",
+              self.name)
+          self.device_power.cycle()
+        else:
+          logger.warning(
+              "%s wasn't able to recover from RPC unresponsiveness",
+              self.name)
+          return
 
   @decorators.health_check
   def check_power_on(self) -> None:
@@ -136,6 +155,24 @@ class MatterDeviceBase(
     """Firmware version of the device."""
     return self.pw_rpc_common.software_version
 
+  @decorators.DynamicProperty
+  def firmware_type(self) -> str:
+    """Endpoint name of the device."""
+    # Endpoint 0 is the root node endpoint which describes itself and the other
+    # endpoints that make up the node. Each endpoint with ID 1 or higher houses
+    # a specific Matter device type (see:
+    # https://github.com/google/gazoo-device/blob/master/docs/Matter_endpoints.md?cl=head#matter-endpoint).
+    # Since current limitations allow only one Matter sample app image to be
+    # flashed onto a Matter device at a time, each Matter device will have
+    # exactly two endpoints, endpoints 0 and 1. Hence, to retrieve the name of
+    # the Matter device type on a Matter device, we use endpoint 1.
+    endpoint_class, _ = (
+        self.matter_endpoints.get_endpoint_class_and_device_type_id(1)
+    )
+    # Matter device types:
+    # https://project-chip.github.io/connectedhomeip-spec/device_library.html#_application_device_types
+    return endpoint_class.DEVICE_TYPE_NAME
+
   @decorators.PersistentProperty
   def device_usb_hub_name(self) -> Optional[str]:
     """The name of the USB hub for the device or None if not configured."""
@@ -145,6 +182,16 @@ class MatterDeviceBase(
   def device_usb_port(self) -> Optional[str]:
     """The port number on the USB hub or None if not configured."""
     return self.props["persistent_identifiers"].get("device_usb_port", None)
+
+  @decorators.OptionalProperty
+  def comm_power_hub_name(self) -> Optional[str]:
+    """The GDM name of the comm power hub if configured."""
+    return self.props["optional"].get("comm_power_hub_name")
+
+  @decorators.OptionalProperty
+  def comm_power_port(self) -> Optional[str]:
+    """The port number on the comm power hub if configured."""
+    return self.props["optional"].get("comm_power_port")
 
   @decorators.DynamicProperty
   def pairing_code(self) -> int:
@@ -258,6 +305,17 @@ class MatterDeviceBase(
         pigweed_port=self._PIGWEED_PORT)
 
   @decorators.CapabilityDecorator(
+      pwrpc_event_subscription_default.PwRpcEventSubscriptionDefault)
+  def pw_rpc_event_subscription(
+      self) -> pwrpc_event_subscription_default.PwRpcEventSubscriptionDefault:
+    """PwRpcEventSubscription capability."""
+    return self.lazy_init(
+        pwrpc_event_subscription_default.PwRpcEventSubscriptionDefault,
+        device_name=self.name,
+        switchboard_call=self.switchboard.call,
+        rpc_timeout_s=_RPC_TIMEOUT)
+
+  @decorators.CapabilityDecorator(
       matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc)
   def matter_endpoints(
       self) -> matter_endpoints_accessor_pw_rpc.MatterEndpointsAccessorPwRpc:
@@ -272,15 +330,21 @@ class MatterDeviceBase(
   @decorators.CapabilityDecorator(device_power_default.DevicePowerDefault)
   def device_power(self) -> device_power_default.DevicePowerDefault:
     """Capability to manipulate device power through Cambrionix."""
+    hub_name_prop = "device_usb_hub_name"
+    port_prop = "device_usb_port"
+    if self.comm_power_hub_name is not None:
+      hub_name_prop = "comm_power_hub_name"
+      port_prop = "comm_power_port"
+
     return self.lazy_init(
         device_power_default.DevicePowerDefault,
         device_name=self.name,
-        create_device_func=self.get_manager().create_device,
+        get_manager=self.get_manager,
         default_hub_type="cambrionix",
         props=self.props,
         usb_ports_discovered=True,
         get_switchboard_if_initialized=self._get_switchboard_if_initialized,
         wait_until_connected_fn=self.wait_until_connected,
         wait_for_bootup_complete_fn=self.wait_for_bootup_complete,
-        usb_hub_name_prop="device_usb_hub_name",
-        usb_port_prop="device_usb_port")
+        usb_hub_name_prop=hub_name_prop,
+        usb_port_prop=port_prop)

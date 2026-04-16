@@ -13,8 +13,13 @@
 # limitations under the License.
 
 """EFR32 dev board device class."""
-from gazoo_device import detect_criteria
+from typing import Any
+
+from gazoo_device import mobly_controller
+from gazoo_device import version
 from gazoo_device.base_classes import silabs_efr32_device
+from gazoo_device.detect_criteria import pigweed_detect_criteria
+import immutabledict
 
 
 class EFR32(silabs_efr32_device.SilabsEFR32Device):
@@ -24,11 +29,33 @@ class EFR32(silabs_efr32_device.SilabsEFR32Device):
   CHIP-compliant device, see more details in
   https://www.silabs.com/documents/public/user-guides/ug342-brd4170a-user-guide.pdf
   """
-  DETECT_MATCH_CRITERIA = {
-      detect_criteria.PigweedQuery.IS_MATTER: False,
-      detect_criteria.PigweedQuery.MANUFACTURER_NAME: r"silicon(_| )labs",
-      detect_criteria.PigweedQuery.PRODUCT_NAME: "j-link",
-  }
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
+      pigweed_detect_criteria.PigweedQuery.IS_MATTER: False,
+      pigweed_detect_criteria.PigweedQuery.MANUFACTURER_NAME:
+          r"silicon(_| )labs",
+      pigweed_detect_criteria.PigweedQuery.PRODUCT_NAME: "j-link",
+  })
   DEVICE_TYPE = "efr32"
-  _OWNER_EMAIL = "gdm-authors@google.com"
 
+
+_DeviceClass = EFR32
+_COMMUNICATION_TYPE = _DeviceClass.COMMUNICATION_TYPE.__name__
+# For Mobly controller integration.
+MOBLY_CONTROLLER_CONFIG_NAME = (
+    mobly_controller.get_mobly_controller_config_name(_DeviceClass.DEVICE_TYPE))
+create = mobly_controller.create
+destroy = mobly_controller.destroy
+get_info = mobly_controller.get_info
+get_manager = mobly_controller.get_manager
+
+
+def export_extensions() -> dict[str, Any]:
+  """Exports device class and capabilities to act as a GDM extension package."""
+  return {
+      "auxiliary_devices": [_DeviceClass],
+      "detect_criteria": immutabledict.immutabledict({
+          _COMMUNICATION_TYPE: pigweed_detect_criteria.PIGWEED_QUERY_DICT,
+      }),
+  }
+
+__version__ = version.VERSION

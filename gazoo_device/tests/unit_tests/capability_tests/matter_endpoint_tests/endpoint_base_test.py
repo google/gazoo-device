@@ -16,10 +16,12 @@
 from unittest import mock
 
 from gazoo_device import errors
+from gazoo_device import package_registrar
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
 from gazoo_device.protos import attributes_service_pb2
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
+from gazoo_device.tests.unit_tests.utils import matter_device_base_stub
 
 _FAKE_CLUSTER_NAME = "on_off_cluster"
 _FAKE_DEVICE_NAME = "fake-device-name"
@@ -30,6 +32,16 @@ _FAKE_RPC_TIMEOUT_S = 0
 
 class EndpointBaseTest(fake_device_test_case.FakeDeviceTestCase):
   """Unit test for EndpointBase."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    # To use endpoint classes, MatterEndpointsAccessorPwRpc capability and
+    # endpoint sub-capabilities must be registered. MatterDeviceBaseStub uses
+    # MatterEndpointsAccessorPwRpc, so we can register it. Endpoint
+    # sub-capabilities are registered implicitly when
+    # MatterEndpointsAccessorPwRpc is registered with a device class.
+    package_registrar.register(matter_device_base_stub)
 
   def setUp(self):
     super().setUp()

@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 # limitations under the License.
 """Mixin for Matter endpoint aliases."""
 from gazoo_device import decorators
+from gazoo_device.capabilities.matter_endpoints import air_quality_sensor
 from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import contact_sensor
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
@@ -28,6 +29,8 @@ from gazoo_device.capabilities.matter_endpoints import on_off_light
 from gazoo_device.capabilities.matter_endpoints import on_off_light_switch
 from gazoo_device.capabilities.matter_endpoints import on_off_plugin_unit
 from gazoo_device.capabilities.matter_endpoints import pressure_sensor
+from gazoo_device.capabilities.matter_endpoints import pump
+from gazoo_device.capabilities.matter_endpoints import room_air_conditioner
 from gazoo_device.capabilities.matter_endpoints import root_node
 from gazoo_device.capabilities.matter_endpoints import speaker
 from gazoo_device.capabilities.matter_endpoints import temperature_sensor
@@ -40,6 +43,20 @@ class MatterEndpointAliasesMixin:
 
   The mixin assumes self.matter_endpoints capability is set.
   """
+
+  @decorators.CapabilityDecorator(air_quality_sensor.AirQualitySensorEndpoint)
+  def air_quality_sensor(self) -> air_quality_sensor.AirQualitySensorEndpoint:
+    """Matter Air Quality Sensor endpoint instance.
+
+    Returns:
+      Air Quality Sensor endpoint instance.
+
+    Raises:
+      DeviceError when Air Quality Sensor endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        air_quality_sensor.AirQualitySensorEndpoint)
 
   @decorators.CapabilityDecorator(
       color_temperature_light.ColorTemperatureLightEndpoint)
@@ -255,6 +272,20 @@ class MatterEndpointAliasesMixin:
     return self.matter_endpoints.get_endpoint_instance_by_class(
         pressure_sensor.PressureSensorEndpoint)
 
+  @decorators.CapabilityDecorator(pump.PumpEndpoint)
+  def pump(self) -> pump.PumpEndpoint:
+    """Matter Pump endpoint instance.
+
+    Returns:
+      Pump endpoint instance.
+
+    Raises:
+      DeviceError when Pump endpoint is not supported on the
+      device.
+    """
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        pump.PumpEndpoint)
+
   @decorators.CapabilityDecorator(root_node.RootNodeEndpoint)
   def root_node(self) -> root_node.RootNodeEndpoint:
     """Matter Root Node endpoint instance.
@@ -310,6 +341,17 @@ class MatterEndpointAliasesMixin:
     """
     return self.matter_endpoints.get_endpoint_instance_by_class(
         thermostat.ThermostatEndpoint)
+
+  @decorators.CapabilityDecorator(
+      room_air_conditioner.RoomAirConditionerEndpoint
+  )
+  def room_air_conditioner(
+      self,
+  ) -> room_air_conditioner.RoomAirConditionerEndpoint:
+    """Matter Thermostat or Root Node endpoint instance."""
+    return self.matter_endpoints.get_endpoint_instance_by_class(
+        room_air_conditioner.RoomAirConditionerEndpoint
+    )
 
   @decorators.CapabilityDecorator(window_covering.WindowCoveringEndpoint)
   def window_covering(self) -> window_covering.WindowCoveringEndpoint:

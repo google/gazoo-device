@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ from unittest import mock
 from gazoo_device import errors
 from gazoo_device.switchboard.transports import pigweed_rpc_transport
 from gazoo_device.tests.unit_tests.utils import unit_test_case
-
 import serial
 
 _FAKE_DEVICE_ADDRESS = "/some/fake/device/address"
@@ -52,8 +51,6 @@ _FAKE_RPC_MODULE_PATH = (
     "gazoo_device.switchboard.transports.pigweed_rpc_transport.rpc")
 _FAKE_CLIENT_MODULE_PATH = (
     "gazoo_device.switchboard.transports.pigweed_rpc_transport.client")
-_FAKE_DECODE_MODULE_PATH = (
-    "gazoo_device.switchboard.transports.pigweed_rpc_transport.decode")
 
 
 class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
@@ -72,12 +69,13 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
     import_patcher = mock.patch.object(importlib, "import_module")
     import_patcher.start()
     self.addCleanup(import_patcher.stop)
-    decode_patcher = mock.patch(_FAKE_DECODE_MODULE_PATH)
-    fake_decode = decode_patcher.start()
-    self.addCleanup(decode_patcher.stop)
-    self.fake_decoder = fake_decode.FrameDecoder.return_value
+    self.fake_frame_decoder = self.enter_context(
+        mock.patch.object(
+            pigweed_rpc_transport.decode, "FrameDecoder", autospec=True)
+    )
+    self.fake_file_object = mock.Mock(spec=serial.Serial)
     self.uut = pigweed_rpc_transport.PwHdlcRpcClient(
-        file_object=mock.Mock(spec=serial.Serial),
+        file_object=self.fake_file_object,
         protobuf_import_paths=_FAKE_PROTO_IMPORT_PATH)
 
   def test_serial_fd_instance(self):
@@ -160,10 +158,10 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
     """Verifies read_and_process_data method on success."""
     self.uut._stop_event = mock.Mock(threading.Event)
     self.uut._stop_event.is_set.side_effect = [False, True]
-    fake_fd = mock.Mock(serial.Serial)
-    fake_fd.read.return_value = _FAKE_DATA
-    mock_select.return_value = [fake_fd], [], []
-    self.fake_decoder.process_valid_frames.return_value = [_FAKE_FRAME]
+    self.fake_file_object.read.return_value = _FAKE_DATA
+    mock_select.return_value = [self.fake_file_object], [], []
+    self.fake_frame_decoder.return_value.process_valid_frames.return_value = (
+        [_FAKE_FRAME])
 
     self.uut.read_and_process_data()
 
@@ -183,6 +181,23 @@ class PwHdlcRpcClientTest(unit_test_case.UnitTestCase):
     mock_select.return_value = [fake_fd], [], []
 
     self.uut.read_and_process_data()
+
+    mock_logger.exception.assert_called_once()
+
+  @mock.patch.object(pigweed_rpc_transport, "logger")
+  @mock.patch.object(select, "select")
+  def test_read_and_process_data_serial_exception(
+      self, mock_select, mock_logger
+  ):
+    """Verifies read_and_process_data method with exception."""
+    self.uut._stop_event = mock.Mock(threading.Event)
+    self.uut._stop_event.is_set.side_effect = [False, True]
+    fake_fd = mock.Mock(serial.Serial)
+    self.uut._file_object.read.side_effect = serial.SerialException
+    mock_select.return_value = [fake_fd], [], []
+
+    with self.assertRaises(serial.SerialException):
+      self.uut.read_and_process_data()
 
     mock_logger.exception.assert_called_once()
 

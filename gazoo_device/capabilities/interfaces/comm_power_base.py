@@ -14,11 +14,17 @@
 
 """Interface for the communication power capability."""
 import abc
+from gazoo_device.base_classes.auxiliary_power_hub_device import AuxiliaryPowerHubDevice
 from gazoo_device.capabilities.interfaces import capability_base
 
 
 class CommPowerBase(capability_base.CapabilityBase):
   """Abstract Base class for the communication power capability."""
+
+  @classmethod
+  @abc.abstractmethod
+  def get_used_device_classes(cls) -> set[type[AuxiliaryPowerHubDevice]]:
+    """Returns all device classes this capability can create through Manager."""
 
   @abc.abstractmethod
   def off(self):

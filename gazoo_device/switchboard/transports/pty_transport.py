@@ -46,27 +46,27 @@ class PtyTransport(process_transport.ProcessTransport):
   """Perform process transport over pseudoterminal."""
 
   def __init__(self,
-               comms_address,
+               comms_address: str,
                args: Sequence[str] = (),
-               auto_reopen=False,
-               open_on_start=True):
+               auto_reopen: bool = False,
+               open_on_start: bool = True):
     """Initialize the pty transport object with the given process properties.
 
     Args:
-        comms_address (str): the process command and args to communicate
-        args: additional args to pass to the main process to open communication.
-        auto_reopen (bool): flag indicating transport should be reopened if
-          unexpectedly closed.
-        open_on_start (bool): flag indicating transport should be open on
-          TransportProcess start.
+        comms_address: The process command and args to communicate.
+        args: Additional args to pass to the main process to open communication.
+        auto_reopen: Flag indicating transport should be reopened if
+            unexpectedly closed.
+        open_on_start: Flag indicating transport should be open on
+            TransportProcess start.
     """
-    self.comms_address = comms_address
     working_directory = os.path.dirname(comms_address)
     if working_directory:
       comms_address = comms_address.replace(working_directory, "./")
     else:
       working_directory = None
-    super(PtyTransport, self).__init__(
+    super().__init__(
+        comms_address,
         command=comms_address,
         args=args,
         auto_reopen=auto_reopen,

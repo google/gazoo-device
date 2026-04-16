@@ -83,7 +83,6 @@ Your output will look like this:
 ##### Step 1/3: Detecting potential new communication addresses. #####
 
    detecting potential AdbComms communication addresses
-   detecting potential DockerComms communication addresses
    detecting potential JlinkSerialComms communication addresses
    detecting potential PtyProcessComms communication addresses
    detecting potential SshComms communication addresses

@@ -22,6 +22,7 @@ class OccupancySensorBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Occupancy Sensor endpoint interface."""
 
   DEVICE_TYPE_ID = 0x0107
+  DEVICE_TYPE_NAME = "OccupancySensor"
 
   @property
   @abc.abstractmethod

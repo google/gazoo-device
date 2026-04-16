@@ -19,7 +19,7 @@ from gazoo_device import gdm_logger
 from gazoo_device.capabilities.matter_clusters.interfaces import basic_information_base
 
 logger = gdm_logger.get_logger()
-_CLUSTER_NAME = "basic"
+_CLUSTER_NAME = "basicinformation"
 
 
 class BasicInformationClusterChipTool(
@@ -88,3 +88,33 @@ class BasicInformationClusterChipTool(
     """The CapabilityMinima attribute."""
     return self._read(
         self._endpoint_id, _CLUSTER_NAME, "capability-minima")
+
+  @decorators.DynamicProperty
+  def manufacturing_date(self) -> str:
+    """The ManufacturingDate attribute."""
+    return self._read(self._endpoint_id, _CLUSTER_NAME, "manufacturing-date")
+
+  @decorators.DynamicProperty
+  def part_number(self) -> str:
+    """The PartNumber attribute."""
+    return self._read(self._endpoint_id, _CLUSTER_NAME, "part-number")
+
+  @decorators.DynamicProperty
+  def product_url(self) -> str:
+    """The ProductURL attribute."""
+    return self._read(self._endpoint_id, _CLUSTER_NAME, "product-url")
+
+  @decorators.DynamicProperty
+  def product_label(self) -> str:
+    """The ProductLabel attribute."""
+    return self._read(self._endpoint_id, _CLUSTER_NAME, "product-label")
+
+  @decorators.DynamicProperty
+  def serial_number(self) -> str:
+    """The SerialNumber attribute."""
+    return self._read(self._endpoint_id, _CLUSTER_NAME, "serial-number")
+
+  @decorators.DynamicProperty
+  def unique_id(self) -> str:
+    """The UniqueID attribute."""
+    return self._read(self._endpoint_id, _CLUSTER_NAME, "unique-id")

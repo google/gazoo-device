@@ -29,7 +29,8 @@ from gazoo_device.capabilities.interfaces import capability_base
 class UsbHubBase(capability_base.CapabilityBase):
   """Abstract base class for USB hub capability."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def name(self):
     """The name of the usb hub.
 
@@ -37,7 +38,8 @@ class UsbHubBase(capability_base.CapabilityBase):
         str: usb hub name.
     """
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def device_port(self):
     """The usb hub port number used by device.
 
@@ -45,7 +47,8 @@ class UsbHubBase(capability_base.CapabilityBase):
         int: port number on usb hub.
     """
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def supported_modes(self):
     """Get the USB power modes supported by the USB hub."""
 

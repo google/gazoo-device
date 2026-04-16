@@ -18,7 +18,7 @@ import os
 import select
 import subprocess
 import time
-from typing import Sequence, Tuple
+from typing import Sequence
 
 from gazoo_device import gdm_logger
 
@@ -29,7 +29,7 @@ _POLL_DELAY = .2
 
 def run_and_stream_output(cmd_args: Sequence[str],
                           timeout: float,
-                          shell: bool = False) -> Tuple[int, str]:
+                          shell: bool = False) -> tuple[int, str]:
   """Runs commands and streams the output at the same time.
 
   Python subprocess cannot capture and stream the output at the same time.

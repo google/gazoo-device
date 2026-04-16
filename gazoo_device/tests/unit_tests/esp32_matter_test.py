@@ -14,6 +14,8 @@
 
 """Unit tests for device class Esp32Matter."""
 import unittest
+
+from gazoo_device import package_registrar
 from gazoo_device.capabilities import flash_build_esptool
 from gazoo_device.primary_devices import esp32_matter
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
@@ -24,6 +26,11 @@ _FAKE_DEVICE_ADDRESS = "fake-device-address"
 
 class Esp32MatterTests(fake_device_test_case.FakeDeviceTestCase):
   """Unit tests for device class Esp32Matter."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(esp32_matter)
 
   def setUp(self):
     super().setUp()

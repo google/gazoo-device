@@ -14,18 +14,19 @@
 """Methods and classes for faking devices in unit tests."""
 import copy
 import os.path
-from typing import Callable, List
+from typing import Any, Callable, Optional
 from unittest import mock
 
-import gazoo_device
 from gazoo_device import decorators
 from gazoo_device import gdm_logger
+from gazoo_device import manager as manager_module
+from gazoo_device import mobly_controller
 from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.base_classes import ssh_device
 from gazoo_device.capabilities import usb_hub_default
 from gazoo_device.switchboard import switchboard
-from gazoo_device.tests.unit_tests import utils
 from gazoo_device.tests.unit_tests.utils import fake_responder
+import immutabledict
 
 
 _DEFAULT_CONFIG = {
@@ -46,7 +47,8 @@ _DEFAULT_CONFIG = {
     "log_name_prefix": "",
     "filters": None,
 }
-_FILTER_DIRECTORY = os.path.join(os.path.dirname(utils.__file__), "filters")
+_UTILS_DIRECTORY = os.path.dirname(__file__)
+_FILTER_DIRECTORY = os.path.join(_UTILS_DIRECTORY, "filters")
 _LOGGER = gdm_logger.get_logger()
 _TEST_ARTIFACTS_DIR = os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR", "/tmp")
 _DEFAULT_NAME = "sshdevice-1234"
@@ -56,23 +58,21 @@ class FakeSSHDevice(ssh_device.SshDevice):
   """Fake SSH device (primary device) for testing purposes."""
   DEFAULT_FILTERS = (os.path.join(_FILTER_DIRECTORY, "basic.json"),)
   DEVICE_TYPE = "sshdevice"
-  _OWNER_EMAIL = "gdm-authors@google.com"
-  DETECT_MATCH_CRITERIA = {}
-  responder_debug = False  # print out responder logs
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
+      "FakeQuery": "fake_expected_response",
+  })
 
   def __init__(self,
-               manager=None,
+               manager,  # Use create_mock_manager() to create one.
                device_config=None,
                log_directory=None,
                log_file_name=None,
                name=_DEFAULT_NAME):
 
-    if not manager:
-      if not log_directory:
-        log_directory = _TEST_ARTIFACTS_DIR
-      manager = create_mock_manager(log_directory)
     if not device_config:
       device_config = create_default_device_config(name)
+    if not log_directory:
+      log_directory = manager.log_directory
     self._fake_responder = fake_responder.FakeResponder()
     super().__init__(
         manager=manager,
@@ -116,20 +116,11 @@ class FakeSSHDevice(ssh_device.SshDevice):
         get_switchboard_if_initialized=self.switchboard)
 
 
-class FakePtyDevice(FakeSSHDevice):
-  """Fake primary PTY device for testing purposes."""
-  DEVICE_TYPE = "ptydevice"
-  COMMUNICATION_TYPE = "PtyProcessComms"
-  _COMMUNICATION_KWARGS = {}
-  PTY_PROCESS_COMMAND_CONFIG = {
-      "device_image_path_pattern": os.path.join("*", "some_firmware.img"),
-      "launch_command_template": "some_dir/some_binary --some_arg {param}",
-  }
-
-
 class FakeGazooDeviceBase(gazoo_device_base.GazooDeviceBase):
   """A dummy valid concrete primary device class."""
-  DEFAULT_FILTERS = (os.path.join(_FILTER_DIRECTORY, "basic.json"),)
+  DEFAULT_FILTERS = (
+      os.path.join(_FILTER_DIRECTORY, "basic.json"),
+  )
 
   @classmethod
   def is_connected(cls, device_config):
@@ -156,7 +147,7 @@ class FakeGazooDeviceBase(gazoo_device_base.GazooDeviceBase):
     return "SomethingPlatform"
 
   @decorators.PersistentProperty
-  def health_checks(self) -> List[Callable[[], None]]:
+  def health_checks(self) -> list[Callable[[], None]]:
     return []
 
   @decorators.LogDecorator(_LOGGER)
@@ -191,7 +182,21 @@ class FakeGazooDeviceBase(gazoo_device_base.GazooDeviceBase):
     raise NotImplementedError("wait_for_bootup_complete is an abstract method.")
 
 
-def create_default_device_config(uut_name):
+# Make this module a GDM extension package.
+__version__ = "0.0.1"
+export_extensions = lambda: {"primary_devices": [FakeSSHDevice]}
+
+# Make this module a Mobly controller.
+MOBLY_CONTROLLER_CONFIG_NAME = (
+    mobly_controller.get_mobly_controller_config_name(
+        FakeSSHDevice.DEVICE_TYPE))
+create = mobly_controller.create
+destroy = mobly_controller.destroy
+get_info = mobly_controller.get_info
+get_manager = mobly_controller.get_manager
+
+
+def create_default_device_config(uut_name: str) -> dict[str, Any]:
   """Creates default device_config to pass into device class initialization."""
   if "-" not in uut_name:
     raise RuntimeError(
@@ -203,9 +208,11 @@ def create_default_device_config(uut_name):
 
 
 def create_mock_manager(
-    artifacts_directory: str) -> gazoo_device.manager.Manager:
+    artifacts_directory: Optional[str] = None) -> manager_module.Manager:
   """Create a mock manager to use with unit tests."""
-  mock_manager = mock.MagicMock(spec=gazoo_device.manager.Manager)
+  if artifacts_directory is None:
+    artifacts_directory = _TEST_ARTIFACTS_DIR
+  mock_manager = mock.MagicMock(spec=manager_module.Manager)
   # pylint: disable=protected-access
   mock_manager._open_devices = {}
   mock_manager._devices = {}
@@ -216,7 +223,7 @@ def create_mock_manager(
 
 
 def create_mock_switchboard(
-    name: str, manager: gazoo_device.manager.Manager,
+    name: str, manager: manager_module.Manager,
     responder: fake_responder.FakeResponder) -> switchboard.SwitchboardDefault:
   """Returns a mock switchboard.
 
@@ -238,6 +245,7 @@ def create_mock_switchboard(
   mock_switchboard.click_and_expect.side_effect = responder.click_and_expect
   mock_switchboard.press_and_expect.side_effect = responder.press_and_expect
   mock_switchboard.release_and_expect.side_effect = responder.release_and_expect
+  mock_switchboard.do_and_expect.side_effect = responder.do_and_expect
 
   def _mock_create_switchboard(**kwargs):
     # pylint: disable=protected-access

@@ -22,12 +22,12 @@ error codes:
     10 - 19     TimeoutError exceptions
     30 - ...    CheckDeviceReadyError exceptions
 """
-from typing import List, Optional
+from typing import Optional
 
-from gazoo_device import _version
 from gazoo_device import data_types
 from gazoo_device import extensions
 from gazoo_device import gdm_logger
+from gazoo_device import version
 
 logger = gdm_logger.get_logger()
 
@@ -35,7 +35,7 @@ logger = gdm_logger.get_logger()
 def get_version_string() -> str:
   """Returns version of GDM and of all registered extension packages."""
   return " GDM Version: {}. Registered extension packages: {}.".format(
-      _version.version, extensions.get_registered_package_info())
+      version.VERSION, extensions.get_registered_package_info())
 
 
 class DeviceError(Exception):
@@ -618,19 +618,13 @@ class DownloadKeyError(DeviceError):
   """Raised when the host is unable to download a key required by GDM."""
   err_code = 64
 
-  def __init__(self,
-               key_info: data_types.KeyInfo,
-               download_errors: List[Exception]):
+  def __init__(self, key_info: data_types.KeyInfo):
     """Initializes a DownloadKeyError exception.
 
     Args:
         key_info: Key information.
-        download_errors: Errors that occurred when attempting to download the
-          key.
     """
-    self.key_info = key_info
-    super().__init__("unable to download {!r} key to host: {}".format(
-        key_info, ", ".join(repr(err) for err in download_errors)))
+    super().__init__(f"unable to download {key_info!r} key")
 
 
 class CapabilityNotReadyError(CheckDeviceReadyError):
@@ -697,5 +691,16 @@ class ServiceNotEnabledError(CheckDeviceReadyError):
 
 
 class DataTransmissionError(DeviceError):
-  """Raises when there's data loss or error in device communication."""
+  """Raised when there's data loss or error in device communication."""
   err_code = 73
+
+
+class GcloudUnauthenticatedError(DeviceError):
+  """Raised when Google Cloud SDK is not authenticated."""
+  err_code = 74
+
+
+class GetDockStateError(DeviceError):
+  """Raised when a tablet device failed to get dock state."""
+
+  err_code = 75

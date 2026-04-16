@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,21 +13,23 @@
 # limitations under the License.
 
 """Unit tests for device detector."""
+import logging
 from unittest import mock
 
 from absl.testing import parameterized
-from gazoo_device import detect_criteria
 from gazoo_device import device_detector
 from gazoo_device import errors
-from gazoo_device import extensions
 from gazoo_device import manager
+from gazoo_device import package_registrar
 from gazoo_device.auxiliary_devices import cambrionix
+from gazoo_device.auxiliary_devices import dli_powerswitch
 from gazoo_device.auxiliary_devices import raspberry_pi
-from gazoo_device.switchboard import communication_types
+from gazoo_device.detect_criteria import ssh_detect_criteria
 from gazoo_device.switchboard import switchboard
 from gazoo_device.tests.unit_tests.utils import fake_devices
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 from gazoo_device.utility import host_utils
+import immutabledict
 
 _CAMBRIONIX_PORT = (
     "/dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_DJ00JMN0-if00-port0")
@@ -44,8 +46,26 @@ class _FakeManager:
     return mock.MagicMock(spec=switchboard.SwitchboardDefault)
 
 
+def _mock_find_matching_device_class(address: str, *args, **kwargs):
+  """A mock of device_detector._find_matching_device_class."""
+  del args, kwargs  # Unused.
+  if address == "12.34.56.78":
+    return [fake_devices.FakeSSHDevice]
+  elif address == _CAMBRIONIX_PORT:
+    return [cambrionix.Cambrionix]
+  else:
+    return []
+
+
 class TestDeviceDetector(unit_test_case.UnitTestCase):
   """Tests for device_detector.py."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(cambrionix)
+    package_registrar.register(raspberry_pi)
+    package_registrar.register(fake_devices)
 
   def setUp(self):
     super().setUp()
@@ -63,17 +83,10 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
             "other_device_options": {}
         },
         supported_auxiliary_device_classes=aux_devices)
-    self.maxDiff = None  # pylint: disable=invalid-name
+    self.maxDiff = None
     self.mock_out_usb_utils_methods()
-    extensions.primary_devices.append(fake_devices.FakeSSHDevice)
-    extensions.primary_devices.append(fake_devices.FakePtyDevice)
 
-  def tearDown(self):
-    extensions.primary_devices.remove(fake_devices.FakePtyDevice)
-    extensions.primary_devices.remove(fake_devices.FakeSSHDevice)
-    super().tearDown()
-
-  def test_001_get_known_connections(self):
+  def test_get_known_connections(self):
     """Tests that _create_known_connections returns correct connections.
 
     FTDI ports should have -if00-port0 removed.
@@ -101,7 +114,7 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
         known_connections,
         ["12.34.56.10", "12.34.56.20", "12345678", _CAMBRIONIX_PORT])
 
-  def test_03_filter_out_known_connections(self):
+  def test_filter_out_known_connections(self):
     """Tests that _filter_out_known_connections filters out connections."""
     con_dict = {
         "SshComms": ["12.34.56.10", "12.34.56.20"],
@@ -125,10 +138,10 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
         con_dict, known_con)
     self.assertEqual(expected_new_con, new_con_dict)
 
-  @mock.patch.object(detect_criteria, "find_matching_device_class")
+  @mock.patch.object(device_detector, "_find_matching_device_class")
   @mock.patch.object(host_utils, "is_pingable", return_value=True)
-  def test_04_identify_connection_device_class(self, mock_ping,
-                                               mock_matching_class):
+  def test_identify_connection_device_class(
+      self, mock_ping, mock_matching_class):
     """Tests _identify_connection_device_class."""
     address_to_class_list = {
         "12.34.56.10": [fake_devices.FakeSSHDevice],
@@ -168,11 +181,11 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
     self.assertCountEqual(no_id_cons, unidentified_connections)
 
   @mock.patch.object(
-      detect_criteria,
-      "find_matching_device_class",
+      device_detector,
+      "_find_matching_device_class",
       return_value=[fake_devices.FakeSSHDevice, raspberry_pi.RaspberryPi])
   @mock.patch.object(host_utils, "is_pingable", return_value=True)
-  def test_04_identify_connection_works_with_multiple_matches(
+  def test_identify_connection_works_with_multiple_matches(
       self, mock_ping, mock_matching_class):
     """Tests _identify_connection_device_class() with multiple matches."""
     con_dict = {"SshComms": ["12.34.56.10"]}
@@ -192,7 +205,7 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
           "device_type": "sshdevice",
       }, {}))
   @mock.patch.object(fake_devices.FakeSSHDevice, "make_device_ready")
-  def test_10_get_info_success(self, mock_make_device, mock_get_info):
+  def test_get_info_success(self, mock_make_device, mock_get_info):
     """Tests _detect_get_info() success."""
     name, persistent_props, optional_props = self.detector._detect_get_info(
         fake_devices.FakeSSHDevice, "12.34.56.123")
@@ -206,7 +219,7 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
         })
     self.assertEqual(optional_props, {})
 
-  def test_15_add_to_configs_success(self):
+  def test_add_to_configs_success(self):
     """Tests _add_to_configs for a primary device."""
     self.detector._add_to_configs(fake_devices.FakeSSHDevice, "sshdevice-1234",
                                   {"console_port_name": "12.34.56.10"}, {})
@@ -232,7 +245,7 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
         },
         self.detector.options_configs["device_options"]["sshdevice-1234"])
 
-  def test_16_add_to_configs_other_success(self):
+  def test_add_to_configs_other_success(self):
     """Tests _add_to_configs for an auxiliary device."""
     self.detector.persistent_configs = {
         "devices": {
@@ -268,7 +281,7 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
         "alias": None
     }, self.detector.options_configs["other_device_options"]["cambrionix-1234"])
 
-  def test_17_add_to_configs_already_exist(self):
+  def test_add_to_configs_already_exist(self):
     """Tests _add_to_configs for an already existed device."""
     self.detector.persistent_configs = {
         "devices": {
@@ -284,7 +297,7 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
           fake_devices.FakeSSHDevice, "sshdevice-6678",  # already exist.
           {"console_port_name": "55.66.77.88"}, {})
 
-  def test_18_add_to_configs_other_already_exist(self):
+  def test_add_to_configs_other_already_exist(self):
     """Tests _add_to_configs for an already existed auxiliary device."""
     self.detector.persistent_configs = {
         "devices": {},
@@ -333,7 +346,7 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
           device_type, serial_number, device_class)
       self.assertEqual(name, expected_name)
 
-  def test_25_print_summary(self):
+  def test_print_summary(self):
     """Tests _print_summary."""
     new_names = ["sshdevice-1234", "cambrionix-1234"]
     errs = []
@@ -354,9 +367,12 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
           "console_port_name": "12.34.56.78"
       }, {}))
   @mock.patch.object(fake_devices.FakeSSHDevice, "make_device_ready")
-  def test_30_detect_new_devices(
-      self, mock_sshdevice_make, mock_sshdevice_get_info,
-      mock_cambrionix_make, mock_cambrionix_get_info):
+  @mock.patch.object(
+      device_detector, "_find_matching_device_class",
+      side_effect=_mock_find_matching_device_class)
+  def test_detect_new_devices(
+      self, mock_find_matching_device_class, mock_sshdevice_make,
+      mock_sshdevice_get_info, mock_cambrionix_make, mock_cambrionix_get_info):
     """Tests that detect_new_devices detects devices and handles errors."""
     connections = {
         "SshComms": ["12.34.56.78"],
@@ -371,7 +387,11 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
     self.assertFalse(persistent_configs["other_devices"])
     self.assertFalse(option_configs["other_device_options"])
 
-  def test_301_detect_new_devices_already_exist(self):
+  @mock.patch.object(
+      device_detector, "_find_matching_device_class",
+      side_effect=_mock_find_matching_device_class)
+  def test_detect_new_devices_already_exist(
+      self, mock_find_matching_device_class):
     """Tests that detect_new_devices detects already existing devices and _print_summary reports the error."""
     self.detector.persistent_configs = {
         "devices": {
@@ -435,7 +455,7 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
           "console_port_name": "12.34.56.78"
       }, {}))
   @mock.patch.object(fake_devices.FakeSSHDevice, "make_device_ready")
-  def test_31_detect_all_new_devices(
+  def test_detect_all_new_devices(
       self, mock_sshdevice_make, mock_sshdevice_get_info,
       mock_cambrionix_make, mock_cambrionix_get_info):
     """Tests that detect_all_new_devices detects devices and handles errors."""
@@ -445,7 +465,7 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
     }
 
     with mock.patch.object(
-        communication_types, "detect_connections", return_value=connections):
+        device_detector, "detect_connections", return_value=connections):
       persistent_configs, option_configs = self.detector.detect_all_new_devices(
           )
 
@@ -475,8 +495,8 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
           "console_port_name": "123.17.123.12"
       }, {}))
   @mock.patch.object(fake_devices.FakeSSHDevice, "make_device_ready")
-  @mock.patch.object(detect_criteria, "find_matching_device_class")
-  def test_32_detect_all_new_devices_with_static_ips(
+  @mock.patch.object(device_detector, "_find_matching_device_class")
+  def test_detect_all_new_devices_with_static_ips(
       self, mock_matching_class, mock_sshdevice_make, mock_sshdevice_get_info,
       mock_cambrionix_make, mock_cambrionix_get_info):
     """Tests detect_all_new_devices with provided static_ips."""
@@ -501,7 +521,7 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
     mock_matching_class.side_effect = mock_match
 
     with mock.patch.object(
-        communication_types, "detect_connections", return_value=connections):
+        device_detector, "detect_connections", return_value=connections):
       persistent_configs, option_configs = self.detector.detect_all_new_devices(
           static_ips)
     self.assertCountEqual(["sshdevice-5678"], persistent_configs["devices"])
@@ -511,36 +531,53 @@ class TestDeviceDetector(unit_test_case.UnitTestCase):
     self.assertCountEqual(
         ["cambrionix-0123"], option_configs["other_device_options"])
 
+  def test_matches_criteria_missing_response(self):
+    """Tests _matches_criteria when a query response is missing."""
+    self.assertFalse(
+        device_detector._matches_criteria(
+            responses={
+                ssh_detect_criteria.SshQuery.IS_RASPBIAN_RPI: True,
+                ssh_detect_criteria.SshQuery.IS_CHIP_TOOL_PRESENT: False,
+                ssh_detect_criteria.SshQuery.IS_MATTER_LINUX_APP_RUNNING: False,
+            },
+            match_criteria=immutabledict.immutabledict({
+                ssh_detect_criteria.SshQuery.IS_DLI: True
+            }))
+    )
+
   @mock.patch.object(
-      fake_devices.FakePtyDevice,
-      "get_detection_info",
-      return_value=({
-          "console_port_name": "some_dir/some_binary --some_arg",
-          "device_type": "ptydevice",
-          "name": "ptydevice-5678",
-          "serial_number": "12345678",
-      }, {}))
-  @mock.patch.object(
-      device_detector.pty_process_utils,
-      "get_launch_command",
-      return_value="some_dir/some_binary --some_arg")
-  @mock.patch.object(fake_devices.FakePtyDevice, "make_device_ready")
-  def test_33_get_info_pty_process_comms(self,
-                                         mock_make_device,
-                                         mock_get_launch_command,
-                                         mock_get_detection_info):
-    """Tests that get_info succeeds with PtyProcessComms device type."""
-    name, persistent_props, optional_props = self.detector._detect_get_info(
-        fake_devices.FakePtyDevice, "some_dir/some_binary --some_arg")
-    self.assertEqual(name, "ptydevice-5678")
-    self.assertEqual(
-        persistent_props, {
-            "console_port_name": "some_dir/some_binary --some_arg",
-            "serial_number": "12345678",
-            "device_type": "ptydevice",
-            "name": "ptydevice-5678",
-        })
-    self.assertEqual(optional_props, {})
+      device_detector, "_get_detect_query_response", autospec=True,
+      return_value={
+          # Return detection responses for RPi but not DLI Powerswitch to
+          # simulate detection when RPi is registered but DLI Powerswitch isn't.
+          ssh_detect_criteria.SshQuery.IS_RASPBIAN_RPI: True,
+          ssh_detect_criteria.SshQuery.IS_CHIP_TOOL_PRESENT: False,
+          ssh_detect_criteria.SshQuery.IS_MATTER_LINUX_APP_RUNNING: False,
+      })
+  def test_find_matching_device_class_no_response_for_query(
+      self, mock_get_detect_query_response):
+    """Tests _find_matching_device_class when a query doesn't have a response."""
+    mock_logger = mock.Mock(spec=logging.getLogger())
+    matching_device_classes = device_detector._find_matching_device_class(
+        address="12.34.56.78",
+        communication_type=fake_devices.FakeSSHDevice.COMMUNICATION_TYPE,
+        detect_logger=mock_logger,
+        create_switchboard_func=self.fake_manager.create_switchboard,
+        device_classes=[
+            dli_powerswitch.DliPowerSwitch, raspberry_pi.RaspberryPi])
+    self.assertEqual(matching_device_classes, [raspberry_pi.RaspberryPi])
+
+    mock_get_detect_query_response.assert_called_once_with(
+        "12.34.56.78",
+        fake_devices.FakeSSHDevice.COMMUNICATION_TYPE,
+        mock_logger,
+        self.fake_manager.create_switchboard)
+    info_logs = [
+        call_args[0][0] for call_args in mock_logger.info.call_args_list]
+    expected_log_marker = "%s: No Match. Not all detect criteria had a response"
+    self.assertTrue(
+        any(expected_log_marker in info_log for info_log in info_logs),
+        f"Didn't find a log containing {expected_log_marker!r} in {info_logs}")
 
 
 if __name__ == "__main__":

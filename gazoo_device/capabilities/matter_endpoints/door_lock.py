@@ -46,7 +46,7 @@ class DoorLockEndpoint(door_lock_base.DoorLockBase):
     """Matter Door Lock cluster instance."""
     return self.cluster_lazy_init(matter_enums.DoorLockCluster.ID)
 
-  # TODO(b/209362086) Add the below clusters
+  # TODO(gdm-authors) Add the below clusters
 
   # def scenes(self):
   #   """Matter Scenes cluster instance."""

@@ -19,6 +19,8 @@ from unittest import mock
 from absl.testing import absltest
 from absl.testing import flagsaver
 from absl.testing import parameterized
+from gazoo_device import mobly_controller
+from gazoo_device.auxiliary_devices import cambrionix
 from gazoo_device.tests.functional_tests import auxiliary_device_common_test_suite
 from gazoo_device.tests.functional_tests import file_transfer_test_suite
 from gazoo_device.tests.functional_tests import switchboard_test_suite
@@ -58,6 +60,8 @@ class FunctionalTestSuiteAndConfigUnitTests(configs_test.ConfigsBaseTest):
           "volatile_tests": ["FakeTest.test_rerun"],
           "slow_tests": []
       })
+  @mock.patch.object(
+      suite_filter.SuiteFilterBase, "_controller_module", new=None)
   def test_mobly_test_retries_and_skips(self, _):
     """Uses a fake mobly test to verify filters skip and retry as expected."""
 
@@ -90,12 +94,14 @@ class FunctionalTestSuiteAndConfigUnitTests(configs_test.ConfigsBaseTest):
         asserts.fail("this test should not run")
 
     fake_config = config_parser.TestRunConfig()
-    name = suite_filter._CONTROLLER_MODULE.MOBLY_CONTROLLER_CONFIG_NAME
+    name = mobly_controller.get_mobly_controller_config_name(
+        cambrionix.Cambrionix.DEVICE_TYPE)
     fake_config.controller_configs[name] = [{"id": "cambrionix-1234"}]
     fake_config.log_path = OUTPUT_DIRECTORY
     summary_file = os.path.join(OUTPUT_DIRECTORY, "summary.yaml")
     fake_config.summary_writer = records.TestSummaryWriter(summary_file)
     test = FakeTest(fake_config)
+    FakeTest.set_controller_module(cambrionix)
 
     with mock.patch.object(suite_filter.mobly_base, "open"):
       with mock.patch.object(suite_filter.mobly_base.yaml, "safe_load_all"):

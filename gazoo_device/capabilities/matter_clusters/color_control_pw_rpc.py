@@ -23,8 +23,11 @@ from gazoo_device.protos import attributes_service_pb2
 
 logger = gdm_logger.get_logger()
 ColorControlCluster = matter_enums.ColorControlCluster
+ColorMode = matter_enums.ColorMode
 INT8U_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_INT8U_ATTRIBUTE_TYPE
 INT16U_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_INT16U_ATTRIBUTE_TYPE
+ENUM8_ATTRIBUTE_TYPE = (attributes_service_pb2.AttributeType
+                        .ZCL_ENUM8_ATTRIBUTE_TYPE)
 
 
 class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
@@ -132,13 +135,31 @@ class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
         attribute_type=INT16U_ATTRIBUTE_TYPE)
     return color_temperature.data_uint16
 
+  @decorators.DynamicProperty
+  def color_mode(self) -> int:
+    """The ColorMode attribute.
+
+    The ColorMode attribute indicates which attributes contain the canonical
+    color values.
+
+    Returns:
+      The current color mode.
+    """
+    color_mode = self._read(
+        endpoint_id=self._endpoint_id,
+        cluster_id=matter_enums.ColorControlCluster.ID,
+        attribute_id=ColorControlCluster.ATTRIBUTE_COLOR_MODE,
+        attribute_type=ENUM8_ATTRIBUTE_TYPE)
+    return color_mode.data_uint8
+
   @decorators.CapabilityLogDecorator(logger)
   def move_to_color_temperature(
       self, color_temperature_mireds: int, verify: bool = True) -> None:
     """The MoveToColorTemperature command.
 
     On receipt of this command, a device should move from its current color
-    temperature to the given color temperature value.
+    temperature to the given color temperature value. Also, the color mode
+    should update to indicate that the color temperature is currently active.
 
     Args:
       color_temperature_mireds: The color temperature that the device should
@@ -146,6 +167,7 @@ class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
       verify: If true, verifies the color temperature changes before returning.
     """
     previous_color_temperature = self.color_temperature_mireds
+    previous_color_mode = self.color_mode
 
     self._write(
         endpoint_id=self._endpoint_id,
@@ -153,6 +175,12 @@ class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
         attribute_id=ColorControlCluster.ATTRIBUTE_COLOR_TEMPERATURE_MIREDS,
         attribute_type=INT16U_ATTRIBUTE_TYPE,
         data_uint16=color_temperature_mireds)
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster_id=ColorControlCluster.ID,
+        attribute_id=ColorControlCluster.ATTRIBUTE_COLOR_MODE,
+        attribute_type=ENUM8_ATTRIBUTE_TYPE,
+        data_uint8=ColorMode.TEMPERATURE)
 
     if verify:
       if self.color_temperature_mireds != color_temperature_mireds:  # pylint: disable=comparison-with-callable
@@ -160,3 +188,8 @@ class ColorControlClusterPwRpc(color_control_base.ColorControlClusterBase):
             f"Device {self._device_name} current color temperature didn't "
             f"change to {color_temperature_mireds} from "
             f"{previous_color_temperature}.")
+      if self.color_mode != ColorMode.TEMPERATURE:  # pylint: disable=comparison-with-callable
+        raise errors.DeviceError(
+            f"Device {self._device_name} current color mode didn't change "
+            f"to ColorMode.TEMPERATURE ({ColorMode.TEMPERATURE}) from "
+            f"{previous_color_mode}.")

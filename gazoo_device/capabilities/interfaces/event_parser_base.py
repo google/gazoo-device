@@ -70,7 +70,7 @@ needed (e.g. exception handling).
 For each regular expression that matches the raw log line provided to the
 process_line method the shared dynamic event dictionary is updated. When all
 regular expressions have been processed an event JSON object containing the
-results of all matches by "event_lable" is written (and flushed) to the event
+results of all matches by "event_label" is written (and flushed) to the event
 file. The event JSON object format is shown as follows:
 
 JSON event file format (version 1.0):
@@ -108,7 +108,7 @@ LABEL_REBOOT_TRIGGER = "basic.reboot_trigger",
 LABEL_BOOTUP = "basic.bootup"
 
 
-class ParserResult(object):
+class ParserResult:
   """Store the results of a Parser API call.
 
     Attributes:
@@ -145,7 +145,9 @@ class EventParserBase(capability_base.CapabilityBase):
   """Log event parser capability interface."""
 
   @abc.abstractmethod
-  def get_event_history(self, event_labels=None, count=None, timeout=10.0):
+  def get_event_history(
+      self, event_labels=None, count=None, start_time=None, timeout=10.0
+  ):
     r"""Returns up to count elements of event data matching given list of event labels.
 
     Args:
@@ -154,6 +156,8 @@ class EventParserBase(capability_base.CapabilityBase):
           events.
         count (int): of event data elements to return (Default: None for all
           events).
+        start_time (datetime): The start time of the event history. If None,
+          the event history will start from the beginning of the log.
         timeout (float): Timeout value in seconds. Example: 10.0.
 
     Raises:
@@ -284,6 +288,23 @@ class EventParserBase(capability_base.CapabilityBase):
                   on',
                   'power.restored': []}]
             result.count = 4
+
+        Example output with event_labels ["power.lost", "power.restored"] and
+        start_time=datetime.datetime(2018, 2, 2, 12, 0, 57, 154328):
+
+        .. code-block:: none
+            result.timedout = False
+            result.results_list =
+                [{'system_timestamp': datetime.datetime(2018, 2, 2, 12, 0,
+                 57, 154328),
+                  'raw_log_line': '[APPL] Spoke: power lost, powering down',
+                  'power.lost': []}
+                 {'system_timestamp': datetime.datetime(2018, 2, 2, 10, 32,
+                 7, 167234),
+                  'raw_log_line': '[APPL] Spoke: power restored, powering
+                  on',
+                  'power.restored': []}]
+            result.count = 2
     """
 
   @abc.abstractmethod
@@ -678,7 +699,8 @@ class EventParserBase(capability_base.CapabilityBase):
                             event_labels,
                             raise_error=False,
                             timeout=20.0,
-                            start_datetime=None):
+                            start_datetime=None,
+                            in_order=False):
     """Waits up to timeout seconds for event labels to appear in device logs.
 
     Args:
@@ -687,6 +709,8 @@ class EventParserBase(capability_base.CapabilityBase):
         raise_error (bool): raise an error if the labels are not found in time.
         timeout (float): seconds to wait for labels to appear in logs.
         start_datetime (datetime): events before this time will be ignored.
+        in_order (bool): wait for events in the order they are specified in the
+          event_labels list.
 
     Raises:
         ParserError: if input format is bad

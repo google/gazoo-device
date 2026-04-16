@@ -132,7 +132,7 @@ Activate GDM virtual env and open the console:
 
 ```
 source ~/gazoo/gdm/virtual_env/bin/activate
-python
+python3
 ```
 
 Inside python console:

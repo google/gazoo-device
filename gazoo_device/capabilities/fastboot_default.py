@@ -14,7 +14,7 @@
 
 """Default implementation of the fastboot capability."""
 import time
-from typing import Callable, Dict, Optional
+from typing import Callable, Optional
 
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -35,7 +35,7 @@ class FastbootDefault(fastboot_base.FastbootBase):
                device_name: str,
                communication_address: str,
                fastboot_serial: str,
-               timeouts_dict: Dict[str, float],
+               timeouts_dict: dict[str, float],
                add_log_note_fn: Callable[[str], None],
                verify_reboot_fn: Callable[[], None],
                root_device_fn: Callable[[], None]) -> None:

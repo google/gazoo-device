@@ -23,7 +23,7 @@ It processes just adb devices and those that show up in /dev/serial/by-id
 import dataclasses
 import re
 import sys
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 from gazoo_device.utility import usb_config
 import immutabledict
@@ -31,13 +31,16 @@ import pyudev
 
 PERSISTENT_SERIAL_PATH_FOLDER = '/dev/serial/by-id'
 MOUNTED_DISK_FOLDER = '/dev/disk/by-id'
-ADB_SERIAL_REGEX = r'\/dev\/disk\/by-id\/usb-Linux_File-CD_Gadget_([\da-z]+)-0:0'
+# LRU camera devices are connected via MTP folder.
+CONNECTED_VIA_MTP_FOLDER = '/dev/libmtp'
+ADB_SERIAL_REGEX = (
+    r'\/dev\/disk\/by-id\/usb-Linux_File-CD_Gadget_([\da-z]+)-0:0')
 ANDROID_DEVICE_PRODUCT_NAME = 'File-CD Gadget'
 
 # Type aliases
 _AddressStr = str
-_AddressUsbInfoDict = Dict[_AddressStr, usb_config.UsbInfo]
-_DiskInfo = Dict[str, str]
+_AddressUsbInfoDict = dict[_AddressStr, usb_config.UsbInfo]
+_DiskInfo = dict[str, str]
 _DevPathStr = str
 
 ################################################################################
@@ -252,8 +255,9 @@ class _UsbPathRegex:
   child_template_re: str
 
 _CAMBRIONIX_REGEX = immutabledict.immutabledict({
+    # b/293916126#comment5: PP8S uses USB2, but only USB3 hub identifier works.
     'PP8S':
-        _UsbPathRegex(_USB2_HUB_IDENTIFIER_REGEX,
+        _UsbPathRegex(_USB3_HUB_IDENTIFIER_REGEX,
                       _IDENTIFIER_REGEX_TEMPLATE),
     'PP15S':
         _UsbPathRegex(_USB2_HUB_IDENTIFIER_REGEX,
@@ -264,8 +268,14 @@ _CAMBRIONIX_REGEX = immutabledict.immutabledict({
     'SuperSync15':
         _UsbPathRegex(_USB3_HUB_IDENTIFIER_REGEX,
                       _IDENTIFIER_REGEX_TEMPLATE),
+    'SuperSync15b':
+        _UsbPathRegex(_USB3_HUB_IDENTIFIER_REGEX,
+                      _IDENTIFIER_REGEX_TEMPLATE),
     'U16S':
         _UsbPathRegex(_USB2_HUB_IDENTIFIER_REGEX,
+                      _IDENTIFIER_REGEX_TEMPLATE),
+    'ThunderSync3-16':
+        _UsbPathRegex(_USB3_HUB_IDENTIFIER_REGEX,
                       _IDENTIFIER_REGEX_TEMPLATE),
 })
 
@@ -309,7 +319,7 @@ def get_address_to_usb_info_dict() -> _AddressUsbInfoDict:
 def get_pyudev_list_of_devices(
     subsystem: Optional[str] = None,
     devtype: Optional[str] = None
-) -> List[pyudev.Device]:
+) -> list[pyudev.Device]:
   """Wrapper around pyudev.list_devices.
 
   Args:
@@ -335,9 +345,9 @@ def get_pyudev_list_of_devices(
 
 def _add_cambrionix_ports(
     address_to_usb_info_dict: _AddressUsbInfoDict,
-    location_dict: Dict[_AddressStr, _DevPathStr],
-    model_dict: Dict[_AddressStr, str],
-    address_device_list: List[tuple[_AddressStr, pyudev.Device]]
+    location_dict: dict[_AddressStr, _DevPathStr],
+    model_dict: dict[_AddressStr, str],
+    address_device_list: list[tuple[_AddressStr, pyudev.Device]]
 ) -> None:
   """Add cambrionix port number and parent address to each cambrionix child.
 
@@ -406,6 +416,8 @@ def _get_address(udev_device: pyudev.Device) -> str:
       if match:
         return match.group(1)
       return path
+    if CONNECTED_VIA_MTP_FOLDER in path:
+      return udev_device.properties.get('DEVNAME')
 
   return ''
 
@@ -430,7 +442,7 @@ def _get_cambrionix_port_number(
     hub_address: _AddressStr,
     hub_model: str,
     child_address: _AddressStr,
-    location_dict: Dict[_AddressStr, _DevPathStr]
+    location_dict: dict[_AddressStr, _DevPathStr]
 ) -> Optional[int]:
   """Get port number from dev path.
 
@@ -528,7 +540,7 @@ def _get_cambrionix_port_number(
 def _get_child_addresses(
     udev_device: pyudev.Device,
     address_to_usb_info_dict: _AddressUsbInfoDict
-) -> List[_AddressStr]:
+) -> list[_AddressStr]:
   """Get the addresses for the relevant children of the udev device.
 
   Args:
@@ -559,7 +571,7 @@ def _get_child_addresses(
   ]
 
 
-def _get_disk_info() -> Dict[str, str]:
+def _get_disk_info() -> dict[str, str]:
   """Returns a dictionary of disk paths to serial numbers."""
   devices = get_pyudev_list_of_devices(subsystem='block')
   mounted_info = {
@@ -584,7 +596,7 @@ def _get_product_name(udev_device: pyudev.Device) -> str:
 
 def _process_udev_device(
     udev_device: pyudev.Device
-) -> Tuple[_AddressStr, usb_config.UsbInfo, _DevPathStr, str]:
+) -> tuple[_AddressStr, usb_config.UsbInfo, _DevPathStr, str]:
   """Get (address, UsbInfo, dev_path, model) from udev_device.
 
   Args:
@@ -617,7 +629,7 @@ def _process_udev_device(
 
 def _get_cambrionix_udev_children(
     udev_device: pyudev.Device
-) -> List[pyudev.Device]:
+) -> list[pyudev.Device]:
   """Gets all the udev devices representing a cambrionix's children.
 
   Args:

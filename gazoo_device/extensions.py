@@ -25,24 +25,59 @@ Extension modules consist of:
 
 These values are intended for internal GDM usage only.
 """
-auxiliary_devices = []  # List of device classes
-# "capabilities" are derived from "capability_interfaces"
-capabilities = {}  # Capability name -> capability interface name
-capability_interfaces = {}  # Capability interface name -> interface class
-capability_flavors = {}  # Capability flavor name -> capability flavor class
-communication_types = {}  # Communication type name -> communication type class
-# "detect_criteria" is a mapping of
-# Communication type name -> {Query Key: Query function}
-detect_criteria = {}
-primary_devices = []  # List of device classes
-virtual_devices = []  # List of device classes
-# "package_info" is a mapping of Package name -> immutabledict({
-#   "version": package version (str),
-#   "key_download_function": package key download function,
-#   "import_path": package import path (str)})
-package_info = {}
-keys = []  # List of data_types.KeyInfo instances
-manager_cli_mixins = []  # List of class objects inheriting from FireManager
+from typing import Any, Callable, Literal, Union
+
+from gazoo_device import data_types
+import immutabledict
+
+# We can't import some classes in this module due to import cycles.
+_AuxiliaryDevice = Any  # device_types.AuxiliaryDevice
+_CapabilityBase = Any  # capability_base.CapabilityBase
+_CommunicationType = Any  # communication_types.CommunicationType
+_DetectQueryMapping = Any  # detect_criteria.DetectQueryMapping
+_FireManager = Any  # fire_manager.FireManager
+_PrimaryDevice = Any  # device_types.PrimaryDevice
+
+_CapabilityFlavorName = str
+_CapabilityFlavorClass = type[_CapabilityBase]
+_CapabilityInterfaceName = str
+_CapabilityInterfaceClass = type[_CapabilityBase]
+_CapabilityName = str
+_CommunicationTypeName = str
+_CommunicationTypeClass = type[_CommunicationType]
+_FireManagerSubclass = type[_FireManager]
+_PackageImportPath = str
+_PackageName = str
+_PackageVersion = str
+_KeyLocalPath = str
+_KeyDownloadFunction = Callable[[data_types.KeyInfo, _KeyLocalPath], None]
+
+auxiliary_devices: list[type[_AuxiliaryDevice]] = []
+# "capabilities" are derived from "capability_interfaces".
+# Several capability interfaces can share the same name if they're derived from
+# a common parent interface.
+capabilities: dict[_CapabilityName, set[_CapabilityInterfaceName]] = {}
+capability_interfaces: dict[
+    _CapabilityInterfaceName, _CapabilityInterfaceClass
+] = {}
+capability_flavors: dict[_CapabilityFlavorName, _CapabilityFlavorClass] = {}
+communication_types: dict[_CommunicationTypeName, _CommunicationTypeClass] = {}
+detect_criteria: dict[_CommunicationTypeName, _DetectQueryMapping] = {}
+primary_devices: list[type[_PrimaryDevice]] = []
+virtual_devices: list[type[_PrimaryDevice]] = []
+# "package_info" is a mapping of Package name -> immutabledict.immutabledict({
+#     "version": package version (str),
+#     "import_path": package import path (str),
+# })
+package_info: dict[
+    _PackageName,
+    immutabledict.immutabledict[
+        Literal["version", "import_path"],
+        Union[_PackageVersion, _PackageImportPath]
+    ]
+] = {}
+key_to_download_function: dict[data_types.KeyInfo, _KeyDownloadFunction] = {}
+manager_cli_mixins: list[_FireManagerSubclass] = []
 
 
 def get_registered_package_info() -> str:

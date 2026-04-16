@@ -20,10 +20,12 @@ get or change the USB power mode for a configured port on a USB hub.
 
 The configured USB hub must support the switch_power capability.
 """
-
+import typing
+from typing import Any
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
+from gazoo_device.auxiliary_devices import cambrionix
 from gazoo_device.capabilities.interfaces import usb_hub_base
 
 logger = gdm_logger.get_logger()
@@ -67,6 +69,11 @@ class UsbHubDefault(usb_hub_base.UsbHubBase):
     self._settable = settable
     self._get_manager = get_manager
 
+  @classmethod
+  def get_used_device_classes(cls) -> set[type[Any]]:
+    """Returns all device classes this capability can create through Manager."""
+    return {cambrionix.Cambrionix}
+
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
   def health_check(self):
     """Checks that the capability is ready to use.
@@ -93,7 +100,8 @@ class UsbHubDefault(usb_hub_base.UsbHubBase):
       raise errors.CapabilityNotReadyError(
           msg=error_msg, device_name=self._device_name)
     try:
-      self._usb_hub = self._get_manager().create_device(self.name)
+      self._usb_hub = typing.cast(cambrionix.Cambrionix,
+                                  self._get_manager().create_device(self.name))
     except (errors.DeviceError, RuntimeError) as err:
       raise errors.CapabilityNotReadyError(
           msg=repr(err), device_name=self._device_name)
@@ -123,6 +131,7 @@ class UsbHubDefault(usb_hub_base.UsbHubBase):
     """Get the USB power modes supported by the USB hub."""
     if not self.healthy:
       self.health_check()
+    assert self._usb_hub is not None
     return self._usb_hub.switch_power.supported_modes
 
   @decorators.PersistentProperty
@@ -153,6 +162,7 @@ class UsbHubDefault(usb_hub_base.UsbHubBase):
     """
     if not self.healthy:
       self.health_check()
+    assert self._usb_hub is not None
     return self._usb_hub.switch_power.get_mode(self._device_port)
 
   @decorators.CapabilityLogDecorator(logger)
@@ -231,6 +241,7 @@ class UsbHubDefault(usb_hub_base.UsbHubBase):
         if self._change_triggers_reboot:
           switchboard.add_log_note(
               "GDM triggered reboot via USB power change.")
+      assert self._usb_hub is not None
       self._usb_hub.switch_power.set_mode(mode, port)
       if self._change_triggers_reboot and not no_wait:
         self._wait_for_bootup_complete_fn()
@@ -255,5 +266,6 @@ class UsbHubDefault(usb_hub_base.UsbHubBase):
                                "supported_modes".format(self._device_name))
     if not self.healthy:
       self.health_check()
+    assert self._usb_hub is not None
     current_mode = self._usb_hub.switch_power.get_mode(port)
     return current_mode != mode

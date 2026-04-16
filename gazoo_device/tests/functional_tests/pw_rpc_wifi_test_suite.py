@@ -14,7 +14,6 @@
 
 """Test suite for devices using the pw_rpc_wifi capability."""
 import time
-from typing import Type
 
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
@@ -29,7 +28,7 @@ class PwRPCWifiTestSuite(gdm_test_base.GDMTestBase):
 
   @classmethod
   def is_applicable_to(cls, device_type: str,
-                       device_class: Type[gdm_test_base.DeviceType],
+                       device_class: type[gdm_test_base.DeviceType],
                        device_name: str) -> bool:
     """Determines if this test suite can run on the given device."""
     return device_class.has_capabilities(["pw_rpc_wifi"])
@@ -59,18 +58,20 @@ class PwRPCWifiTestSuite(gdm_test_base.GDMTestBase):
   def test_wifi_connect_and_properties(self):
     """Tests wifi connect method, channel, ipv4 address, ssid properties."""
     require_properties = ["wifi_ssid", "wifi_security_type", "wifi_password"]
-    if not all(prop in self.user_params for prop in require_properties):
-      asserts.skip(reason=f"Wi-Fi testing properties {require_properties} are"
-                   "missing from the testbed config file.")
+    asserts.assert_true(
+        all(prop in self.device.dimensions for prop in require_properties),
+        f"Wi-Fi testing properties {require_properties} not found in device "
+        f"dimensions: {self.device.dimensions}.")
+
     self.device.pw_rpc_wifi.connect(
-        ssid=self.user_params["wifi_ssid"],
-        security_type=self.user_params["wifi_security_type"],
-        secret=self.user_params["wifi_password"])
+        ssid=self.device.dimensions["wifi_ssid"],
+        security_type=self.device.dimensions["wifi_security_type"],
+        secret=self.device.dimensions["wifi_password"])
 
     channel = self.device.pw_rpc_wifi.channel
     asserts.assert_is_instance(channel, int)
     ssid = self.device.pw_rpc_wifi.ssid
-    asserts.assert_equal(ssid, self.user_params["wifi_ssid"])
+    asserts.assert_equal(ssid, self.device.dimensions["wifi_ssid"])
     asserts.assert_true(
         self.device.pw_rpc_wifi.state,
         "The device should be connected to WiFi.")

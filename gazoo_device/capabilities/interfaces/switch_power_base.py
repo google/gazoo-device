@@ -23,7 +23,8 @@ from gazoo_device.capabilities.interfaces import capability_base
 class SwitchPowerBase(capability_base.CapabilityBase):
   """Abstract base class defining the API for the switch_power capability."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def supported_modes(self):
     """Get auxiliary device supported power modes."""
 

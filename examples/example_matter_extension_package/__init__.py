@@ -13,10 +13,10 @@
 # limitations under the License.
 
 """A Matter example extension package for gazoo_device."""
-from typing import Any, Dict, NoReturn
+from typing import Any, NoReturn
 
 from gazoo_device import data_types
-from gazoo_device import detect_criteria
+from gazoo_device.detect_criteria import pigweed_detect_criteria
 from example_matter_extension_package import example_matter_device
 
 __version__ = "0.0.1"
@@ -36,14 +36,16 @@ def download_key(key_info: data_types.KeyInfo, local_key_path: str) -> NoReturn:
   raise RuntimeError(f"No SSH keys are exported by {_PACKAGE_NAME}")
 
 
-def export_extensions() -> Dict[str, Any]:
+def export_extensions() -> dict[str, Any]:
   """Exports the device controller defined by the extension package."""
   return {
       "primary_devices": [example_matter_device.PartnerExampleMatterLighting],
       "auxiliary_devices": [],
       "virtual_devices": [],
       "communication_types": [],
-      "detect_criteria": {},
+      "detect_criteria": {
+          "SshComms": pigweed_detect_criteria.PIGWEED_QUERY_DICT,
+      },
       "capability_interfaces": [],
       "capability_flavors": [],
   }

@@ -15,15 +15,11 @@
 """Matter cluster unit test for widow_covering_pw_rpc module."""
 from unittest import mock
 
-import gazoo_device
 from gazoo_device import errors
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities.matter_clusters import window_covering_pw_rpc
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 
-_WINDOW_COVERING_RPC_MODULE = (
-    gazoo_device.capabilities.matter_clusters.window_covering_pw_rpc
-    .WindowCoveringClusterPwRpc)
 _FAKE_DEVICE_NAME = "fake-device-name"
 _FAKE_ENDPOINT_ID = 1
 _FAKE_DATA = 10
@@ -85,6 +81,43 @@ class WindowCoveringPwRpcTest(
 
   @mock.patch.object(
       window_covering_pw_rpc.WindowCoveringClusterPwRpc,
+      "_read_attribute",
+      return_value=_FAKE_DATA,
+      autospec=True)
+  def test_get_target_position_lift(self, mock_read):
+    """Verifies the target_position_lift attribute read on success."""
+    self.assertEqual(_FAKE_DATA, self.uut.target_position_lift)
+    mock_read.assert_called_once()
+
+  @mock.patch.object(
+      window_covering_pw_rpc.WindowCoveringClusterPwRpc,
+      "_read_attribute",
+      return_value=_FAKE_DATA,
+      autospec=True)
+  @mock.patch.object(
+      window_covering_pw_rpc.WindowCoveringClusterPwRpc,
+      "_write_attribute",
+      return_value=_FAKE_DATA,
+      autospec=True)
+  def test_set_target_position_lift_success(
+      self, mock_write, mock_read
+  ):
+    """Verifies update target_position_lift attribute on success."""
+    self.uut.target_position_lift = _FAKE_DATA
+    mock_write.assert_called_once()
+    mock_read.assert_called_once()
+
+  def test_set_target_position_lift_failure(self):
+    """Verifies update target_position_lift method on failure."""
+    error_data = 50
+    error_regex = (
+        f"Device {_FAKE_DEVICE_NAME} target_position_lift didn't "
+        f"change to {error_data}.")
+    with self.assertRaisesRegex(errors.DeviceError, error_regex):
+      self.uut.target_position_lift = error_data
+
+  @mock.patch.object(
+      window_covering_pw_rpc.WindowCoveringClusterPwRpc,
       "_read_percent_attribute",
       return_value=_FAKE_DATA,
       autospec=True)
@@ -120,6 +153,41 @@ class WindowCoveringPwRpcTest(
     with self.assertRaisesRegex(errors.DeviceError, error_regex):
       self.uut.current_position_tilt_percentage = error_data
 
+  @mock.patch.object(
+      window_covering_pw_rpc.WindowCoveringClusterPwRpc,
+      "_read_attribute",
+      return_value=_FAKE_DATA,
+      autospec=True)
+  def test_get_target_position_tilt(self, mock_read):
+    """Verifies the target_position_tilt attribute read on success."""
+    self.assertEqual(_FAKE_DATA, self.uut.target_position_tilt)
+    mock_read.assert_called_once()
+
+  @mock.patch.object(
+      window_covering_pw_rpc.WindowCoveringClusterPwRpc,
+      "_read_attribute",
+      return_value=_FAKE_DATA,
+      autospec=True)
+  @mock.patch.object(
+      window_covering_pw_rpc.WindowCoveringClusterPwRpc,
+      "_write_attribute",
+      return_value=_FAKE_DATA,
+      autospec=True)
+  def test_set_target_position_tilt_success(self, mock_write, mock_read):
+    """Verifies update target_position_tilt attribute on success."""
+    self.uut.target_position_tilt = _FAKE_DATA
+    mock_write.assert_called_once()
+    mock_read.assert_called_once()
+
+  def test_set_target_position_tilt_failure(self):
+    """Verifies update target_position_tilt method on failure."""
+    error_data = 50
+    error_regex = (
+        f"Device {_FAKE_DEVICE_NAME} target_position_tilt didn't "
+        f"change to {error_data}.")
+    with self.assertRaisesRegex(errors.DeviceError, error_regex):
+      self.uut.target_position_tilt = error_data
+
   def test_read_percent_attribute_type(self):
     """Verifies the read_percent_attribute_type on success."""
     percent = self.uut.current_position_lift_percentage
@@ -129,6 +197,28 @@ class WindowCoveringPwRpcTest(
   def test_write_percent_attribute_type(self):
     """Verifies the write_percent_attribute_type on success."""
     self.uut.current_position_lift_percentage = _FAKE_DATA
+    self.fake_write.assert_called_once()
+
+  def test_read_attribute_lift(self):
+    """Reading attribute target_position_lift."""
+    position = self.uut.target_position_lift
+    self.fake_read.assert_called_once()
+    self.assertEqual(_FAKE_DATA, position)
+
+  def test_read_attribute_tilt(self):
+    """Reading attribute target_position_tilts."""
+    tilt = self.uut.target_position_tilt
+    self.fake_read.assert_called_once()
+    self.assertEqual(_FAKE_DATA, tilt)
+
+  def test_write_attribute_lift(self):
+    """Modifying attribute target_position_lift."""
+    self.uut.target_position_lift = _FAKE_DATA
+    self.fake_write.assert_called_once()
+
+  def test_write_attribute_tilt(self):
+    """Modifying attribute target_position_tilt."""
+    self.uut.target_position_tilt = _FAKE_DATA
     self.fake_write.assert_called_once()
 
 if __name__ == "__main__":

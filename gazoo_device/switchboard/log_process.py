@@ -42,7 +42,6 @@ import datetime
 import os
 import re
 import time
-from typing import Tuple
 
 from gazoo_device.switchboard import data_framer
 from gazoo_device.switchboard import switchboard_process
@@ -75,7 +74,7 @@ def get_event_filename(log_path):
   return os.path.splitext(log_path)[0] + "-events.txt"
 
 
-def get_log_filename_and_counter(log_path: str) -> Tuple[str, int]:
+def get_log_filename_and_counter(log_path: str) -> tuple[str, int]:
   """Returns log filename without log rotation and log rotation as integer.
 
   Args:
@@ -85,7 +84,7 @@ def get_log_filename_and_counter(log_path: str) -> Tuple[str, int]:
           (2) <name_prefix>-<device_name>-<timestamp>.<log_rotation>.txt
 
   Returns:
-      Tuple[str, int]:
+      tuple[str, int]:
           str format is <name_prefix>-<device_name>-<timestamp>.txt
           int is value of log_rotation, 0 if format (1) above.
   """
@@ -193,7 +192,7 @@ class LogFilterProcess(switchboard_process.SwitchboardProcess):
     self._framer = framer or data_framer.NewlineFramer()
     self._header_length = HOST_TIMESTAMP_LENGTH + LOG_LINE_HEADER_LENGTH
     self._max_read_bytes = max_read_bytes
-    self._next_log_path = None
+    self._next_log_path: list[str] = []
     self._parser = parser
     self._log_file = None
     self._log_filename = os.path.basename(log_path)
@@ -204,6 +203,10 @@ class LogFilterProcess(switchboard_process.SwitchboardProcess):
     if hasattr(self, "_event_file") and self._event_file:
       self._event_file.flush()
       self._event_file.close()
+      # Remove the event file if it's empty (no event ever written)
+      # to avoid creating unnecessary artifacts.
+      if os.path.getsize(self._event_file.name) == 0:
+        os.remove(self._event_file.name)
       self._event_file = None
     if hasattr(self, "_log_file") and self._log_file:
       self._log_file.close()
@@ -296,7 +299,8 @@ class LogFilterProcess(switchboard_process.SwitchboardProcess):
     # and another file descriptor Bar which then appends to the same file,
     # the next read() for file descriptor Foo will return "" even though B has
     # added new data.
-    self._log_file.seek(self._log_file.tell())  # Unset EOF flag
+    if self._log_file is None:
+      raise ValueError("log_file is not set")
     log_data = self._log_file.read(size=self._max_read_bytes)
 
     if log_data:
@@ -408,6 +412,8 @@ class LogWriterProcess(switchboard_process.SwitchboardProcess):
 
   def _do_log_rotation(self):
     """Perform log rotation if necessary."""
+    if self._log_file is None:
+      raise ValueError("log_file is not set")
     if self._max_log_size:
       log_size = self._log_file.tell()
       if log_size >= self._max_log_size:

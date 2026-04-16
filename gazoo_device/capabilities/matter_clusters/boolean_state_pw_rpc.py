@@ -16,7 +16,6 @@
 """
 
 from gazoo_device import decorators
-from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities import matter_enums
 from gazoo_device.capabilities.matter_clusters.interfaces import boolean_state_base
@@ -25,7 +24,9 @@ from gazoo_device.protos import attributes_service_pb2
 
 logger = gdm_logger.get_logger()
 _BooleanStateCluster = matter_enums.BooleanStateCluster
-BOOLEAN_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_BOOLEAN_ATTRIBUTE_TYPE
+_BOOLEAN_ATTRIBUTE_TYPE = (
+    attributes_service_pb2.AttributeType.ZCL_BOOLEAN_ATTRIBUTE_TYPE
+)
 
 
 class BooleanStateClusterPwRpc(
@@ -47,7 +48,7 @@ class BooleanStateClusterPwRpc(
         endpoint_id=self._endpoint_id,
         cluster_id=_BooleanStateCluster.ID,
         attribute_id=_BooleanStateCluster.ATTRIBUTE_STATE_VALUE,
-        attribute_type=BOOLEAN_ATTRIBUTE_TYPE)
+        attribute_type=_BOOLEAN_ATTRIBUTE_TYPE)
     return measured_value_data.data_bool
 
   @state_value.setter
@@ -61,17 +62,10 @@ class BooleanStateClusterPwRpc(
     Args:
       state: The state BooleanState should update to.
     """
-    previous_state = self.state_value
-
-    self._write(
+    self._send(
+        service_name="BooleanState",
+        rpc_name="Set",
         endpoint_id=self._endpoint_id,
-        cluster_id=_BooleanStateCluster.ID,
-        attribute_id=_BooleanStateCluster.ATTRIBUTE_STATE_VALUE,
-        attribute_type=BOOLEAN_ATTRIBUTE_TYPE,
-        data_bool=state)
-
-    if self.state_value != state:  # pylint: disable=comparison-with-callable
-      raise errors.DeviceError(
-          f"Device {self._device_name} state_value didn't change to "
-          f"{state} from {previous_state}.")
+        state_value=state,
+    )
 

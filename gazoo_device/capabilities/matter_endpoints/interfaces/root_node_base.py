@@ -22,6 +22,7 @@ class RootNodeBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Root Node endpoint interface."""
 
   DEVICE_TYPE_ID = 0x0016
+  DEVICE_TYPE_NAME = "RootNode"
 
   @property
   @abc.abstractmethod
@@ -29,7 +30,7 @@ class RootNodeBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
       self) -> basic_information_base.BasicInformationClusterBase:
     """Required cluster: basic_information cluster."""
 
-  # TODO(b/241164443): implement additional clusters for root node.
+  # TODO(gdm-authors): implement additional clusters for root node.
 
   # @property
   # @abc.abstractmethod

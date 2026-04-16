@@ -14,20 +14,23 @@
 
 """Methods for mobly controller.
 
-Imported into init.
-
 To use:
-import gazoo_device
-from mobly import base_test
+
+  from gazoo_device import package_registrar
+  # Using esp32_matter as an example. This can be any device module from
+  # auxiliary_devices/ and primary_devices/.
+  from gazoo_device.primary_devices import esp32_matter
+  from mobly import base_test
 
 class Test(base_test.TestCase):
-  def set_up_class(self):
-    self.devices = self.register_controller(gazoo_device)
 
+  def setup_class(self):
+    package_registrar.register(esp32_matter)
+    self.devices = self.register_controller(esp32_matter)
 
   def setup_test(self):
     for device in self.devices:
-      device.start_new_log(log_name_prefix=self.current_test_info.name)
+      device.start_new_log(log_directory=self.current_test_info.output_path)
 
   def teardown_test(self):
     for device in self.devices:
@@ -35,21 +38,39 @@ class Test(base_test.TestCase):
 """
 import logging
 import os
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Optional, Sequence
 
-from gazoo_device import custom_types
+from gazoo_device import device_types
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device import manager
 
 # Device properties for gazoo device analytics.
-_DEVICE_PROPS = ("name", "device_type", "model", "platform", "serial_number",
-                 "wifi_mac_address", "firmware_version", "firmware_branch",
-                 "firmware_type", "alias", "communication_address",
-                 "secondary_communication_address", "build_date",
-                 "initial_code_name", "package_management.package_versions")
+_DEVICE_PROPS = (
+    "name",
+    "device_type",
+    "model",
+    "platform",
+    "serial_number",
+    "wifi_mac_address",
+    "firmware_version",
+    "firmware_branch",
+    "firmware_type",
+    "alias",
+    "communication_address",
+    "secondary_communication_address",
+    "build_date",
+    "initial_code_name",
+    "package_management.package_versions",
+)
 _LOGGER = gdm_logger.get_logger()
 _MANAGER_INSTANCE = None
+
+
+def get_mobly_controller_config_name(device_type: str) -> str:
+  """Returns the MOBLY_CONTROLLER_CONFIG_NAME given a GDM device type."""
+  # Prefix all Mobly controller names with "gdm_" to act as a namespace.
+  return f"gdm_{device_type}"  # E. g. "gdm_cambrionix".
 
 
 def get_log_directory() -> Optional[str]:
@@ -79,7 +100,7 @@ def get_manager() -> manager.Manager:
   return _MANAGER_INSTANCE
 
 
-def _set_auxiliary_props(properties: Dict[str, Any], device_name: str):
+def _set_auxiliary_props(properties: dict[str, Any], device_name: str):
   """Sets props on device instance to the values in the config.
 
   Label is translated to Alias and dimensions are left out.
@@ -89,7 +110,7 @@ def _set_auxiliary_props(properties: Dict[str, Any], device_name: str):
     device_name: Id of the device instance.
   """
   for prop_name, value in properties.items():
-    if prop_name in ["id", "dimensions"]:
+    if prop_name == "id":
       continue
     elif prop_name == "label":
       get_manager().set_prop(device_name, "alias", value)
@@ -100,14 +121,15 @@ def _set_auxiliary_props(properties: Dict[str, Any], device_name: str):
         _LOGGER.warning("%s unsettable for %s", prop_name, device_name)
 
 
-def create(configs: List[Dict[str, Any]]) -> List[custom_types.Device]:
+def create(configs: list[dict[str, Any]]) -> list[device_types.Device]:
   """Creates gazoo device instances and returns them."""
   log_directory = get_log_directory()
   devices = []
   for entry in configs:
     name = entry["id"]
     _set_auxiliary_props(entry, name)
-    if entry.get("bypass_gdm_check") == "true":
+    if (entry.get("bypass_gdm_check") == "true"
+        or entry.get("dimensions", {}).get("bypass_gdm_check") == "true"):
       _LOGGER.info(f"bypass_gdm_check is set for {name}. "
                    "Skipping health checks")
       device = get_manager().create_device(
@@ -118,23 +140,27 @@ def create(configs: List[Dict[str, Any]]) -> List[custom_types.Device]:
   return devices
 
 
-def get_info(devices: Sequence[custom_types.Device]) -> List[Dict[str, Any]]:
+def get_info(devices: Sequence[device_types.Device]) -> list[dict[str, Any]]:
   """Returns persistent info and firmware version for each device."""
   info = []
   for device in devices:
+    if hasattr(device, "start_new_log"):  # Not available for Auxiliary devices.
+      device.start_new_log(
+          log_directory=get_log_directory(),
+          log_name_prefix="mobly_controller_get_info")
     props = {}
     for device_prop in _DEVICE_PROPS:
       try:
         props[device_prop] = device.get_property(device_prop, raise_error=True)
       except AttributeError:
         props[device_prop] = "Undefined"
-      except errors.DeviceError as e:
+      except Exception as e:  # pylint: disable=broad-except
         props[device_prop] = repr(e)
     info.append(props)
   return info
 
 
-def destroy(devices: List[custom_types.Device]) -> None:
+def destroy(devices: list[device_types.Device]) -> None:
   """Closes all created devices and manager."""
   for device in devices:
     device.close()

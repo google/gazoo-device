@@ -23,6 +23,7 @@ class OnOffPluginUnitBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter On/Off Plug-in Unit endpoint interface."""
 
   DEVICE_TYPE_ID = 0x010A
+  DEVICE_TYPE_NAME = "OnOffPluginUnit"
 
   @property
   @abc.abstractmethod
@@ -34,11 +35,13 @@ class OnOffPluginUnitBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   def level_control(self) -> level_control_base.LevelControlClusterBase:
     """Optional cluster: ZCL level cluster."""
 
-  # TODO(b/209362086) Add the below clusters
-  # @abc.abstractproperty
+  # TODO(gdm-authors) Add the below clusters
+  # @property
+  # @abc.abstractmethod
   # def scenes(self) -> None:
   #   """Required cluster: ZCL scenes cluster."""
 
-  # @abc.abstractproperty
+  # @property
+  # @abc.abstractmethod
   # def groups(self) -> None:
   #   """Required cluster: ZCL groups cluster."""

@@ -11,12 +11,12 @@ for simplicity.
 """
 
 import re
-from typing import Callable, List, Set, Tuple, Type
+from typing import Callable, TypedDict, Union
 
 from gazoo_device import errors
 from gazoo_device import gdm_logger
+from gazoo_device.capabilities import matter_controller_chip_tool
 from gazoo_device.capabilities import matter_endpoints_and_clusters
-from gazoo_device.capabilities.interfaces import matter_controller_base
 from gazoo_device.capabilities.interfaces import matter_endpoints_base
 from gazoo_device.capabilities.matter_clusters.interfaces import cluster_base
 from gazoo_device.capabilities.matter_endpoints import unsupported_endpoint
@@ -25,20 +25,27 @@ import immutabledict
 
 logger = gdm_logger.get_logger()
 
-_COMMANDS = immutabledict.immutabledict({
-    "READ_DESCRIPTOR_PARTS_LIST":
-        "{chip_tool} descriptor read parts-list {node_id} {endpoint_id}",
-    "READ_DESCRIPTOR_SERVER_LIST":
-        "{chip_tool} descriptor read server-list {node_id} {endpoint_id}",
-    "READ_DESCRIPTOR_DEVICE_LIST":
-        "{chip_tool} descriptor read device-list {node_id} {endpoint_id}",
-    "READ_DESCRIPTOR_DEVICE_TYPE_LIST":
-        "{chip_tool} descriptor read device-type-list {node_id} {endpoint_id}",
-})
+_CHIP_TOOL_TRACING_ENABLED = "--trace_decode 1"
 
-_REGEXES = immutabledict.immutabledict({
-    "DESCRIPTOR_ATTRIBUTE_RESPONSE": r"CHIP:DMG:\s+Data = (\w+)",
-    "DEVICE_LIST_RESPONSE": r"CHIP:TOO:\s+(?:Device)?Type: (\d+)",
+
+class ResponseRegex(TypedDict):
+  DESCRIPTOR_ATTRIBUTE_RESPONSE: str
+  DEVICE_TYPE_LIST_RESPONSE: str
+
+
+_COMMANDS = immutabledict.immutabledict({
+    "READ_DESCRIPTOR_PARTS_LIST": (
+        "{chip_tool} descriptor read parts-list {node_id} {endpoint_id} "
+        "{tracing_enable}"
+    ),
+    "READ_DESCRIPTOR_SERVER_LIST": (
+        "{chip_tool} descriptor read server-list {node_id} {endpoint_id} "
+        "{tracing_enable}"
+    ),
+    "READ_DESCRIPTOR_DEVICE_TYPE_LIST": (
+        "{chip_tool} descriptor read device-type-list {node_id} {endpoint_id} "
+        "{tracing_enable}"
+    ),
 })
 
 
@@ -54,18 +61,22 @@ class MatterEndpointsAccessorChipTool(matter_endpoints_base.MatterEndpointsBase
       node_id_getter: Callable[[], int],
       shell_fn: Callable[..., str],
       shell_with_regex: Callable[..., str],
-      matter_controller: matter_controller_base.MatterControllerBase,
+      matter_controller: matter_controller_chip_tool.MatterControllerChipTool,
+      device_type: str,
+      response_regex: ResponseRegex,
   ) -> None:
     """Initializes an instance of MatterEndpoints capability.
 
     Args:
       device_name: Name of the device instance the capability is attached to.
-      node_id_getter: Getter method for Matter node ID of the commissioned
-        end device.
+      node_id_getter: Getter method for Matter node ID of the commissioned end
+        device.
       shell_fn: Bound 'shell' method of the device class instance.
       shell_with_regex: Bound 'shell_with_regex' method of the device class
         instance.
       matter_controller: An instance of MatterController capability.
+      device_type: Type of the device instance.
+      response_regex: Regex of each response from CHIP tool.
     """
     super().__init__(
         device_name=device_name,
@@ -77,21 +88,47 @@ class MatterEndpointsAccessorChipTool(matter_endpoints_base.MatterEndpointsBase
     self._node_id_getter = node_id_getter
     self._shell_fn = shell_fn
     self._shell_with_regex = shell_with_regex
+    self._device_type = device_type
+    self._response_regex = response_regex
 
-  def get_supported_endpoint_ids(self) -> List[int]:
+  @classmethod
+  def get_sub_capability_flavors(
+      cls
+  ) -> set[type[Union[endpoint_base.EndpointBase, cluster_base.ClusterBase]]]:
+    """Returns the flavors of sub-capabilities used by this capability.
+
+    Capabilities normally don't have sub-capabilities, but this is required for
+    the matter_endpoints capability.
+    """
+    return set(
+        matter_endpoints_and_clusters.SUPPORTED_ENDPOINTS +
+        matter_endpoints_and_clusters.SUPPORTED_CLUSTERS_CHIP_TOOL +
+        (unsupported_endpoint.UnsupportedEndpoint,))
+
+  def get_supported_endpoint_ids(self) -> list[int]:
     """Returns the list of supported endpoint ids on the device."""
-    response = self._shell_fn(_COMMANDS["READ_DESCRIPTOR_PARTS_LIST"].format(
-        chip_tool=self._matter_controller.path,
-        endpoint_id=matter_endpoints_base.ROOT_NODE_ENDPOINT_ID,
-        node_id=self._node_id_getter()))
-    endpoints = re.findall(_REGEXES["DESCRIPTOR_ATTRIBUTE_RESPONSE"], response)
     # Descriptor cluster does not explicitly list root node endpoint.
     endpoint_ids = [matter_endpoints_base.ROOT_NODE_ENDPOINT_ID]
-    endpoint_ids += [int(endpoint) for endpoint in endpoints]
+    response = self._shell_fn(
+        _COMMANDS["READ_DESCRIPTOR_PARTS_LIST"].format(
+            chip_tool=self._matter_controller.path,
+            endpoint_id=matter_endpoints_base.ROOT_NODE_ENDPOINT_ID,
+            node_id=self._node_id_getter(),
+            tracing_enable=_CHIP_TOOL_TRACING_ENABLED,
+        )
+    )
+    endpoints = re.findall(
+        self._response_regex["DESCRIPTOR_ATTRIBUTE_RESPONSE"], response
+    )
+    if not endpoints:
+      return endpoint_ids
+    endpoint_ids += [
+        int(endpoint.replace(" (unsigned)", ""))
+        for endpoint in endpoints[0].split(",")]
     return endpoint_ids
 
   def get_endpoint_class_and_device_type_id(
-      self, endpoint_id: int) -> Tuple[Type[endpoint_base.EndpointBase], int]:
+      self, endpoint_id: int) -> tuple[type[endpoint_base.EndpointBase], int]:
     """Gets the endpoint class and device type ID by the given endpoint id.
 
     Args:
@@ -105,17 +142,17 @@ class MatterEndpointsAccessorChipTool(matter_endpoints_base.MatterEndpointsBase
       DeviceError when the device type ID of this endpoint cannot be obtained.
     """
     device_type_id = None
-    # Different command syntax between 1.0 and master branches.
-    for device_type_command in (
-        "READ_DESCRIPTOR_DEVICE_LIST", "READ_DESCRIPTOR_DEVICE_TYPE_LIST"):
-      command = _COMMANDS[device_type_command].format(
-          chip_tool=self._matter_controller.path,
-          endpoint_id=endpoint_id,
-          node_id=self._node_id_getter())
-      output = self._shell_with_regex(command, _REGEXES["DEVICE_LIST_RESPONSE"])
-      if output.isdigit():
-        device_type_id = int(output)
-        break
+    command = _COMMANDS["READ_DESCRIPTOR_DEVICE_TYPE_LIST"].format(
+        chip_tool=self._matter_controller.path,
+        endpoint_id=endpoint_id,
+        node_id=self._node_id_getter(),
+        tracing_enable=_CHIP_TOOL_TRACING_ENABLED,
+    )
+    output = self._shell_with_regex(
+        command, self._response_regex["DEVICE_TYPE_LIST_RESPONSE"]
+    )
+    if output.isdigit():
+      device_type_id = int(output)
     if device_type_id is None:
       raise errors.DeviceError(
           f"Failed to get device type from endpoint {endpoint_id} on "
@@ -128,7 +165,7 @@ class MatterEndpointsAccessorChipTool(matter_endpoints_base.MatterEndpointsBase
     return endpoint_class, device_type_id
 
   def get_supported_clusters(
-      self, endpoint_id: int) -> Set[Type[cluster_base.ClusterBase]]:
+      self, endpoint_id: int) -> set[type[cluster_base.ClusterBase]]:
     """Retrieves the supported clusters from the given endpoint ID.
 
     Args:
@@ -137,20 +174,38 @@ class MatterEndpointsAccessorChipTool(matter_endpoints_base.MatterEndpointsBase
     Returns:
       Set of supported cluster capability classes.
     """
-    response = self._shell_fn(_COMMANDS["READ_DESCRIPTOR_SERVER_LIST"].format(
-        chip_tool=self._matter_controller.path,
-        endpoint_id=endpoint_id,
-        node_id=self._node_id_getter()))
-    clusters = map(
-        int, re.findall(_REGEXES["DESCRIPTOR_ATTRIBUTE_RESPONSE"], response))
-
+    response = self._shell_fn(
+        _COMMANDS["READ_DESCRIPTOR_SERVER_LIST"].format(
+            chip_tool=self._matter_controller.path,
+            endpoint_id=endpoint_id,
+            node_id=self._node_id_getter(),
+            tracing_enable=_CHIP_TOOL_TRACING_ENABLED,
+        )
+    )
+    clusters_raw = re.findall(
+        self._response_regex["DESCRIPTOR_ATTRIBUTE_RESPONSE"], response
+    )
+    if not clusters_raw:
+      return set()
+    if self._device_type == "chip_tool":
+      # Example response
+      # [1653012222.680056][1030572:1030577] [DMG] Data = 44,
+      clusters = clusters_raw
+    else:
+      # Example response
+      # [1653012051.834362][1030538:1030543] [DMG] Data = [
+      # [1653012051.834396][1030538:1030543] [DMG]         1 (unsigned),
+      # [1653012051.834439][1030538:1030543] [DMG] ],
+      clusters = clusters_raw[0].split(",")
     cluster_classes = []
     for cluster in clusters:
-      if cluster in matter_endpoints_and_clusters.CLUSTER_ID_TO_CLASS_CHIP_TOOL:
+      cluster_id = int(cluster.replace(" (unsigned)", ""))
+      if (cluster_id in
+          matter_endpoints_and_clusters.CLUSTER_ID_TO_CLASS_CHIP_TOOL):
         cluster_classes.append(matter_endpoints_and_clusters
-                               .CLUSTER_ID_TO_CLASS_CHIP_TOOL[cluster])
+                               .CLUSTER_ID_TO_CLASS_CHIP_TOOL[cluster_id])
       else:
-        logger.warning(f"Cluster class for cluster ID {hex(cluster)} has not "
-                       "been implemented yet.")
+        logger.warning(f"Cluster class for cluster ID {hex(cluster_id)} has not"
+                       " been implemented yet.")
 
     return set(cluster_classes)

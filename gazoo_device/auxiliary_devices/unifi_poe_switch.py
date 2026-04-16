@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,20 +14,25 @@
 
 """Ubiquiti UniFi PoE Switch."""
 import time
-from typing import Callable, List
+from typing import Any, Callable
 
-from gazoo_device import config
 from gazoo_device import console_config
 from gazoo_device import decorators
-from gazoo_device import detect_criteria
 from gazoo_device import errors
 from gazoo_device import gdm_logger
-from gazoo_device.base_classes import auxiliary_device
+from gazoo_device import mobly_controller
+from gazoo_device import version
+from gazoo_device.base_classes import auxiliary_power_hub_device
 from gazoo_device.capabilities import shell_ssh
 from gazoo_device.capabilities import switch_power_unifi_switch
+from gazoo_device.detect_criteria import ssh_detect_criteria
+from gazoo_device.keys import unifi_poe_switch_key
 from gazoo_device.switchboard import switchboard
+from gazoo_device.switchboard.communication_types import ssh_comms
 from gazoo_device.utility import deprecation_utils
 from gazoo_device.utility import host_utils
+from gazoo_device.utility import key_utils
+import immutabledict
 
 logger = gdm_logger.get_logger()
 CLASS_NAME = "UnifiPoeSwitch"
@@ -84,17 +89,17 @@ REGEXES = {
 TIMEOUTS = {"SHELL": 10, "SHUTDOWN": 60, "ONLINE": 120}
 
 
-class UnifiPoeSwitch(auxiliary_device.AuxiliaryDevice):
+class UnifiPoeSwitch(auxiliary_power_hub_device.AuxiliaryPowerHubDevice):
   """Device class for a Ubiquiti UniFi PoE Switch."""
-  COMMUNICATION_TYPE = "SshComms"
-  DETECT_MATCH_CRITERIA = {detect_criteria.SshQuery.IS_UNIFI: True}
+  COMMUNICATION_TYPE = ssh_comms.SshComms
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
+      ssh_detect_criteria.SshQuery.IS_UNIFI: True})
   DEVICE_TYPE = "unifi_switch"
-  _COMMUNICATION_KWARGS = {
+  _COMMUNICATION_KWARGS = immutabledict.immutabledict({
       "log_cmd": COMMANDS["LOGGING"],
-      "key_info": config.KEYS["unifi_switch_ssh_key"],
+      "key_info": unifi_poe_switch_key.SSH_KEY_PRIVATE,
       "username": "admin"
-  }
-  _OWNER_EMAIL = "gdm-authors@google.com"
+  })
 
   def __init__(self,
                manager,
@@ -132,7 +137,7 @@ class UnifiPoeSwitch(auxiliary_device.AuxiliaryDevice):
         self.switchboard.get_line_identifier())
 
   @decorators.PersistentProperty
-  def health_checks(self) -> List[Callable[[], None]]:
+  def health_checks(self) -> list[Callable[[], None]]:
     """Returns list of methods to execute as health checks."""
     return [
         self.check_device_connected, self.check_create_switchboard,
@@ -347,13 +352,13 @@ class UnifiPoeSwitch(auxiliary_device.AuxiliaryDevice):
     switchboard_name = self._get_private_capability_name(
         switchboard.SwitchboardDefault)
     if not hasattr(self, switchboard_name):
-      switchboard_kwargs = self._COMMUNICATION_KWARGS.copy()
-      switchboard_kwargs.update({
+      switchboard_kwargs = {
+          **self._COMMUNICATION_KWARGS,
           "communication_address": self.communication_address,
-          "communication_type": self.COMMUNICATION_TYPE,
+          "communication_type": self.COMMUNICATION_TYPE.__name__,
           "log_path": self.log_file_name,
           "device_name": self.name,
-          "event_parser": None})
+          "event_parser": None}
       setattr(self, switchboard_name,
               self.get_manager().create_switchboard(**switchboard_kwargs))
 
@@ -450,3 +455,31 @@ deprecation_utils.add_deprecated_attributes(
      ("expect", "switchboard.expect", True),
      ("send", "switchboard.send", True),
      ("send_and_expect", "switchboard.send_and_expect", True)])
+
+
+_DeviceClass = UnifiPoeSwitch
+_COMMUNICATION_TYPE = _DeviceClass.COMMUNICATION_TYPE.__name__
+# For Mobly controller integration.
+MOBLY_CONTROLLER_CONFIG_NAME = (
+    mobly_controller.get_mobly_controller_config_name(_DeviceClass.DEVICE_TYPE))
+create = mobly_controller.create
+destroy = mobly_controller.destroy
+get_info = mobly_controller.get_info
+get_manager = mobly_controller.get_manager
+
+
+def export_extensions() -> dict[str, Any]:
+  """Exports device class and capabilities to act as a GDM extension package."""
+  return {
+      "auxiliary_devices": [_DeviceClass],
+      "detect_criteria": immutabledict.immutabledict({
+          _COMMUNICATION_TYPE: ssh_detect_criteria.SSH_QUERY_DICT,
+      }),
+      "keys": [
+          unifi_poe_switch_key.SSH_KEY_PRIVATE,
+          unifi_poe_switch_key.SSH_KEY_PUBLIC,
+      ],
+  }
+
+__version__ = version.VERSION
+download_key = key_utils.download_key

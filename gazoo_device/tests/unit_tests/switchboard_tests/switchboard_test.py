@@ -70,12 +70,6 @@ def get_file_size(file_path, size=0, timeout=_LOG_WRITE_TIMEOUT):
   return os.path.getsize(file_path)
 
 
-def _write_read_for_echo_file_to_transport(data):
-  responses = []
-  responses.append(data)
-  return responses
-
-
 def _write_read_for_verify_file_on_transport_bad_checksum(data):
   responses = []
   if "md5sum" in data:
@@ -1555,95 +1549,6 @@ class SwitchboardTests(unit_test_case.MultiprocessingTestCase):
           "Expected rb (xmodem receive) return code 0 found {}".format(
               proc.returncode))
     self._verify_files(source_file, destination_file)
-
-  def test_switchboard_echo_file_to_transport_raises_errors(self):
-    """Test switchboard echo_file_to_transport method raises errors."""
-    if "linux" not in sys.platform:
-      self.skipTest("Doesn't work on mac")
-    self._setup_switchboard_with_fake_transport()
-
-    source_file = os.path.join(self.artifacts_directory,
-                               self._testMethodName + ".json")
-    destination_path = os.path.join("/some/path",
-                                    self._testMethodName + ".json")
-
-    # source_file doesn't exist
-    with self.assertRaisesRegex(errors.DeviceError, "doesn't exist"):
-      self.uut.echo_file_to_transport(source_file, destination_path)
-
-    # Create source_file for remaining tests
-    open(source_file, "w").close()
-
-    # port is None
-    with self.assertRaisesRegex(errors.DeviceError, "Invalid port type"):
-      self.uut.echo_file_to_transport(source_file, destination_path, port=None)
-
-    # port is 1
-    with self.assertRaisesRegex(errors.DeviceError,
-                                r"Invalid port number. Expected: \[0\.\.1\)"):
-      self.uut.echo_file_to_transport(source_file, destination_path, port=1)
-
-    # bytes_per_echo is None
-    with self.assertRaisesRegex(errors.DeviceError, "int for bytes_per_echo"):
-      self.uut.echo_file_to_transport(
-          source_file, destination_path, bytes_per_echo=None)
-
-    # bytes_per_echo is -1
-    with self.assertRaisesRegex(errors.DeviceError, "expected >0"):
-      self.uut.echo_file_to_transport(
-          source_file, destination_path, bytes_per_echo=-1)
-
-    # bytes_per_echo is 0
-    with self.assertRaisesRegex(errors.DeviceError, "expected >0"):
-      self.uut.echo_file_to_transport(
-          source_file, destination_path, bytes_per_echo=0)
-
-    # source_file exists but only root can access it
-    bad_source_file = "/dev/console"
-    with self.assertRaisesRegex(errors.DeviceError, "Permission denied"):
-      self.uut.echo_file_to_transport(bad_source_file, destination_path)
-
-  def test_switchboard_echo_file_to_transport_one_byte(self):
-    """Test echo_file_to_transport method can send file one byte at a time."""
-    source_file = os.path.join(self.artifacts_directory,
-                               self._testMethodName + ".json")
-    source_data = b"The quick brown fox jumps over lazy dogs."
-
-    # Create source_file
-    with open(source_file, "wb") as out_file:
-      out_file.write(source_data)
-
-    self.fake_transport = fake_transport.FakeTransport(
-        write_read_func=_write_read_for_echo_file_to_transport)
-    self.uut = switchboard.SwitchboardDefault("test_device",
-                                              self.exception_queue,
-                                              [self.fake_transport],
-                                              self.log_path)
-
-    bytes_per_echo = 1
-    self.uut.echo_file_to_transport(
-        source_file, _FILE_ON_TRANSPORT_PATH, bytes_per_echo=bytes_per_echo)
-    command1 = self._get_command(self.fake_transport)
-    self.assertEqual(
-        "echo -ne > " + _FILE_ON_TRANSPORT_PATH + "\n", command1,
-        "Expected 'echo -ne > /some/path/...' found {}".format(command1))
-
-    count = 0
-    command_n = self._get_command(self.fake_transport)
-    expected_count = len(source_data) // bytes_per_echo
-    while count < expected_count:
-      self.assertIn("echo -ne \"\\x", command_n)
-      count += 1
-      command_n = self._get_command(self.fake_transport)
-    self.assertEqual(
-        expected_count, count,
-        "Expected {} echo commands found {} commands".format(
-            expected_count, count))
-    remaining_commands = get_queue_size(self.fake_transport.writes)
-    self.assertFalse(
-        remaining_commands,
-        f"Expected no more commands but found {remaining_commands} more "
-        "commands")
 
   def test_switchboard_verify_file_on_transport_raises_errors(self):
     """Test switchboard verify_file_on_transport method raises errors."""

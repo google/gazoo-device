@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,19 +14,23 @@
 
 """Default implementation of the PwRPC (Pigweed RPC) wifi capability."""
 
-from typing import Any, Callable, Dict, Optional
+import time
+from typing import Any, Callable, Optional
 
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import pwrpc_wifi_base
 from gazoo_device.protos import wifi_service_pb2
-from gazoo_device.switchboard.transports import pigweed_rpc_transport
+from gazoo_device.utility import pwrpc_utils
+from gazoo_device.utility import retry
 
 
 _LOGGER = gdm_logger.get_logger()
 _WIFI_RPC = "WiFi"
 _ASCII_NULL_BYTES = b"\x00"
+_GET_STATE_RPC_TIMEOUT_SEC = 5
+_POLL_INTERVAL_SEC = 1
 
 
 class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
@@ -66,7 +70,7 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
       return wifi_service_pb2.State.FromString(state_bytes).connected
     except errors.DeviceError as e:
       if "Error code: 9" in str(e):
-        # TODO(b/216584605) Remove error handling when the RPC is fixed.
+        # TODO(gdm-authors) Remove error handling when the RPC is fixed.
         _LOGGER.warning(
             f"GetState doesn't work when the {self._device_name} is not "
             "connected to WiFi.")
@@ -82,7 +86,7 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
       return wifi_service_pb2.IP6Address.FromString(ip6_address_bytes).address
     except errors.DeviceError as e:
       if "Error code: 13" in str(e):
-        # TODO(b/216584605) Remove error handling when the RPC is fixed.
+        # TODO(gdm-authors) Remove error handling when the RPC is fixed.
         _LOGGER.warning(
             f"GetIP6Address doesn't work when the {self._device_name} is not "
             "connected to WiFi.")
@@ -119,7 +123,9 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
               ssid: str,
               security_type: str,
               secret: Optional[str] = None,
-              verify: bool = True) -> None:
+              verify: bool = True,
+              timeout: int = _GET_STATE_RPC_TIMEOUT_SEC,
+              interval: int = _POLL_INTERVAL_SEC) -> None:
     """Establishes wifi conection with given ssid.
 
     Args:
@@ -128,6 +134,8 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
         wifi_service_pb2.WIFI_SECURITY_TYPE.
       secret: Wifi passphrase.
       verify: Verifies if the device is connected to wifi.
+      timeout: Timeout in seconds to verify the connection.
+      interval: Interval in seconds between verification tries.
 
     Raises:
       DeviceError with appropriate error code if connection failed.
@@ -145,10 +153,18 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
     connection_result = wifi_service_pb2.ConnectionResult.FromString(
         connection_result_bytes)
     result = connection_result.error
-    if (result != wifi_service_pb2.CONNECTION_ERROR.OK or (
-        verify and not self.state)):
-      raise errors.DeviceError(f"{self._device_name} failed to connect to wifi "
-                               f"with {result}")
+
+    # Wait for the Connect RPC to take effect
+    if verify:
+      if result != wifi_service_pb2.CONNECTION_ERROR.OK:
+        raise errors.DeviceError(
+            f"{self._device_name} failed to connect to wifi with {result}")
+      retry.retry(
+          func=lambda: self.state,
+          is_successful=lambda state: state,
+          timeout=timeout,
+          interval=interval,
+          reraise=False)
 
   @decorators.CapabilityLogDecorator(_LOGGER)
   def disconnect(self, verify: bool = True) -> None:
@@ -161,11 +177,14 @@ class PwRPCWifiDefault(pwrpc_wifi_base.PwRPCWifiBase):
   def _wifi_rpc_call(
       self,
       service_name: str,
-      service_kwargs: Optional[Dict[str, Any]] = None) -> bytes:
+      service_kwargs: Optional[dict[str, Any]] = None) -> bytes:
     """Helper method for WiFi RPC call."""
     if service_kwargs is None:
       service_kwargs = {}
-    return self._switchboard_call(
-        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
+    payload = self._switchboard_call(
+        method_name=pwrpc_utils.RPC_METHOD_NAME,
         method_args=(_WIFI_RPC, service_name),
         method_kwargs=service_kwargs)
+    # b/281957128#comment2 Temporary solution to fix WiFi RPC timeout issue.
+    time.sleep(0.5)
+    return payload

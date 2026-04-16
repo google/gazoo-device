@@ -206,8 +206,6 @@ $ gdm detect --static-ips=192.168.1.168
 
 	detecting potential AdbComms communication addresses
 WARNING: adb path adb stored in /Users/artorl/gazoo/gdm/conf/gdm.json does not exist.
-	detecting potential DockerComms communication addresses
-Unable to detect DockerComms communication addresses. Err: FileNotFoundError(2, "No such file or directory: 'docker'")
 	detecting potential JlinkSerialComms communication addresses
 	detecting potential PtyProcessComms communication addresses
 	detecting potential SshComms communication addresses
@@ -452,7 +450,7 @@ Persistent properties do not change. Their values are retrieved once during
 device detection and stored in `~/gazoo/gdm/conf/devices.json`. Subsequent
 retrieval of persistent properties does not involve communication with the
 device. \
-Hardware architecture is an example of a persistent property. 
+Hardware architecture is an example of a persistent property.
 
 ```shell
 gdm get-prop linuxexample-1234 hardware_architecture

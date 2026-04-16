@@ -17,6 +17,7 @@ import subprocess
 from unittest import mock
 
 from gazoo_device import errors
+from gazoo_device import package_registrar
 from gazoo_device.auxiliary_devices import yepkit
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.utility import host_utils
@@ -33,6 +34,11 @@ _PERSISTENT_PROPERTIES = immutabledict.immutabledict({
 
 class TestYepkit(fake_device_test_case.FakeDeviceTestCase):
   """Unit tests for Yepkit."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(yepkit)
 
   def setUp(self):
     super().setUp()

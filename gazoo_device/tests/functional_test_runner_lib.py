@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Defines all functional test suites and their run order."""
+from gazoo_device.tests.functional_tests import air_quality_sensor_test_suite
 from gazoo_device.tests.functional_tests import auxiliary_device_common_test_suite
 from gazoo_device.tests.functional_tests import color_temperature_light_test_suite
 from gazoo_device.tests.functional_tests import comm_power_test_suite
@@ -40,6 +41,7 @@ from gazoo_device.tests.functional_tests import pressure_sensor_test_suite
 from gazoo_device.tests.functional_tests import pw_rpc_button_test_suite
 from gazoo_device.tests.functional_tests import pw_rpc_common_test_suite
 from gazoo_device.tests.functional_tests import pw_rpc_wifi_test_suite
+from gazoo_device.tests.functional_tests import root_node_test_suite
 from gazoo_device.tests.functional_tests import shell_ssh_test_suite
 from gazoo_device.tests.functional_tests import speaker_test_suite
 from gazoo_device.tests.functional_tests import switch_power_test_suite
@@ -50,6 +52,7 @@ from gazoo_device.tests.functional_tests import window_covering_test_suite
 from gazoo_device.tests.functional_tests.utils import suite_filter
 
 TEST_SUITES = (
+    air_quality_sensor_test_suite.AirQualitySensorTestSuite,
     auxiliary_device_common_test_suite.AuxiliaryDeviceCommonTestSuite,
     color_temperature_light_test_suite.ColorTemperatureTestSuite,
     comm_power_test_suite.CommPowerTestSuite,
@@ -77,6 +80,7 @@ TEST_SUITES = (
     pw_rpc_button_test_suite.PwRPCButtonTestSuite,
     pw_rpc_common_test_suite.PwRPCCommonTestSuite,
     pw_rpc_wifi_test_suite.PwRPCWifiTestSuite,
+    root_node_test_suite.RootNodeTestSuite,
     shell_ssh_test_suite.ShellSshTestSuite,
     speaker_test_suite.SpeakerTestSuite,
     switch_power_test_suite.SwitchPowerTestSuite,

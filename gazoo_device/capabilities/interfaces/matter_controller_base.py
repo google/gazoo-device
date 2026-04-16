@@ -16,7 +16,7 @@
 
 import abc
 import enum
-from typing import Any, List, Optional, Sequence
+from typing import Any, Optional, Sequence
 
 from gazoo_device.capabilities.interfaces import capability_base
 
@@ -110,7 +110,7 @@ class MatterControllerBase(capability_base.CapabilityBase):
     """
 
   @abc.abstractmethod
-  def stop_subscription(self) -> List[Any]:
+  def stop_subscription(self) -> list[Any]:
     """Stops existing subscription and returns subscribed values.
 
     Returns:
@@ -124,7 +124,7 @@ class MatterControllerBase(capability_base.CapabilityBase):
                 attribute: str,
                 min_interval_s: int,
                 max_interval_s: int,
-                timeout_s: int = 10) -> List[Any]:
+                timeout_s: int = 10) -> list[Any]:
     """Subscribes to a cluster's attribute and blocks until timeout.
 
     Args:

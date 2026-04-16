@@ -29,7 +29,7 @@ import signal
 import subprocess
 import time
 import typing
-from typing import Any, Callable, Dict, List, MutableSequence, Optional, Protocol, Tuple, Union
+from typing import Any, Callable, MutableSequence, Optional, Union
 
 from gazoo_device import config
 from gazoo_device import decorators
@@ -64,30 +64,6 @@ _VALID_EXPECT_TYPES = [
 ]
 _VALID_EXPECT_MODES = [MODE_TYPE_ALL, MODE_TYPE_ANY, MODE_TYPE_SEQUENTIAL]
 _VERIFY_METHODS = [VERIFY_METHOD_MD5SUM]
-_CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S = 3
-_CHILD_PROCESS_POLLING_INTERVAL_S = 0.01
-
-
-class ButtonInterface(Protocol):
-  """Interface for buttons."""
-
-  def close(self):
-    """Release any held buttons on close."""
-
-  def is_valid(self, button: str) -> bool:
-    """Return True if button specified is in the list of valid buttons."""
-
-  def press(self, button: str, wait: float = 0.0) -> None:
-    """Presses button and waits for the time specified."""
-
-  def click(self, button: str, duration: float = .5) -> None:
-    """Presses the button specified and holds it for the specified duration."""
-
-  def release(self, button: str) -> None:
-    """Releases the button specified if it was previously pressed."""
-
-  def valid_buttons(self) -> List[str]:
-    """Returns a list of valid button names."""
 
 
 def _ensure_has_newline(cmd: str,
@@ -99,8 +75,8 @@ def _ensure_has_newline(cmd: str,
   return cmd
 
 
-def _get_pattern_index(compiled_list: Sequence[re.Pattern],
-                       match_list: Sequence[re.Match],
+def _get_pattern_index(compiled_list: Sequence[re.Pattern[str]],
+                       match_list: Sequence[re.Match[str]],
                        mode: str) -> Optional[int]:
   """Return index of compiled regex pattern that matches the match provided.
 
@@ -124,9 +100,9 @@ def _get_pattern_index(compiled_list: Sequence[re.Pattern],
   return None
 
 
-def _get_pattern_list(compiled_list: Sequence[re.Pattern],
-                      match_list: Sequence[re.Match],
-                      mode: str) -> Sequence[re.Pattern]:
+def _get_pattern_list(compiled_list: Sequence[re.Pattern[str]],
+                      match_list: Sequence[re.Match[str]],
+                      mode: str) -> Sequence[re.Pattern[str]]:
   """Returns pattern_list to be used in expect search using information provided.
 
   Args:
@@ -155,9 +131,9 @@ def _get_pattern_list(compiled_list: Sequence[re.Pattern],
   return [missing_patterns[0]]
 
 
-def _get_missing_patterns(compiled_list: Sequence[re.Pattern],
-                          match_list: Sequence[re.Match],
-                          mode: str) -> Sequence[re.Pattern]:
+def _get_missing_patterns(compiled_list: Sequence[re.Pattern[str]],
+                          match_list: Sequence[re.Match[str]],
+                          mode: str) -> Sequence[re.Pattern[str]]:
   """Returns compiled regex patterns from compiled_list that are not in match_list.
 
   Args:
@@ -178,7 +154,7 @@ def _get_missing_patterns(compiled_list: Sequence[re.Pattern],
     ]
 
 
-def _get_pattern_strings(compiled_list: Sequence[re.Pattern]) -> List[str]:
+def _get_pattern_strings(compiled_list: Sequence[re.Pattern[str]]) -> list[str]:
   """Returns regex pattern strings from a list of compiled regex pattern objects.
 
   Args:
@@ -222,14 +198,14 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
   def __init__(
       self,
       device_name: str,
-      exception_queue: queue.Queue,
-      transport_list: List[transport_base.TransportBase],
+      exception_queue: queue.Queue[str],
+      transport_list: list[transport_base.TransportBase],
       log_path: str,
-      framer_list: Optional[List[data_framer.DataFramer]] = None,
+      framer_list: Optional[list[data_framer.DataFramer]] = None,
       identifier: Optional[line_identifier.LineIdentifier] = None,
-      button_list: Optional[ButtonInterface] = None,
+      button_list: Optional[switchboard_base.ButtonInterface] = None,
       parser: Optional[log_parser.LogParser] = None,
-      partial_line_timeout_list: Optional[List[int]] = None,
+      partial_line_timeout_list: Optional[list[int]] = None,
       force_slow: bool = False,
       max_log_size: int = 0,
   ):
@@ -255,14 +231,13 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       max_log_size: maximum size in bytes before performing log rotation.
         max_log_size of 0 means no log rotation should ever occur.
     """
-    super().__init__(device_name=device_name)
+    super().__init__(
+        log_path=log_path, button_list=button_list, device_name=device_name)
     if framer_list is None:
       framer_list = []
     if partial_line_timeout_list is None:
       partial_line_timeout_list = []
 
-    self.log_path = log_path
-    self.button_list = button_list
     self._force_slow = force_slow
     self._identifier = identifier or line_identifier.AllUnknownIdentifier()
     self._log_queue = multiprocessing_utils.get_context().Queue()
@@ -329,8 +304,8 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
 
   def call(self,
            method_name: str,
-           method_args: Tuple[Any, ...] = (),
-           method_kwargs: Optional[Dict[str, Any]] = None,
+           method_args: tuple[Any, ...] = (),
+           method_kwargs: Optional[dict[str, Any]] = None,
            port: int = 0) -> Any:
     """Calls a transport method in a transport process and returns the response.
 
@@ -375,16 +350,16 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
   def call_and_expect(
       self,
       method_name: str,
-      pattern_list: List[str],
+      pattern_list: list[str],
       timeout: float = 30.0,
       searchwindowsize: int = config.SEARCHWINDOWSIZE,
       expect_type: str = line_identifier.LINE_TYPE_ALL,
       mode: str = MODE_TYPE_ANY,
-      method_args: Tuple[Any, ...] = (),
-      method_kwargs: Optional[Dict[str, Any]] = None,
+      method_args: tuple[Any, ...] = (),
+      method_kwargs: Optional[dict[str, Any]] = None,
       port: int = 0,
       raise_for_timeout: bool = False
-  ) -> Tuple[expect_response.ExpectResponse, Any]:
+  ) -> tuple[expect_response.ExpectResponse, Any]:
     """Calls a transport method and expects on the patterns provided.
 
     Args:
@@ -407,7 +382,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
         (ExpectResponse, Returned value of the transport method)
     """
     expect_ret, func_ret = typing.cast(
-        Tuple[expect_response.ExpectResponse, Any],
+        tuple[expect_response.ExpectResponse, Any],
         self.do_and_expect(
             self.call, [method_name], {
                 "method_args": method_args,
@@ -452,7 +427,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
   def click_and_expect(
       self,
       button: str,
-      pattern_list: List[str],
+      pattern_list: list[str],
       duration: float = 0.5,
       timeout: float = 30.0,
       searchwindowsize: int = config.SEARCHWINDOWSIZE,
@@ -573,8 +548,8 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       retry.retry(
           func=transport_proc.is_open,
           is_successful=retry.not_func,
-          timeout=_CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S,
-          interval=_CHILD_PROCESS_POLLING_INTERVAL_S)
+          timeout=config.SWITCHBOARD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S,
+          interval=config.SWITCHBOARD_PROCESS_POLLING_INTERVAL_S)
     except errors.CommunicationTimeoutError as err:
       transport_proc.stop()
       raise errors.ProcessCommunicationError(
@@ -582,7 +557,8 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
           "Transport process:{} did not close after {} seconds. "
           "The process is stopped.".format(
               transport_proc.process_name,
-              _CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S)) from err
+              config.SWITCHBOARD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S)
+          ) from err
     log_message = "closed transport for port {} in {}s".format(
         port,
         time.time() - start_time)
@@ -591,16 +567,16 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
   def do_and_expect(
       self,
       func: Callable[..., Any],
-      func_args: Union[List[Any], Tuple[Any, ...]],
+      func_args: Union[list[Any], tuple[Any, ...]],
       func_kwargs: Mapping[str, Any],
-      pattern_list: List[str],
+      pattern_list: list[str],
       timeout: float = 30.0,
       searchwindowsize: int = config.SEARCHWINDOWSIZE,
       expect_type: str = line_identifier.LINE_TYPE_ALL,
       mode: str = MODE_TYPE_ANY,
       raise_for_timeout: bool = False,
       include_func_response: bool = False
-  ) -> Union[Tuple[expect_response.ExpectResponse, Any],
+  ) -> Union[tuple[expect_response.ExpectResponse, Any],
              expect_response.ExpectResponse]:
     """Executes function with given args, blocks until expect matches or timeout occurs.
 
@@ -652,104 +628,9 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     finally:
       self._disable_raw_data_queue()
 
-  @decorators.CapabilityLogDecorator(logger)
-  def echo_file_to_transport(self,
-                             source_file: str,
-                             destination_path: str,
-                             port: int = 0,
-                             bytes_per_echo: int = 50) -> None:
-    r"""Transfers file to transport specified using echo commands.
-
-    Args:
-        source_file: path to the file to transfer
-        destination_path: path to transfer file to on device
-        port (int or str): the transport port to open
-        bytes_per_echo (int): call to use during file transfer
-
-    Raises:
-        DeviceError: If source_file doesn't exist, can't be opened, or
-                     the port or bytes_per_echo values are invalid or
-                     out of range.
-
-    Note:
-        The caller is responsible for preparing the device to receive
-        multiple echo commands to receive the file and only calling this
-        method for devices that support the following commands::
-
-            echo -ne > <destination_path>
-            echo -ne "\\x{:02x}" >> <destination_path>
-    """
-    self._validate_port(port, self.echo_file_to_transport.__name__)
-
-    if not os.path.exists(source_file):
-      raise errors.DeviceError("Device {} echo file to transport failed. "
-                               "Source file {} doesn't exist.".format(
-                                   self._device_name, source_file))
-    elif not isinstance(bytes_per_echo, int):
-      raise errors.DeviceError(
-          "Device {} echo file to transport failed. "
-          "Expecting int for bytes_per_echo found {} instead.".format(
-              self._device_name, type(bytes_per_echo)))
-    elif bytes_per_echo <= 0:
-      raise errors.DeviceError(
-          "Device {} echo file to transport failed. "
-          "Invalid bytes_per_echo value {} expected >0".format(
-              self._device_name, bytes_per_echo))
-
-    start_time = time.time()
-    log_message = ("starting echo transfer of {} for port {} to {}".format(
-        source_file, port, destination_path))
-    self.add_log_note(log_message)
-
-    # Read the data in from the file
-    try:
-      with io.open(source_file, "rb") as in_file:
-        data = in_file.read()
-    except IOError as err:
-      raise errors.DeviceError("Device {} echo file to transport failed. "
-                               "Unable to read {}. "
-                               "Error: {!r}".format(self._device_name,
-                                                    source_file, err))
-
-    # Create and zero out the file
-    cmd_string = "echo -ne > {}\n".format(destination_path)
-    echo_pattern1 = r"echo -ne > [/\w.]+"
-    result = self.send_and_expect(
-        cmd_string, [echo_pattern1], port=port, expect_type="response")
-    if result.timedout:
-      raise errors.DeviceError("Device {} echo file to transport failed. "
-                               "Unable to create/erase file {} on device. "
-                               "Output: {!r}".format(self._device_name,
-                                                     destination_path,
-                                                     result.before))
-
-    # Loop through the data at bytes_per_echo chunks at a time
-    echo_pattern2 = r'echo -ne ".*"\s.*\s[/\w.]+'
-    data_indexes = list(range(0, len(data), bytes_per_echo)) + [len(data)]
-    for data_index in range(1, len(data_indexes)):
-      start_index = data_indexes[data_index - 1]
-      end_index = data_indexes[data_index]
-      data_chunk = u"".join(
-          [u"\\x%02x" % byte for byte in data[start_index:end_index]])
-      cmd_string = "echo -ne \"{}\" >> {}\n".format(data_chunk,
-                                                    destination_path)
-      result = self.send_and_expect(
-          cmd_string, [echo_pattern2], port=port, expect_type="response")
-      if result.timedout:
-        raise errors.DeviceError("Device {} echo file to transport failed. "
-                                 "Unable to echo bytes {!r} to file {} "
-                                 "Output: {!r}".format(self._device_name,
-                                                       data_chunk,
-                                                       destination_path,
-                                                       result.before))
-    log_message = ("finished echo transfer of {} for port {} in {}s".format(
-        source_file, port,
-        time.time() - start_time))
-    self.add_log_note(log_message)
-
   @decorators.CapabilityLogDecorator(logger, level=decorators.DEBUG)
   def ensure_serial_paths_unlocked(self,
-                                   communication_addresses: List[str]) -> None:
+                                   communication_addresses: list[str]) -> None:
     """Ensures serial paths are longer locked by switchboard process after device is closed."""
     for comms_address in communication_addresses:
       if comms_address not in usb_utils.get_all_serial_connections():
@@ -778,7 +659,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
                 self._device_name, output, process_number))
 
   def expect(self,
-             pattern_list: List[str],
+             pattern_list: list[str],
              timeout: float = 30.0,
              searchwindowsize: int = config.SEARCHWINDOWSIZE,
              expect_type: str = line_identifier.LINE_TYPE_ALL,
@@ -918,7 +799,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
           func=transport_proc.is_open,
           is_successful=retry.is_true,
           timeout=timeout,
-          interval=_CHILD_PROCESS_POLLING_INTERVAL_S)
+          interval=config.SWITCHBOARD_PROCESS_POLLING_INTERVAL_S)
     except errors.CommunicationTimeoutError as err:
       transport_proc.stop()
       raise errors.ProcessCommunicationError(
@@ -946,18 +827,16 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
     """
     self._check_button_args("press", button, port, wait=wait)
 
-    log_message = "pressing button {} on port {} and waiting {}s - begin".format(
-        button, port, wait)
-    self.add_log_note(log_message)
+    self.add_log_note(
+        f"pressing button {button} on port {port} and waiting {wait}s - begin")
     self.button_list[port].press(button, wait)
-    log_message = "pressing button {} on port {} and waiting {}s - end".format(
-        button, port, wait)
-    self.add_log_note(log_message)
+    self.add_log_note(
+        f"pressing button {button} on port {port} and waiting {wait}s - end")
 
   def press_and_expect(
       self,
       button: str,
-      pattern_list: List[str],
+      pattern_list: list[str],
       wait: float = 0.0,
       timeout: float = 30.0,
       searchwindowsize: int = config.SEARCHWINDOWSIZE,
@@ -1019,7 +898,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
 
   def release_and_expect(self,
                          button: str,
-                         pattern_list: List[str],
+                         pattern_list: list[str],
                          timeout: float = 30.0,
                          searchwindowsize: int = config.SEARCHWINDOWSIZE,
                          expect_type: str = line_identifier.LINE_TYPE_ALL,
@@ -1089,7 +968,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
   def send_and_expect(
       self,
       command: str,
-      pattern_list: List[str],
+      pattern_list: list[str],
       timeout: float = 30.0,
       searchwindowsize: int = config.SEARCHWINDOWSIZE,
       expect_type: str = line_identifier.LINE_TYPE_ALL,
@@ -1213,8 +1092,8 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       retry.retry(
           func=lambda: os.path.exists(log_path),
           is_successful=retry.is_true,
-          timeout=_CHILD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S,
-          interval=_CHILD_PROCESS_POLLING_INTERVAL_S)
+          timeout=config.SWITCHBOARD_PROCESS_COMMAND_CONSUMPTION_TIMEOUT_S,
+          interval=config.SWITCHBOARD_PROCESS_POLLING_INTERVAL_S)
     except errors.CommunicationTimeoutError as err:
       self._log_filter_process.stop()
       self._log_writer_process.stop()
@@ -1337,7 +1216,9 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
           "Device {} echo file to transport failed. "
           "Unable to verify {} using the md5sum command".format(
               self._device_name, destination_path))
-    elif result.index == 0:  # checksum returned for file pattern
+    elif (
+        result.index == 0 and result.match
+    ):  # checksum returned for file pattern
       device_checksum = result.match.group(1)
     elif result.index == 1:  # missing file pattern
       device_checksum = "No such file or directory"
@@ -1540,7 +1421,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
               self._device_name, func_name, button, port,
               self.button_list[port].valid_buttons()))
 
-  def _check_expect_args(self, pattern_list: List[str], timeout: float,
+  def _check_expect_args(self, pattern_list: list[str], timeout: float,
                          searchwindowsize: int, expect_type: str,
                          mode: str) -> None:
     """Check that expect arguments are valid.
@@ -1618,7 +1499,7 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
 
   def _expect(
       self,
-      compiled_list: Sequence[re.Pattern],
+      compiled_list: Sequence[re.Pattern[str]],
       timeout: float,
       searchwindowsize: int,
       expect_type: str,
@@ -1768,8 +1649,8 @@ class SwitchboardDefault(switchboard_base.SwitchboardBase):
       # manager shutdown or close called or queue empty
       pass
 
-  def _get_compiled_pattern_list(self,
-                                 pattern_list: List[str]) -> List[re.Pattern]:
+  def _get_compiled_pattern_list(
+      self, pattern_list: list[str]) -> list[re.Pattern[str]]:
     """Return compiled regexps objects for the given regex pattern list.
 
     Args:

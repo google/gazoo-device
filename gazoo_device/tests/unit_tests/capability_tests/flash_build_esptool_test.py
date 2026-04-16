@@ -35,6 +35,8 @@ _MOCK_FLASH_MODE = 'keep'
 _MOCK_FLASH_FREQ = 'keep'
 _MOCK_FLASH_SIZE = 'detect'
 _MOCK_FLASH_FILE_OFFSET = '0x15000'
+_MOCK_ERASE_REGION_START_ADDR = str(0x10000)
+_MOCK_ERASE_REGION_SIZE = str(0x2000)
 
 _MOCK_WRITE_COMMAND_ARGS = [
     '--port', _MOCK_PORT, '--baud', _MOCK_BAUDRATE, '--chip', _MOCK_CHIP_NAME
@@ -44,6 +46,10 @@ _MOCK_WRITE_COMMAND_ARGS_WITH_FLASH_FILE = [
     '--before', 'default_reset', '--after', 'hard_reset', 'write_flash',
     '--flash_freq', '30m', '--flash_mode', 'dio', '--flash_size', '8MB',
     '--compress'
+]
+_MOCK_ERASE_REGION_COMMAND = [
+    '--port', _MOCK_PORT, '--chip', _MOCK_CHIP_NAME,
+    'erase_region', _MOCK_ERASE_REGION_START_ADDR, _MOCK_ERASE_REGION_SIZE
 ]
 
 
@@ -127,7 +133,8 @@ class FlashBuildEsptoolCapabilityTests(fake_device_test_case.FakeDeviceTestCase
     del mock_verify_file
     self.uut.upgrade(
         build_file=_MOCK_IMAGE_PATH,
-        flash_settings_file=self.mock_flash_settings_file)
+        flash_settings_file=self.mock_flash_settings_file,
+        erase_flash=False)
     self.mock_esptool.assert_called_once_with(
         _MOCK_WRITE_COMMAND_ARGS_WITH_FLASH_FILE +
         [_MOCK_FLASH_FILE_OFFSET, _MOCK_IMAGE_PATH])
@@ -141,7 +148,8 @@ class FlashBuildEsptoolCapabilityTests(fake_device_test_case.FakeDeviceTestCase
     self.uut.upgrade(
         build_file=_MOCK_IMAGE_PATH,
         flash_settings_file=self.mock_flash_settings_file,
-        application_offset=_MOCK_OFFSET)
+        application_offset=_MOCK_OFFSET,
+        erase_flash=False)
     self.mock_esptool.assert_called_once_with(
         _MOCK_WRITE_COMMAND_ARGS_WITH_FLASH_FILE +
         [_MOCK_OFFSET, _MOCK_IMAGE_PATH])
@@ -168,6 +176,7 @@ class FlashBuildEsptoolCapabilityTests(fake_device_test_case.FakeDeviceTestCase
   @mock.patch.object(os.path, 'exists', autospec=True, return_value=True)
   def test_verify_file_success(self, mock_fn):
     """Test verify file helper method."""
+    del mock_fn  # Unused.
     self.uut._verify_file(image_path=_MOCK_IMAGE_PATH)
 
   def test_verify_file_raise_error(self):
@@ -176,6 +185,14 @@ class FlashBuildEsptoolCapabilityTests(fake_device_test_case.FakeDeviceTestCase
       self.uut._verify_file(image_path=_MOCK_INVALID_IMAGE)
     with self.assertRaises(errors.DeviceError):
       self.uut._verify_file(image_path=_MOCK_IMAGE_PATH)
+
+  def test_erase_region(self):
+    self.uut.erase_region(
+        _MOCK_ERASE_REGION_START_ADDR, _MOCK_ERASE_REGION_SIZE
+    )
+    self.mock_switchboard.close_all_transports.assert_called_once()
+    self.mock_switchboard.open_all_transports.assert_called_once()
+    self.mock_esptool.assert_called_once_with(_MOCK_ERASE_REGION_COMMAND)
 
 
 if __name__ == '__main__':

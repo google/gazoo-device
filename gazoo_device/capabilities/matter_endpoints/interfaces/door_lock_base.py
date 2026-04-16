@@ -22,33 +22,40 @@ class DoorLockBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Door Lock endpoint interface."""
 
   DEVICE_TYPE_ID = 0x000A
+  DEVICE_TYPE_NAME = "DoorLock"
 
   @property
   @abc.abstractmethod
   def door_lock(self) -> door_lock_base.DoorLockClusterBase:
     """Required cluster: Door Lock cluster."""
 
-  # TODO(b/209362086) Add the below optional clusters
-  # @abc.abstractproperty
+  # TODO(gdm-authors) Add the below optional clusters
+  # @property
+  # @abc.abstractmethod
   # def scenes(self):
   #   """Optional cluster: ZCL Scenes cluster."""
 
-  # @abc.abstractproperty
+  # @property
+  # @abc.abstractmethod
   # def groups(self):
   #   """Optional cluster: ZCL Groups cluster."""
 
-  # @abc.abstractproperty
+  # @property
+  # @abc.abstractmethod
   # def alarms(self):
   #   """Optional cluster: ZCL Alarms cluster."""
 
-  # @abc.abstractproperty
+  # @property
+  # @abc.abstractmethod
   # def time(self):
   #   """Optional cluster: ZCL Time cluster."""
 
-  # @abc.abstractproperty
+  # @property
+  # @abc.abstractmethod
   # def time_sync(self):
   #   """Optional cluster: ZCL TimeSync cluster."""
 
-  # @abc.abstractproperty
+  # @property
+  # @abc.abstractmethod
   # def poll_control(self):
   #   """Optional cluster: ZCL Poll Control cluster."""

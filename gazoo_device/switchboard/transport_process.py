@@ -38,7 +38,7 @@ the transport class provided and according to the following assumptions:
 import queue
 import time
 import traceback
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from gazoo_device.switchboard import data_framer
 from gazoo_device.switchboard import log_process
@@ -147,7 +147,7 @@ class TransportProcess(switchboard_process.SwitchboardProcess):
     self._max_write_bytes = max_write_bytes
     self._partial_line_timeout = partial_line_timeout
     self._partial_log_time = time.time()
-    self._pending_writes = None
+    self._pending_writes: queue.Queue[str] = None
     self._raw_data_enabled = multiprocessing_utils.get_context().Event()
     self._call_result_queue = call_result_queue
     self._raw_data_id = raw_data_id
@@ -310,9 +310,9 @@ class TransportProcess(switchboard_process.SwitchboardProcess):
           self._raw_data_queue, (self._raw_data_id, line), timeout=0)
     log_process.log_message(self._log_queue, line, self._raw_data_id)
 
-  def _transport_call(self, data: Tuple[str,
-                                        Tuple[Any],
-                                        Dict[str, Any]]) -> None:
+  def _transport_call(self, data: tuple[str,
+                                        tuple[Any],
+                                        dict[str, Any]]) -> None:
     """Calls the transport method and puts result into call_result_queue."""
     try:
       method_name, method_args, method_kwargs = data

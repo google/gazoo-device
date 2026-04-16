@@ -59,7 +59,7 @@ def _validate_suid_bit(cmd_str):
         "Fix using 'sudo chmod u+s {binary}'".format(binary=binary))
 
 
-class UsbStorage(object):
+class UsbStorage:
   """USB mass storage device class.
 
   Used in 'with block' and will mount the USB mass storage device upon entering

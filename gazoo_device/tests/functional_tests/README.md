@@ -11,7 +11,7 @@ For example:
 - *FileTransferTestSuite* is applicable to all devices with a
   *file_transfer* capability;
 - *SwitchPowerTestSuite* is applicable to devices with any flavor of
-  *switch_power* capability other than *switch_power_ethernet*.
+  *switch_power* capability.
 - Other test suites may be applicable only to certain device types, devices
   with only certain methods or properties, or devices with specific optional
   properties set (such as a port number on a programmable power delivery unit

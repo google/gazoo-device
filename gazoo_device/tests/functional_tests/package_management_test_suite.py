@@ -16,10 +16,10 @@
 import logging
 import os
 import shutil
-from typing import Tuple, Type
+
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
-from mobly import asserts
 from gazoo_device.utility import host_utils
+from mobly import asserts
 
 _DOWNLOAD_FOLDER_TEMPLATE = "/tmp/{device_name}-packages"
 
@@ -29,7 +29,7 @@ class PackageManagementTestSuite(gdm_test_base.GDMTestBase):
 
   @classmethod
   def is_applicable_to(cls, device_type: str,
-                       device_class: Type[gdm_test_base.DeviceType],
+                       device_class: type[gdm_test_base.DeviceType],
                        device_name: str) -> bool:
     """Determine if this test suite can run on the given device."""
     return device_class.has_capabilities(["package_management"])
@@ -40,7 +40,7 @@ class PackageManagementTestSuite(gdm_test_base.GDMTestBase):
     return False
 
   @classmethod
-  def required_test_config_variables(cls) -> Tuple[str, ...]:
+  def required_test_config_variables(cls) -> tuple[str, ...]:
     """Returns keys required to be present in the functional test config."""
     return ("sample_package_path", "sample_package_name")
 
@@ -51,7 +51,7 @@ class PackageManagementTestSuite(gdm_test_base.GDMTestBase):
     local_file = os.path.join(local_folder, file_name)
     logging.info("Downloading package from %s to %s", remote_package_path,
                  local_file)
-    host_utils.gsutil_command("cp", remote_package_path, [local_folder])
+    host_utils.gcs_command("cp", remote_package_path, [local_folder])
     return local_file
 
   def test_has_package(self):

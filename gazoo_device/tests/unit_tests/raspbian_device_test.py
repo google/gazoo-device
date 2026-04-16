@@ -16,6 +16,7 @@
 from unittest import mock
 
 from gazoo_device import errors
+from gazoo_device import package_registrar
 from gazoo_device.auxiliary_devices import raspberry_pi
 from gazoo_device.base_classes import raspbian_device
 from gazoo_device.tests.unit_tests.capability_tests.mixins import file_transfer_test
@@ -26,7 +27,7 @@ import immutabledict
 
 
 _PERSISTENT_PROPERTIES = immutabledict.immutabledict({
-    "model": "3 Model B Rev 1.1",
+    "model": "3 Model B Rev 1.2",
     "serial_number": "000000001234abcd",
     "ip_address": "123.45.67.89",
     "communication_address": "123.45.67.89",
@@ -40,6 +41,11 @@ _DYNAMIC_PROPERTIES = immutabledict.immutabledict({
 class RaspbianDeviceTests(fake_device_test_case.FakeDeviceTestCase,
                           file_transfer_test.TestFileTransfer):
   """Tests for Raspbian Device base class."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(raspberry_pi)
 
   def setUp(self):
     super().setUp()
@@ -63,6 +69,10 @@ class RaspbianDeviceTests(fake_device_test_case.FakeDeviceTestCase,
         self.device_config["persistent"]["console_port_name"],
         device_class=raspberry_pi.RaspberryPi,
         persistent_properties=_PERSISTENT_PROPERTIES)
+
+  def test_device_user_name(self):
+    """Verify device_user_name works as expected."""
+    self.assertEqual(self.uut.device_user_name, "pi")
 
   def test_recover_fails_as_device_never_goes_offline(self):
     with self.assertRaisesRegex(errors.DeviceError,

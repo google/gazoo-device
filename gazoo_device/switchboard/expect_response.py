@@ -19,11 +19,11 @@ to permit calling routines a way to evaluate device execution and behavior.
 """
 import dataclasses
 import re
-from typing import List, Optional
+from typing import Optional
 
 
 @dataclasses.dataclass
-class ExpectResponse(object):
+class ExpectResponse:
   """Stores the values of expect Attributes.
 
   Attributes:
@@ -39,8 +39,8 @@ class ExpectResponse(object):
   index: Optional[int] = None
   before: str = ""
   after: str = ""
-  match: Optional[re.Match] = None
+  match: Optional[re.Match[str]] = None
   time_elapsed: float = 0
   timedout: bool = False
-  remaining: List[str] = dataclasses.field(default_factory=list)
-  match_list: List[re.Match] = dataclasses.field(default_factory=list)
+  remaining: list[str] = dataclasses.field(default_factory=list)
+  match_list: list[re.Match[str]] = dataclasses.field(default_factory=list)

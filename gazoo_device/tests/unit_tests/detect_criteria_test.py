@@ -18,8 +18,17 @@ import os
 import subprocess
 from unittest import mock
 
-from gazoo_device import detect_criteria
+from gazoo_device import device_detector
 from gazoo_device import errors
+from gazoo_device import gazoo_device_controllers
+from gazoo_device import package_registrar
+from gazoo_device.detect_criteria import base_detect_criteria
+from gazoo_device.detect_criteria import docker_detect_criteria
+from gazoo_device.detect_criteria import pigweed_detect_criteria
+from gazoo_device.detect_criteria import serial_detect_criteria
+from gazoo_device.detect_criteria import snmp_detect_criteria
+from gazoo_device.detect_criteria import ssh_detect_criteria
+from gazoo_device.detect_criteria import usb_detect_criteria
 from gazoo_device.switchboard import switchboard
 from gazoo_device.tests.unit_tests.utils import fake_detect_playback
 from gazoo_device.tests.unit_tests.utils import unit_test_case
@@ -31,6 +40,8 @@ from gazoo_device.utility import usb_config
 from gazoo_device.utility import usb_utils
 import immutabledict
 import usb
+
+package_registrar.register(gazoo_device_controllers)
 
 _ADB_ADDRESS = "01a12345"
 _DOCKER_ID = "12345678"
@@ -65,7 +76,7 @@ DEVICE_TYPE_TO_COMMS_ADDRESS = immutabledict.immutabledict({
        for pigweed_socket_device_type in
        fake_detect_playback.PIGWEED_SOCKET_DEVICE_BEHAVIORS},
     **{serial_device_type: _SERIAL_ADDRESS
-       for serial_device_type in fake_detect_playback.SERIAL_DEVICE_BEHAVIORS},
+       for serial_device_type in fake_detect_playback.THIRD_PARTY_SERIAL_DEVICE_BEHAVIORS},
     **{singleton_device_type: _SERIAL_ADDRESS
        for singleton_device_type in fake_detect_playback.SINGLETON_DEVICES},
     **{snmp_device_type: _IP_ADDRESS
@@ -81,7 +92,7 @@ DEVICE_TYPE_TO_COMMS_ADDRESS = immutabledict.immutabledict({
 
 
 class TestDetectCriteria(unit_test_case.UnitTestCase):
-  """Tests for detect_criteria.py."""
+  """Tests for gazoo_device/detect_criteria/."""
   _MOCKS = (
       (adb_utils, "root_device", None),
       (adb_utils, "shell", "adb_shell"),
@@ -131,7 +142,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
   def test_serial_devices(self):
     """Verifies detection criteria for the serial comms type."""
     self._test_comms_type(
-        "SerialComms", fake_detect_playback.SERIAL_DEVICE_BEHAVIORS)
+        "SerialComms", fake_detect_playback.THIRD_PARTY_SERIAL_DEVICE_BEHAVIORS)
 
   def test_singleton_devices(self):
     """Verifies dection criteria for the singleton comms type."""
@@ -176,23 +187,13 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
         "PigweedSocketComms",
         fake_detect_playback.PIGWEED_SOCKET_DEVICE_BEHAVIORS)
 
-  def test_pty_process_name_query(self):
-    """Tests _pty_process_name_query."""
-    pty_address = "/some/host/path"
-    self.assertEqual(
-        pty_address,
-        detect_criteria._pty_process_name_query(
-            address=pty_address,
-            detect_logger=mock.MagicMock(spec=logging.Logger),
-            create_switchboard_func=mock.MagicMock()))
-
   def test_usb_vendor_product_id_from_serial_port_path(self):
     """Tests _usb_vendor_product_id_from_serial_port_path()."""
     with mock.patch.object(
         usb_utils, "get_device_info", return_value=_MOCK_USB_DEVICE_INFO):
       self.assertEqual(
           "3434:1212",
-          detect_criteria._usb_vendor_product_id_from_serial_port_path(
+          serial_detect_criteria._usb_vendor_product_id_from_serial_port_path(
               _SERIAL_ADDRESS,
               detect_logger=mock.MagicMock(spec=logging.Logger),
               create_switchboard_func=mock.MagicMock()))
@@ -203,7 +204,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
                            return_value=_MOCK_USB_DEVICE):
       self.assertEqual(
           "Product name",
-          detect_criteria._usb_product_name_from_serial_number(
+          usb_detect_criteria._usb_product_name_from_serial_number(
               "12345678",
               detect_logger=mock.MagicMock(spec=logging.Logger),
               create_switchboard_func=mock.MagicMock()))
@@ -214,7 +215,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
                            return_value=_MOCK_USB_DEVICE):
       self.assertEqual(
           "1000:0001",
-          detect_criteria._usb_vendor_product_id_query(
+          usb_detect_criteria._usb_vendor_product_id_query(
               "12345678",
               detect_logger=mock.MagicMock(spec=logging.Logger),
               create_switchboard_func=mock.MagicMock()))
@@ -225,7 +226,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
                            return_value=None):
       self.assertEqual(
           "",
-          detect_criteria._usb_vendor_product_id_query(
+          usb_detect_criteria._usb_vendor_product_id_query(
               "12345678",
               detect_logger=mock.MagicMock(spec=logging.Logger),
               create_switchboard_func=mock.MagicMock()))
@@ -234,7 +235,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
     """Tests _get_communication_address()."""
     self.assertEqual(
         "12345678",
-        detect_criteria._get_communication_address(
+        base_detect_criteria.get_communication_address(
             "12345678",
             detect_logger=mock.MagicMock(spec=logging.Logger),
             create_switchboard_func=mock.MagicMock()))
@@ -245,7 +246,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
                            return_value=_MOCK_USB_DEVICE_INFO):
       self.assertEqual(
           "manufacturer",
-          detect_criteria._manufacturer_name_query(
+          pigweed_detect_criteria._manufacturer_name_query(
               _SERIAL_ADDRESS,
               detect_logger=mock.MagicMock(spec=logging.Logger),
               create_switchboard_func=mock.MagicMock()))
@@ -254,7 +255,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
   def test_is_ubuntu_rpi_query_return_true(self, mock_ssh_command):
     """Verifies _is_ubuntu_rpi_query method returns true."""
     self.assertTrue(
-        detect_criteria._is_ubuntu_rpi_query(
+        ssh_detect_criteria._is_ubuntu_rpi_query(
             address=_IP_ADDRESS,
             detect_logger=mock.MagicMock(spec=logging.Logger),
             create_switchboard_func=mock.MagicMock()))
@@ -264,7 +265,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
   def test_is_ubuntu_rpi_query_return_false(self, mock_ssh_command):
     """Verifies _is_ubuntu_rpi_query method returns false."""
     self.assertFalse(
-        detect_criteria._is_ubuntu_rpi_query(
+        ssh_detect_criteria._is_ubuntu_rpi_query(
             address=_IP_ADDRESS,
             detect_logger=mock.MagicMock(spec=logging.Logger),
             create_switchboard_func=mock.MagicMock()))
@@ -276,7 +277,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
     fake_detect_logger = mock.MagicMock(spec=logging.Logger)
     fake_detect_logger.handlers = [mock.Mock()]
     self.assertTrue(
-        detect_criteria._is_matter_device_query(
+        pigweed_detect_criteria._is_matter_device_query(
             address=_SERIAL_ADDRESS,
             detect_logger=fake_detect_logger,
             create_switchboard_func=mock.MagicMock()))
@@ -285,7 +286,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
   def test_docker_product_name_query(self, mock_check_output):
     """Verifies _docker_product_name_query method returns value."""
     self.assertEqual(
-        detect_criteria._docker_product_name_query(
+        docker_detect_criteria._docker_product_name_query(
             address=_DOCKER_ID,
             detect_logger=mock.MagicMock(spec=logging.Logger),
             create_switchboard_func=self.mock_create_switchboard
@@ -300,7 +301,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
   def test_docker_product_name_query_error(self, mock_check_output):
     """Verifies _docker_product_name_query method returns ""."""
     self.assertEqual(
-        detect_criteria._docker_product_name_query(
+        docker_detect_criteria._docker_product_name_query(
             address=_DOCKER_ID,
             detect_logger=mock.MagicMock(spec=logging.Logger),
             create_switchboard_func=self.mock_create_switchboard
@@ -314,7 +315,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
     with mock.patch.object(
         http_utils, "send_http_get", return_value=mock_response):
       self.assertFalse(
-          detect_criteria._is_dli_query(
+          ssh_detect_criteria._is_dli_query(
               address=_IP_ADDRESS,
               detect_logger=mock.MagicMock(spec=logging.Logger),
               create_switchboard_func=self.mock_create_switchboard
@@ -325,7 +326,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
     with mock.patch.object(
         http_utils, "send_http_get", side_effect=RuntimeError):
       self.assertFalse(
-          detect_criteria._is_dli_query(
+          ssh_detect_criteria._is_dli_query(
               address=_IP_ADDRESS,
               detect_logger=mock.MagicMock(spec=logging.Logger),
               create_switchboard_func=self.mock_create_switchboard
@@ -338,7 +339,8 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
         f"snmpget -v 2c -c private {_IP_ADDRESS}:161 1.3.6.1.2.1.1.1.0".split())
 
     self.assertEqual(
-        detect_criteria.get_dlink_model_name(_IP_ADDRESS), "WS6-DGS-1100-05")
+        snmp_detect_criteria.get_dlink_model_name(_IP_ADDRESS),
+        "WS6-DGS-1100-05")
 
     mock_check_output.assert_called_once_with(
         expected_sys_desc_cmd, text=True, timeout=5)
@@ -353,7 +355,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
         f"snmpget -v 2c -c private {_IP_ADDRESS}:161 1.3.6.1.2.1.1.5.0".split())
 
     self.assertEqual(
-        detect_criteria.get_dlink_model_name(_IP_ADDRESS), "DGS-1100-24")
+        snmp_detect_criteria.get_dlink_model_name(_IP_ADDRESS), "DGS-1100-24")
 
     mock_check_output.assert_has_calls(
         [mock.call(expected_sys_desc_cmd, text=True, timeout=5),
@@ -370,29 +372,30 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
 
     with self.assertRaisesRegex(
         errors.DeviceError, "Failed to retrieve model name from dlink_switch"):
-      detect_criteria.get_dlink_model_name(_IP_ADDRESS)
+      snmp_detect_criteria.get_dlink_model_name(_IP_ADDRESS)
 
     mock_check_output.assert_has_calls(
         [mock.call(expected_sys_desc_cmd, text=True, timeout=5),
          mock.call(expected_sys_name_cmd, text=True, timeout=5)])
 
-  @mock.patch.object(detect_criteria, "get_dlink_model_name",
+  @mock.patch.object(snmp_detect_criteria, "get_dlink_model_name",
                      side_effect=errors.DeviceError("ErrorMessage"))
   def test_is_dlink_query_return_false(self, mock_get_dlink_model_name):
     """Verifies _is_dlink_query method returns false."""
     self.assertFalse(
-        detect_criteria._is_dlink_query(
+        snmp_detect_criteria._is_dlink_query(
             address=_IP_ADDRESS,
             detect_logger=mock.MagicMock(spec=logging.Logger),
             create_switchboard_func=self.mock_create_switchboard
             ))
 
-  @mock.patch.object(host_utils, "ssh_command",
-                     return_value="Raspberry Pi")
+  @mock.patch.object(
+      host_utils, "ssh_command", side_effect=["Raspberry Pi", "pi"]
+  )
   def test_is_raspbian_rpi_query(self, mock_ssh_command):
     """Verifies _is_dlink_query method returns true."""
     self.assertTrue(
-        detect_criteria._is_raspbian_rpi_query(
+        ssh_detect_criteria._is_raspbian_rpi_query(
             address=_IP_ADDRESS,
             detect_logger=mock.MagicMock(spec=logging.Logger),
             create_switchboard_func=self.mock_create_switchboard
@@ -403,7 +406,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
   def test_is_raspbian_rpi_query_return_false(self, mock_ssh_command):
     """Verifies _is_raspbian_rpi_query method returns false."""
     self.assertFalse(
-        detect_criteria._is_raspbian_rpi_query(
+        ssh_detect_criteria._is_raspbian_rpi_query(
             address=_IP_ADDRESS,
             detect_logger=mock.MagicMock(spec=logging.Logger),
             create_switchboard_func=self.mock_create_switchboard
@@ -413,7 +416,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
   def test_is_matter_app_running_query_return_true(self, fake_ssh_command):
     """Verifies _is_matter_app_running_query method returns true."""
     self.assertTrue(
-        detect_criteria._is_matter_app_running_query(
+        ssh_detect_criteria._is_matter_app_running_query(
             address=_IP_ADDRESS,
             detect_logger=mock.MagicMock(spec=logging.Logger),
             create_switchboard_func=mock.MagicMock()))
@@ -423,7 +426,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
   def test_is_matter_app_running_query_return_false(self, fake_ssh_command):
     """Verifies _is_matter_app_running_query method returns false."""
     self.assertFalse(
-        detect_criteria._is_matter_app_running_query(
+        ssh_detect_criteria._is_matter_app_running_query(
             address=_IP_ADDRESS,
             detect_logger=mock.MagicMock(spec=logging.Logger),
             create_switchboard_func=mock.MagicMock()))
@@ -433,7 +436,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
     self.fake_detect_playback.responder.behavior_dict = {
         "invalid\n": "InvalidCommand\n"}
     self.assertTrue(
-        detect_criteria._is_nrf_openthread(
+        serial_detect_criteria.is_nrf_openthread(
             address=_JLINK_ADDRESS,
             detect_logger=mock.MagicMock(
                 spec=logging.Logger, handlers=[mock.Mock(baseFilename="log")]),
@@ -447,7 +450,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
         comms_type.replace("Comms", "").upper())
     device_types = [
         cls.DEVICE_TYPE
-        for cls in detect_criteria.get_communication_type_classes(comms_type)
+        for cls in device_detector._get_communication_type_classes(comms_type)
     ]
     self.assertCountEqual(
         behaviors_dict.keys(), device_types,
@@ -461,7 +464,7 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
       if switchboard_behaviors_dict is not None:
         self.fake_detect_playback.responder.behavior_dict = (
             switchboard_behaviors_dict.get(device_type, {}))
-      classes = detect_criteria.determine_device_class(
+      classes = device_detector._determine_device_class(
           address, comms_type, log_file, self.mock_create_switchboard)
       if len(classes) != 1 or classes[0].DEVICE_TYPE != device_type:
         error_msgs.append("{}'s behavior returned {!r}".format(
@@ -475,4 +478,3 @@ class TestDetectCriteria(unit_test_case.UnitTestCase):
 
 if __name__ == "__main__":
   unit_test_case.main()
-

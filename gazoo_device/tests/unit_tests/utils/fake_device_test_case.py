@@ -145,9 +145,9 @@ class FakeDeviceTestCase(unit_test_case.UnitTestCase):
     """Verifies dynamic device properties."""
     # Setup returns a mock method instead of a property for these properties.
     exception_property_regexes = (
-        r"^usb_hub\.supported_modes:Exception_DeviceError$",
-        r"^comm_power\.port_mode:Exception_DeviceError$",
-        r"^device_power\.port_mode:Exception_DeviceError$",
+        r'^usb_hub\.supported_modes:Exception_DeviceError\(".*is a method"\)$',
+        r'^comm_power\.port_mode:Exception_DeviceError\(".*is a method"\)$',
+        r'^device_power\.port_mode:Exception_DeviceError\(".*is a method"\)$',
     )
     error_msg = error_msg or "All dynamic properties should be retrievable"
     self.validate_properties(
@@ -267,30 +267,19 @@ class FakeDeviceTestCase(unit_test_case.UnitTestCase):
     """
     if not hasattr(self.uut, "event_parser"):
       return
-    examples = self._get_filter_examples(self.uut.DEFAULT_FILTERS)
+    examples = self._get_filter_examples()
     with open(self.uut.event_file_name, "w") as open_file:
       for example_log in examples:
         self.uut.event_parser.process_line(open_file, example_log)
     self.add_parser_get_last_event_mock()
 
-  def _get_filter_examples(self, default_filters):
+  def _get_filter_examples(self):
     """Loads the filter example loglines."""
     examples = []
-
-    def load_filter_file(filter_path):
-      nonlocal examples
+    for filter_path in self.uut.filter_paths:
       with open(filter_path) as filter_file:
-        a_dict = json.load(filter_file)
-        for entry in a_dict["filters"]:
+        for entry in json.load(filter_file)["filters"]:
           examples += entry.get("examples", [])
-
-    for filter_path in default_filters:
-      if os.path.isdir(filter_path):
-        for filter_file in os.listdir(filter_path):
-          if filter_file.endswith(".json"):
-            load_filter_file(os.path.join(filter_path, filter_file))
-      else:
-        load_filter_file(filter_path)
     return examples
 
   def tearDown(self):

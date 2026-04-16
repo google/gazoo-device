@@ -25,6 +25,7 @@ class ThermostatBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Thermostat interface."""
 
   DEVICE_TYPE_ID = 0x0301
+  DEVICE_TYPE_NAME = "Thermostat"
 
   @property
   @abc.abstractmethod
@@ -53,27 +54,33 @@ class ThermostatBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   def fan_control(self) -> fan_control_base.FanControlClusterBase:
     """Optional cluster: ZCL Fan Control cluster."""
 
-  # TODO(b/239741839): add optional clusters below
-  # @abc.abstractproperty
+  # TODO(gdm-authors): add optional clusters below
+  # @property
+  # @abc.abstractmethod
   # def scenes(self):
   #   """Optional cluster: ZCL Scenes cluster."""
 
-  # @abc.abstractproperty
+  # @property
+  # @abc.abstractmethod
   # def groups(self):
   #   """Optional cluster: ZCL Groups cluster."""
 
-  # @abc.abstractproperty
+  # @property
+  # @abc.abstractmethod
   # def alarms(self):
   #   """Optional cluster: ZCL Alarms cluster."""
 
-  # @abc.abstractproperty
+  # @property
+  # @abc.abstractmethod
   # def thermostat_user_interface_configuration(self):
   #   """Optional cluster: ZCL Thermostat UI Configuration cluster."""
 
-  # @abc.abstractproperty
+  # @property
+  # @abc.abstractmethod
   # def time(self):
   #   """Optional cluster: ZCL Time cluster."""
 
-  # @abc.abstractproperty
+  # @property
+  # @abc.abstractmethod
   # def time_sync(self):
   #   """Optional cluster: ZCL TimeSync cluster."""

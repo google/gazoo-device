@@ -17,6 +17,7 @@ import grp
 import json
 import os
 import re
+import shutil
 import subprocess
 from unittest import mock
 
@@ -197,9 +198,10 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
     mock_get_sideload_devices.assert_called_once()
 
   @mock.patch.object(
-      subprocess,
-      "check_output",
-      return_value=FASTBOOT_CMD_PATH.encode("utf-8", errors="replace"))
+      shutil,
+      "which",
+      autospec=True,
+      return_value=FASTBOOT_CMD_PATH)
   @mock.patch.object(grp, "getgrnam", return_value=TEST_GROUP_ENTRY)
   @mock.patch.object(os, "getgroups", return_value=TEST_GOOD_GROUP_LIST)
   @mock.patch.object(os, "getuid", return_value=TEST_USER_UID)
@@ -216,9 +218,10 @@ class AdbUtilsTests(unit_test_case.UnitTestCase):
       self.fail("verify_user_has_fastboot() raised error: {!r}".format(err))
 
   @mock.patch.object(
-      subprocess,
-      "check_output",
-      side_effect=subprocess.CalledProcessError(1, ["which", FASTBOOT_CMD]))
+      shutil,
+      "which",
+      autospec=True,
+      return_value=None)
   def test_041_adb_utils_verify_user_has_fastboot_no_fastboot(
       self, mock_check_output):
     """Verify that verify_user_has_fastboot raises if fastboot not present."""

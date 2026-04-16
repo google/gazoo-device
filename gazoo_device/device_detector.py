@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,26 +14,210 @@
 
 """Device detector module."""
 import copy
+import logging
 import os
+import re
 import time
 import typing
-from typing import Any, Collection, Dict, List, Optional, Tuple
+from typing import Any, Callable, Collection, Mapping, Optional, Union
 import weakref
 
 from gazoo_device import config
 from gazoo_device import custom_types
-from gazoo_device import detect_criteria
+from gazoo_device import data_types
+from gazoo_device import device_types
 from gazoo_device import errors
 from gazoo_device import extensions
 from gazoo_device import gdm_logger
 from gazoo_device.base_classes import auxiliary_device_base
-from gazoo_device.switchboard import communication_types
+from gazoo_device.capabilities.interfaces import switchboard_base
+from gazoo_device.detect_criteria import base_detect_criteria
+from gazoo_device.switchboard.communication_types import ssh_comms
 from gazoo_device.utility import common_utils
-from gazoo_device.utility import pty_process_utils
+from gazoo_device.utility import host_utils
 
 WIKI_URL = (
     "https://github.com/google/gazoo-device/blob/master/docs/device_setup")
+_LOG_FORMAT = "<%(asctime)s> %(filename)-20s:%(lineno)d: %(message)s"
+
+_DeviceClassType = type[device_types.Device]
+
 logger = gdm_logger.get_logger()
+
+
+def _setup_logger(log_file_path: str) -> logging.Logger:
+  """Set up a logger to log device interactions to the detect file."""
+  detect_logger = logging.getLogger(log_file_path)
+  detect_logger.setLevel(logging.DEBUG)
+  handler = logging.FileHandler(log_file_path)
+  formatter = logging.Formatter(_LOG_FORMAT)
+  handler.setFormatter(formatter)
+  detect_logger.addHandler(handler)
+  return detect_logger
+
+
+def _get_detect_query_response(
+    address: str, communication_type: str, detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> dict[base_detect_criteria.QueryEnum, Union[bool, str]]:
+  """Gathers device responses for all queries of that communication type.
+
+  Args:
+    address: communication_address
+    communication_type: category of communication.
+    detect_logger: logs device interactions.
+    create_switchboard_func: Method to create the switchboard.
+
+  Returns:
+    Device responses keyed by query enum member.
+  """
+  query_responses = {}
+  detect_queries = extensions.detect_criteria[communication_type]
+  for query_name, query in detect_queries.items():
+    try:
+      query_responses[query_name] = query(
+          address=address,
+          detect_logger=detect_logger,
+          create_switchboard_func=create_switchboard_func)
+      detect_logger.info("%s response from %s: %r",
+                         query_name, address, query_responses[query_name])
+    except Exception as err:  # pylint: disable=broad-except
+      detect_logger.info("%s failed for %s: %r", query_name, address, err,
+                         exc_info=True)
+      query_responses[query_name] = repr(err)
+
+    if not isinstance(query_responses[query_name], (str, bool)):
+      detect_logger.warning(
+          "%s returned invalid response type %s for %s!",
+          query_name, type(query_responses[query_name]), address)
+
+  return query_responses
+
+
+def _matches_criteria(
+    responses: Mapping[base_detect_criteria.QueryEnum, Union[bool, str]],
+    match_criteria: Mapping[base_detect_criteria.QueryEnum, Union[bool, str]]
+) -> bool:
+  """Checks if response dict matches match criteria.
+
+  There are two categories of values in match_criteria: bool and regexp/str.
+  Bools must match exactly, while regexp must find a match in the response
+  value.
+
+  Args:
+    responses: Device responses keyed by query name.
+    match_criteria: Match values keyed by query name.
+
+  Returns:
+    Whether or not responses meets match criteria
+  """
+  for entry, value in match_criteria.items():
+    if entry not in responses:
+      # The detection criterion of the device class didn't have an associated
+      # response. This can happen if the device class had not been registered
+      # before detection was called.
+      return False
+    if isinstance(value, bool):
+      if responses[entry] != value:
+        return False
+    else:
+      if not re.search(value, responses[entry]):
+        return False
+  return True
+
+
+def _find_matching_device_class(
+    address: str, communication_type: str, detect_logger: logging.Logger,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase],
+    device_classes: Collection[_DeviceClassType]) -> list[_DeviceClassType]:
+  """Returns all classes where the device responses match the detect criteria.
+
+  Args:
+    address: communication_address.
+    communication_type: category of communication.
+    detect_logger: logs device interactions.
+    create_switchboard_func: Method to create the switchboard.
+    device_classes: device classes whose match criteria must be compared to.
+
+  Returns:
+    list: classes where the device responses match the detect criteria.
+  """
+  matching_classes = []
+  responses = _get_detect_query_response(address, communication_type,
+                                         detect_logger, create_switchboard_func)
+  detect_logger.info(
+      "Possible %s device types: %s",
+      communication_type,
+      [device_class.DEVICE_TYPE for device_class in device_classes])
+  for device_class in device_classes:
+    if not all(
+        detect_criterion in responses
+        for detect_criterion in device_class.DETECT_MATCH_CRITERIA.keys()):
+      detect_logger.info(
+          "\t%s: No Match. Not all detect criteria had a response. "
+          "The device class likely hasn't been registered.\n"
+          "%'s detect criteria: %s\n"
+          "Collected responses: %s",
+          device_class.DEVICE_TYPE,
+          list(device_class.DETECT_MATCH_CRITERIA.keys()),
+          list(responses.keys())
+      )
+      continue
+    if _matches_criteria(responses, device_class.DETECT_MATCH_CRITERIA):
+      matching_classes.append(device_class)
+      detect_logger.info("\t%s: Match.", device_class.DEVICE_TYPE)
+    else:
+      detect_logger.info("\t%s: No Match.", device_class.DEVICE_TYPE)
+  return matching_classes
+
+
+def _get_communication_type_classes(
+    communication_type: str) -> list[_DeviceClassType]:
+  """Returns classes with that communication type.
+
+  Args:
+    communication_type: category of communication.
+
+  Returns:
+    list: classes with that communication type.
+  """
+  all_classes = copy.copy(extensions.auxiliary_devices)
+  all_classes += copy.copy(extensions.primary_devices)
+  all_classes += copy.copy(extensions.virtual_devices)
+  matching_classes = []
+  for device_class in all_classes:
+    if device_class.COMMUNICATION_TYPE.__name__ == communication_type:
+      matching_classes.append(device_class)
+  return matching_classes
+
+
+def _determine_device_class(
+    address: str, communication_type: str, log_file_path: str,
+    create_switchboard_func: Callable[..., switchboard_base.SwitchboardBase]
+) -> list[_DeviceClassType]:
+  """Returns the device class(es) that matches the address' responses.
+
+  Compares the device_classes DETECT_MATCH_CRITERIA to the device responses.
+
+  Args:
+    address: communication_address.
+    communication_type: category of communication.
+    log_file_path: local path to write log messages to.
+    create_switchboard_func: Method to create the switchboard.
+
+  Returns:
+    list: classes where the device responses match the detect criteria.
+  """
+  detect_logger = _setup_logger(log_file_path)
+  try:
+    device_classes = _get_communication_type_classes(communication_type)
+    return _find_matching_device_class(address, communication_type,
+                                       detect_logger, create_switchboard_func,
+                                       device_classes)
+  finally:
+    file_handler = detect_logger.handlers[0]
+    file_handler.close()
+    detect_logger.removeHandler(file_handler)
 
 
 class DeviceDetector:
@@ -50,8 +234,8 @@ class DeviceDetector:
       log_directory: str,
       persistent_configs: custom_types.PersistentConfigsDict,
       options_configs: custom_types.OptionalConfigsDict,
-      supported_auxiliary_device_classes: List[
-          auxiliary_device_base.AuxiliaryDeviceBase]):
+      supported_auxiliary_device_classes:
+      list[type[auxiliary_device_base.AuxiliaryDeviceBase]]):
     """Initializes the device detector.
 
     Args:
@@ -70,10 +254,10 @@ class DeviceDetector:
     self.known_connections = self._create_known_connections()
 
   def detect_all_new_devices(
-      self, static_ips: Optional[List[str]] = None,
+      self, static_ips: Optional[list[str]] = None,
       comm_types: Optional[Collection[str]] = None,
       addresses: Optional[Collection[str]] = None
-    ) -> Tuple[
+    ) -> tuple[
         custom_types.PersistentConfigsDict,
         custom_types.OptionalConfigsDict]:
     """Finds all possible new connections and detects devices.
@@ -87,15 +271,16 @@ class DeviceDetector:
       (Dicts of persistent props, dict of optional props).
     """
     logger.info(
-        "\n##### Step 1/3: Detecting potential new communication addresses. #####\n"
+        "\n##### Step 1/3: "
+        "Detecting potential new communication addresses. #####\n"
     )
-    all_connections_dict = communication_types.detect_connections(
+    all_connections_dict = detect_connections(
         static_ips=static_ips, comm_types=comm_types, addresses=addresses)
     return self.detect_new_devices(all_connections_dict)
 
   def detect_new_devices(
-      self, connections_dict: Dict[str, List[str]]
-    ) -> Tuple[
+      self, connections_dict: dict[str, list[str]]
+    ) -> tuple[
         custom_types.PersistentConfigsDict,
         custom_types.OptionalConfigsDict]:
     """Detects the devices for given connections.
@@ -118,11 +303,12 @@ class DeviceDetector:
     connections_dict = self._filter_out_known_connections(
         connections_dict, self.known_connections)
 
-    possible_device_tuples, errs, no_id_cons = self._identify_connection_device_class(
-        connections_dict)
+    possible_device_tuples, errs, no_id_cons = (
+        self._identify_connection_device_class(connections_dict))
     new_names = []
     logger.info(
-        "\n##### Step 3/3: Extract Persistent Info from Detected Devices. #####\n"
+        "\n##### "
+        "Step 3/3: Extract Persistent Info from Detected Devices. #####\n"
     )
     for device_class, connection in possible_device_tuples:
       try:
@@ -142,7 +328,7 @@ class DeviceDetector:
 
   def _add_to_configs(
       self,
-      device_class: custom_types.Device,
+      device_class: _DeviceClassType,
       name: str,
       persistent_props: custom_types.DeviceConfig,
       optional_props: custom_types.DeviceConfig) -> None:
@@ -180,7 +366,7 @@ class DeviceDetector:
     self.persistent_configs[devices_config_key][name] = persistent_props
     self.options_configs[config.OPTIONS_KEYS[ind]][name] = optional_props
 
-  def _create_known_connections(self) -> List[str]:
+  def _create_known_connections(self) -> list[str]:
     """Returns all known connections.
 
     Returns:
@@ -203,8 +389,8 @@ class DeviceDetector:
     return known_connections
 
   def _detect_get_info(
-      self, device_class: custom_types.Device, connection: str
-  ) -> Tuple[str, custom_types.DeviceConfig, custom_types.DeviceConfig]:
+      self, device_class: _DeviceClassType, connection: str
+  ) -> tuple[str, custom_types.DeviceConfig, custom_types.DeviceConfig]:
     """Returns name, persistent and optional info from device communication.
 
     Note: Any errors raised will be caught in parent method.
@@ -229,13 +415,7 @@ class DeviceDetector:
     }
     logger.info("Getting info from communication port %s for %s",
                 connection, device_type)
-
-    if device_class.COMMUNICATION_TYPE == "PtyProcessComms":
-      device_config["persistent"]["console_port_name"] = (
-          pty_process_utils.get_launch_command(
-              connection, **device_class.PTY_PROCESS_COMMAND_CONFIG))
-
-    device = device_class(
+    device = device_class(  # pytype: disable=not-instantiable
         manager=self.manager_weakref(),
         device_config=device_config,
         log_directory=self.log_directory,
@@ -252,8 +432,8 @@ class DeviceDetector:
     return name, persistent_props, options_props
 
   def _filter_out_known_connections(
-      self, con_dict: Dict[str, List[str]], known_cons: List[str]
-  ) -> Dict[str, List[str]]:
+      self, con_dict: dict[str, list[str]], known_cons: list[str]
+  ) -> dict[str, list[str]]:
     """Filters out already known connections.
 
     Args:
@@ -287,7 +467,7 @@ class DeviceDetector:
       self,
       device_type: str,
       serial_number: str,
-      device_class: custom_types.Device) -> str:
+      device_class: _DeviceClassType) -> str:
     """Generates name from last four digits of serial_number.
 
     Note: If there is a conflict with a different device it will generate a
@@ -315,7 +495,7 @@ class DeviceDetector:
     else:
       key = "devices"
     if name in self.persistent_configs[key]:
-      # Check if its the same device or not
+      # Check if it's the same device or not
       if serial_number != self.persistent_configs[key][name]["serial_number"]:
         name = "{}-{}".format(device_type, serial_number[-8:].lower())
     return name
@@ -328,11 +508,11 @@ class DeviceDetector:
     return f"{name}_{comm_type_or_device_type}_detect_{timestamp}.txt"
 
   def _identify_connection_device_class(
-      self, connections_dict: Dict[str, List[str]]
-  ) -> Tuple[
-      List[Tuple[custom_types.Device, str]],
-      List[str],
-      List[str]]:
+      self, connections_dict: dict[str, list[str]]
+  ) -> tuple[
+      list[tuple[_DeviceClassType, str]],
+      list[str],
+      list[str]]:
     """Detects all connections' appropriate device class.
 
     Args:
@@ -355,39 +535,43 @@ class DeviceDetector:
         detect_log = os.path.join(
             self.log_directory,
             self._get_detect_log_file_name(connection, communication_type))
-        matching_classes = detect_criteria.determine_device_class(
+        matching_classes = _determine_device_class(
             connection,
             communication_type,
             detect_log,
-            # pytype: disable=attribute-error
-            self.manager_weakref().create_switchboard
-            # pytype: enable=attribute-error
+            # Don't use Manager for type annotation to avoid a circular import.
+            typing.cast(
+                Any, self.manager_weakref()).create_switchboard
         )
         if len(matching_classes) > 1:
-          device_types = [
+          matching_device_types = [
               device_class.DEVICE_TYPE for device_class in matching_classes
           ]
-          logger.warning(
-              "Warning: Multiple device classes matched connection %s. "
-              "This is a bug in the registered extension packages (%s). "
-              "Returning %s.",
-              device_types,
-              extensions.get_registered_package_info(),
-              device_types[0])
+          warning_msg = (
+              "Warning: Multiple device types matched connection "
+              f"{connection}: {matching_device_types}. "
+              "This is a bug in the registered extension packages: "
+              f"{extensions.get_registered_package_info()}. "
+              f"Returning {matching_device_types[0]}.")
+          logger.warning(warning_msg)
+          errs.append(warning_msg)
         if matching_classes:
           logger.info("\t%s is a %s. See %s for details.",
                       connection, matching_classes[0].DEVICE_TYPE, detect_log)
           possible_device_tuples.append((matching_classes[0], connection))
         else:
-          logger.info("\t%s responses did not match a known %s device type. "
-                      "See %s for details.",
-                      connection, communication_type, detect_log)
+          info_msg = (
+              f"\t{connection} responses did not match a known "
+              f"{communication_type} device type. "
+              f"See {detect_log} for details.")
+          logger.info(info_msg)
+          errs.append(info_msg)
           no_id_cons.append(connection)
       logger.info("\t%s device_type detection complete.", communication_type)
     return possible_device_tuples, errs, no_id_cons
 
   def _print_summary(
-      self, names: List[str], errs: List[str], no_id_cons: List[str]) -> None:
+      self, names: list[str], errs: list[str], no_id_cons: list[str]) -> None:
     """Prints summary of detection events.
 
     Args:
@@ -407,3 +591,117 @@ class DeviceDetector:
     if errs or no_id_cons:
       logger.info("\nIf a connection failed detection, check %s for tips\n",
                   WIKI_URL)
+
+
+def _validate_comm_types(
+    comm_types: Optional[Collection[str]] = None) -> Optional[Collection[str]]:
+  """Validate that the communication types specified for detection are valid.
+
+  A warning will be logged if a non-supported communication is included in
+  the provided comm types.
+
+  Args:
+   comm_types: Specific communication types to use for detection.
+
+  Returns:
+    Lowercase supported communication types to use for detection.
+  """
+  if comm_types is None:
+    return None
+
+  lowercase_supported_types = [comm_type.lower() for comm_type in
+                               extensions.communication_types.keys()]
+  validated_comm_types = []
+  invalid_comm_types = []
+  for comm_type in comm_types:
+    if comm_type.lower() in lowercase_supported_types:
+      validated_comm_types.append(comm_type.lower())
+    else:
+      invalid_comm_types.append(comm_type)
+
+  if invalid_comm_types:
+    logger.warning("Unknown communication types specified %s. "
+                   "Known communication types %s.",
+                   ", ".join(invalid_comm_types),
+                   ", ".join(extensions.communication_types.keys()))
+
+  return validated_comm_types
+
+
+def detect_connections(
+    static_ips: Optional[Collection[str]] = None,
+    comm_types: Optional[Collection[str]] = None,
+    addresses: Optional[Collection[str]] = None) -> dict[str, list[str]]:
+  """Detects all the communication addresses for the different devices.
+
+  Args:
+    static_ips: Static ip addresses.
+    comm_types: Limit detection to specific communication types.
+    addresses: Limit detection to specific communication addresses.
+
+  Returns:
+    Connections by connection class name from classes in this module
+    and other registered classes in extensions.communication_types.
+  """
+  lowercase_comm_types = _validate_comm_types(comm_types)
+
+  connections_dict = {comms_name: []
+                      for comms_name in extensions.communication_types}
+  for comms_name, comms_class in sorted(extensions.communication_types.items()):
+    if lowercase_comm_types is not None:
+      if comms_name.lower() not in lowercase_comm_types:
+        logger.info(
+            "Skipping detection for %s communication types.", comms_name)
+        continue
+
+    logger.info(
+        "\tdetecting potential %s communication addresses", comms_name)
+    detection_method = comms_class.get_comms_addresses
+    try:
+      try:
+        comms_addresses = detection_method(static_ips=static_ips)
+      except TypeError:  # method does not accept static_ips
+        comms_addresses = detection_method()
+      if comms_addresses:
+        logger.info(
+            "\tFound %d potential %s communication addresses.",
+            len(comms_addresses), comms_name)
+        logger.info("\t\t" + "\n\t\t".join(sorted(comms_addresses)))
+      selected_comms_addresses = [
+          addr for addr in comms_addresses
+          if addresses is None or addr in addresses]
+      not_selected_comms_addresses = list(
+          set(comms_addresses) - set(selected_comms_addresses))
+      connections_dict[comms_name] = selected_comms_addresses
+      if not_selected_comms_addresses:
+        logger.info(
+            "Skipping detection for %s communication addresses.",
+            not_selected_comms_addresses)
+
+        # Verify ssh keys exist if ssh connections are detected
+      if issubclass(comms_class, ssh_comms.SshComms) and comms_addresses:
+        missing_keys = []
+        ssh_keys = [
+            key_info for key_info in extensions.key_to_download_function
+            if key_info.type == data_types.KeyType.SSH
+        ]
+        for ssh_key in ssh_keys:
+          try:
+            host_utils.verify_key(ssh_key)
+          except ValueError as err:  # Failed to set permissions on the key
+            logger.warning(repr(err))
+          except (errors.DownloadKeyError, FileNotFoundError, RuntimeError):
+            missing_keys.append(ssh_key)
+        if missing_keys:
+          logger.warning("Found %d missing SSH keys:\n%s\n"
+                         "Detection of SSH devices may not work correctly. "
+                         "Run 'gdm download-keys'.",
+                         len(missing_keys),
+                         "\n".join(str(key) for key in missing_keys))
+    except Exception as err:  # pylint: disable=broad-except
+      logger.warning(
+          "Unable to detect %s communication addresses. Err: %s",
+          comms_name,
+          err,
+      )
+  return connections_dict

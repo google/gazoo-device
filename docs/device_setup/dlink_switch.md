@@ -16,6 +16,9 @@ Supported models:
         back for 10 seconds.
 *   Disconnect all devices connected over Ethernet from host machine.
 
+*   Connect the device to port 1 on the switch. This port should not be turned
+    off since it will prevent controlling the switch.
+
 *   Connect a laptop to the switch.
     *   This laptop will be used one time to assign a static IP to the switch
         that the host machine can use to reach the switch.
@@ -93,14 +96,14 @@ NOTE: HIT the *Apply* button after enabling each of the following settings.
 
 *   Detect the D-Link switch via GDM:
 
-    ```shell
+    ```shell {.go-auto-block-wrap-experiment}
       $ gdm detect --static_ips=<IP_ADDRESS_OF_DLINK_SWITCH>
     ```
 
 *   Run `$ gdm devices` and ensure that the D-Link switch is populated in the
     Other Devices section:
 
-    ```shell
+    ```shell {.go-auto-block-wrap-experiment}
       $ gdm devices
 
       Device                         Alias           Type                     Model                Connected
@@ -118,15 +121,15 @@ NOTE: HIT the *Apply* button after enabling each of the following settings.
 
 ### switch_power
 
-Note: Ports are defined as 1-5 or 1-8 depending on the model.
+Note: Ports are defined as 1-5 or 1-8 depending on the model. Port 1 is reserved
+as the connection to the host machine and should not be turned off.
 
-*   GET mode of port 1: `$ gdm issue dlink_switch-3.90 - switch_power get_mode
-    1`
+*   GET mode of port 2: `$ gdm issue dlink_switch-3.90 - switch_power get_mode
+    2`
 
-*   POWER ON port 1: `$ gdm issue dlink_switch-3.90 - switch_power power_on 1`
+*   POWER ON port 2: `$ gdm issue dlink_switch-3.90 - switch_power power_on 2`
 
-*   POWER OFF port 1: `$ gdm issue dlink_switch-3.90 - switch_power power_off 1`
-
+*   POWER OFF port 2: `$ gdm issue dlink_switch-3.90 - switch_power power_off 2`
 
 ## Troubleshooting
 
@@ -137,7 +140,5 @@ Note: Ports are defined as 1-5 or 1-8 depending on the model.
 
 ### GDM Cannot detect my switch
 
-*   Ensure that `snmp` is installed on you host machine
-    `sudo apt-get install snmp`. If it was not, re-detect the switch after
-     installation.
-
+*   Ensure that `snmp` is installed on you host machine `sudo apt-get install
+    snmp`. If it was not, re-detect the switch after installation.

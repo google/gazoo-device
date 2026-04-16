@@ -13,10 +13,10 @@
 # limitations under the License.
 
 """An example extension package for gazoo_device."""
-from typing import Any, Dict
+from typing import Any
 
 from gazoo_device import data_types
-from gazoo_device import detect_criteria
+from gazoo_device.detect_criteria import generic_detect_criteria
 from example_extension_package import example_linux_device
 
 __version__ = "0.0.1"
@@ -42,7 +42,7 @@ def download_key(key_info: data_types.KeyInfo, local_key_path: str) -> None:
       f"'ssh-copy-id -i {local_key_path} <user>@<device_ip>'")
 
 
-def export_extensions() -> Dict[str, Any]:
+def export_extensions() -> dict[str, Any]:
   """Exports the device controller defined by the extension package."""
   return {
       "primary_devices": [example_linux_device.ExampleLinuxDevice],
@@ -50,7 +50,7 @@ def export_extensions() -> Dict[str, Any]:
       "virtual_devices": [],
       "communication_types": [],
       "detect_criteria": {
-          "SshComms": detect_criteria.GENERIC_QUERY_DICT,
+          "SshComms": generic_detect_criteria.GENERIC_QUERY_DICT,
       },
       "capability_interfaces": [],
       "capability_flavors": [],

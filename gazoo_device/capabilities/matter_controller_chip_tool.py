@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,12 +25,13 @@ import re
 import shutil
 import tempfile
 import time
-from typing import Any, Callable, List, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence
 
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import matter_controller_base
+from gazoo_device.utility import host_utils
 from gazoo_device.utility import http_utils
 import immutabledict
 import requests
@@ -43,15 +44,17 @@ _MATTER_NODE_ID_PROPERTY = "matter_node_id"
 _MATTER_SDK_CERTS_DIRECTORY_PATH = "https://api.github.com/repos/project-chip/connectedhomeip/contents/credentials/development/paa-root-certs/"
 _MATTER_SDK_REPO = "https://api.github.com/repos/project-chip/connectedhomeip/commits/master"
 _RPI_TEMP_CERTS_DIR = "/tmp/chip_certs_folder_temp"
+_CHIP_TOOL_TRACING_ENABLED = "--trace_decode 1"
 LOGGING_FILE_PATH = "/tmp/chip.log"
-DEFAULT_PAA_TRUST_STORE_PATH = "/home/pi/certs"
+DEFAULT_PAA_TRUST_STORE_PATH = "/home/ubuntu/certs"
 
 _COMMANDS = immutabledict.immutabledict({
     "READ_CLUSTER_ATTRIBUTE":
-        "{chip_tool} {cluster} read {attribute} {node_id} {endpoint_id}",
+        "{chip_tool} {cluster} read {attribute} {node_id} {endpoint_id} "
+        "{tracing_enable}",
     "WRITE_CLUSTER_ATTRIBUTE":
         "{chip_tool} {cluster} write {attribute} {value} {node_id} "
-        "{endpoint_id}",
+        "{endpoint_id} {tracing_enable}",
     "SUBSCRIBE_CLUSTER_ATTRIBUTE_START":
         "nohup {chip_tool} interactive start < <(echo '{cluster} subscribe "
         "{attribute} {min_interval_s} {max_interval_s} {node_id} "
@@ -62,20 +65,23 @@ _COMMANDS = immutabledict.immutabledict({
         "grep 'Data =' {logging_file_path}",
     "SEND_CLUSTER_COMMMAND":
         "{chip_tool} {cluster} {command} {arguments} {node_id} {endpoint_id} "
-        "{flags}",
+        "{flags} {tracing_enable}",
     "COMMISSION_OVER_BLE_WIFI":
         "{chip_tool} pairing ble-wifi {node_id} {ssid} {password} {setup_code} "
-        "{long_discriminator}",
+        "{long_discriminator} {tracing_enable}",
     "COMMISSION_OVER_BLE_THREAD":
         "{chip_tool} pairing ble-thread {node_id} {operational_dataset} "
-        "{setup_code} {long_discriminator}",
+        "{setup_code} {long_discriminator} {tracing_enable}",
     "COMMISSION_ON_NETWORK":
-        "{chip_tool} pairing onnetwork {node_id} {setup_code}",
+        "{chip_tool} pairing onnetwork {node_id} {setup_code} {tracing_enable}",
     "COMMISSION_ON_NETWORK_LONG":
         "{chip_tool} pairing onnetwork-long {node_id} {setup_code} "
-        "{long_discriminator}",
+        "{long_discriminator} {tracing_enable}",
+    "COMMISSION_WITH_PAIRING_CODE":
+        "{chip_tool} pairing code {node_id} {qrcode_payload_or_manual_code} "
+        "{tracing_enable}",
     "DECOMMISSION":
-        "{chip_tool} pairing unpair {node_id}",
+        "{chip_tool} pairing unpair {node_id} {tracing_enable}",
     "CHIP_TOOL_VERSION":
         "cat ~/.matter_sdk_version",
     "WRITE_CHIP_TOOL_VERSION":
@@ -84,6 +90,8 @@ _COMMANDS = immutabledict.immutabledict({
         "rm -rf /tmp/chip*",
     "CLEAR_STORAGE":
         "{chip_tool} storage clear-all",
+    "DELETE_CHIP_LOG_FILE":
+        "rm {logging_file_path}",
     "MAKE_CERTS_DIRECTORY":
         "mkdir -p {rpi_certs_dir}",
     "MOVE_CERTS_TO_CERTS_DIRECTORY":
@@ -104,7 +112,7 @@ _REGEXES = immutabledict.immutabledict({
     "COMMAND_FAILURE":
         r"Run command failure: (.*)",
     "COMMISSION_SUCCESS":
-        "(CHIP:TOO: Device commissioning completed with success)",
+        "(.TOO. Device commissioning completed with success)",
     "DECOMMISSION_COMPLETE":
         "(CHIP:DL: System Layer shutdown)",
 })
@@ -205,18 +213,21 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
   @decorators.CapabilityLogDecorator(logger)
   def commission(self,
                  node_id: int,
-                 setup_code: str,
+                 setup_code: Optional[str] = None,
                  long_discriminator: Optional[int] = None,
                  ssid: Optional[str] = None,
                  password: Optional[str] = None,
                  operational_dataset: Optional[str] = None,
-                 paa_trust_store_path: Optional[str] = None) -> None:
+                 paa_trust_store_path: Optional[str] = None,
+                 pairing_code: Optional[str] = None) -> None:
     """Commissions a device into the controller's fabric.
 
     Commissioning protocol is based on specified arguments:
       - When operational dataset is provided, pairs the device over ble-thread.
       - When Wi-Fi SSID and password are provided, pairs the device over
         ble-wifi.
+      - When QR code payload or manual pairing code is provided, pairs the
+        device with the given code.
       - Otherwise, discover the devices on the network and pairs with the first
         one that matches the setup code and long discriminator if one is
         specified.
@@ -234,9 +245,12 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
         on the controller device (e.g. rpi_matter_controller). See
         https://github.com/project-chip/connectedhomeip/tree/master/credentials/development/paa-root-certs # pylint: disable=line-too-long
         for an example.
+      pairing_code: QR code payload or manual pairing code.
     """
     if ssid and not password:
       raise ValueError("Wi-Fi password is not specified.")
+    if setup_code is None and pairing_code is None:
+      raise ValueError("setup_code or pairing_code must be specified.")
 
     if operational_dataset:
       command = _COMMANDS["COMMISSION_OVER_BLE_THREAD"]
@@ -249,6 +263,9 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
       # Commission the first device found on the network with provided
       # setup code and long discriminator.
       command = _COMMANDS["COMMISSION_ON_NETWORK_LONG"]
+    elif pairing_code is not None:
+      # Commission the device with QR code payload or manual pairing code.
+      command = _COMMANDS["COMMISSION_WITH_PAIRING_CODE"]
     else:
       # Commission the first device found on the network with provided
       # setup code.
@@ -265,6 +282,8 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
         ssid=ssid,
         password=password,
         operational_dataset=operational_dataset,
+        qrcode_payload_or_manual_code=pairing_code,
+        tracing_enable=_CHIP_TOOL_TRACING_ENABLED,
     )
     self._shell_with_regex(
         command,
@@ -273,13 +292,19 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
         timeout=_TIMEOUTS["COMMISSION"])
 
     self._set_property_fn(_MATTER_NODE_ID_PROPERTY, node_id)
+    logger.info(
+        "%s %s set to %s.",
+        self._device_name, _MATTER_NODE_ID_PROPERTY,
+        self._get_property_fn(_MATTER_NODE_ID_PROPERTY)
+    )
 
   @decorators.CapabilityLogDecorator(logger)
   def decommission(self) -> None:
     """Forgets a commissioned device with the given node id."""
     command = _COMMANDS["DECOMMISSION"].format(
         chip_tool=self._chip_tool_path,
-        node_id=self._get_property_fn(_MATTER_NODE_ID_PROPERTY))
+        node_id=self._get_property_fn(_MATTER_NODE_ID_PROPERTY),
+        tracing_enable=_CHIP_TOOL_TRACING_ENABLED)
     self._shell_with_regex(
         command, _REGEXES["DECOMMISSION_COMPLETE"], raise_error=True)
     self._set_property_fn(_MATTER_NODE_ID_PROPERTY, None)
@@ -304,6 +329,7 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
         endpoint_id=endpoint_id,
         cluster=cluster,
         attribute=attribute,
+        tracing_enable=_CHIP_TOOL_TRACING_ENABLED,
     )
     response = self._shell_with_regex(
         command, _REGEXES["READ_CLUSTER_ATTRIBUTE_RESPONSE"], raise_error=True)
@@ -328,6 +354,7 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
         cluster=cluster,
         attribute=attribute,
         value=value,
+        tracing_enable=_CHIP_TOOL_TRACING_ENABLED,
     )
     status_code = self._shell_with_regex(
         command, _REGEXES["WRITE_CLUSTER_ATTRIBUTE_RESPONSE"], raise_error=True)
@@ -363,7 +390,7 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
     self._shell(command)
 
   @decorators.CapabilityLogDecorator(logger)
-  def stop_subscription(self) -> List[Any]:
+  def stop_subscription(self) -> list[Any]:
     """Stops existing subscription and returns subscribed values.
 
     Returns:
@@ -376,6 +403,8 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
         logging_file_path=LOGGING_FILE_PATH)
     responses = re.findall(_REGEXES["SUBSCRIBE_CLUSTER_ATTRIBUTE_RESPONSE"],
                            self._shell(command))
+    self._shell(_COMMANDS["DELETE_CHIP_LOG_FILE"].format(
+        logging_file_path=LOGGING_FILE_PATH))
     return [_parse_response(response) for response in responses]
 
   @decorators.CapabilityLogDecorator(logger)
@@ -385,7 +414,7 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
                 attribute: str,
                 min_interval_s: int,
                 max_interval_s: int,
-                timeout_s: int = 10) -> List[Any]:
+                timeout_s: int = 10) -> list[Any]:
     """Subscribes to a cluster's attribute and blocks until timeout.
 
     Args:
@@ -432,6 +461,7 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
         command=command,
         arguments=" ".join(map(str, arguments)),
         flags=additional_flags,
+        tracing_enable=_CHIP_TOOL_TRACING_ENABLED,
     )
     command = command.rstrip()
     status_code = self._shell_with_regex(
@@ -486,15 +516,23 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
     with tempfile.TemporaryDirectory(prefix="chip_tool_") as tmp_dir:
       commit_sha = http_utils.send_http_get(
           _MATTER_SDK_REPO,
-          headers={"Accept": "application/vnd.github.VERSION.sha"}).content
+          headers={"Accept": "application/vnd.github.VERSION.sha"},
+      ).content
+      assert commit_sha is not None
       logger.info(
-          f"{self._device_name} Downloading certs from Matter SDK with commit SHA: {commit_sha.decode()}"
+          f"{self._device_name} Downloading certs from Matter SDK with commit"
+          f" SHA: {commit_sha.decode()}"
       )
       certs_list = _list_certs(_MATTER_SDK_CERTS_DIRECTORY_PATH).json()
       for cert in certs_list:
         response = http_utils.send_http_get(cert["download_url"])
         with open(os.path.join(tmp_dir, cert["name"]), "wb") as file:
           file.write(response.content)
+
+      gcs_certs = (
+      )
+      for gcs_cert in gcs_certs:
+        host_utils.gcs_command("cp", gcs_cert, [tmp_dir])
 
       self._shell(_COMMANDS["MAKE_CERTS_DIRECTORY"].format(
           rpi_certs_dir=_RPI_TEMP_CERTS_DIR,
@@ -510,3 +548,10 @@ class MatterControllerChipTool(matter_controller_base.MatterControllerBase):
       ))
       if host_dest is not None:
         shutil.copytree(tmp_dir, host_dest, dirs_exist_ok=True)
+
+  @decorators.CapabilityLogDecorator(logger)
+  def close(self):
+    """Closes existing subscription."""
+    self._shell(_COMMANDS["SUBSCRIBE_CLUSTER_ATTRIBUTE_STOP"].format(
+        chip_tool=self._chip_tool_path))
+    super().close()

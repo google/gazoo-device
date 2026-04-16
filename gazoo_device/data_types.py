@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Simple data types without dependencies on other gazoo_device modules."""
+"""Simple data classes without dependencies on other gazoo_device modules."""
 import dataclasses
 import enum
-from typing import Literal
-
-MakeDeviceReadySettingStr = Literal["on", "off", "check_only", "flash_build"]
 
 
 @enum.unique
@@ -30,4 +27,7 @@ class KeyType(enum.Enum):
 class KeyInfo:
   file_name: str  # Name of the key file.
   type: KeyType  # Key type, SSH or other (such as API).
-  package: str  # Name of the package registering the key.
+  # Name of the key package. Defines the name of the sub-folder to which the key
+  # is downloaded. Typically matches the name of the extension package. The
+  # relative key path (<package>/<file_name>) must be unique.
+  package: str

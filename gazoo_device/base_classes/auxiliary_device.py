@@ -20,10 +20,11 @@ import inspect
 import os
 import re
 import time
-from typing import Any, List, Optional, Set, Type
+from typing import Any, Mapping, Optional
 import weakref
 
 from gazoo_device import config
+from gazoo_device import custom_types
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import extensions
@@ -74,7 +75,6 @@ def get_log_filename(log_directory, device_name, name_prefix=""):
 
 class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
   """Interface containing required GDM APIs for auxiliary devices."""
-  _OWNER_EMAIL = ""  # override in child classes
 
   def __init__(self,
                manager,
@@ -149,6 +149,26 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
         "options": self.props["optional"],
     }
     return self.is_connected(device_config)
+
+  @decorators.OptionalProperty
+  def dimensions(self) -> Mapping[str, str]:
+    """Returns dimensions used for allocation of this device in the lab.
+
+    Only available in lab test runs. If not available, returns an empty dict.
+    """
+    return self.props["optional"].get("dimensions", {})
+
+  @dimensions.setter
+  def dimensions(self, dimensions: Mapping[str, str]) -> None:
+    """Sets dimensions used for allocation of this device in the lab.
+
+    This setter cannot modify the actual lab allocation dimensions. The source
+    of truth is in the lab allocation system. This is a read-only local replica.
+
+    Args:
+      dimensions: Dimensions of this device in the lab allocation system.
+    """
+    self.props["optional"]["dimensions"] = dimensions
 
   @classmethod
   def get_dynamic_property_names(cls):
@@ -327,7 +347,7 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
           self.name, msg="device not reachable from host machine.") from err
 
   def get_capability_classes(
-      self, capability_name: str) -> List[Type[capability_base.CapabilityBase]]:
+      self, capability_name: str) -> list[type[capability_base.CapabilityBase]]:
     """Returns possible capability classes (flavors) for the capability.
 
     Args:
@@ -398,14 +418,15 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
         capability properties (usb_hub.device_port)
     """
     instance = self
+    original_name = name
     try:
       if "." in name:  # capability property
         instance = getattr(self, name.split(".")[0])
         name = name.split(".")[1]
 
       value = getattr(instance, name)
-      if callable(value):
-        raise errors.DeviceError("{}'s {} is a method".format(self.name, name))
+      if callable(value) and not inspect.isclass(value):
+        raise errors.DeviceError(f"{self.name}'s {original_name} is a method")
       return value
     except AttributeError:
       if name in self.props["optional"]:
@@ -419,8 +440,9 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
       if raise_error:
         raise
       error_type = type(err).__name__
-      logger.info("{} for {}, exception: {}".format(error_type, name, str(err)))
-      return ERROR_PREFIX + error_type
+      logger.exception("{} for {}, exception: {}.".format(
+          error_type, name, str(err)))
+      return ERROR_PREFIX + repr(err)
 
   def get_property_names(self):
     """Returns a list of all property names."""
@@ -436,7 +458,7 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
     return self._get_properties(names)
 
   @classmethod
-  def get_supported_capabilities(cls) -> List[str]:
+  def get_supported_capabilities(cls) -> list[str]:
     """Returns names of capabilities supported by this device class."""
     # Deduplicate names: there may be several flavors which share the same
     # interface.
@@ -448,7 +470,7 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
 
   @classmethod
   def get_supported_capability_flavors(
-      cls) -> Set[Type[capability_base.CapabilityBase]]:
+      cls) -> set[type[capability_base.CapabilityBase]]:
     """Returns all capability flavor classes supported by this device class."""
     capability_classes = [
         member.capability_classes
@@ -468,13 +490,13 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
         capability_names (list): list of capability names.
             Capability names are strings. They can be:
                 - capability names ("file_transfer"),
-                - capability interface names ("filetransferbase"),
-                - capability flavor names ("filetransferscp").
+                - capability interface names ("file_transfer_base"),
+                - capability flavor names ("file_transfer_scp").
             If an interface name or capability name is specified, the behavior
             is identical: any capability flavor which implements the given
             interface will match. If a flavor name is specified, only that
             capability flavor will match. Different kinds of capability names
-            can be used together (["usb_hub", "filetransferscp"]).
+            can be used together (["usb_hub", "file_transfer_scp"]).
 
     Returns:
         bool: True if all of the given capabilities are supported by this
@@ -503,19 +525,33 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
       elif cap_name in extensions.capability_interfaces:
         interface_or_flavor = extensions.capability_interfaces[cap_name]
       elif cap_name in extensions.capabilities:
-        interface_name = extensions.capabilities[cap_name]
+        interface_names = extensions.capabilities[cap_name]
+        # Capability name to capability interface names is a 1:1 mapping, except
+        # when one interface extends another and overrides the capability name
+        # logic to match the parent's. In this case, map the capability name to
+        # the parent (broader) interface. Within the same inheritance hierarchy,
+        # the class with the shortest method resolution order is the parent.
+        interface_name = sorted(
+            interface_names,
+            key=lambda if_name: len(
+                extensions.capability_interfaces[if_name].__mro__),
+        )[0]
         interface_or_flavor = extensions.capability_interfaces[interface_name]
       else:
-        msg = "\n".join([
-            "Capability {} is not recognized.".format(cap_name),
-            "Supported capability interfaces: {}".format(
-                extensions.capability_interfaces.keys()),
-            "Supported capability flavors: {}".format(
-                extensions.capability_flavors.keys()),
-            "Supported capabilities: {}".format(
-                extensions.capabilities.keys())
-        ])
-        raise errors.DeviceError(msg)
+        logger.warning(
+            "Capability %s is not recognized. This means it's either:\n"
+            "1) not registered because it's not used by any "
+            "of the registered device classes, or\n"
+            "2) invalid (unknown name or a typo).\n"
+            "Registered capability interfaces: %s\n"
+            "Registered capability flavors: %s\n"
+            "Registered capabilities: %s\n",
+            cap_name,
+            sorted(extensions.capability_interfaces.keys()),
+            sorted(extensions.capability_flavors.keys()),
+            sorted(extensions.capabilities.keys())
+        )
+        return False
       capabilities.append(interface_or_flavor)
 
     supported_capabilities = cls.get_supported_capability_flavors()
@@ -540,7 +576,8 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
     return hasattr(self, self._get_private_capability_name(capability_class))
 
   @decorators.LogDecorator(logger, decorators.DEBUG)
-  def make_device_ready(self, setting: str = "on") -> None:
+  def make_device_ready(
+      self, setting: custom_types.MakeDeviceReadySettingStr = "on") -> None:
     """Checks device readiness and attempts recovery if allowed.
 
     If setting is 'off': does nothing.
@@ -565,13 +602,13 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
     unrecoverable_error = None
     for attempt in range(self._RECOVERY_ATTEMPTS):
       logger.info(f"{self.name} checking device readiness: attempt "
-                  f"{attempt + 1} of {self._RECOVERY_ATTEMPTS}")
+                  f"{attempt + 1} of {self._RECOVERY_ATTEMPTS}.")
       try:
         self.check_device_ready()
       except (errors.CheckDeviceReadyError, errors.DeviceError) as err:
         if setting == "check_only":
           logger.info(f"{self.name} make_device_ready setting is {setting!r}. "
-                      "Skipping device recovery")
+                      "Skipping device recovery.")
           raise
         # pylint: disable=unidiomatic-typecheck
         if type(recoverable_error) == type(err):
@@ -579,36 +616,40 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
               f"{self.name} readiness check raised the same error type "
               f"{type(err).__name__!r} after a recovery attempt. "
               "Assuming that the device is unable to recover. "
-              f"Previous error: {recoverable_error!r}. New error: {err!r}")
+              f"Previous error: {recoverable_error!r}. New error: {err!r}.")
           unrecoverable_error = err
           break
         recoverable_error = err
       else:
         if attempt != 0:
           logger.info(f"{self.name} successfully recovered to a ready state "
-                      f"after {attempt + 1} recovery attempts")
+                      f"after {attempt + 1} recovery attempts.")
         return
 
       logger.info(f"{self.name} attempting recovery: attempt {attempt + 1} "
-                  f"of {self._RECOVERY_ATTEMPTS}")
+                  f"of {self._RECOVERY_ATTEMPTS}.")
       try:
         self.recover(recoverable_error)
       except errors.DeviceError as err:
         logger.info(
             f"{self.name} recovery attempt {attempt + 1} raised an error. "
-            f"Assuming that the device is unable to recover. Error: {err!r}")
+            f"Assuming that the device is unable to recover. Error: {err!r}.")
         unrecoverable_error = err
         break
     else:
-      logger.info(f"{self.name} ran out of recovery attempts. "
-                  "Executing a final device readiness check.")
+      logger.info(
+          f"{self.name} ran out of recovery attempts. "
+          "Executing a final device readiness check."
+      )
       try:
         self.check_device_ready()
       except errors.CheckDeviceReadyError as err:
         unrecoverable_error = err
       else:
-        logger.info(f"{self.name} successfully recovered to a ready state "
-                    f"after {self._RECOVERY_ATTEMPTS} recovery attempts")
+        logger.info(
+            f"{self.name} successfully recovered to a ready state "
+            f"after {self._RECOVERY_ATTEMPTS} recovery attempts."
+        )
         return
 
     # If execution gets here, either recovery failed due to an error during
@@ -619,21 +660,16 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
         logger.warning(f"{self.name} make_device_ready setting is {setting!r}, "
                        "but device does not support 'flash_build' capability")
       logger.info(f"{self.name} was not able to recover from "
-                  f"{unrecoverable_error!r}")
+                  f"{unrecoverable_error!r}.")
       if recoverable_error is unrecoverable_error:
         recoverable_error = None  # avoid exception chaining loop
       raise unrecoverable_error from recoverable_error
 
-    logger.info(f"{self.name} re-flashing device with the default build")
+    logger.info(f"{self.name} re-flashing device with the default build.")
     self.flash_build.upgrade(forced_upgrade=True)
-    logger.info(f"{self.name} checking device readiness after reflashing")
+    logger.info(f"{self.name} checking device readiness after reflashing.")
     self.check_device_ready()
-    logger.info(f"{self.name} successfully recovered to a ready state")
-
-  @decorators.PersistentProperty
-  def owner(self) -> str:
-    """Email of the owner (maintainer) of this device class."""
-    return self._OWNER_EMAIL
+    logger.info(f"{self.name} successfully recovered to a ready state.")
 
   @decorators.LogDecorator(logger)
   def recover(self, error: errors.CheckDeviceReadyError) -> None:
@@ -738,6 +774,7 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
                      couldn't find the requested group in any of the
                      responses.
     """
+    response = ""
     for _ in range(tries):
       try:
         response = command_fn(command, **command_fn_kwargs)
@@ -758,9 +795,10 @@ class AuxiliaryDevice(auxiliary_device_base.AuxiliaryDeviceBase):
                   regex))
         else:
           return str(match.group(regex_group))
-
-    msg = "{} unable to retrieve {} from {} after {} tries".format(
-        self.name, regex, command, tries)
+    msg = (
+        f"{self.name} unable to retrieve {regex} from {command} "
+        f"after {tries} tries. Last response: {response}"
+    )
 
     if raise_error:
       raise errors.DeviceError(msg)

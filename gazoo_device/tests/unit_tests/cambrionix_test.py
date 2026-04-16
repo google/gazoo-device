@@ -15,10 +15,10 @@
 """Cambrionix unit tests."""
 import fcntl
 import os
-from typing import List
 from unittest import mock
 
 from gazoo_device import errors
+from gazoo_device import package_registrar
 from gazoo_device.auxiliary_devices import cambrionix
 from gazoo_device.tests.unit_tests.utils import cambrionix_logs
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
@@ -69,7 +69,7 @@ _SERIAL_PORT_PATH = (
     "/dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_DN00I41W-if00-port0")
 
 
-def _mock_shell(cmd: str, close_delay: float = 0.0) -> List[str]:
+def _mock_shell(cmd: str, close_delay: float = 0.0) -> list[str]:
   """Returns mock Cambrionix shell response lines.
 
   Args:
@@ -85,6 +85,11 @@ def _mock_shell(cmd: str, close_delay: float = 0.0) -> List[str]:
 
 class CambrionixTest(fake_device_test_case.FakeDeviceTestCase):
   """Cambrionix unit test class."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(cambrionix)
 
   def setUp(self):
     super().setUp()

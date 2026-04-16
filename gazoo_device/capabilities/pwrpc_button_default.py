@@ -13,12 +13,12 @@
 # limitations under the License.
 
 """Default implementation of the PwRPC (Pigweed RPC) button capability."""
-from typing import Any, Callable, Tuple
+from typing import Any, Callable
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import gdm_logger
 from gazoo_device.capabilities.interfaces import pwrpc_button_base
-from gazoo_device.switchboard.transports import pigweed_rpc_transport
+from gazoo_device.utility import pwrpc_utils
 
 logger = gdm_logger.get_logger()
 
@@ -28,7 +28,7 @@ class PwRPCButtonDefault(pwrpc_button_base.PwRPCButtonBase):
 
   def __init__(self,
                device_name: str,
-               valid_button_ids: Tuple[int, ...],
+               valid_button_ids: tuple[int, ...],
                switchboard_call: Callable[..., Any],
                rpc_timeout_s: int):
     """Creates an instance of the PwRPCButtonDefault capability.
@@ -59,7 +59,7 @@ class PwRPCButtonDefault(pwrpc_button_base.PwRPCButtonBase):
                                f"ids: {self._valid_button_ids}.")
 
     self._switchboard_call(
-        method_name=pigweed_rpc_transport.RPC_METHOD_NAME,
+        method_name=pwrpc_utils.RPC_METHOD_NAME,
         method_args=("Button", "Event"),
         method_kwargs={"idx": button_id,
                        "pushed": True,

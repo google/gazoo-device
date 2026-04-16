@@ -22,6 +22,7 @@ class HumiditySensorBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Humidity Sensor endpoint interface."""
 
   DEVICE_TYPE_ID = 0x0307
+  DEVICE_TYPE_NAME = "HumiditySensor"
 
   @property
   @abc.abstractmethod

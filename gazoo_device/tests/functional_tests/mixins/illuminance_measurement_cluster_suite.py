@@ -48,11 +48,10 @@ class IlluminanceMeasurementClusterTestSuite:
         _FAKE_DATA3,
         self.endpoint.illuminance_measurement.max_measured_value)
 
-  # TODO(b/241698164) Enable the test case once b/241698164 is fixed
-  # def test_light_sensor_type_attribute(self):
-  #  """Tests the LightSensorType attribute."""
-  #  self.endpoint.illuminance_measurement.light_sensor_type = (
-  #      _FAKE_LIGHT_SENSOR_TYPE)
-  #  asserts.assert_equal(
-  #      _FAKE_LIGHT_SENSOR_TYPE,
-  #      self.endpoint.illuminance_measurement.light_sensor_type)
+  def test_light_sensor_type_attribute(self):
+    """Tests the LightSensorType attribute."""
+    self.endpoint.illuminance_measurement.light_sensor_type = (
+        _FAKE_LIGHT_SENSOR_TYPE)
+    asserts.assert_equal(
+        _FAKE_LIGHT_SENSOR_TYPE,
+        self.endpoint.illuminance_measurement.light_sensor_type)

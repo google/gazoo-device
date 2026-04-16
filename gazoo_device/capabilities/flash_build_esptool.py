@@ -16,7 +16,7 @@
 import os
 import re
 import time
-from typing import Callable, List, NoReturn, Optional
+from typing import Callable, NoReturn, Optional
 
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -134,7 +134,7 @@ class FlashBuildEsptool(flash_build_base.FlashBuildBase):
     self._boot_up_time = boot_up_time
 
   @decorators.CapabilityLogDecorator(logger)
-  def _get_write_command_arguments(self, erase: bool = False) -> List[str]:
+  def _get_write_command_arguments(self, erase: bool = False) -> list[str]:
     """Helper function to get write command arguments.
 
     For details please refer to
@@ -180,12 +180,12 @@ class FlashBuildEsptool(flash_build_base.FlashBuildBase):
 
   @decorators.CapabilityLogDecorator(logger)
   def flash_device(self,
-                   list_of_files: List[str],
+                   list_of_files: list[str],
                    expected_version: Optional[str] = None,
                    expected_build_type: Optional[str] = None,
                    verify_flash: bool = True,
                    method: Optional[str] = None,
-                   erase_flash: bool = False) -> None:
+                   erase_flash: bool = True) -> None:
     """Flashes the firmware image (.bin file) on the device.
 
     Args:
@@ -245,6 +245,30 @@ class FlashBuildEsptool(flash_build_base.FlashBuildBase):
       self._reset_endpoints_fn()
 
   @decorators.CapabilityLogDecorator(logger)
+  def erase_region(self, start_address: int, size: int) -> None:
+    """Erases specified memory region using erase_region command.
+
+    Args:
+      start_address: Start address of memory.
+      size: Size of memory.
+    """
+    command = [
+        '--port',
+        self._serial_port,
+        '--chip',
+        self._chip_type,
+        'erase_region',
+        str(start_address),
+        str(size),
+    ]
+    if self._switchboard is not None:
+      self._switchboard.close_all_transports()
+    logger.info('Executing esptool command: %s', command)
+    esptool.main(command)
+    if self._switchboard is not None:
+      self._switchboard.open_all_transports()
+
+  @decorators.CapabilityLogDecorator(logger)
   def extract_build_info(self, *args, **kwargs) -> NoReturn:
     """Converts the provided build arguments into info about the build."""
     raise NotImplementedError(
@@ -256,7 +280,7 @@ class FlashBuildEsptool(flash_build_base.FlashBuildBase):
       build_file: Optional[str] = None,
       partition_file: Optional[str] = None,
       bootloader_file: Optional[str] = None,
-      erase_flash: bool = False,
+      erase_flash: bool = True,
       baud: Optional[int] = None,
       before: Optional[str] = None,
       after: Optional[str] = None,

@@ -15,7 +15,7 @@
 """Nrfjprog binary implementation for flashing NRF devices."""
 import os
 import tempfile
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Optional
 
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -44,8 +44,7 @@ class FlashBuildNrfjprog(flash_build_base.FlashBuildBase):
       serial_number: str,
       reset_endpoints_fn: Optional[Callable[[], None]] = None,
       switchboard: Optional[switchboard_base.SwitchboardBase] = None,
-      wait_for_bootup_complete_fn: Optional[Callable[[int], None]] = None,
-      power_cycle_fn: Optional[Callable[[], None]] = None):
+      wait_for_bootup_complete_fn: Optional[Callable[[int], None]] = None):
     """Initializes an instance of the FlashBuildNrfjprog capability.
 
     Args:
@@ -56,14 +55,12 @@ class FlashBuildNrfjprog(flash_build_base.FlashBuildBase):
       switchboard: A Switchboard capability instance if the device supports it.
       wait_for_bootup_complete_fn: wait_for_bootup_complete method for verifying
         device responsiveness after flashing.
-      power_cycle_fn: Method to power cycle the device.
     """
     super().__init__(device_name=device_name)
     self._serial_number = serial_number
     self._reset_endpoints_fn = reset_endpoints_fn
     self._switchboard = switchboard
     self._wait_for_bootup_complete_fn = wait_for_bootup_complete_fn
-    self._power_cycle_fn = power_cycle_fn
     self._msd_disabled = False
 
   @decorators.CapabilityLogDecorator(logger, level=None)
@@ -115,29 +112,16 @@ class FlashBuildNrfjprog(flash_build_base.FlashBuildBase):
         raise errors.DeviceError(
             f"{self._device_name} failed to disable the MSD setting. "
             f"Script return code: {return_code}, output: {output}")
-
-    if self._power_cycle_fn is None:
-      raise errors.DeviceError(
-          f"{self._device_name} no power cycle method provided. Please unplug "
-          "and replug the USB connection of the board manually.")
-
-    # Try power cycling the device if it's connected to cambrionix.
-    try:
-      self._power_cycle_fn()
-    except errors.CapabilityNotReadyError as err:
-      raise errors.DeviceError(
-          f"{self._device_name} cannot be powered cycle: {err}. Please unplug "
-          "and replug the USB connection of the board manually.")
-
     self._msd_disabled = True
 
   @decorators.CapabilityLogDecorator(logger)
   def flash_device(self,
-                   list_of_files: List[str],
+                   list_of_files: list[str],
                    expected_version: Optional[str] = None,
                    expected_build_type: Optional[str] = None,
                    verify_flash: bool = True,
-                   method: Optional[str] = None) -> None:
+                   method: Optional[str] = None,
+                   erase_flash: bool = True) -> None:
     """Flashes the firmware image (.hex file) on the device.
 
     Args:
@@ -147,6 +131,7 @@ class FlashBuildNrfjprog(flash_build_base.FlashBuildBase):
       expected_build_type: Not used.
       verify_flash: Check if we should verify build after flashing.
       method: Not used.
+      erase_flash: True if --chiperase is applied during flashing.
 
     Raises:
       ValueError: If invalid arguments are provided.
@@ -166,33 +151,57 @@ class FlashBuildNrfjprog(flash_build_base.FlashBuildBase):
     if not os.path.exists(image_path):
       raise ValueError(f"Firmware image {image_path} does not exist.")
 
+    return_code = 0
+    output = ""
     if self._switchboard is not None:
       self._switchboard.close_all_transports()
     try:
-      # Always recover the device before flashing to avoid flakiness
-      self.recover_device()
-      return_code, output = self._nrfjprog_flash(image_path)
+      # Recover the device before flashing to avoid flakiness.
+      # This must be skipped if we set erase_flash = False so we don't erase
+      # the commissioning state after flashing b/278786037
+      if erase_flash:
+        self.recover_device()
+      return_code, output = self._nrfjprog_flash(image_path, erase_flash)
     finally:
       if self._switchboard is not None:
         self._switchboard.open_all_transports()
       if self._reset_endpoints_fn is not None:
         self._reset_endpoints_fn()
+      if return_code:
+        raise errors.DeviceError(
+            f"{self._device_name} flash command with binary flasher failed. "
+            f"Return code: {return_code}. Output: {output!r}")
       if verify_flash and self._wait_for_bootup_complete_fn is not None:
         self._wait_for_bootup_complete_fn()
 
-    if return_code:
-      raise errors.DeviceError(
-          f"{self._device_name} flash command with binary flasher failed. "
-          f"Return code: {return_code}. Output: {output!r}")
+  def _nrfjprog_flash(
+      self, image_path: str, erase_flash: bool) -> tuple[int, str]:
+    """Flashes the device via nrfjprog binary if it is present.
 
-  def _nrfjprog_flash(self, image_path: str) -> Tuple[int, str]:
-    """Flashes the device via nrfjprog binary if it is present."""
+    To program a memory area, it must be erased first otherwise programming will
+    fail.
+    --chiperase: Erases all of the user non-volatile memory, including the UICR.
+    --sectorerase: Erases only the targeted non-volatile memory pages,
+      excluding the UICR.
+
+    Args:
+      image_path: Path for image file (*.hex).
+      erase_flash: If True --chiperase is applied during flashing else
+        --sectorerase is used.
+
+    Returns:
+      Tuple of (return code, string output)
+    """
     snr = self._serial_number.lstrip("0")
-    flash_command = (
-        f"{_NRFJPROG} -f nrf52 --program {image_path} --chiperase -s {snr} "
-        "--reset --verify --log nrfjprog_flashing_log.log")
+    flash_command = [
+        _NRFJPROG, "-f", "nrf52", "--program", image_path, "-s", snr, "--reset",
+        "--verify"]
+    if erase_flash:
+      flash_command.append("--chiperase")
+    else:
+      flash_command.append("--sectorerase")
     return subprocess_utils.run_and_stream_output(
-        flash_command.split(), timeout=_FLASH_TIMEOUT_S)
+        flash_command, timeout=_FLASH_TIMEOUT_S)
 
   @decorators.CapabilityLogDecorator(logger)
   def recover_device(self) -> None:
@@ -208,13 +217,14 @@ class FlashBuildNrfjprog(flash_build_base.FlashBuildBase):
           f"Failed to recover the device {serial_number}: {output}.")
 
   @decorators.CapabilityLogDecorator(logger)
-  def upgrade(self, build_file: str):
+  def upgrade(self, build_file: str, erase_flash: bool = True) -> None:
     """Upgrade the device based on the provided build arguments.
 
     Args:
       build_file: Local path to the file.
+      erase_flash: True if --chiperase is applied during flashing.
     """
-    self.flash_device(list_of_files=[build_file])
+    self.flash_device(list_of_files=[build_file], erase_flash=erase_flash)
 
   @decorators.CapabilityLogDecorator(logger)
   def extract_build_info(self, *args, **kwargs):

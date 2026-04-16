@@ -134,7 +134,6 @@ create_gazoo_paths_if_missing()
   make_directory_if_not_exists "$GDM_DIR/data" 755
   make_directory_if_not_exists "$GDM_DIR/log" 755
   make_directory_if_not_exists "$GDM_DIR/tty" 755
-  make_directory_if_not_exists "$GDM_DIR/detok" 755
   make_directory_if_not_exists "$GDM_DIR/bin" 755
 }
 

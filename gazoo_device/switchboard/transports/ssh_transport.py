@@ -44,7 +44,6 @@ class SSHTransport(process_transport.ProcessTransport):
         TransportProcess start.
       username: Username to log in as.
     """
-    self.comms_address = comms_address
     args_list = host_utils.generate_ssh_args(
         comms_address,
         log_cmd,
@@ -52,6 +51,7 @@ class SSHTransport(process_transport.ProcessTransport):
         options=args,
         key_info=key_info)
     super().__init__(
+        comms_address,
         command="ssh",
         args=args_list,
         auto_reopen=auto_reopen,

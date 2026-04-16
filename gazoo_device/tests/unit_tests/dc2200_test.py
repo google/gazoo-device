@@ -1,6 +1,7 @@
 """Unit tests for dc2200 auxiliary device."""
 from unittest import mock
 
+from gazoo_device import package_registrar
 from gazoo_device.auxiliary_devices import dc2200
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.utility import usb_utils
@@ -29,6 +30,11 @@ _GET_DETECTION_PROPS = immutabledict.immutabledict({
 
 class DC2200Test(fake_device_test_case.FakeDeviceTestCase):
   """DC2200 LED Driver unit test class."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(dc2200)
 
   def setUp(self):
     super().setUp()

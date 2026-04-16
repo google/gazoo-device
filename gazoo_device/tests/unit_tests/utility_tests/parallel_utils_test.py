@@ -70,7 +70,7 @@ def load_tests(loader, standard_tests, pattern):
       loader.loadTestsFromTestCase(ParallelUtilsUnitTests))
   suite.addTests(
       loader.loadTestsFromTestCase(ProcessPoolExecutorWithTerminationUnitTests))
-  if not flags.FLAGS.skip_slow:
+  if not hasattr(flags.FLAGS, "skip_slow") or not flags.FLAGS.skip_slow:
     suite.addTests(loader.loadTestsFromTestCase(ParallelUtilsIntegrationTests))
   return suite
 
@@ -173,9 +173,9 @@ class ParallelUtilsUnitTests(unit_test_case.UnitTestCase):
       self, mock_manager_class, mock_import, mock_register, mock_get_logger,
       mock_initialize_logging, mock_package_info):
     """Tests process init sets up process correctly."""
-    mock_package_info.items.return_value = [
-        ("package_1", {"import_path": "foo.package"}),
-        ("package_2", {"import_path": "bar.package"}),
+    mock_package_info.values.return_value = [
+        {"import_path": "foo.package"},
+        {"import_path": "bar.package"},
     ]
     mock_manager = mock_manager_class.return_value
     mock_logger = mock_get_logger.return_value
@@ -207,9 +207,9 @@ class ParallelUtilsUnitTests(unit_test_case.UnitTestCase):
       self, mock_manager_class, mock_import, mock_register,
       mock_get_logger, mock_initialize_logging, mock_package_info):
     """Tests process init sets up process bcorrectly."""
-    mock_package_info.items.return_value = [
-        ("package_1", {"import_path": "foo.package"}),
-        ("package_2", {"import_path": "bar.package"}),
+    mock_package_info.values.return_value = [
+        {"import_path": "foo.package"},
+        {"import_path": "bar.package"},
     ]
     mock_manager = mock_manager_class.return_value
     mock_logger = mock_get_logger.return_value
@@ -255,9 +255,9 @@ class ParallelUtilsUnitTests(unit_test_case.UnitTestCase):
     # This test is for checking that we handle errors in the init process
     # without causing all workers to stop.
     mock_logger = mock_get_logger.return_value
-    mock_package_info.items.return_value = [
-        ("package_1", {"import_path": "foo.package"}),
-        ("package_2", {"import_path": "bar.package"}),
+    mock_package_info.values.return_value = [
+        {"import_path": "foo.package"},
+        {"import_path": "bar.package"},
     ]
     mock_function = mock.MagicMock()
     mock_function.__name__ = "mock_function"
@@ -406,6 +406,14 @@ _TIMEOUT_CALL_SPECS = [parallel_utils.CallSpec(_test_function_times_out)]
 
 class ParallelUtilsIntegrationTests(unit_test_case.UnitTestCase):
   """Integration tests (with multiprocessing) for parallel_utils."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    # To avoid a race condition between parallel_utils child process Managers
+    # writing and reading shared .json configs simultaneously, write the configs
+    # (which is done during Manager.__init__) before child processes start.
+    manager.Manager()
 
   def test_execute_concurrently_success(self):
     """Tests execute_concurrently when all parallel processes succeed."""

@@ -65,9 +65,7 @@ The device needs to be detected first (depending on the present image, as a
 plain `efr32` or as `efr32matter`),
 
 ```
->>> from gazoo_device import Manager
->>> m = Manager()
->>> m.detect()
+gdm detect
 ```
 
 Create the device class and flash the build:
@@ -84,67 +82,80 @@ After flashing it'll need to be redetected (if going from `efr32` to
 `efr32matter`).
 
 ```
->>> m.redetect('efr32-3453')
+gdm delete efr32-3453
+gdm detect
 ```
 
-#### Install Simplicity Commander in the lab host
+#### Install Simplicity Commander on the host
 
 The Silabs `Simplicity Commander` tool is used for flashing EFR32 development boards.
 See more details at https://www.silabs.com/documents/public/user-guides/ug162-simplicity-commander-reference-guide.pdf
 
 Follow the below steps to install the `Simplicity Commander` on the lab host:
 
-* SSH to the host, download and unpack the commander
+*   SSH to the host, download and unpack the commander
 
-  ```
-  ssh username@host-ip-address
-  cd /opt
-  wget https://www.silabs.com/documents/public/software/SimplicityCommander-Linux.zip
-  unzip SimplicityCommander-Linux.zip
-  tar xjvf SimplicityCommander-Linux/Commander_linux_x86_64_1v14p5b1276.tar.bz
-  ```
+    ```
+    $ ssh username@host-ip-address
+    $ wget https://www.silabs.com/documents/public/software/SimplicityCommander-Linux.zip -P /tmp
+    $ sudo unzip -q -d /opt /tmp/SimplicityCommander-Linux.zip
+    $ sudo tar xjvf /opt/SimplicityCommander-Linux/Commander_linux_x86_64_1v14p5b1276.tar.bz -C /opt
+    ```
 
-* Open the `~/.bashrc` file in a text editor and add the following line to the end of the file:
+*   Copy and paste the below script in the terminal
 
-  ```
-  export PATH="/opt/commander:$PATH"
-  ```
+    ```
+    add_executable_symlink()
+    {
+        local alias_name="$1"  # Name of the alias to add to the bin/ folder, such as "gcloud".
+        local executable="$2"  # Full path to the executable, such as "/opt/commander/commander".
 
-* Check if the `commander` binary points to the correct location and is working properly in a new terminal：
+        local bin_path="/usr/local/bin"
+        if [[ "$DISTRIB_ID" == "Debian" ]]; then
+            local bin_path="/usr/bin"
+        fi
+        local full_alias_path="$bin_path/$alias_name"
 
-  ```
-  ＄ which commander
-  /opt/commander/commander
+        sudo ln -s "$executable" "$full_alias_path"
+    }
+    ```
 
-  $ commander --version
+*   Add a symlink to the commander binary
 
-  Simplicity Commander 1v14p5b1276
+    ```
+    $ add_executable_symlink "commander" "/opt/commander/commander"
+    ```
 
-  JLink DLL version: 7.70d
-  Qt 5.12.11 Copyright (C) 2017 The Qt Company Ltd.
-  EMDLL Version: 0v18p8b673
-  mbed TLS version: 2.16.6
+*   Verify the commander binary works：
 
-  Emulator found with SN=440092101 USBAddr=0
-  Emulator found with SN=683344970 USBAddr=0
+    ```
+    ＄ which commander
+    /usr/local/bin/commander
 
-  DONE
-  ```
+    $ commander --version
+
+    Simplicity Commander 1v14p5b1276
+
+    JLink DLL version: 7.70d
+    Qt 5.12.11 Copyright (C) 2017 The Qt Company Ltd.
+    EMDLL Version: 0v18p8b673
+    mbed TLS version: 2.16.6
+
+    Emulator found with SN=440092101 USBAddr=0
+    Emulator found with SN=683344970 USBAddr=0
+
+    DONE
+    ```
 
 **4. (Optional) Try Descriptor RPC**
 
 Try if the Matter Descriptor endpoints work in the CHIP console.
 
-Build the CHIP console by following the instructions on the above `Build`
-section. Activate GDM virtual env and enable the CHIP console:
-`${device-address}` should be something like `/dev/tty/ACM0`.
+Follow
+https://github.com/project-chip/connectedhomeip/blob/master/examples/common/pigweed/rpc_console/README.md
+to build and run the Pigweed RPC CHIP console.
 
-```
-source ~/gazoo/gdm/virtual_env/bin/activate
-python -m chip_rpc.console --device ${device-address} -b 115200 -o /tmp/pw.log
-```
-
-Inside interactive console:
+Then, inside the interactive console:
 
 ```
 # Get supported endpoints on the device
@@ -171,10 +182,10 @@ Detect the EFR32 Matter sample app: `gdm detect`
 
 **6. (Recommended) Remove on-board coin cell battery**
 
-The coin cell [battery](images/efr32_battery.jpg)
+The coin cell [battery](images/efr32_battery.png)
 besides the USB port is an alternate power source for the board. When used in a
-testbed setup, the battery is not needed. Removing the battery enables the board
-to be power cycled programmatically using
+testbed setup, the battery is not needed. If the board is connected to a Cambrionix, removing the battery.
+Removing the battery enables the board to be power cycled programmatically using
 
 ```
 device.device_power.off()
@@ -202,7 +213,7 @@ Activate GDM virtual env and open the console:
 
 ```
 source ~/gazoo/gdm/virtual_env/bin/activate
-python
+python3
 ```
 
 Inside python console:
@@ -216,8 +227,7 @@ Inside python console:
 >>> efr.qr_code
 >>> efr.matter_endpoints.list()
 >>> efr.flash_build.flash_device(['/path/to/efr32_sample_app.hex'])
->>> efr.close()
-```
+>>>
 
 ### Pigweed RPCs
 

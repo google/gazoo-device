@@ -18,15 +18,18 @@ The CLI is generated dynamically by Python Fire:
 https://github.com/google/python-fire.
 """
 import sys
-from typing import Dict, NoReturn, Optional, Sequence
+from typing import NoReturn, Optional, Sequence
 
 import fire
-import gazoo_device
 from gazoo_device import extensions
 from gazoo_device import fire_manager
 from gazoo_device import fire_patch
+from gazoo_device import gazoo_device_controllers
 from gazoo_device import gdm_logger
 from gazoo_device import package_registrar
+from gazoo_device import version
+
+package_registrar.register(gazoo_device_controllers)
 
 logger = gdm_logger.get_logger()
 
@@ -36,7 +39,7 @@ OMIT_FLAGS = ["help"]
 _CLI_NAME = "gdm"
 
 
-def _get_flags(args: Sequence[str]) -> Dict[str, bool]:
+def _get_flags(args: Sequence[str]) -> dict[str, bool]:
   """Parses flags out of array of CLI args.
 
   Flags in OMIT_FLAGS dict will not be returned.
@@ -59,7 +62,7 @@ def _get_flags(args: Sequence[str]) -> Dict[str, bool]:
 
 
 def _create_manager_for_cli(
-    manager_kwargs: Dict[str, bool]) -> fire_manager.FireManager:
+    manager_kwargs: dict[str, bool]) -> fire_manager.FireManager:
   """Returns a Manager instance to be used by the CLI.
 
   Args:
@@ -117,7 +120,7 @@ def main(command: Optional[str] = None, cli_name: str = _CLI_NAME) -> NoReturn:
   package_registrar.import_and_register_cli_extension_packages()
 
   if VERSION_FLAG in sys.argv or (command and VERSION_FLAG in command):
-    logger.info(f"Gazoo Device Manager {gazoo_device.version}")
+    logger.info(f"Gazoo Device Manager {version.VERSION}")
     package_versions = extensions.get_registered_package_info()
     logger.info(f"Registered extension packages: {package_versions}")
     sys.exit(0)

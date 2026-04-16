@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,16 +43,20 @@ To get the current switching status (UP/DOWN) of a downstream port 2.
 $ ykushcmd -g 2
 """
 import subprocess
-from typing import Callable, List
+from typing import Any, Callable
 
 from gazoo_device import decorators
-from gazoo_device import detect_criteria
 from gazoo_device import errors
 from gazoo_device import gdm_logger
-from gazoo_device.base_classes import auxiliary_device
+from gazoo_device import mobly_controller
+from gazoo_device import version
+from gazoo_device.base_classes import auxiliary_power_hub_device
 from gazoo_device.capabilities import switch_power_usb_default
+from gazoo_device.detect_criteria import generic_detect_criteria
+from gazoo_device.switchboard.communication_types import yepkit_comms
 from gazoo_device.utility import deprecation_utils
 from gazoo_device.utility import host_utils
+import immutabledict
 
 logger = gdm_logger.get_logger()
 
@@ -85,13 +89,13 @@ def _check_yepkit_enabled():
     raise errors.DependencyUnavailableError("'ykushcmd' is not installed.")
 
 
-class Yepkit(auxiliary_device.AuxiliaryDevice):
+class Yepkit(auxiliary_power_hub_device.AuxiliaryPowerHubDevice):
   """This class serves as a Python interface to a Yepkit hub."""
-  COMMUNICATION_TYPE = "YepkitComms"
-  DETECT_MATCH_CRITERIA = {detect_criteria.GenericQuery.ALWAYS_TRUE: True}
+  COMMUNICATION_TYPE = yepkit_comms.YepkitComms
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
+      generic_detect_criteria.GenericQuery.ALWAYS_TRUE: True})
   DEVICE_TYPE = "yepkit"
   _MODEL = MODEL
-  _OWNER_EMAIL = "gdm-authors@google.com"
 
   def __init__(self,
                manager,
@@ -129,7 +133,7 @@ class Yepkit(auxiliary_device.AuxiliaryDevice):
     return None
 
   @decorators.PersistentProperty
-  def health_checks(self) -> List[Callable[[], None]]:
+  def health_checks(self) -> list[Callable[[], None]]:
     """Returns list of methods to execute as health checks."""
     return [self.check_device_connected]
 
@@ -287,3 +291,26 @@ class Yepkit(auxiliary_device.AuxiliaryDevice):
 deprecation_utils.add_deprecated_attributes(
     Yepkit, [("power_on", "switch_power.power_on", True),
              ("power_off", "switch_power.power_off", True)])
+
+
+_DeviceClass = Yepkit
+_COMMUNICATION_TYPE = _DeviceClass.COMMUNICATION_TYPE.__name__
+# For Mobly controller integration.
+MOBLY_CONTROLLER_CONFIG_NAME = (
+    mobly_controller.get_mobly_controller_config_name(_DeviceClass.DEVICE_TYPE))
+create = mobly_controller.create
+destroy = mobly_controller.destroy
+get_info = mobly_controller.get_info
+get_manager = mobly_controller.get_manager
+
+
+def export_extensions() -> dict[str, Any]:
+  """Exports device class and capabilities to act as a GDM extension package."""
+  return {
+      "auxiliary_devices": [_DeviceClass],
+      "detect_criteria": immutabledict.immutabledict({
+          _COMMUNICATION_TYPE: generic_detect_criteria.GENERIC_QUERY_DICT,
+      }),
+  }
+
+__version__ = version.VERSION

@@ -14,15 +14,66 @@
 
 """Classes and variables to share across usb_info modules."""
 import inspect
+import immutabledict
 
 ANDROID_NAMES = ("Android", "Pixel")
 CAMBRIONIX_NAMES_USB2 = ("FT230X Basic UART",)
-CAMBRIONIX_NAMES_USB3 = ("PS15-USB3", "SuperSync15")
+CAMBRIONIX_NAMES_USB3 = (
+    "PS15-USB3",
+    "SuperSync15",
+    "SuperSync15b",
+    "ThunderSync3-16",
+)
 CAMBRIONIX_NAMES = CAMBRIONIX_NAMES_USB2 + CAMBRIONIX_NAMES_USB3
 CAMBRIONIX_VENDOR_PRODUCT_ID = ("0403/6015", "2cd9/0021")
 
-CAMBRIONIX_PORT_MAP = {
-    "PP8S": {
+# Baud rate for Cambrionix serial console is 115200.
+# Access to the Cambrionix serial console using command:
+# `screen /dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_DM00GDKX-if00-port0 \
+#  115200`
+#
+# Check the port map using command `bd`.
+# Example result for `SuperSync15b`:
+# >> bd
+# Ports: 15
+# Sync: 1
+# Temp: 1
+# EXTPSU: 1
+# Console: none
+# Nodes : 5
+# Node 1 Type : USB3 Hub 1
+# Node 1 Ports : 5
+# Hub 1 Port 1 : USB3 Hub 2
+# Hub 1 Port 2 : USB3 Hub 5
+# Hub 1 Port 3 : USB3 Hub 3
+# Hub 1 Port 4 : USB3 Hub 4
+# Hub 1 Port 5 : Control Port
+# Node 2 Type : USB3 Hub 2
+# Node 2 Ports : 4
+# Hub 2 Port 1 : Port 1
+# Hub 2 Port 2 : Port 2
+# Hub 2 Port 3 : Port 9
+# Hub 2 Port 4 : Port 8
+# Node 3 Type : USB3 Hub 3
+# Node 3 Ports : 4
+# Hub 3 Port 1 : Port 3
+# Hub 3 Port 2 : Port 4
+# Hub 3 Port 3 : Port 11
+# Hub 3 Port 4 : Port 10
+# Node 4 Type : USB3 Hub 4
+# Node 4 Ports : 4
+# Hub 4 Port 1 : Port 5
+# Hub 4 Port 2 : Unused Port
+# Hub 4 Port 3 : Port 13
+# Hub 4 Port 4 : Port 12
+# Node 5 Type : USB3 Hub 5
+# Node 5 Ports : 4
+# Hub 5 Port 1 : Port 6
+# Hub 5 Port 2 : Port 7
+# Hub 5 Port 3 : Port 15
+# Hub 5 Port 4 : Port 14
+CAMBRIONIX_PORT_MAP = immutabledict.immutabledict({
+    "PP8S": immutabledict.immutabledict({
         "1.1": 1,
         "1.2": 2,
         "1.3": 3,
@@ -30,9 +81,9 @@ CAMBRIONIX_PORT_MAP = {
         "2.1": 8,
         "2.2": 7,
         "2.3": 6,
-        "2.4": 5
-    },
-    "PP15S": {
+        "2.4": 5,
+    }),
+    "PP15S": immutabledict.immutabledict({
         "1.1": 4,
         "1.2": 5,
         "1.3": 6,
@@ -47,9 +98,9 @@ CAMBRIONIX_PORT_MAP = {
         "3.4": 8,
         "4.2": 1,
         "4.3": 2,
-        "4.4": 3
-    },
-    "PS15-USB3": {
+        "4.4": 3,
+    }),
+    "PS15-USB3": immutabledict.immutabledict({
         "1.1": 1,
         "1.2": 2,
         "1.3": 9,
@@ -64,9 +115,9 @@ CAMBRIONIX_PORT_MAP = {
         "3.4": 10,
         "4.1": 5,
         "4.3": 13,
-        "4.4": 12
-    },
-    "SuperSync15": {
+        "4.4": 12,
+    }),
+    "SuperSync15": immutabledict.immutabledict({
         # cloned from PS15-USB3
         "1.1": 1,
         "1.2": 2,
@@ -82,9 +133,26 @@ CAMBRIONIX_PORT_MAP = {
         "3.4": 10,
         "4.1": 5,
         "4.3": 13,
-        "4.4": 12
-    },
-    "U16S": {
+        "4.4": 12,
+    }),
+    "SuperSync15b": immutabledict.immutabledict({
+        "1.1": 1,
+        "1.2": 2,
+        "1.3": 9,
+        "1.4": 8,
+        "2.1": 6,
+        "2.2": 7,
+        "2.3": 15,
+        "2.4": 14,
+        "3.1": 3,
+        "3.2": 4,
+        "3.3": 11,
+        "3.4": 10,
+        "4.1": 5,
+        "4.3": 13,
+        "4.4": 12,
+    }),
+    "U16S": immutabledict.immutabledict({
         "2": 1,
         "5": 2,
         "4.1": 4,
@@ -100,12 +168,30 @@ CAMBRIONIX_PORT_MAP = {
         "7.4": 15,
         "7.5": 16,
         "7.6": 10,
-        "7.7": 12
-    }
-}
+        "7.7": 12,
+    }),
+    "ThunderSync3-16": immutabledict.immutabledict({
+        "1.2": 4,
+        "2.1": 3,
+        "2.3": 1,
+        "2.4": 2,
+        "3.1": 7,
+        "3.2": 8,
+        "3.3": 5,
+        "3.4": 6,
+        "4.1": 11,
+        "4.2": 12,
+        "4.3": 9,
+        "4.4": 10,
+        "5.1": 15,
+        "5.2": 16,
+        "5.3": 13,
+        "5.4": 14
+    }),
+})
 
 
-class UsbInfo(object):
+class UsbInfo:
   """Class for storing all info about usb devices in a system agnostic way."""
   _address = None
   _child_addresses = []

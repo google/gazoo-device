@@ -29,19 +29,19 @@ import gc
 import logging
 import sys
 import threading
-from typing import List, Optional
+from typing import Optional
 
 SYNC_TIMEOUT = 0.25
 TERMINATE_TIMEOUT = 2
 
 
-class _Sentinel(object):
+class _Sentinel:
   """Sentinels to put in the queue to signal certain events."""
   TERMINATE = 0
   SYNC = 1
 
 
-class DisablePeriodicGC(object):
+class DisablePeriodicGC:
   """Context manager for disabling & re-enabling periodic garbage collection.
 
   Note: will not disable periodic GC if called during periodic garbage
@@ -95,7 +95,7 @@ class QueueHandler(logging.Handler):
       self.handleError(record)
 
 
-class LoggingThread(object):
+class LoggingThread:
   """Runs in main process and pulls log messages from the shared queue."""
 
   def __init__(self, queue):
@@ -104,10 +104,10 @@ class LoggingThread(object):
     self._parent = None
     self._queue = queue
     self._thread = None
-    self._synchonize_event = threading.Event()
+    self._synchronize_event = threading.Event()
 
   @property
-  def handlers(self) -> List[logging.Handler]:
+  def handlers(self) -> list[logging.Handler]:
     """Active logging handlers."""
     return self._handlers
 
@@ -150,7 +150,7 @@ class LoggingThread(object):
     """Starts the child thread, which pulls messages from the queue."""
 
     self._thread = threading.Thread(
-        target=self._run, args=[self._queue, self._synchonize_event])
+        target=self._run, args=[self._queue, self._synchronize_event])
     self._thread.daemon = True
     self._thread.start()
 
@@ -186,12 +186,12 @@ class LoggingThread(object):
         threading.current_thread() == threading.main_thread()):
       with DisablePeriodicGC():
         self._queue.put_nowait(_Sentinel.SYNC)
-      if not self._synchonize_event.wait(timeout):
+      if not self._synchronize_event.wait(timeout):
         print(
             "Warning: Logging thread did not reach the synchronization sentinel in {}s"
             .format(timeout),
             file=sys.stderr)
-      self._synchonize_event.clear()
+      self._synchronize_event.clear()
 
   def _run(self, queue, synchronize_event):
     """Runs as a child thread.

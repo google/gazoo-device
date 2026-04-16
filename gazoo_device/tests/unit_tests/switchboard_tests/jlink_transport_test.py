@@ -19,6 +19,7 @@ from gazoo_device import errors
 from gazoo_device.switchboard.transports import jlink_transport
 from gazoo_device.tests.unit_tests.utils import unit_test_case
 import intelhex
+from pylink import jlink
 
 _JLINK_SERIAL = "50129239"
 _CHIP_NAME = "NRF52840_XXAA"
@@ -33,7 +34,7 @@ class JLinkTransportTests(unit_test_case.UnitTestCase):
 
   def setUp(self):
     super().setUp()
-    jlink_patcher = mock.patch("pylink.jlink.JLink")
+    jlink_patcher = mock.patch.object(jlink, "JLink")
     self.mock_jlink_class = jlink_patcher.start()
     self.addCleanup(jlink_patcher.stop)
 

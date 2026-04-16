@@ -17,7 +17,7 @@ from unittest import mock
 
 from absl.testing import parameterized
 from gazoo_device import errors
-from gazoo_device import switchboard
+from gazoo_device.switchboard import switchboard
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
 from gazoo_device.utility import pwrpc_utils
 
@@ -61,7 +61,7 @@ class PwRpcUtilsTests(fake_device_test_case.FakeDeviceTestCase):
   def test_is_matter_device(self, is_matter):
     """Verifies is_matter_device method."""
     fake_switchboard_func = mock.Mock(
-        spec=switchboard.switchboard.SwitchboardDefault)
+        spec=switchboard.SwitchboardDefault)
     if not is_matter:
       fake_switchboard_func.return_value.call.side_effect = (
           errors.DeviceError(_FAKE_ERROR_MESSAGE))

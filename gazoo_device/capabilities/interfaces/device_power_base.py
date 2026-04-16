@@ -14,25 +14,35 @@
 
 """Interface for the device power capability."""
 import abc
+from gazoo_device.base_classes.auxiliary_power_hub_device import AuxiliaryPowerHubDevice
 from gazoo_device.capabilities.interfaces import capability_base
 
 
 class DevicePowerBase(capability_base.CapabilityBase):
   """Abstract Base class for the device power capability."""
 
-  @abc.abstractproperty
+  @classmethod
+  @abc.abstractmethod
+  def get_used_device_classes(cls) -> set[type[AuxiliaryPowerHubDevice]]:
+    """Returns all device classes this capability can create through Manager."""
+
+  @property
+  @abc.abstractmethod
   def hub_name(self):
     """Name of the hub the device is attached to."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def hub_type(self):
     """Type of hub the check is attached to."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def port_mode(self):
     """port mode."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def port_number(self):
     """Port number the device is attached to."""
 

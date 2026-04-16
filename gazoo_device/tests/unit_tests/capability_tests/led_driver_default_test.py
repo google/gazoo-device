@@ -102,5 +102,16 @@ class LedDriverDefaultTest(unit_test_case.UnitTestCase):
     self.mock_pyvisa_inst.write.assert_called_with(
         _COMMANDS["SET_LED_OUTPUT_STATE"].format(state=1))
 
+  def test_pyvisa_import_error(self):
+    """Tests pyvisa import error."""
+    with mock.patch.object(led_driver_default, "pyvisa", new=None):
+      with self.assertRaisesRegex(
+          errors.CapabilityNotReadyError,
+          "pyvisa is not imported"):
+        led_driver_default.LedDriverDefault(
+            device_name=self.device_name,
+            serial_number=self.serial_number,
+        )
+
 if __name__ == "__main__":
   unit_test_case.main()

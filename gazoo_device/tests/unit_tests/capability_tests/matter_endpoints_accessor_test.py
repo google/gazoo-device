@@ -16,8 +16,10 @@ from unittest import mock
 
 from absl.testing import parameterized
 from gazoo_device import errors
+from gazoo_device import package_registrar
 from gazoo_device.capabilities import matter_endpoints_accessor_pw_rpc
 from gazoo_device.capabilities import matter_endpoints_and_clusters
+from gazoo_device.capabilities.interfaces import matter_endpoints_base
 from gazoo_device.capabilities.matter_endpoints import on_off_light
 from gazoo_device.capabilities.matter_endpoints import unsupported_endpoint
 from gazoo_device.capabilities.matter_endpoints.interfaces import endpoint_base
@@ -25,6 +27,7 @@ from gazoo_device.protos import attributes_service_pb2
 from gazoo_device.protos import descriptor_service_pb2
 from gazoo_device.switchboard import switchboard
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
+from gazoo_device.tests.unit_tests.utils import matter_device_base_stub
 
 _FAKE_ENDPOINT_ID = 0
 _FAKE_DEVICE_TYPE_ID = 10
@@ -43,12 +46,23 @@ _FAKE_ENDPOINT_ID_TO_CLUSTERS = {_FAKE_ENDPOINT_ID: [_FAKE_CLUSTER_CLS]}
 _FAKE_ENDPOINT_ID_TO_DEVICE_TYPE_ID = {_FAKE_ENDPOINT_ID: _FAKE_DEVICE_TYPE_ID}
 _FAKE_NOT_IMPLEMENTED_CLUSTER_ID = 1
 _FAKE_ATTRIBUTE_ID = 0
-_FAKE_ATTRIBUTE_TYPE = attributes_service_pb2.AttributeType.ZCL_BOOLEAN_ATTRIBUTE_TYPE
+_FAKE_ATTRIBUTE_TYPE = (
+    attributes_service_pb2.AttributeType.ZCL_BOOLEAN_ATTRIBUTE_TYPE)
 
 
 class MatterEndpointsAccessorPwPpcTest(
     fake_device_test_case.FakeDeviceTestCase):
   """Unit test for MatterEndpointsAccessorPwRpc."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    # To use endpoint classes, MatterEndpointsAccessorPwRpc capability and
+    # endpoint sub-capabilities must be registered. MatterDeviceBaseStub uses
+    # MatterEndpointsAccessorPwRpc, so we can register it. Endpoint
+    # sub-capabilities are registered implicitly when
+    # MatterEndpointsAccessorPwRpc is registered with a device class.
+    package_registrar.register(matter_device_base_stub)
 
   def setUp(self):
     super().setUp()
@@ -98,8 +112,10 @@ class MatterEndpointsAccessorPwPpcTest(
     fake_endpoint = descriptor_service_pb2.Endpoint(endpoint=_FAKE_ENDPOINT_ID)
     fake_supported_endpoints = [fake_endpoint.SerializeToString()]
     self.fake_switchboard_call.return_value = fake_supported_endpoints
+    target_endpoint_ids = [
+        _FAKE_ENDPOINT_ID, matter_endpoints_base.ROOT_NODE_ENDPOINT_ID]
 
-    self.assertEqual([_FAKE_ENDPOINT_ID], self.uut.get_supported_endpoint_ids())
+    self.assertEqual(target_endpoint_ids, self.uut.get_supported_endpoint_ids())
 
   @mock.patch.object(
       matter_endpoints_and_clusters.MATTER_DEVICE_TYPE_ID_TO_CLASS,
@@ -317,7 +333,39 @@ class MatterEndpointsAccessorPwPpcTest(
         data_bool=True)
 
     self.fake_switchboard_call.assert_called_once()
+    kwargs = self.fake_switchboard_call.call_args.kwargs
+    self.assertEqual(kwargs["method_name"], "rpc")
+    self.assertEqual(kwargs["method_args"], ("Attributes", "Write"))
+    self.assertIn("pw_rpc_timeout_s", kwargs["method_kwargs"])
+    self.assertEqual(kwargs["method_kwargs"]["pw_rpc_timeout_s"],
+                     _FAKE_RPC_TIMEOUT_S)
 
+  def test_send_success(self):
+    """Verifies send method on success."""
+    self.uut.send(
+        service_name="TestService",
+        rpc_name="TestRpc",
+        test_arg=123)
+
+    self.fake_switchboard_call.assert_called_once()
+    kwargs = self.fake_switchboard_call.call_args.kwargs
+    self.assertEqual(kwargs["method_name"], "rpc")
+    self.assertEqual(kwargs["method_args"], ("TestService", "TestRpc"))
+    self.assertIn("pw_rpc_timeout_s", kwargs["method_kwargs"])
+    self.assertEqual(kwargs["method_kwargs"]["pw_rpc_timeout_s"],
+                     _FAKE_RPC_TIMEOUT_S)
+
+  def test_send_success_with_explicit_timeout(self):
+    """Verifies send method respects explicit timeout."""
+    self.uut.send(
+        service_name="TestService",
+        rpc_name="TestRpc",
+        test_arg=123,
+        pw_rpc_timeout_s=99)
+
+    self.fake_switchboard_call.assert_called_once()
+    kwargs = self.fake_switchboard_call.call_args.kwargs
+    self.assertEqual(kwargs["method_kwargs"]["pw_rpc_timeout_s"], 99)
 
 if __name__ == "__main__":
   fake_device_test_case.main()

@@ -88,7 +88,7 @@ class ThermostatEndpoint(thermostat_base.ThermostatBase):
     """Matter Fan Control cluster instance."""
     return self.cluster_lazy_init(matter_enums.FanControlCluster.ID)
 
-  # TODO(b/239741839): add optional clusters below
+  # TODO(gdm-authors): add optional clusters below
   # def scenes(self):
   #   """Matter scenes cluster instance."""
 

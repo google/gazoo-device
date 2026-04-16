@@ -17,7 +17,6 @@ See more details in the CHIP Linux Lighting Example document:
 https://github.com/project-chip/connectedhomeip/tree/master/examples/lighting-app/linux
 """
 import abc
-from typing import List
 
 from gazoo_device.capabilities.interfaces import capability_base
 
@@ -34,7 +33,7 @@ class MatterSampleAppBase(capability_base.CapabilityBase):
     """Returns if the app process is running."""
 
   @abc.abstractmethod
-  def get_process_ids(self) -> List[str]:
+  def get_process_ids(self) -> list[str]:
     """Gets all currently active app process IDs."""
 
   @abc.abstractmethod

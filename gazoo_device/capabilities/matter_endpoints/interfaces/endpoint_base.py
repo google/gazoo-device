@@ -35,7 +35,7 @@ See https://github.com/google/gazoo-device/blob/master/docs/Matter_endpoints.md
 for more details.
 """
 
-from typing import Collection, FrozenSet, List, Optional, Set, Type
+from typing import Collection, Optional
 
 from gazoo_device import decorators
 from gazoo_device import errors
@@ -53,11 +53,12 @@ class EndpointBase(capability_base.CapabilityBase):
 
   # Endpoint device type ID defined in the Matter spec.
   DEVICE_TYPE_ID = None
+  DEVICE_TYPE_NAME = ""
 
   def __init__(self,
                device_name: str,
                identifier: int,
-               supported_clusters: FrozenSet[Type[cluster_base.ClusterBase]],
+               supported_clusters: frozenset[type[cluster_base.ClusterBase]],
                device_type_id: Optional[int] = None,
                **cluster_kwargs):
     """Initializes Matter endpoint instance.
@@ -130,14 +131,14 @@ class EndpointBase(capability_base.CapabilityBase):
     return True
 
   @decorators.CapabilityLogDecorator(logger)
-  def get_supported_clusters(self) -> List[str]:
+  def get_supported_clusters(self) -> list[str]:
     """Returns names of clusters supported by the endpoint."""
     return sorted(
         cluster.get_capability_name() for cluster in self._supported_clusters)
 
   @decorators.CapabilityLogDecorator(logger)
   def get_supported_cluster_flavors(
-      self) -> Set[Type[cluster_base.ClusterBase]]:
+      self) -> set[type[cluster_base.ClusterBase]]:
     """Returns flavors of cluster supported by the endpoint."""
     return self._supported_clusters
 

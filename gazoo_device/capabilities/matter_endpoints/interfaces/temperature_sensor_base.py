@@ -22,6 +22,7 @@ class TemperatureSensorBase(endpoint_base.EndpointBase, metaclass=abc.ABCMeta):
   """Matter Temperature Sensor endpoint interface."""
 
   DEVICE_TYPE_ID = 0x0302
+  DEVICE_TYPE_NAME = "TemperatureSensor"
 
   @property
   @abc.abstractmethod

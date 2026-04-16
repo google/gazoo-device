@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 """Base class for all raspbian devices."""
 import re
 import time
-from typing import Callable, List
+from typing import Callable
 
 from gazoo_device import config
 from gazoo_device import console_config
@@ -25,9 +25,12 @@ from gazoo_device import gdm_logger
 from gazoo_device.base_classes import auxiliary_device
 from gazoo_device.capabilities import file_transfer_scp
 from gazoo_device.capabilities import shell_ssh
+from gazoo_device.keys import raspberry_pi_key
 from gazoo_device.switchboard import switchboard
+from gazoo_device.switchboard.communication_types import ssh_comms
 from gazoo_device.utility import deprecation_utils
 from gazoo_device.utility import host_utils
+import immutabledict
 
 logger = gdm_logger.get_logger()
 
@@ -63,6 +66,8 @@ COMMANDS = {
         "sudo systemctl reset-failed",
     "SERIAL_NUMBER_INFO":
         "cat /proc/cpuinfo",
+    "DEVICE_USER_NAME":
+        "whoami",
 }
 
 REGEXES = {
@@ -70,21 +75,21 @@ REGEXES = {
     "device_type": "raspberrypi",
     "FIRMWARE_VERSION_REGEX": r"VERSION=\"(\d+ \(\w+\))\"",
     "KERNEL_VERSION_REGEX": r"(.*)",
-    "MODEL_INFO_REGEX": r"Raspberry Pi ([^\n]+)",
+    "MODEL_INFO_REGEX": r"Raspberry Pi ([^\n\x00]+)",
     "SERIAL_NUMBER_INFO_REGEX": r"Serial\s+: ([^\n]+)"
 }
 
-TIMEOUTS = {"GDM_HELLO": 5, "SHELL": 10, "SHUTDOWN": 60, "ONLINE": 120}
+TIMEOUTS = {"GDM_HELLO": 10, "SHELL": 10, "SHUTDOWN": 60, "ONLINE": 120}
 
 
 class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
   """Base Class for Raspbian Devices."""
-  COMMUNICATION_TYPE = "SshComms"
-  _COMMUNICATION_KWARGS = {
+  COMMUNICATION_TYPE = ssh_comms.SshComms
+  _COMMUNICATION_KWARGS = immutabledict.immutabledict({
       "log_cmd": COMMANDS["LOGGING"],
-      "key_info": config.KEYS["raspberrypi3_ssh_key"],
+      "key_info": raspberry_pi_key.SSH_KEY_PRIVATE,
       "username": "pi"
-  }
+  })
 
   def __init__(self,
                manager,
@@ -146,13 +151,18 @@ class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
     """Returns the platform type of the device."""
     return "Raspbian"
 
+  @decorators.DynamicProperty
+  def device_user_name(self)-> str:
+    """Returns the device user name."""
+    return self.shell(self.commands["DEVICE_USER_NAME"])
+
   def get_console_configuration(self) -> console_config.ConsoleConfiguration:
     """Returns the interactive console configuration."""
     return console_config.get_log_response_separate_port_configuration(
         self.switchboard.get_line_identifier())
 
   @decorators.PersistentProperty
-  def health_checks(self) -> List[Callable[[], None]]:
+  def health_checks(self) -> list[Callable[[], None]]:
     """Returns list of methods to execute as health checks."""
     return [
         self.check_device_connected, self.check_create_switchboard,
@@ -342,13 +352,13 @@ class RaspbianDevice(auxiliary_device.AuxiliaryDevice):
     switchboard_name = self._get_private_capability_name(
         switchboard.SwitchboardDefault)
     if not hasattr(self, switchboard_name):
-      switchboard_kwargs = self._COMMUNICATION_KWARGS.copy()
-      switchboard_kwargs.update({
+      switchboard_kwargs = {
+          **self._COMMUNICATION_KWARGS,
           "communication_address": self.communication_address,
-          "communication_type": self.COMMUNICATION_TYPE,
+          "communication_type": self.COMMUNICATION_TYPE.__name__,
           "log_path": self.log_file_name,
           "device_name": self.name,
-          "event_parser": None})
+          "event_parser": None}
       setattr(self, switchboard_name,
               self.get_manager().create_switchboard(**switchboard_kwargs))
 

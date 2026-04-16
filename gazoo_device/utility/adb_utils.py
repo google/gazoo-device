@@ -19,7 +19,7 @@ import os
 import re
 import subprocess
 import time
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, Optional
 
 from gazoo_device import config
 from gazoo_device import errors
@@ -295,7 +295,7 @@ def sideload_package(package_path, adb_serial, adb_path=None):
 def adb_devices(
     adb_path: Optional[str] = None,
     state: Optional[AdbDeviceState] = None
-) -> List[Tuple[str, AdbDeviceState]]:
+) -> list[tuple[str, AdbDeviceState]]:
   """Returns parsed output of 'adb devices'.
 
   Args:
@@ -341,7 +341,7 @@ def adb_devices(
   return identifiers_and_states
 
 
-def get_adb_devices(adb_path: Optional[str] = None) -> List[str]:
+def get_adb_devices(adb_path: Optional[str] = None) -> list[str]:
   """Returns ADB device identifiers of available ("device") ADB devices.
 
   Args:
@@ -357,7 +357,7 @@ def get_adb_devices(adb_path: Optional[str] = None) -> List[str]:
           for identifier, _ in adb_devices(adb_path, AdbDeviceState.DEVICE)]
 
 
-def get_sideload_devices(adb_path: Optional[str] = None) -> List[str]:
+def get_sideload_devices(adb_path: Optional[str] = None) -> list[str]:
   """Returns ADB device identifiers of devices in "sideload" mode.
 
   Args:
@@ -464,7 +464,7 @@ def get_adb_over_ip_identifier(
   return adb_identifier
 
 
-def _is_connect_successful(output_and_return_code: Tuple[str, int]) -> bool:
+def _is_connect_successful(output_and_return_code: tuple[str, int]) -> bool:
   """Returns whether the connect() call was successful.
 
   Args:
@@ -620,7 +620,10 @@ def shell(adb_serial: str,
   """Issues a command to the shell of the adb_serial provided.
 
   Args:
-    adb_serial: Device serial number.
+    adb_serial: Device serial number. Can be:
+      - IP address. (e.g. "12.34.56.78")
+      - IP address with a port number. (e.g. "12.34.56.78:5555")
+      - ADB serial number. (e.g. "1234567890")
     command: Command to send.
     adb_path: Optional alternative path to adb executable.
     timeout: Time in seconds to wait for adb process to complete.
@@ -1211,7 +1214,7 @@ def remove_port_forwarding(host_port: int,
 
 def list_port_forwarding(
     adb_serial: Optional[str] = None,
-    adb_path: Optional[str] = None) -> List[Tuple[int, int]]:
+    adb_path: Optional[str] = None) -> list[tuple[int, int]]:
   """Lists the adbforwarding connections.
 
   Args:

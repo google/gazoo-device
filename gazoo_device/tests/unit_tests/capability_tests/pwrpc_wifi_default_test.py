@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -104,8 +104,8 @@ class PwRPCWifiDefaultTest(fake_device_test_case.FakeDeviceTestCase):
     self.switchboard_call_mock.return_value = connection_result_bytes
     with self.assertRaisesWithLiteralMatch(
         errors.DeviceError,
-        f"{_FAKE_DEVICE_NAME} failed to connect to wifi with {connection_result}"
-    ):
+        f"{_FAKE_DEVICE_NAME} failed to connect to wifi with "
+        f"{connection_result}"):
       self.uut.connect(ssid=ssid, security_type=security_type)
     self.switchboard_call_mock.assert_called_once()
 
@@ -129,8 +129,8 @@ class PwRPCWifiDefaultTest(fake_device_test_case.FakeDeviceTestCase):
 
     self.assertTrue(self.uut.state)
 
-  def test_connection_state_retun_false(self):
-    """Verifies wifi connection state retuns false."""
+  def test_connection_state_return_false(self):
+    """Verifies wifi connection state returns false."""
     self.switchboard_call_mock.side_effect = errors.DeviceError("Error code: 9")
 
     self.assertFalse(self.uut.state)

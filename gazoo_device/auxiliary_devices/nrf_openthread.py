@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,31 +18,34 @@ The NRF DK device acts as a full thread device which uses OpenThread CLI to
 create, get and manage the thread network.
 See https://openthread.io/codelabs/openthread-hardware#0 for more details.
 """
-
-from typing import Callable, List
+from typing import Any, Callable
 
 from gazoo_device import decorators
-from gazoo_device import detect_criteria
 from gazoo_device import errors
+from gazoo_device import mobly_controller
+from gazoo_device import version
 from gazoo_device.base_classes import nrf_connect_sdk_device
 from gazoo_device.capabilities import wpan_nrf_ot
+from gazoo_device.detect_criteria import serial_detect_criteria
 from gazoo_device.switchboard import switchboard
+from gazoo_device.switchboard.communication_types import jlink_serial_comms
+import immutabledict
 
 
 class NrfOpenThread(nrf_connect_sdk_device.NRFConnectSDKDevice):
   """NRF OpenThread device controller."""
 
-  COMMUNICATION_TYPE = "JlinkSerialComms"
-  _COMMUNICATION_KWARGS = {"baudrate": 115200, "enable_jlink": False}
-  DETECT_MATCH_CRITERIA = {
-      detect_criteria.SerialQuery.IS_NRF_OPENTHREAD: True,
-      detect_criteria.SerialQuery.PRODUCT_NAME: "j-link",
-  }
-  _OWNER_EMAIL = "gdm-authors@google.com"
+  COMMUNICATION_TYPE = jlink_serial_comms.JlinkSerialComms
+  _COMMUNICATION_KWARGS = immutabledict.immutabledict({
+      "baudrate": 115200, "enable_jlink": False})
+  DETECT_MATCH_CRITERIA = immutabledict.immutabledict({
+      serial_detect_criteria.SerialQuery.IS_NRF_OPENTHREAD: True,
+      serial_detect_criteria.SerialQuery.PRODUCT_NAME: "j-link",
+  })
   DEVICE_TYPE = "nrfopenthread"
 
   @decorators.PersistentProperty
-  def health_checks(self)-> List[Callable[[], None]]:
+  def health_checks(self)-> list[Callable[[], None]]:
     """Returns the list of methods to execute as health checks."""
     return super().health_checks + [self.check_otcli]
 
@@ -62,13 +65,13 @@ class NrfOpenThread(nrf_connect_sdk_device.NRFConnectSDKDevice):
     switchboard_name = self._get_private_capability_name(
         switchboard.SwitchboardDefault)
     if not hasattr(self, switchboard_name):
-      switchboard_kwargs = self._COMMUNICATION_KWARGS.copy()
-      switchboard_kwargs.update({
+      switchboard_kwargs = {
+          **self._COMMUNICATION_KWARGS,
           "communication_address": self.communication_address,
-          "communication_type": self.COMMUNICATION_TYPE,
+          "communication_type": self.COMMUNICATION_TYPE.__name__,
           "log_path": self.log_file_name,
           "device_name": self.name,
-          "event_parser": None})
+          "event_parser": None}
       setattr(self, switchboard_name,
               self.get_manager().create_switchboard(**switchboard_kwargs))
 
@@ -82,3 +85,26 @@ class NrfOpenThread(nrf_connect_sdk_device.NRFConnectSDKDevice):
         device_name=self.name,
         send=self.switchboard.send,
         send_and_expect=self.switchboard.send_and_expect)
+
+
+_DeviceClass = NrfOpenThread
+_COMMUNICATION_TYPE = _DeviceClass.COMMUNICATION_TYPE.__name__
+# For Mobly controller integration.
+MOBLY_CONTROLLER_CONFIG_NAME = (
+    mobly_controller.get_mobly_controller_config_name(_DeviceClass.DEVICE_TYPE))
+create = mobly_controller.create
+destroy = mobly_controller.destroy
+get_info = mobly_controller.get_info
+get_manager = mobly_controller.get_manager
+
+
+def export_extensions() -> dict[str, Any]:
+  """Exports device class and capabilities to act as a GDM extension package."""
+  return {
+      "auxiliary_devices": [_DeviceClass],
+      "detect_criteria": immutabledict.immutabledict({
+          _COMMUNICATION_TYPE: serial_detect_criteria.SERIAL_QUERY_DICT,
+      }),
+  }
+
+__version__ = version.VERSION

@@ -18,11 +18,12 @@ import logging
 import os
 import shutil
 import time
-from typing import Tuple, Type
+import typing
+from typing import Any
 
-import gazoo_device
 from gazoo_device import errors
 from gazoo_device import fire_manager
+from gazoo_device import manager
 from gazoo_device.base_classes import gazoo_device_base
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 from mobly import asserts
@@ -36,7 +37,7 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
 
   @classmethod
   def is_applicable_to(cls, device_type: str,
-                       device_class: Type[gdm_test_base.DeviceType],
+                       device_class: type[gdm_test_base.DeviceType],
                        device_name: str) -> bool:
     """Determine if this test suite can run on the given device."""
     return issubclass(device_class, gazoo_device_base.GazooDeviceBase)
@@ -47,7 +48,7 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
     return False
 
   @classmethod
-  def required_test_config_variables(cls) -> Tuple[str, ...]:
+  def required_test_config_variables(cls) -> tuple[str, ...]:
     """Returns keys required to be present in the functional test config."""
     return ("shell_cmd", "known_logline")
 
@@ -80,7 +81,10 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
     finally:
       # Re-open for the other tests
       position = self.devices.index(self.device)
-      self.device = self.get_manager().create_device(self.device_name)
+      # TODO(gdm-authors): Explicitly set the type to Any to disable pytype
+      # checking on self.device for now.
+      self.device = typing.cast(
+          Any, self.get_manager().create_device(self.device_name))
       self.devices = (
           self.devices[0:position] + [self.device] + self.devices[position+1:])
 
@@ -137,7 +141,7 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
   def test_start_new_log(self):
     """Tests that start_new_log begins a new log file."""
     old_log_file_name = self.device.log_file_name
-    self.device.start_new_log(log_name_prefix=self.get_full_test_name())
+    self.device.start_new_log(log_directory=self.current_test_info.output_path)
     asserts.assert_not_equal(
         old_log_file_name, self.device.log_file_name,
         f"Expected log file name to change from {old_log_file_name}")
@@ -157,22 +161,23 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
     """Tests device detection and properties populated during detection."""
     self.device.reset_all_capabilities()
     time.sleep(.2)
-    new_file_devices_name = os.path.join(self.log_path,
+    new_file_devices_name = os.path.join(self.current_test_info.output_path,
                                          "test_redetect_devices.json")
-    new_file_options_name = os.path.join(self.log_path,
+    new_file_options_name = os.path.join(self.current_test_info.output_path,
                                          "test_redetect_device_options.json")
-    new_log_file = os.path.join(self.log_path, "test_redetect_gdm.txt")
+    new_log_file = os.path.join(
+        self.current_test_info.output_path, "test_redetect_gdm.txt")
 
     shutil.copy(self.get_manager().device_file_name, new_file_devices_name)
     shutil.copy(self.get_manager().device_options_file_name,
                 new_file_options_name)
-    new_manager = gazoo_device.Manager(
+    new_manager = manager.Manager(
         device_file_name=new_file_devices_name,
         device_options_file_name=new_file_options_name,
-        log_directory=self.log_path,
+        log_directory=self.current_test_info.output_path,
         gdm_log_file=new_log_file)
     try:
-      new_manager.redetect(self.device.name, self.log_path)
+      new_manager.redetect(self.device.name, self.current_test_info.output_path)
     finally:
       new_manager.close()
       self.device.make_device_ready()
@@ -191,25 +196,28 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
       for key, value in a_dict.items():
         logging.info("\t%s: %s", key, value)
 
-    missing_props = []
-    bad_values = []
-    for prop, old_value in old_dict.items():
-      if prop in new_dict:
-        new_value = new_dict[prop]
-        if old_value != new_value:
-          bad_values.append("{}: {!r} was previously {!r}".format(
-              prop, new_value, old_value))
-      else:
-        missing_props.append(prop)
-    msg = ""
-    if missing_props:
-      msg += "{} is missing the following previous props: {}.\n".format(
-          self.device.name, missing_props)
-    if bad_values:
-      msg += "{} has the following mismatched values: {}.".format(
-          self.device.name, ", ".join(bad_values))
-
-    asserts.assert_false(missing_props or bad_values, msg)
+    old_props = set(old_dict.keys())
+    new_props = set(new_dict.keys())
+    removed_props = old_props - new_props
+    added_props = new_props - old_props
+    common_props = new_props & old_props
+    changed_props = {
+        prop for prop in common_props if old_dict[prop] != new_dict[prop]}
+    if removed_props or added_props or changed_props:
+      logging.info(
+          "Persistent properties changed! "
+          "Testbeds must be redetected to update their values.")
+    else:
+      logging.info("Persistent properties did not change.")
+    for removed_prop in sorted(removed_props):
+      logging.info("Removed prop: %r, value: %r", removed_prop,
+                   old_dict[removed_prop])
+    for added_prop in sorted(added_props):
+      logging.info("Added prop: %s, value: %r", added_prop,
+                   new_dict[added_prop])
+    for changed_prop in sorted(changed_props):
+      logging.info("Changed prop: %s, value: %r was previously %r",
+                   changed_prop, new_dict[changed_prop], old_dict[changed_prop])
 
   def _verify_firmware_version(self):
     """Verifies that firmware version is a non-empty string."""
@@ -223,30 +231,41 @@ class CommonTestSuite(gdm_test_base.GDMTestBase):
     log_file = self.device.log_file_name
     asserts.assert_true(
         os.path.exists(log_file),
-        f"{self.device.name}'s log file {log_file} does not exist")
-    logging.info("%s's firmware version is %r", self.device.name,
-                 self.device.firmware_version)  # generate logs
+        f"{self.device.name}'s log file {log_file} does not exist",
+    )
+    logging.info(
+        "%s's firmware version is %r",
+        self.device.name,
+        self.device.firmware_version,
+    )  # generate logs
     asserts.assert_true(
         os.path.getsize(log_file),
-        f"{self.device.name}'s log file {log_file} is empty")
+        f"{self.device.name}'s log file {log_file} is empty",
+    )
 
   def _verify_boot_up_log(self, start_time):
     """Verifies that the device booted up after the start_time."""
     event_name = "basic.bootup"
     if event_name not in self.device.event_parser.get_event_labels():
       logging.info(
-          "%s does not define a %r event. "
-          "Skipping boot up event verification.", self.device.name, event_name)
+          "%s does not define a %r event. Skipping boot up event verification.",
+          self.device.name,
+          event_name,
+      )
       return
 
     parser_result = self.device.event_parser.get_last_event([event_name])
-    asserts.assert_greater(parser_result.count, 0,
-                           f"Event label {event_name!r} not found.")
+    asserts.assert_greater(
+        parser_result.count, 0, f"Event label {event_name!r} not found."
+    )
     timestamp = parser_result.results_list[0]["system_timestamp"]
     asserts.assert_greater(
-        timestamp, start_time,
+        timestamp,
+        start_time,
         "Expected {!r} timestamp {} to be > start time {}".format(
-            event_name, timestamp, start_time))
+            event_name, timestamp, start_time
+        ),
+    )
 
   def _verify_expect_log(self):
     """Verifies that 'known_logline' occurs in device logs."""

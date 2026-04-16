@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test suite for Matter devices with door lock endpoint."""
-from typing import Type
 from gazoo_device.tests.functional_tests.mixins import door_lock_cluster_suite
 from gazoo_device.tests.functional_tests.utils import gdm_test_base
 
@@ -35,7 +34,7 @@ class DoorLockTestSuite(
 
   @classmethod
   def is_applicable_to(cls, device_type: str,
-                       device_class: Type[gdm_test_base.DeviceType],
+                       device_class: type[gdm_test_base.DeviceType],
                        device_name: str) -> bool:
     """Determines if this test suite can run on the given device."""
     return gdm_test_base.whether_implements_matter_endpoint(

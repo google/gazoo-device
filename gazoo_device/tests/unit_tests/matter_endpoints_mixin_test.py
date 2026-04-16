@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ from unittest import mock
 from absl.testing import parameterized
 from gazoo_device.base_classes import matter_endpoints_mixin
 from gazoo_device.capabilities.interfaces import matter_endpoints_base
+from gazoo_device.capabilities.matter_endpoints import air_quality_sensor
 from gazoo_device.capabilities.matter_endpoints import color_temperature_light
 from gazoo_device.capabilities.matter_endpoints import contact_sensor
 from gazoo_device.capabilities.matter_endpoints import dimmable_light
@@ -66,6 +67,7 @@ class MatterEndpointsAliasesMixinTest(fake_device_test_case.FakeDeviceTestCase):
     self.uut = MatterDeviceStub()
 
   @parameterized.parameters(
+      ("air_quality_sensor", air_quality_sensor.AirQualitySensorEndpoint),
       ("color_temperature_light",
        color_temperature_light.ColorTemperatureLightEndpoint),
       ("contact_sensor", contact_sensor.ContactSensorEndpoint),

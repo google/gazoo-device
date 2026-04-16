@@ -16,8 +16,8 @@
 
 from absl.testing import absltest
 
-import gazoo_device
-
+from gazoo_device import manager
+from gazoo_device import package_registrar
 import example_matter_extension_package
 
 
@@ -33,15 +33,15 @@ class ExampleMatterExtensionPackageTest(absltest.TestCase):
     """Tests that the extension package can be registered with gazoo_device."""
     self.assertNotIn(
         _EXAMPLE_CONTROLLER_DEVICE_TYPE,
-        gazoo_device.manager.Manager.get_supported_device_types(),
+        manager.Manager.get_supported_device_types(),
         f"{_EXAMPLE_CONTROLLER_DEVICE_TYPE!r} should not be known by Manager "
         "before the package is registered")
 
-    gazoo_device.register(example_matter_extension_package)
+    package_registrar.register(example_matter_extension_package)
 
     self.assertIn(
         _EXAMPLE_CONTROLLER_DEVICE_TYPE,
-        gazoo_device.manager.Manager.get_supported_device_types(),
+        manager.Manager.get_supported_device_types(),
         f"{_EXAMPLE_CONTROLLER_DEVICE_TYPE!r} should be known by Manager "
         "after the package is registered")
 

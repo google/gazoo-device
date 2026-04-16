@@ -16,13 +16,20 @@
 import abc
 import ipaddress
 
+from absl.testing import parameterized
 from gazoo_device import errors
+from gazoo_device.auxiliary_devices import nrf_openthread
 from gazoo_device.capabilities import wpan_ot_base
-from gazoo_device.tests.unit_tests.utils import unit_test_case
+from gazoo_device.tests.unit_tests.utils import unit_test_loader
 
 
-class WpanOtTestMixin(unit_test_case.UnitTestCase):
+load_tests = unit_test_loader.load_no_tests
+
+
+# pytype: disable=ignored-abstractmethod
+class WpanOtTestMixin(parameterized.TestCase):
   """Mixin for OpenThread CLI based wpan capabilities."""
+  uut: nrf_openthread.NrfOpenThread
 
   @abc.abstractmethod
   def use_neighbor_table_v2(self):
@@ -60,6 +67,14 @@ class WpanOtTestMixin(unit_test_case.UnitTestCase):
     """Test getting ncp channel."""
     response = self.uut.wpan.ncp_channel
     self.assertEqual(response, 11)
+
+  def test_property_ncp_channel_supported(self):
+    """Test getting ncp channel supported."""
+    self.assertEqual(self.uut.wpan.ncp_channel_supported, "0x3fff800")
+
+  def test_property_ncp_channel_preferred(self):
+    """Test getting ncp channel supported."""
+    self.assertEqual(self.uut.wpan.ncp_channel_preferred, "0x3fff800")
 
   def test_property_network_is_commissioned(self):
     """Test getting network_is_commissioned."""
@@ -100,6 +115,52 @@ class WpanOtTestMixin(unit_test_case.UnitTestCase):
     response = self.uut.wpan.network_xpanid
     self.assertEqual(response, "0xDEAD00BEEF00CAFE")
 
+  def test_register_network_data(self):
+    """Verifies register_network_data on success."""
+    self.assertIsNone(self.uut.wpan.register_network_data())
+
+  def test_add_prefix(self):
+    """Verifies add_prefix on success."""
+    self.assertIsNone(self.uut.wpan.add_prefix(
+        prefix="fdb7:5223:be73:1::/64", flags="paosr", prf="med"))
+
+  def test_remove_prefix(self):
+    """Verifies remove_prefix on success."""
+    self.assertIsNone(self.uut.wpan.remove_prefix(
+        prefix="fdbd:df6c:b080:1:a196:d468:6a5e:47d5::/64"))
+
+  def test_api_version(self):
+    """Verifies api_version on success."""
+    api_version = self.uut.wpan.api_version()
+    self.assertEqual(api_version, 433)
+
+  def test_add_allowlist(self):
+    """Verifies add_allowlist on success."""
+    self.assertIsNone(self.uut.wpan.add_allowlist("18B43000003D23F6"))
+
+  def test_remove_mac_from_allowlist(self):
+    """Verifies remove_allowlist on success."""
+    self.assertIsNone(
+        self.uut.wpan.remove_mac_from_allowlist("18B43000003D23F6"))
+
+  def test_add_allowlist_with_rssi(self):
+    """Test case with specifying RSSI."""
+    addr = "12:34:56:78:90:AB"
+    rssi = -50
+    self.assertIsNone(self.uut.wpan.add_allowlist(addr, rssi))
+
+  def test_enable_allowlist(self):
+    """Verifies enable_allowlist on success."""
+    result = self.uut.wpan.enable_allowlist()
+    self.assertIsNone(result,
+                      "Ensure that returns None as expected")
+
+  def test_disable_allowlist(self):
+    """Verifies disable_allowlist on success."""
+    result = self.uut.wpan.disable_allowlist()
+    self.assertIsNone(result,
+                      "Ensure that returns None as expected")
+
   def test_property_ncp_state(self):
     """Test getting network node type."""
     response = self.uut.wpan.ncp_state
@@ -120,7 +181,7 @@ class WpanOtTestMixin(unit_test_case.UnitTestCase):
         "IsChild": "yes",
     }
     result = self.uut.wpan.thread_neighbor_table
-    self.assertEqual(len(result), 1)
+    self.assertLen(result, 1)
     for k, v in expected_result.items():
       self.assertEqual(v, result[0][k])
 
@@ -154,6 +215,11 @@ class WpanOtTestMixin(unit_test_case.UnitTestCase):
     response = self.uut.wpan.ncp_counter_tx_pkt_acked
     self.assertEqual(response, 5)
 
+  def test_property_ncp_counter_attach_attempts(self):
+    """Test getting attach counts."""
+    response = self.uut.wpan.ncp_counter_attach_attempts
+    self.assertEqual(response, 1)
+
   def test_property_thread_child_table(self):
     """Verify expected thread child table is returned."""
     expected_result = {
@@ -169,7 +235,7 @@ class WpanOtTestMixin(unit_test_case.UnitTestCase):
         "Id": "BA1FA59BE77D24BA",
     }
     result = self.uut.wpan.thread_child_table
-    self.assertEqual(len(result), 1)
+    self.assertLen(result, 1)
     for k, v in expected_result.items():
       self.assertEqual(v, result[0][k])
 
@@ -183,6 +249,27 @@ class WpanOtTestMixin(unit_test_case.UnitTestCase):
         "fe80:0:0:0:24cc:59fd:b37:bd8c",
     ]
     self.assertListEqual(expected_addresses, self.uut.wpan.ipv6_all_addresses)
+
+  def test_property_active_operational_dataset(self):
+    """Verify the active operational dataset property."""
+    expected_dataset = wpan_ot_base.ActiveOperationalDataset(
+        active_timestamp=1,
+        channel=15,
+        wakeup_channel=16,
+        channel_mask="0x07fff800",
+        ext_pan_id="39758ec8144b07fb",
+        mesh_local_prefix="fdf1:f1ad:d079:7dc0::/64",
+        network_key="f366cec7a446bab978d90d27abe38f23",
+        network_name="OpenThread-5938",
+        pan_id="0x5938",
+        pskc="3ca67c969efb0d0c74a4d8ee923b576c",
+        security_policy="672 onrc 0",
+    )
+
+    res: wpan_ot_base.ActiveOperationalDataset = (
+        self.uut.wpan.active_operational_dataset)
+
+    self.assertEqual(res, expected_dataset)
 
   def test_unimplemented_features(self):
     """verify unimplemented properties return expected error."""
@@ -217,7 +304,7 @@ class WpanOtTestMixin(unit_test_case.UnitTestCase):
     }
 
     result = self.uut.wpan.thread_neighbor_table
-    self.assertEqual(len(result), 1)
+    self.assertLen(result, 1)
     for k, v in expected_result.items():
       self.assertEqual(v, result[0][k])
 
@@ -236,7 +323,7 @@ class WpanOtTestMixin(unit_test_case.UnitTestCase):
         "Id": "6AE0664FDC316F66",
     }
     result = self.uut.wpan.thread_child_table
-    self.assertEqual(len(result), 1)
+    self.assertLen(result, 1)
     for k, v in expected_result.items():
       self.assertEqual(v, result[0][k])
 
@@ -255,7 +342,7 @@ class WpanOtTestMixin(unit_test_case.UnitTestCase):
         "Id": "9AB3267C95E504B9",
     }
     result = self.uut.wpan.thread_child_table
-    self.assertEqual(len(result), 1)
+    self.assertLen(result, 1)
     for k, v in expected_result.items():
       self.assertEqual(v, result[0][k])
 
@@ -277,6 +364,12 @@ class WpanOtTestMixin(unit_test_case.UnitTestCase):
     """Test getting the local On-Link prefix."""
     self.assertEqual(
         self.uut.wpan.local_onlink_prefix, "2600::0:1234:da12::/64"
+    )
+
+  def test_property_local_nat64_prefix(self):
+    """Test getting the local NAT64 prefix."""
+    self.assertEqual(
+        self.uut.wpan.local_nat64_prefix, "fd69:342:8482:2:0:0::/96"
     )
 
   def test_property_network_data_omr_prefixes(self):
@@ -392,6 +485,19 @@ class WpanOtTestMixin(unit_test_case.UnitTestCase):
     """Verifies disable_border_routing on success."""
     self.uut.wpan.disable_border_routing()
 
+  def test_enable_border_routing(self):
+    """Verifies enable_border_routing on success."""
+    self.uut.wpan.enable_border_routing()
+
+  def test_srp_client_stop(self):
+    """Verifies srp_client_stop on success."""
+    self.uut.wpan.srp_client_stop()
+
+  def test_srp_client_clear_service(self):
+    """Verifies srp_client_clear_service on success."""
+    self.uut.wpan.srp_client_clear_service(
+        "fake_instance", "_fake_service._udp")
+
   def test_ipaddr_mleid(self):
     """Verifies ipaddr_mleid on success."""
     self.assertEqual(
@@ -469,17 +575,131 @@ class WpanOtTestMixin(unit_test_case.UnitTestCase):
     """Verifies udp open/bind/send/close on success."""
     self.uut.wpan.udp_open()
     self.uut.wpan.udp_bind(ipaddr="::", port=12345, bind_unspecified=True)
-    self.uut.wpan.udp_send(num_bytes=10, ipaddr="fd01::1", port=54321)
+    self.uut.wpan.udp_send(message="hello", ipaddr="fd01::1", port=54321)
     self.uut.wpan.udp_close()
 
     with self.uut.wpan.open_udp_and_bind(
         ipaddr="::", port=12345, bind_unspecified=True
     ):
-      self.uut.wpan.udp_send(num_bytes=10, ipaddr="fd01::1", port=54321)
+      self.uut.wpan.udp_send(message="hello", ipaddr="fd01::1", port=54321)
+
+  def test_udp_send_msg(self):
+    """Verifies udp send msg."""
+    with self.uut.wpan.open_udp_and_bind(
+        ipaddr="::", port=12345, bind_unspecified=True
+    ):
+      self.uut.wpan.udp_send(message="hello", ipaddr="fd01::1", port=54321)
+
+    self.uut.wpan.udp_send_msg(src_ip="::", message="hello",
+                               dest_ip="fd01::1",
+                               send_port=54321, port=12345,
+                               bind_unspecified=True)
 
   def test_set_router_selection_jitter(self):
     """Verifies set_router_election_jitter on success."""
     self.uut.wpan.set_router_selection_jitter(120)
+
+  def test_parse_radio_stats(self):
+    good_str = (
+        "Total Time: 58.953s Tx Time: 0.232640s (0.39%) Rx Time: 4.226110s"
+        " (7.16%) Sleep Time: 54.494689s (92.43%) Disabled Time: 0.000000s"
+        " (0.00%)"
+    )
+    radio_stats = wpan_ot_base.parse_radio_stats(good_str)
+    self.assertEqual(radio_stats.tx_time, 0.232640)
+    self.assertEqual(radio_stats.tx_time_pct, 0.39)
+    self.assertEqual(radio_stats.rx_time, 4.226110)
+    self.assertEqual(radio_stats.rx_time_pct, 7.16)
+    self.assertEqual(radio_stats.sleep_time, 54.494689)
+    self.assertEqual(radio_stats.sleep_time_pct, 92.43)
+    self.assertEqual(radio_stats.disabled_time, 0.000000)
+    self.assertEqual(radio_stats.disabled_time_pct, 0.00)
+
+    good_str = (
+        "Tx Time: 0.232640s (0.39%) Rx Time: 4.226110s (7.16%) Sleep Time:"
+        " 54.494689s (92.43%) Disabled Time: 0.000000s (0.00%)"
+    )
+    radio_stats = wpan_ot_base.parse_radio_stats(good_str)
+    self.assertEqual(radio_stats.tx_time, 0.232640)
+    self.assertEqual(radio_stats.tx_time_pct, 0.39)
+    self.assertEqual(radio_stats.rx_time, 4.226110)
+    self.assertEqual(radio_stats.rx_time_pct, 7.16)
+    self.assertEqual(radio_stats.sleep_time, 54.494689)
+    self.assertEqual(radio_stats.sleep_time_pct, 92.43)
+    self.assertEqual(radio_stats.disabled_time, 0.000000)
+    self.assertEqual(radio_stats.disabled_time_pct, 0.00)
+
+    bad_str = (
+        "Tx: 0.232640s (0.39%) Rx: 4.226110s (7.16%) Sleep Time: 54.494689s"
+        " (92.43%) Disabled Time: 0.000000s (0.00%)"
+    )
+    with self.assertRaises(ValueError):
+      wpan_ot_base.parse_radio_stats(bad_str)
+
+  def test_parse_tcp_benchmark_result(self):
+    good_str1 = (
+        "TCP Benchmark Status: Completed\n"
+        "TCP Benchmark Complete: Transferred 73728 bytes in 7056 milliseconds\n"
+        "TCP Goodput: 83.592 kb/s\n"
+    )
+    good_str2 = "TCP Benchmark Status: Ongoing"
+    good_str3 = "TCP Benchmark Status: Untested"
+    bad_str1 = "TCP Benchmar"
+    bad_str2 = "TCP Benchmark Status: Unexpected Status"
+
+    tcp_result = wpan_ot_base.parse_tcp_benchmark_result(good_str1)
+    self.assertEqual(tcp_result.status, "Completed")
+    self.assertEqual(tcp_result.bytes_transferred, 73728)
+    self.assertEqual(tcp_result.time_used_ms, 7056)
+    self.assertEqual(tcp_result.throughput_kbps, 83.592)
+
+    tcp_result = wpan_ot_base.parse_tcp_benchmark_result(good_str2)
+    self.assertEqual(tcp_result.status, "Ongoing")
+    self.assertIsNone(tcp_result.bytes_transferred)
+    self.assertIsNone(tcp_result.time_used_ms)
+    self.assertIsNone(tcp_result.throughput_kbps)
+
+    tcp_result = wpan_ot_base.parse_tcp_benchmark_result(good_str3)
+    self.assertEqual(tcp_result.status, "Untested")
+    self.assertIsNone(tcp_result.bytes_transferred)
+    self.assertIsNone(tcp_result.time_used_ms)
+    self.assertIsNone(tcp_result.throughput_kbps)
+
+    with self.assertRaises(ValueError):
+      wpan_ot_base.parse_tcp_benchmark_result(bad_str1)
+
+    with self.assertRaises(ValueError):
+      wpan_ot_base.parse_tcp_benchmark_result(bad_str2)
+
+  def test_tcp_init(self):
+    """Verifies TCP init on success."""
+    self.uut.wpan.tcp_init()
+
+  def test_tcp_deinit(self):
+    """Verifies TCP deinit on success."""
+    self.uut.wpan.tcp_deinit()
+
+  def test_tcp_listen(self):
+    """Verifies TCP listen on success."""
+    self.uut.wpan.tcp_listen(30000)
+
+  def test_tcp_connect(self):
+    """Verifies TCP connect on success."""
+    self.uut.wpan.tcp_connect(
+        ipaddr="fe80:0:0:0:a8df:580a:860:ffa4", port=30000
+    )
+
+  def test_tcp_benchmark_run(self):
+    """Verifies TCP benchmark run on success."""
+    self.uut.wpan.tcp_benchmark_run(73728)
+
+  def test_tcp_benchmark_result(self):
+    """Verifies TCP benchmark result on success."""
+    tcp_benchmark_result = self.uut.wpan.tcp_benchmark_result()
+    self.assertEqual(tcp_benchmark_result.status, "Completed")
+    self.assertEqual(tcp_benchmark_result.bytes_transferred, 73728)
+    self.assertEqual(tcp_benchmark_result.time_used_ms, 7056)
+    self.assertEqual(tcp_benchmark_result.throughput_kbps, 83.592)
 
   def test_call_command(self):
     """Verifies send_otcli_command on success and failure."""
@@ -495,3 +715,10 @@ class WpanOtTestMixin(unit_test_case.UnitTestCase):
     self.use_cli_malformed_output()
     with self.assertRaises(errors.DeviceError):
       self.uut.wpan.call_command("malformed output")
+
+  def test_set_region(self) -> None:
+    """Tests the set_region function."""
+    self.assertIsNone(self.uut.wpan.set_region("US"))
+
+  def test_txpower(self) -> None:
+    self.assertEqual(self.uut.wpan.txpower, 20)

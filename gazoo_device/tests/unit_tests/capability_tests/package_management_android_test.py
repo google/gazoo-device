@@ -268,3 +268,6 @@ class PackageManagementAndroidCapabilityTests(
             'com.google.android.tv': '2.4.6'
         })
 
+
+if __name__ == '__main__':
+  fake_device_test_case.main()

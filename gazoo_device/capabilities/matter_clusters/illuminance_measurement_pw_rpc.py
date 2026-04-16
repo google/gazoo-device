@@ -37,7 +37,7 @@ class IlluminanceMeasurementClusterPwRpc(measurement_base.MeasurementClusterBase
         cluster_id=self.MATTER_CLUSTER.ID,
         attribute_id=self.MATTER_CLUSTER.ATTRIBUTE_LIGHT_SENSOR_TYPE,
         attribute_type=(
-            attributes_service_pb2.AttributeType.ZCL_ENUM8_ATTRIBUTE_TYPE,))
+            attributes_service_pb2.AttributeType.ZCL_ENUM8_ATTRIBUTE_TYPE))
     return matter_enums.LightSensorType(data.data_uint8)
 
   @light_sensor_type.setter
@@ -51,3 +51,25 @@ class IlluminanceMeasurementClusterPwRpc(measurement_base.MeasurementClusterBase
         attribute_type=(
             attributes_service_pb2.AttributeType.ZCL_ENUM8_ATTRIBUTE_TYPE),
         data_uint8=sensor_type)
+
+  @decorators.DynamicProperty
+  def measured_value(self) -> int:
+    """Fetches the MeasuredValue attribute."""
+    data = self._read(
+        endpoint_id=self._endpoint_id,
+        cluster_id=self.MATTER_CLUSTER.ID,
+        attribute_id=self.MATTER_CLUSTER.ATTRIBUTE_MEASURED_VALUE,
+        attribute_type=(
+            attributes_service_pb2.AttributeType.ZCL_INT16U_ATTRIBUTE_TYPE))
+    return data.data_uint16
+
+  @measured_value.setter
+  def measured_value(self, value: int) -> None:
+    """Updates the MeasuredValue attribute with new value."""
+    self._write(
+        endpoint_id=self._endpoint_id,
+        cluster_id=self.MATTER_CLUSTER.ID,
+        attribute_id=self.MATTER_CLUSTER.ATTRIBUTE_MEASURED_VALUE,
+        attribute_type=(
+            attributes_service_pb2.AttributeType.ZCL_INT16U_ATTRIBUTE_TYPE),
+        data_uint16=value)

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Unit tests for the raspberry_pi module."""
+from gazoo_device import package_registrar
 from gazoo_device.auxiliary_devices import raspberry_pi
 from gazoo_device.base_classes import raspbian_device
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
@@ -21,6 +22,11 @@ from gazoo_device.tests.unit_tests.utils import raspbian_device_logs
 
 class RaspberryPiTests(fake_device_test_case.FakeDeviceTestCase):
   """Test for RaspberryPi."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(raspberry_pi)
 
   def setUp(self):
     super().setUp()

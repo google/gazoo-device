@@ -20,16 +20,18 @@ import functools
 import inspect
 import os
 import re
+import tempfile
 import time
-from typing import Any, Callable, List, Optional, Set, Tuple, Type
+from typing import Any, Callable, Mapping, Optional
 import weakref
 
 from gazoo_device import config
-from gazoo_device import data_types
+from gazoo_device import custom_types
 from gazoo_device import decorators
 from gazoo_device import errors
 from gazoo_device import extensions
 from gazoo_device import gdm_logger
+from gazoo_device import resources
 from gazoo_device.base_classes import primary_device_base
 from gazoo_device.capabilities import event_parser_default
 from gazoo_device.capabilities.interfaces import capability_base
@@ -70,14 +72,11 @@ def create_symlink(file_path, symlink_file_name):
   directory = os.path.dirname(file_path)
   filename = os.path.basename(file_path)
 
-  tmp_symlink_path = os.path.join(directory, symlink_file_name + ".tmp")
   symlink_path = os.path.join(directory, symlink_file_name)
-
-  # We use a tmp name first in case this is already linked
-  if os.path.lexists(tmp_symlink_path):
-    os.remove(tmp_symlink_path)
-  os.symlink(filename, tmp_symlink_path)
-  os.rename(tmp_symlink_path, symlink_path)
+  with tempfile.TemporaryDirectory(dir=directory) as tmp_dir:
+    tmp_file_path = os.path.join(tmp_dir, f"{filename}.tmp")
+    os.symlink(filename, tmp_file_path)
+    os.replace(tmp_file_path, symlink_path)
   return symlink_path
 
 
@@ -104,11 +103,6 @@ def get_log_filename(log_directory, device_name, name_prefix=""):
 
 class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
   """Base class for all primary and virtual device classes."""
-  # Absolute paths to event filter files (filters/<device_type>/filter.json)
-  _COMMUNICATION_KWARGS = {}
-  _CONNECTION_TIMEOUT = 3
-  DEFAULT_FILTERS = ()  # type: Tuple[str, ...]
-  _OWNER_EMAIL = ""  # override in child classes
 
   def __init__(self,
                manager,
@@ -147,8 +141,11 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     self._regexes = {}
     self._timeouts = dict(TIMEOUTS)
     self.device_type = self.DEVICE_TYPE
-    self.filter_paths = self.DEFAULT_FILTERS + tuple(
-        device_config.get("filters") or ())
+    self.filter_paths = (
+        tuple(self._extract_filter(filter_resource_path)
+              for filter_resource_path in self.DEFAULT_FILTERS) +
+        tuple(device_config.get("filters") or ())
+    )
 
     # Initialize log files
     self.log_directory = log_directory
@@ -196,8 +193,29 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     }
     return self.is_connected(device_config)
 
+  # TODO(gdm-authors): Update type hint of `dimensions` property.
+  @decorators.OptionalProperty
+  def dimensions(self) -> Mapping[str, str]:
+    """Returns dimensions used for allocation of this device in the lab.
+
+    Only available in lab test runs. If not available, returns an empty dict.
+    """
+    return self.props["optional"].get("dimensions", {})
+
+  @dimensions.setter
+  def dimensions(self, dimensions: Mapping[str, str]) -> None:
+    """Sets dimensions used for allocation of this device in the lab.
+
+    This setter cannot modify the actual lab allocation dimensions. The source
+    of truth is in the lab allocation system. This is a read-only local replica.
+
+    Args:
+      dimensions: Dimensions of this device in the lab allocation system.
+    """
+    self.props["optional"]["dimensions"] = dimensions
+
   @decorators.PersistentProperty
-  def health_checks(self) -> List[Callable[[], None]]:
+  def health_checks(self) -> list[Callable[[], None]]:
     """Returns list of methods to execute as health checks."""
     return [
         self.check_power_cycling_ready, self.check_device_connected,
@@ -234,11 +252,6 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
   @decorators.PersistentProperty
   def name(self):
     return self.props["persistent_identifiers"]["name"]
-
-  @decorators.PersistentProperty
-  def owner(self) -> str:
-    """Email of the owner (maintainer) of this device class."""
-    return self._OWNER_EMAIL
 
   @decorators.PersistentProperty
   def serial_number(self):
@@ -421,9 +434,8 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
         instance = getattr(self, name.split(".")[0])
         name = name.split(".")[1]
       value = getattr(instance, name)
-      if callable(value):
-        raise errors.DeviceError("{}'s {} is a method".format(
-            self.name, original_name))
+      if callable(value) and not inspect.isclass(value):
+        raise errors.DeviceError(f"{self.name}'s {original_name} is a method")
       return value
     except AttributeError:
       if name in self.props["optional"]:
@@ -438,7 +450,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
         raise
       error_type = type(err).__name__
       logger.info("{} for {}, exception: {}".format(error_type, name, str(err)))
-      return ERROR_PREFIX + error_type
+      return ERROR_PREFIX + repr(err)
 
   def get_property_names(self):
     """Returns a list of all property names."""
@@ -517,7 +529,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
 
   @decorators.LogDecorator(logger, decorators.DEBUG)
   def make_device_ready(
-      self, setting: data_types.MakeDeviceReadySettingStr = "on") -> None:
+      self, setting: custom_types.MakeDeviceReadySettingStr = "on") -> None:
     """Checks device readiness and attempts recovery if allowed.
 
     If setting is 'off': does nothing.
@@ -639,7 +651,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
       raise error
 
   def get_capability_classes(
-      self, capability_name: str) -> List[Type[capability_base.CapabilityBase]]:
+      self, capability_name: str) -> list[type[capability_base.CapabilityBase]]:
     """Returns possible capability classes (flavors) for the capability.
 
     Args:
@@ -684,7 +696,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     return sorted(names)
 
   @classmethod
-  def get_supported_capabilities(cls) -> List[str]:
+  def get_supported_capabilities(cls) -> list[str]:
     """Returns names of capabilities supported by this device class."""
     # Deduplicate names: there may be several flavors which share the same
     # interface.
@@ -696,7 +708,7 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
 
   @classmethod
   def get_supported_capability_flavors(
-      cls) -> Set[Type[capability_base.CapabilityBase]]:
+      cls) -> set[type[capability_base.CapabilityBase]]:
     """Returns all capability flavor classes supported by this device class."""
     capability_classes = [
         member.capability_classes
@@ -716,13 +728,13 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
         capability_names (list): list of capability names.
             Capability names are strings. They can be:
                 - capability names ("file_transfer"),
-                - capability interface names ("filetransferbase"),
-                - capability flavor names ("filetransferscp").
+                - capability interface names ("file_transfer_base"),
+                - capability flavor names ("file_transfer_scp").
             If an interface name or capability name is specified, the behavior
             is identical: any capability flavor which implements the given
             interface will match. If a flavor name is specified, only that
             capability flavor will match. Different kinds of capability names
-            can be used together (["usb_hub", "filetransferscp"]).
+            can be used together (["usb_hub", "file_transfer_scp"]).
 
     Returns:
         bool: True if all of the given capabilities are supported by this
@@ -752,19 +764,33 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
       elif cap_name in extensions.capability_interfaces:
         interface_or_flavor = extensions.capability_interfaces[cap_name]
       elif cap_name in extensions.capabilities:
-        interface_name = extensions.capabilities[cap_name]
+        interface_names = extensions.capabilities[cap_name]
+        # Capability name to capability interface names is a 1:1 mapping, except
+        # when one interface extends another and overrides the capability name
+        # logic to match the parent's. In this case, map the capability name to
+        # the parent (broader) interface. Within the same inheritance hierarchy,
+        # the class with the shortest method resolution order is the parent.
+        interface_name = sorted(
+            interface_names,
+            key=lambda if_name: len(
+                extensions.capability_interfaces[if_name].__mro__),
+        )[0]
         interface_or_flavor = extensions.capability_interfaces[interface_name]
       else:
-        msg = "\n".join([
-            "Capability {} is not recognized.".format(cap_name),
-            "Supported capability interfaces: {}".format(
-                extensions.capability_interfaces.keys()),
-            "Supported capability flavors: {}".format(
-                extensions.capability_flavors.keys()),
-            "Supported capabilities: {}".format(
-                extensions.capabilities.keys())
-        ])
-        raise errors.DeviceError(msg)
+        logger.warning(
+            "Capability %s is not recognized. This means it's either:\n"
+            "1) not registered because it's not used by any "
+            "of the registered device classes, or\n"
+            "2) invalid (unknown name or a typo).\n"
+            "Registered capability interfaces: %s\n"
+            "Registered capability flavors: %s\n"
+            "Registered capabilities: %s\n",
+            cap_name,
+            sorted(extensions.capability_interfaces.keys()),
+            sorted(extensions.capability_flavors.keys()),
+            sorted(extensions.capabilities.keys())
+        )
+        return False
       capabilities.append(interface_or_flavor)
 
     supported_capabilities = cls.get_supported_capability_flavors()
@@ -922,16 +948,30 @@ class GazooDeviceBase(primary_device_base.PrimaryDeviceBase):
     switchboard_name = self._get_private_capability_name(
         switchboard.SwitchboardDefault)
     if not hasattr(self, switchboard_name):
-      switchboard_kwargs = self._COMMUNICATION_KWARGS.copy()
-      switchboard_kwargs["communication_address"] = self.communication_address
-      switchboard_kwargs["communication_type"] = self.COMMUNICATION_TYPE
-      switchboard_kwargs["log_path"] = self.log_file_name
-      switchboard_kwargs["device_name"] = self.name
-      switchboard_kwargs["event_parser"] = self.event_parser
+      switchboard_kwargs = {
+          **self._COMMUNICATION_KWARGS,
+          "communication_address": self.communication_address,
+          "communication_type": self.COMMUNICATION_TYPE.__name__,
+          "log_path": self.log_file_name,
+          "device_name": self.name,
+          "event_parser": self.event_parser}
       setattr(self, switchboard_name,
               self.get_manager().create_switchboard(**switchboard_kwargs))
 
     return getattr(self, switchboard_name)
+
+  @classmethod
+  def _extract_filter(cls, filter_resource_path: str) -> str:
+    """Returns the host filter path after extracting it.
+
+    Overrides GazooDeviceBase implementation because the resource directory is
+    different.
+
+    Args:
+      filter_resource_path: Filter path relative to the gazoo_device
+        directory, e. g. "filters/adb/basic.json".
+    """
+    return resources.extract(filter_resource_path)
 
   def _log_object_lifecycle_event(self, method_name):
     """Logs a message about a lifecycle event of a python object.

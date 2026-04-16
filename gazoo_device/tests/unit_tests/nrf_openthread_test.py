@@ -16,6 +16,7 @@
 from unittest import mock
 
 from gazoo_device import errors
+from gazoo_device import package_registrar
 from gazoo_device.auxiliary_devices import nrf_openthread
 from gazoo_device.switchboard import expect_response
 from gazoo_device.tests.unit_tests.utils import fake_device_test_case
@@ -26,6 +27,11 @@ _FAKE_DEVICE_ADDRESS = "fake-device-address"
 
 class NrfOpenThreadTests(fake_device_test_case.FakeDeviceTestCase):
   """Unit tests for device class NrfOpenThread."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    package_registrar.register(nrf_openthread)
 
   def setUp(self):
     super().setUp()

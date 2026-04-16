@@ -54,7 +54,7 @@ def set_up_faulthandler(folder: str,
                         log_file_name_prefix: str = "",
                         repeat_timeout_s: int = _FAULTHANDLER_PERIOD_S) -> None:
   """Sets up faulthandler for logging."""
-  # TODO(b/268778945): Disable faulthandler to investigate
+  # TODO(gdm-authors): Disable faulthandler to investigate
   del folder
   del log_file_name_prefix
   del repeat_timeout_s
