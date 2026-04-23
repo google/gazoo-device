@@ -37,8 +37,6 @@ from gazoo_device.capabilities.interfaces import wpan_base
 from gazoo_device.utility import py311
 from gazoo_device.utility import retry
 
-from gazoo_device.tests.aeolus_lib import errors as aeolus_errors
-from gazoo_device.tests.aeolus_lib import utils
 
 logger = gdm_logger.get_logger()
 
@@ -1479,15 +1477,14 @@ class WpanOtBase(wpan_base.WpanBase, abc.ABC):
     """
     poll_timeout = 60
     try:
-      omr_prefixes: list[Prefix] = utils.poll(
-          target=lambda: self.network_data_omr_prefixes,
+      omr_prefixes: list[Prefix] = retry.retry(
+          func=lambda: self.network_data_omr_prefixes,
+          is_successful=bool,
           timeout=poll_timeout,
-          ignore_exceptions=(ipaddress.AddressValueError, ValueError),
-          error_msg=(
-              f"Failed to get network data OMR prefixes of {self._device_name}."
-          ),
+          reraise=False,
+          exc_type=errors.CommunicationTimeoutError,
       )
-    except (aeolus_errors.PollTimeoutError, aeolus_errors.TestError):
+    except errors.CommunicationTimeoutError:
       logger.exception(
           "%s failed to get omr prefixes within %d seconds.",
           self._device_name,
@@ -1606,7 +1603,8 @@ class WpanOtBase(wpan_base.WpanBase, abc.ABC):
     timeout_allowance = 3
     cli_timeout = (count - 1) * interval + timeout + timeout_allowance
     cmd = (
-        f"{Commands.PING.value} {ipaddr} {size} {count} {interval} {hoplimit} {timeout}"
+        f"{Commands.PING.value} {ipaddr} {size} {count} {interval} {hoplimit}"
+        f" {timeout}"
     )
 
     result = self.call_command(cmd, timeout=cli_timeout)[-1]
